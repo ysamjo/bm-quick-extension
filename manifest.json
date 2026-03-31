@@ -1,0 +1,1 @@
+{\n  "manifest_version": 3,\n  "name": "My Quick Extension",\n  "version": "1.0",\n  "description": "A quick Chrome extension.",\n  "permissions": ["activeTab"],\n  "action": {\n    "default_popup": "popup.html"\n  }\n}
