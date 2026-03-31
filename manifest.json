@@ -1,1 +1,17 @@
-{\n  "manifest_version": 3,\n  "name": "My Quick Extension",\n  "version": "1.0",\n  "description": "A quick Chrome extension.",\n  "permissions": ["activeTab"],\n  "action": {\n    "default_popup": "popup.html"\n  }\n}
+{
+  "manifest_version": 3,
+  "name": "Brickmerge Quickinfo Popup",
+  "version": "1.0.0",
+  "description": "Popup für Brickmerge-Infos (automatisch beim Markieren einer 5-stelligen Setnummer).",
+  "permissions": [],
+  "host_permissions": ["https://www.brickmerge.de/*"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_end",
+      "all_frames": true
+    }
+  ]
+}
