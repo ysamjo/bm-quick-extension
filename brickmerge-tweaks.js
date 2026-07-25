@@ -1,11 +1,15 @@
 // ==UserScript==
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
-// @version      2.0
-// @description  Cleaner, Linkliste, Minifiguren-Overlay, Copy-Icon, Rabatt-Rechner Pro & Cookie-Button Hider
+// @version      2.3
+// @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
+// @match        https://chatgpt.com/g/g-LZvgtoTB9-meta-preisvergleich-gpt*
 // @grant        GM_setClipboard
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
 // @connect      www.bricklink.com
 // @connect      mybrickdepot.de
@@ -16,6 +20,153 @@
 
 (function () {
     'use strict';
+
+    const META_GPT_PATH = '/g/g-LZvgtoTB9-meta-preisvergleich-gpt';
+    const META_GPT_URL = `https://chatgpt.com${META_GPT_PATH}`;
+    const META_GPT_PENDING_KEY = 'brickmerge-meta-gpt-pending-v1';
+    const META_GPT_LAST_SUBMITTED_KEY = 'brickmerge-meta-gpt-last-submitted-v1';
+    const META_GPT_MAX_PENDING_AGE = 10 * 60 * 1000;
+
+    const setMetaGptValue = (key, value) =>
+        Promise.resolve(GM_setValue(key, value));
+    const getMetaGptValue = (key, fallback = null) =>
+        Promise.resolve(GM_getValue(key, fallback));
+    const deleteMetaGptValue = key =>
+        Promise.resolve(GM_deleteValue(key));
+
+    function waitForMetaGptElement(getElement, timeout = 60000) {
+        return new Promise(resolve => {
+            const immediate = getElement();
+            if (immediate) {
+                resolve(immediate);
+                return;
+            }
+
+            const observer = new MutationObserver(() => {
+                const element = getElement();
+                if (!element) return;
+                observer.disconnect();
+                clearTimeout(timer);
+                resolve(element);
+            });
+            observer.observe(document.documentElement, {
+                childList: true,
+                subtree: true,
+                attributes: true
+            });
+            const timer = window.setTimeout(() => {
+                observer.disconnect();
+                resolve(null);
+            }, timeout);
+        });
+    }
+
+    function waitForPendingMetaGptTransfer(timeout = 10000) {
+        return new Promise(resolve => {
+            const startedAt = Date.now();
+            const check = async () => {
+                const transfer = await getMetaGptValue(META_GPT_PENDING_KEY);
+                if (transfer?.id && transfer.prompt && transfer.createdAt) {
+                    resolve(transfer);
+                    return;
+                }
+                if (Date.now() - startedAt >= timeout) {
+                    resolve(null);
+                    return;
+                }
+                window.setTimeout(check, 100);
+            };
+            void check();
+        });
+    }
+
+    function findMetaGptPromptEditor() {
+        return document.querySelector(
+            '#prompt-textarea[contenteditable="true"], ' +
+            'textarea#prompt-textarea, ' +
+            'form textarea, ' +
+            '[contenteditable="true"][data-lexical-editor="true"]'
+        );
+    }
+
+    function fillMetaGptPromptEditor(editor, prompt) {
+        editor.focus();
+
+        if (editor instanceof HTMLTextAreaElement) {
+            const valueSetter = Object.getOwnPropertyDescriptor(
+                HTMLTextAreaElement.prototype,
+                'value'
+            )?.set;
+            valueSetter?.call(editor, prompt);
+        } else {
+            document.execCommand('selectAll', false, null);
+            const inserted = document.execCommand('insertText', false, prompt);
+            if (!inserted || editor.textContent.trim() !== prompt) {
+                const paragraph = document.createElement('p');
+                paragraph.textContent = prompt;
+                editor.replaceChildren(paragraph);
+            }
+        }
+
+        editor.dispatchEvent(new InputEvent('input', {
+            bubbles: true,
+            inputType: 'insertText',
+            data: prompt
+        }));
+        editor.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function findMetaGptSendButton() {
+        const directButton = document.querySelector(
+            'button[data-testid="send-button"], ' +
+            'button[data-testid="fruitjuice-send-button"]'
+        );
+        if (directButton) return directButton;
+
+        return Array.from(document.querySelectorAll('form button')).find(button => {
+            const label = [
+                button.getAttribute('aria-label'),
+                button.getAttribute('title')
+            ].filter(Boolean).join(' ');
+            return /send|senden|absenden/i.test(label);
+        }) || null;
+    }
+
+    async function runMetaGptTransfer() {
+        const transfer = await waitForPendingMetaGptTransfer();
+        if (!transfer) return;
+        if (Date.now() - transfer.createdAt > META_GPT_MAX_PENDING_AGE) {
+            await deleteMetaGptValue(META_GPT_PENDING_KEY);
+            return;
+        }
+
+        const lastSubmittedId = await getMetaGptValue(
+            META_GPT_LAST_SUBMITTED_KEY
+        );
+        if (lastSubmittedId === transfer.id) {
+            await deleteMetaGptValue(META_GPT_PENDING_KEY);
+            return;
+        }
+
+        const editor = await waitForMetaGptElement(findMetaGptPromptEditor);
+        if (!editor) return;
+        fillMetaGptPromptEditor(editor, transfer.prompt);
+
+        const sendButton = await waitForMetaGptElement(() => {
+            const button = findMetaGptSendButton();
+            return button && !button.disabled ? button : null;
+        }, 15000);
+        if (!sendButton) return;
+
+        await setMetaGptValue(META_GPT_LAST_SUBMITTED_KEY, transfer.id);
+        await deleteMetaGptValue(META_GPT_PENDING_KEY);
+        sendButton.click();
+    }
+
+    if (location.pathname.startsWith(META_GPT_PATH)) {
+        void runMetaGptTransfer();
+        return;
+    }
 
     // ==========================================
     // CONFIG
@@ -28,27 +179,152 @@
         // Kennung einmal nicht ausliefert.
         retailerDiscounts: {
             "lego.com": {
+                label: "LEGO",
                 mid: "3",
                 rate: 0.1405,
                 aliases: ["LEGO"]
             },
             "mueller.de": {
+                label: "Müller",
                 mid: "335",
                 rate: 0.11,
                 aliases: ["MÜLLER", "Mueller"]
             },
             "thalia.de": {
+                label: "Thalia",
                 mid: "331",
                 rate: 0.10,
                 aliases: ["Thalia"]
             },
             "amazon.de": {
+                label: "Amazon",
                 mid: "1",
                 rate: 0.05,
                 aliases: ["amazon"]
             }
         }
     };
+    const LEGACY_RETAILER_SETTINGS_KEY = 'brickmerge-toolkit-retailer-discounts-v1';
+    const PERSONAL_DISCOUNT_SETTINGS_KEY = 'brickmerge-toolkit-personal-discounts-v2';
+
+    function getRetailerCatalog() {
+        const catalog = new Map();
+        Object.entries(CONFIG.retailerDiscounts).forEach(([key, discount]) => {
+            catalog.set(key, { ...discount, key, isDefault: true });
+        });
+
+        document.querySelectorAll(
+            '#offerlist .medium-4.small-9.columns.pricerow[data-mid]'
+        ).forEach(priceRow => {
+            const mid = priceRow.dataset.mid;
+            const priceSpan = priceRow.querySelector('.price');
+            if (!mid || !priceSpan) return;
+
+            const knownEntry = Object.entries(CONFIG.retailerDiscounts)
+                .find(([, discount]) => String(discount.mid) === String(mid));
+            const key = knownEntry?.[0] || `mid:${mid}`;
+            const knownDiscount = knownEntry?.[1];
+            const label = getOfferMerchantName(priceSpan) ||
+                knownDiscount?.label ||
+                `Händler ${mid}`;
+
+            catalog.set(key, {
+                key,
+                label,
+                mid,
+                rate: knownDiscount?.rate || 0,
+                aliases: knownDiscount?.aliases || [label],
+                isDefault: Boolean(knownDiscount)
+            });
+        });
+
+        return Array.from(catalog.entries()).sort(([, a], [, b]) =>
+            a.label.localeCompare(b.label, 'de', { sensitivity: 'base' })
+        );
+    }
+
+    function getDefaultPersonalDiscountSettings() {
+        const retailers = Object.fromEntries(
+            getRetailerCatalog().map(([key, discount]) => [
+                key,
+                {
+                    enabled: discount.isDefault,
+                    percent: discount.isDefault
+                        ? Math.round(discount.rate * 10000) / 100
+                        : 0
+                }
+            ])
+        );
+        return { enabled: true, retailers };
+    }
+
+    function loadPersonalDiscountSettings() {
+        const defaults = getDefaultPersonalDiscountSettings();
+        try {
+            const stored = JSON.parse(
+                localStorage.getItem(PERSONAL_DISCOUNT_SETTINGS_KEY) || 'null'
+            );
+            const legacy = JSON.parse(
+                localStorage.getItem(LEGACY_RETAILER_SETTINGS_KEY) || '{}'
+            );
+            const savedRetailers = stored?.retailers || legacy;
+
+            Object.entries(defaults.retailers).forEach(([key, fallback]) => {
+                const candidate = savedRetailers?.[key];
+                if (!candidate || typeof candidate !== 'object') return;
+
+                const percent = Number(candidate.percent);
+                defaults.retailers[key] = {
+                    enabled: candidate.enabled !== false,
+                    percent: Number.isFinite(percent)
+                        ? Math.min(100, Math.max(0, percent))
+                    : fallback.percent
+                };
+            });
+            Object.entries(savedRetailers || {}).forEach(([key, candidate]) => {
+                if (defaults.retailers[key] || !candidate || typeof candidate !== 'object') return;
+                const percent = Number(candidate.percent);
+                defaults.retailers[key] = {
+                    enabled: candidate.enabled === true,
+                    percent: Number.isFinite(percent)
+                        ? Math.min(100, Math.max(0, percent))
+                        : 0
+                };
+            });
+
+            if (stored?.enabled === false) {
+                defaults.enabled = false;
+            }
+        } catch (e) {
+            console.warn('Brickmerge Toolkit: Persönliche Rabatte konnten nicht geladen werden.');
+        }
+        return defaults;
+    }
+
+    function savePersonalDiscountSettings(settings) {
+        try {
+            localStorage.setItem(PERSONAL_DISCOUNT_SETTINGS_KEY, JSON.stringify(settings));
+        } catch (e) {
+            console.warn('Brickmerge Toolkit: Persönliche Rabatte konnten nicht gespeichert werden.');
+        }
+    }
+
+    function getConfiguredRetailerDiscounts() {
+        const settings = loadPersonalDiscountSettings();
+        if (!settings.enabled) return [];
+        return getRetailerCatalog()
+            .filter(([key]) => {
+                const setting = settings.retailers[key];
+                return setting?.enabled && Number(setting.percent) > 0;
+            })
+            .map(([key, discount]) => [
+                key,
+                {
+                    ...discount,
+                    rate: Number(settings.retailers[key].percent) / 100
+                }
+            ]);
+    }
 
     // ==========================================
     // 0. GLOBALE STYLES (z.B. Cookiebot verstecken)
@@ -75,6 +351,53 @@
             width: 95% !important;
             border: none !important;
         }
+        #offerlist .medium-4.small-9.columns.pricerow[data-mid] {
+            background-image: none !important;
+            background-size: 0 0 !important;
+        }
+        #offerlist .price > span[style*="position: absolute"] {
+            display: none !important;
+        }
+        #offerlist .bm-marketplace-logo {
+            display: inline-block;
+            width: auto;
+            height: auto;
+            max-width: 66px;
+            max-height: 23px;
+            object-fit: contain;
+            vertical-align: middle;
+        }
+        #offerlist .bm-marketplace-logo.bm-keepa-logo {
+            max-width: 62px;
+            max-height: 18px;
+            padding: 2px 4px;
+            background: #303944;
+            border-radius: 2px;
+            box-sizing: content-box;
+        }
+        #offerlist .bm-mbd-logo-stack {
+            display: flex !important;
+            height: 100%;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            line-height: 1 !important;
+        }
+        #offerlist .bm-mbd-source-label {
+            display: block;
+            margin-bottom: 1px;
+            color: #666;
+            font-size: 0.46rem;
+            font-weight: 600;
+            line-height: 0.52rem;
+            white-space: nowrap;
+        }
+        #offerlist .bm-mbd-logo-stack .bm-marketplace-logo {
+            max-height: 15px;
+        }
+        #offerlist .pricerow:hover .bm-mbd-source-label {
+            color: #fff;
+        }
         #offerlist .bm-shipping-info {
             display: inline !important;
             position: relative;
@@ -87,25 +410,299 @@
             vertical-align: baseline;
             white-space: nowrap;
         }
-        #offerlist .price > span.small:not(.merchant):not(.code):not(.show-for-small-only) {
+        #offerlist .price > span.small:not(.merchant):not(.code):not(.show-for-small-only):not(.bm-effective-info) {
             font-size: 0.75rem;
         }
-        #offerlist .pricerow.lowest .bm-shipping-info,
-        #offerlist .price.lowest > span.small:not(.merchant):not(.code):not(.show-for-small-only) {
-            color: #fff !important;
-            opacity: 1 !important;
-            visibility: visible !important;
+        #offerlist .bm-original-price {
+            display: inline;
+            color: #b00 !important;
+            font-size: inherit;
+            font-weight: inherit;
+            white-space: nowrap;
+        }
+        #offerlist .bm-shipping-unknown {
+            color: #888 !important;
+            font-style: italic;
+        }
+        #offerlist .bm-effective-info {
+            display: inline !important;
+            position: relative;
+            z-index: 3;
+            margin-left: 0.45rem;
+            color: #b00 !important;
+            font-size: 0.8rem;
+            font-weight: normal;
+            line-height: inherit;
+            white-space: nowrap;
+        }
+        #offerlist .bm-offer-discount-bubble {
+            position: absolute;
+            top: 4px;
+            right: 0.4rem;
+            z-index: 4;
+            min-width: 25px;
+            min-height: 25px;
+            padding: 1px;
+            border-radius: 1000px;
+            background: #b00;
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: bolder;
+            line-height: 1.5rem;
+            text-align: center;
+            white-space: nowrap;
+        }
+        #offerlist .bm-total-discount-bubble {
+            position: absolute;
+            top: 4px;
+            right: 2.45rem;
+            z-index: 4;
+            min-width: 25px;
+            min-height: 25px;
+            padding: 1px;
+            border: 1px solid #c9c9c9;
+            border-radius: 1000px;
+            background: #e7e7e7;
+            color: #555;
+            font-size: 0.7rem;
+            font-weight: bolder;
+            line-height: calc(1.5rem - 2px);
+            text-align: center;
+            white-space: nowrap;
+            box-sizing: border-box;
         }
         @media screen and (max-width: 640px) {
+            #offerlist .bm-effective-row span.price {
+                display: inline-flex;
+                flex-wrap: wrap;
+                align-content: center;
+                align-items: baseline;
+                line-height: 1.2;
+                padding-top: 0.25rem;
+                padding-bottom: 0.25rem;
+            }
+            #offerlist .bm-effective-row span.price > .merchant {
+                flex: 0 0 100%;
+            }
             #offerlist .bm-shipping-info {
                 margin-left: 0.35rem;
                 font-size: 0.68rem;
             }
-            #offerlist .price > span.small:not(.merchant):not(.code):not(.show-for-small-only) {
+            #offerlist .price > span.small:not(.merchant):not(.code):not(.show-for-small-only):not(.bm-effective-info) {
                 font-size: 0.68rem;
+            }
+            #offerlist .bm-effective-info {
+                display: inline !important;
+                margin-left: 0.35rem;
+                margin-top: 0;
+                font-size: 0.72rem;
+                line-height: 1.2;
+                white-space: normal;
+            }
+            #offerlist .bm-offer-discount-bubble {
+                top: 5px;
+                right: 0.25rem;
+            }
+            #offerlist .bm-total-discount-bubble {
+                top: 5px;
+                right: 2.3rem;
             }
             #offerlist .price > .show-for-small-only.small {
                 display: none !important;
+            }
+            #offerlist .row.collapse.bm-effective-row {
+                min-height: 86px;
+            }
+            #offerlist .row.collapse.bm-effective-row > .goto.small-3.columns,
+            #offerlist .row.collapse.bm-effective-row > .goto.small-3.columns > .pricerow,
+            #offerlist .row.collapse.bm-effective-row > .medium-4.small-9.columns.pricerow {
+                height: 86px !important;
+                min-height: 86px !important;
+            }
+            #offerlist .row.collapse.bm-mbd-offer,
+            #offerlist .row.collapse.bm-mbd-offer > .goto.small-3.columns,
+            #offerlist .row.collapse.bm-mbd-offer > .goto.small-3.columns > .pricerow,
+            #offerlist .row.collapse.bm-mbd-offer > .medium-4.small-9.columns.pricerow {
+                height: 70px !important;
+                min-height: 70px !important;
+            }
+            #offerlist .row.collapse.bm-mbd-offer.bm-effective-row,
+            #offerlist .row.collapse.bm-mbd-offer.bm-effective-row > .goto.small-3.columns,
+            #offerlist .row.collapse.bm-mbd-offer.bm-effective-row > .goto.small-3.columns > .pricerow,
+            #offerlist .row.collapse.bm-mbd-offer.bm-effective-row > .medium-4.small-9.columns.pricerow {
+                height: 86px !important;
+                min-height: 86px !important;
+            }
+            #offerlist .bm-marketplace-logo {
+                max-width: 72px;
+                max-height: 31px;
+            }
+        }
+        .bm-offer-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            margin: 0.25rem 0 0.75rem;
+        }
+        .bm-discount-toolbar-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            min-height: 21px;
+        }
+        .bm-discount-toolbar-control .switch {
+            flex: 0 0 auto;
+            margin: 0;
+        }
+        .bm-discount-toolbar-control .switch input {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            display: block !important;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .bm-discount-toolbar-label {
+            color: #555;
+            font-size: 0.8rem;
+            font-weight: normal;
+            line-height: 1.1;
+        }
+        .bm-discount-settings-trigger {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 30px;
+            margin: 0 0 0 auto !important;
+            padding: 0 !important;
+            background: transparent !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            color: #666 !important;
+            font-size: 1.4rem !important;
+            line-height: 1 !important;
+        }
+        .bm-discount-settings-trigger:hover,
+        .bm-discount-settings-trigger:focus {
+            background: transparent !important;
+            color: #b00000 !important;
+        }
+        .bm-settings-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100050;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.58);
+        }
+        .bm-settings-overlay.is-open {
+            display: flex;
+        }
+        .bm-settings-dialog {
+            width: min(40rem, 100%);
+            max-height: calc(100vh - 2rem);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #fff;
+            border: 2px solid #a80000;
+            border-radius: 2px;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+            color: #333;
+        }
+        .bm-settings-header,
+        .bm-settings-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.85rem 1rem;
+        }
+        .bm-settings-header {
+            justify-content: space-between;
+            background: #a80000;
+            border-bottom: 1px solid #7c0000;
+        }
+        .bm-settings-header h3 {
+            margin: 0 !important;
+            color: #fff !important;
+            font-size: 1.1rem !important;
+        }
+        .bm-settings-close {
+            width: 2rem;
+            height: 2rem;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            background: transparent !important;
+            color: #fff !important;
+            font-size: 1.5rem !important;
+            line-height: 2rem !important;
+        }
+        .bm-settings-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
+            padding: 0 1rem;
+        }
+        .bm-settings-row {
+            display: grid;
+            grid-template-columns: minmax(7rem, 1fr) auto 6.5rem;
+            align-items: center;
+            gap: 0.75rem;
+            min-height: 2.8rem;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        .bm-settings-row:last-child {
+            border-bottom: 0;
+        }
+        .bm-settings-row label {
+            margin: 0;
+            color: #1f5fa8;
+            font-size: 0.82rem;
+            font-weight: normal;
+        }
+        .bm-settings-row input[type="number"] {
+            width: 4.8rem;
+            height: 2.15rem;
+            margin: 0;
+            padding: 0.3rem 0.4rem;
+        }
+        .bm-settings-percent {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            white-space: nowrap;
+        }
+        .bm-settings-actions {
+            justify-content: flex-end;
+            background: #f3f3f3;
+            border-top: 1px solid #ddd;
+        }
+        .bm-settings-actions .button {
+            margin: 0 !important;
+            border-radius: 1px !important;
+        }
+        .bm-settings-save {
+            background: #b00000 !important;
+            color: #fff !important;
+        }
+        @media screen and (max-width: 480px) {
+            .bm-settings-dialog {
+                max-height: calc(100vh - 1rem);
+            }
+            .bm-settings-row {
+                grid-template-columns: minmax(6rem, 1fr) auto 5.4rem;
+                gap: 0.45rem;
+            }
+            .bm-settings-row input[type="number"] {
+                width: 4rem;
             }
         }
     `;
@@ -131,6 +728,58 @@
         return null;
     }
     const setNum = getSetNum();
+
+    function createMetaGptTransferId() {
+        if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+        return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    function createMetaGptSearchPrompt(setNumber) {
+        const heading = document.querySelector('h1')?.textContent || '';
+        const title = heading
+            .replace(/[\u00AE\u2122]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim() || `LEGO ${setNumber}`;
+        return [
+            `Suche aktuelle Angebote für ${title}.`,
+            'nur relevante Angebote, nur NEU und OVP.'
+        ].join(' ');
+    }
+
+    function setupMetaGptLink(container) {
+        const link = container.querySelector('a[data-bmid="btn-meta-gpt"]');
+        if (!link || link.dataset.bmMetaGptReady === 'true') return;
+        link.dataset.bmMetaGptReady = 'true';
+        link.dataset.bmMetaGptLink = 'true';
+        link.title = 'Set im Meta-Preisvergleich-GPT suchen';
+
+        link.addEventListener('click', event => {
+            event.preventDefault();
+            if (!setNum) return;
+
+            const prompt = createMetaGptSearchPrompt(setNum);
+            const transfer = {
+                id: createMetaGptTransferId(),
+                prompt,
+                createdAt: Date.now()
+            };
+
+            try {
+                GM_setClipboard(prompt, 'text');
+            } catch (error) {
+                navigator.clipboard?.writeText(prompt).catch(() => {});
+            }
+            void setMetaGptValue(META_GPT_PENDING_KEY, transfer);
+
+            const label = link.querySelector('span');
+            if (label) label.textContent = 'Wird geöffnet';
+            window.open(META_GPT_URL, '_blank', 'noopener,noreferrer');
+            window.setTimeout(() => {
+                if (label) label.textContent = 'Meta-GPT';
+            }, 1400);
+        });
+    }
+
     const initialSetUvp = (() => {
         const candidates = document.querySelectorAll(
             '.stroke[title*="unverbindliche Preisempfehlung"], [title="unverbindliche Preisempfehlung"]'
@@ -145,6 +794,165 @@
         }
         return null;
     })();
+
+    function createDiscountSettingsUI() {
+        if (!setNum || document.getElementById('bm-discount-settings')) return;
+
+        const offerlist = document.getElementById('offerlist');
+        const firstOffer = offerlist
+            ?.querySelector('.medium-4.small-9.columns.pricerow[data-mid]')
+            ?.closest('.row.collapse');
+        if (!offerlist || !firstOffer?.parentElement) return;
+
+        const toolbar = document.createElement('div');
+        toolbar.className = 'bm-offer-toolbar';
+        toolbar.innerHTML = `
+            <div class="bm-discount-toolbar-control">
+                <label class="switch" title="Persönlichen Rabatt ein- oder ausschalten">
+                    <input id="bm-personal-enabled" type="checkbox"
+                           aria-label="Persönlichen Rabatt verwenden">
+                    <div class="slider round"></div>
+                </label>
+                <span class="bm-discount-toolbar-label">Persönlicher Rabatt</span>
+                <button type="button" class="bm-discount-settings-trigger"
+                        aria-haspopup="dialog" aria-controls="bm-discount-settings"
+                        title="Persönlichen Rabatt einstellen"
+                        aria-label="Persönlichen Rabatt einstellen">
+                    ⚙
+                </button>
+            </div>
+        `;
+        firstOffer.parentElement.insertBefore(toolbar, firstOffer);
+
+        const overlay = document.createElement('div');
+        overlay.id = 'bm-discount-settings';
+        overlay.className = 'bm-settings-overlay';
+        overlay.innerHTML = `
+            <div class="bm-settings-dialog" role="dialog" aria-modal="true"
+                 aria-labelledby="bm-settings-title">
+                <div class="bm-settings-header">
+                    <h3 id="bm-settings-title">Persönlicher Rabatt</h3>
+                    <button type="button" class="bm-settings-close"
+                            title="Schließen" aria-label="Schließen">×</button>
+                </div>
+                <div class="bm-settings-body"></div>
+                <div class="bm-settings-actions">
+                    <button type="button" class="button secondary bm-settings-reset">
+                        Standardwerte
+                    </button>
+                    <button type="button" class="button bm-settings-save">
+                        Speichern
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const body = overlay.querySelector('.bm-settings-body');
+        const escapeHtml = value => String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
+        const populate = settings => {
+            body.innerHTML = '';
+            getRetailerCatalog().forEach(([key, discount], index) => {
+                const row = document.createElement('div');
+                const checkboxId = `bm-retailer-enabled-${index}`;
+                const percentId = `bm-retailer-percent-${index}`;
+                const label = discount.label || key;
+                row.className = 'bm-settings-row';
+                row.dataset.key = key;
+                row.innerHTML = `
+                    <label for="${checkboxId}">${escapeHtml(label)}</label>
+                    <input id="${checkboxId}" class="bm-settings-enabled"
+                           type="checkbox" aria-label="${escapeHtml(label)} aktivieren">
+                    <div class="bm-settings-percent">
+                        <input id="${percentId}" class="bm-settings-rate" type="number"
+                               min="0" max="100" step="0.01"
+                               aria-label="Rabatt für ${escapeHtml(label)}">
+                        <span>%</span>
+                    </div>
+                `;
+                body.appendChild(row);
+
+                const setting = settings.retailers[key];
+                const enabledInput = row.querySelector('.bm-settings-enabled');
+                const rateInput = row.querySelector('.bm-settings-rate');
+                enabledInput.checked = setting?.enabled === true;
+                rateInput.value = String(setting?.percent ?? 0);
+                rateInput.disabled = !enabledInput.checked;
+                enabledInput.addEventListener('change', () => {
+                    rateInput.disabled = !enabledInput.checked;
+                });
+            });
+
+            body.scrollTop = 0;
+        };
+
+        const close = () => {
+            overlay.classList.remove('is-open');
+            document.body.style.removeProperty('overflow');
+            toolbar.querySelector('.bm-discount-settings-trigger')?.focus();
+        };
+
+        const open = () => {
+            populate(loadPersonalDiscountSettings());
+            overlay.classList.add('is-open');
+            document.body.style.setProperty('overflow', 'hidden');
+            overlay.querySelector('.bm-settings-close')?.focus();
+        };
+
+        const personalEnabledInput = toolbar.querySelector('#bm-personal-enabled');
+        personalEnabledInput.checked = loadPersonalDiscountSettings().enabled !== false;
+        personalEnabledInput.addEventListener('change', () => {
+            const settings = loadPersonalDiscountSettings();
+            settings.enabled = personalEnabledInput.checked;
+            savePersonalDiscountSettings(settings);
+            document.querySelectorAll('#offerlist .pricerow[data-bm-discount-applied]')
+                .forEach(row => {
+                    delete row.dataset.bmDiscountApplied;
+                });
+            applyOfferPresentation();
+        });
+
+        toolbar.querySelector('.bm-discount-settings-trigger').addEventListener('click', open);
+        overlay.querySelector('.bm-settings-close').addEventListener('click', close);
+        overlay.addEventListener('click', event => {
+            if (event.target === overlay) close();
+        });
+        overlay.addEventListener('keydown', event => {
+            if (event.key === 'Escape') close();
+        });
+        overlay.querySelector('.bm-settings-reset').addEventListener('click', () => {
+            populate(getDefaultPersonalDiscountSettings());
+        });
+        overlay.querySelector('.bm-settings-save').addEventListener('click', () => {
+            const previousSettings = loadPersonalDiscountSettings();
+            const settings = {
+                enabled: personalEnabledInput.checked,
+                retailers: { ...previousSettings.retailers }
+            };
+            overlay.querySelectorAll('.bm-settings-row').forEach(row => {
+                const rawPercent = Number(row.querySelector('.bm-settings-rate').value);
+                settings.retailers[row.dataset.key] = {
+                    enabled: row.querySelector('.bm-settings-enabled').checked,
+                    percent: Number.isFinite(rawPercent)
+                        ? Math.min(100, Math.max(0, rawPercent))
+                        : 0
+                };
+            });
+            savePersonalDiscountSettings(settings);
+            document.querySelectorAll('#offerlist .pricerow[data-bm-discount-applied]')
+                .forEach(row => {
+                    delete row.dataset.bmDiscountApplied;
+                });
+            applyOfferPresentation();
+            close();
+        });
+    }
 
     // ==========================================
     // 1. CLEANER MODUL
@@ -231,6 +1039,12 @@
                 el.remove();
             }
         });
+        document.querySelectorAll('.topprice').forEach(topPrice => {
+            const label = topPrice.previousElementSibling;
+            if (label?.tagName === 'P' && /^Top-Angebot:\s*$/i.test(label.textContent.trim())) {
+                label.textContent = 'Brickmerge-Bestpreis:';
+            }
+        });
 
         const offerlist = document.getElementById('offerlist');
         if (offerlist) {
@@ -295,56 +1109,71 @@
 
     if (setNum) cleaner();
 
-    // "Kürzlich ausverkauft" direkt unter dem Preis-Chart platzieren. Die IDs
-    // bleiben erhalten, daher funktioniert Brickmerges späterer AJAX-Load weiter.
-    function moveSoldOutBelowChart() {
+    // "Kürzlich ausverkauft" direkt nach den verfügbaren Angeboten platzieren.
+    // Die IDs bleiben erhalten, daher funktioniert Brickmerges AJAX-Load weiter.
+    function moveSoldOutAfterAvailableOffers() {
         const soldOutContainer = document.getElementById('SoldOutContainer');
-        const chartContainer = document.getElementById('chartContainer');
-        if (soldOutContainer && chartContainer && chartContainer.nextElementSibling !== soldOutContainer) {
-            chartContainer.insertAdjacentElement('afterend', soldOutContainer);
+        const offerlist = document.getElementById('offerlist');
+        const availablePriceRows = Array.from(offerlist?.querySelectorAll(
+            '.medium-4.small-9.columns.pricerow[data-mid]'
+        ) || []).filter(priceRow => !priceRow.closest('#soldOut'));
+        const lastAvailableRow = availablePriceRows
+            .map(priceRow => priceRow.closest('.row.collapse'))
+            .filter(Boolean)
+            .pop();
+
+        if (!soldOutContainer || !lastAvailableRow) return;
+        if (lastAvailableRow.nextElementSibling !== soldOutContainer) {
+            lastAvailableRow.insertAdjacentElement('afterend', soldOutContainer);
         }
     }
     if (setNum) {
-        moveSoldOutBelowChart();
-        window.addEventListener('load', moveSoldOutBelowChart, { once: true });
+        moveSoldOutAfterAvailableOffers();
+        window.addEventListener('load', moveSoldOutAfterAvailableOffers, { once: true });
     }
 
-    // Der Bestpreis-Link in der rechten Infospalte öffnet dieselbe
-    // Preisverlaufsansicht wie Brickmerges eigener Chart-Schalter.
-    function bindBestPriceChartTrigger() {
+    // Historische Preisangaben öffnen dieselbe Preisverlaufsansicht wie
+    // Brickmerges eigener Chart-Schalter.
+    function isPriceHistoryLink(link) {
+        const text = link?.textContent || '';
+        return /bisheriger\s+bestpreis|180\s*tage\s+bestpreis|preis\s+im\s+vergleich\s+zum\s+atb|differenz\s+zum\s+atb/i.test(text);
+    }
+
+    function decoratePriceHistoryLinks() {
         const chartTrigger = document.getElementById('chartTrigger');
         const bigChart = document.getElementById('bigChart');
         if (!chartTrigger || !bigChart) return;
 
-        const bestPriceLinks = Array.from(document.querySelectorAll('a'))
-            .filter(link => /bisheriger\s+bestpreis/i.test(link.textContent));
-
-        bestPriceLinks.forEach(link => {
-            if (link.dataset.bmChartTriggerBound === 'true') return;
-            link.dataset.bmChartTriggerBound = 'true';
+        Array.from(document.querySelectorAll('a')).filter(isPriceHistoryLink).forEach(link => {
+            link.classList.add('bm-price-history-link');
             link.setAttribute('href', '#chartContainer');
             link.setAttribute('aria-controls', 'bigChart');
+        });
 
-            link.addEventListener('click', event => {
-                event.preventDefault();
+        if (document.documentElement.dataset.bmPriceHistoryBound === 'true') return;
+        document.documentElement.dataset.bmPriceHistoryBound = 'true';
 
-                const chartIsClosed = bigChart.classList.contains('hide') ||
-                    window.getComputedStyle(bigChart).display === 'none';
+        document.addEventListener('click', event => {
+            const link = event.target.closest?.('a');
+            if (!isPriceHistoryLink(link)) return;
+            event.preventDefault();
 
-                if (chartIsClosed) {
-                    chartTrigger.click();
-                } else {
-                    document.getElementById('chartContainer')?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            });
+            const chartIsClosed = bigChart.classList.contains('hide') ||
+                window.getComputedStyle(bigChart).display === 'none';
+
+            if (chartIsClosed) {
+                chartTrigger.click();
+            } else {
+                document.getElementById('chartContainer')?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
         });
     }
     if (setNum) {
-        bindBestPriceChartTrigger();
-        window.addEventListener('load', bindBestPriceChartTrigger, { once: true });
+        decoratePriceHistoryLinks();
+        window.addEventListener('load', decoratePriceHistoryLinks, { once: true });
     }
 
     // Die "kürzlich ausverkauft"-Liste wird von der Seite selbst per AJAX in
@@ -371,8 +1200,6 @@
         const icon = domain => `https://www.google.com/s2/favicons?sz=32&domain_url=${encodeURIComponent(domain)}`;
         const amazonIcon = icon("amazon.de");
 
-        const chatGptPrompt = `gib mir eine tabellarische zusammenstellung der drei günstigsten angebote von jeweils kleinanzeigen, ebay und vinted. der link zum original angebot soll da sein. es sollen nur relevante inserate mit neu udn vollständig angezeigt werden. suche ist "lego ${setNum}"`;
-
         const groups = [
             {
                 title: "Shops",
@@ -380,7 +1207,7 @@
                     { name: "LEGO", url: `https://www.lego.com/de-de/product/${setNum}`, icon: icon("lego.com") },
                     { name: "Müller", url: `https://u6.at/d/mueller/${setNum}/`, icon: icon("mueller.de") },
                     { name: "Smyths", url: `https://www.google.com/search?q=site%3Asmythstoys.com/de+lego+${setNum}&btnI=1`, icon: icon("smythstoys.com") },
-                    { name: "ChatGPT Suche", url: `https://chatgpt.com/?q=${encodeURIComponent(chatGptPrompt)}`, icon: icon("chatgpt.com") }
+                    { id: "btn-meta-gpt", name: "Meta-GPT", url: META_GPT_URL, icon: icon("chatgpt.com") }
                 ]
             },
             {
@@ -391,7 +1218,7 @@
                     { name: "Vinted", url: `https://www.vinted.de/catalog?search_text=lego+${setNum}`, icon: icon("vinted.de") },
                     { name: "StockX", url: `https://www.google.com/search?q=site%3Astockx.com/de+lego+${setNum}&btnI=1`, icon: icon("stockx.com") },
                     { name: "BrickOwl", url: `https://www.brickowl.com/search/catalog?query=+${setNum}`, icon: icon("brickowl.com") },
-                    { id: "btn-bl", name: "Bricklink", url: `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setNum}-1#T=S&O={%22ss%22:%22DE%22,%22cond%22:%22N%22}`, icon: icon("bricklink.com") }
+                    { id: "btn-bl", name: "Bricklink", url: `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setNum}-1#T=S&O={%22ss%22:%22DE%22,%22cond%22:%22N%22,%22ii%22:0,%22reg%22:%22-1%22,%22iconly%22:0}`, icon: icon("bricklink.com") }
                 ]
             },
             {
@@ -407,12 +1234,12 @@
             {
                 title: "Ressourcen",
                 links: [
-                    { id: "btn-mbd", name: "MyBrickDepot", url: `https://mybrickdepot.de/product/${setNum}`, icon: icon("mybrickdepot.de") },
-                    { name: "Brickset", url: `https://brickset.com/sets/${setNum}-1`, icon: icon("brickset.com") },
                     { name: "Rebrickable", url: `https://rebrickable.com/sets/${setNum}-1/#alt_builds`, icon: icon("rebrickable.com") },
                     { name: "Meta", url: `https://meta-preisvergleich.de/index.cgi?q=lego+${setNum}&c=kategorie&id=lego_${setNum}__kategorie&offset=&qq=`, icon: icon("meta-preisvergleich.de") },
                     { name: "Geizhals", url: `https://www.google.com/search?q=site%3Ageizhals.de+lego+${setNum}&btnI=1`, icon: icon("geizhals.at") },
-                    { name: "idealo DE", url: `https://www.google.com/search?q=site%3Aidealo.de+lego+${setNum}&btnI=1`, icon: icon("idealo.de") }
+                    { name: "idealo DE", url: `https://www.google.com/search?q=site%3Aidealo.de+lego+${setNum}&btnI=1`, icon: icon("idealo.de") },
+                    { id: "btn-mbd", name: "MyBrickDepot", url: `https://mybrickdepot.de/product/${setNum}`, icon: icon("mybrickdepot.de") },
+                    { name: "Brickset", url: `https://brickset.com/sets/${setNum}-1`, icon: icon("brickset.com") }
                 ]
             },
             {
@@ -430,11 +1257,41 @@
         .bm-info-group:first-child { margin-top: 1em; }
         .bm-info-group:last-child { margin-bottom: 1.8em; }
         .bm-info-title { font-size: 1.05em; font-weight: bold; margin: 0 0 0.45em 0; color: #333; }
-        .bm-info-links { display: flex; flex-wrap: wrap; gap: 7px 11px; }
-        .bm-link { display: inline-flex; align-items: center; text-decoration: none; font-size: 0.93em; color: #222; font-weight: 500; background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 4px 8px 4px 6px; line-height: 1.2;}
+        .bm-link-slider { position: relative; min-width: 0; }
+        .bm-link-viewport { overflow: hidden; min-width: 0; scroll-behavior: smooth; }
+        .bm-info-links { display: flex; flex-wrap: nowrap; width: max-content; gap: 7px 11px; }
+        .bm-link { display: inline-flex; flex: 0 0 auto; align-items: center; text-decoration: none; font-size: 0.93em; color: #222; font-weight: 500; background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 4px 8px 4px 6px; line-height: 1.2;}
         .bm-link img { width: 20px; height: 20px; object-fit: contain; border-radius: 3px; margin-right: 6px; }
         .bm-link:hover span { text-decoration: underline; }
-        .bm-price { font-size: 0.85em; color: #e30613; margin-left: 5px; font-weight: bold; }
+        .bm-link-scroll {
+            position: absolute;
+            top: 50%;
+            z-index: 5;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 1.65rem;
+            height: 1.65rem;
+            margin: 0 !important;
+            padding: 0 !important;
+            transform: translateY(-50%);
+            background: #fff !important;
+            border: 1px solid #aaa !important;
+            border-radius: 50% !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+            color: #a80000 !important;
+            font-size: 1.25rem !important;
+            font-weight: bold !important;
+            line-height: 1 !important;
+        }
+        .bm-link-scroll.is-visible { display: flex; }
+        .bm-link-scroll-prev { left: 0.15rem; }
+        .bm-link-scroll-next { right: 0.15rem; }
+        .bm-link-scroll:hover,
+        .bm-link-scroll:focus {
+            background: #a80000 !important;
+            color: #fff !important;
+        }
         `;
         if (!document.getElementById('bm-linklist-style')) {
             const style = document.createElement("style");
@@ -451,8 +1308,24 @@
                 const title = document.createElement("div");
                 title.className = "bm-info-title";
                 title.textContent = group.title;
+                const slider = document.createElement("div");
+                slider.className = "bm-link-slider";
+                const viewport = document.createElement("div");
+                viewport.className = "bm-link-viewport";
                 const row = document.createElement("div");
                 row.className = "bm-info-links";
+                const previous = document.createElement("button");
+                previous.type = "button";
+                previous.className = "bm-link-scroll bm-link-scroll-prev";
+                previous.title = "Nach links";
+                previous.setAttribute("aria-label", `${group.title}: nach links`);
+                previous.textContent = "‹";
+                const next = document.createElement("button");
+                next.type = "button";
+                next.className = "bm-link-scroll bm-link-scroll-next";
+                next.title = "Nach rechts";
+                next.setAttribute("aria-label", `${group.title}: nach rechts`);
+                next.textContent = "›";
                 for (const { id, name, url, icon } of group.links) {
                     const a = document.createElement("a");
                     a.href = url; a.target = "_blank"; a.className = "bm-link";
@@ -462,9 +1335,46 @@
                     a.appendChild(img); a.appendChild(span);
                     row.appendChild(a);
                 }
-                section.appendChild(title); section.appendChild(row); container.appendChild(section);
+                viewport.appendChild(row);
+                slider.appendChild(viewport);
+                slider.appendChild(previous);
+                slider.appendChild(next);
+                section.appendChild(title);
+                section.appendChild(slider);
+                container.appendChild(section);
             }
             return container;
+        }
+
+        function setupLinkSliders(container) {
+            container.querySelectorAll('.bm-link-slider').forEach(slider => {
+                const viewport = slider.querySelector('.bm-link-viewport');
+                const previous = slider.querySelector('.bm-link-scroll-prev');
+                const next = slider.querySelector('.bm-link-scroll-next');
+
+                const update = () => {
+                    const maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+                    previous.classList.toggle('is-visible', viewport.scrollLeft > 2);
+                    next.classList.toggle('is-visible', viewport.scrollLeft < maxScroll - 2);
+                };
+                const scroll = direction => {
+                    viewport.scrollBy({
+                        left: direction * Math.max(160, viewport.clientWidth * 0.75),
+                        behavior: 'smooth'
+                    });
+                };
+
+                previous.addEventListener('click', () => scroll(-1));
+                next.addEventListener('click', () => scroll(1));
+                viewport.addEventListener('scroll', update, { passive: true });
+                window.addEventListener('resize', update);
+                if (typeof ResizeObserver === 'function') {
+                    const resizeObserver = new ResizeObserver(update);
+                    resizeObserver.observe(viewport);
+                    resizeObserver.observe(viewport.querySelector('.bm-info-links'));
+                }
+                requestAnimationFrame(update);
+            });
         }
 
         function injectBox() {
@@ -480,6 +1390,8 @@
             } else {
                 container.appendChild(box);
             }
+            setupLinkSliders(box);
+            setupMetaGptLink(box);
             fetchAndInjectPrices(setNum);
         }
 
@@ -488,18 +1400,6 @@
 
         // --- PREIS-ABFRAGE & INTEGRATION ---
         function fetchAndInjectPrices(setNumber) {
-            const updateBtn = (id, priceText) => {
-                const btn = document.querySelector(`a[data-bmid="${id}"]`);
-                if (btn && priceText) {
-                    let priceSpan = btn.querySelector('.bm-price');
-                    if (!priceSpan) {
-                        priceSpan = document.createElement('span');
-                        priceSpan.className = 'bm-price';
-                        btn.appendChild(priceSpan);
-                    }
-                    priceSpan.textContent = `(${priceText})`;
-                }
-            };
             function extractPrice(html, regex) {
                 const match = html.match(regex);
                 return match ? match[1] + ' €' : '';
@@ -519,9 +1419,44 @@
                     if (response.status === 200) {
                         const html = response.responseText;
                         const prices = parseMyBrickHtml(html);
-                        if (prices.ebay) updateBtn('btn-ebay', prices.ebay);
-                        if (prices.amazon) updateBtn('btn-amz', prices.amazon);
-                        if (prices.bricklink) updateBtn('btn-bl', prices.bricklink);
+                        const findMerchantLogo = (aliases, fallbackPath) => {
+                            const normalizedAliases = aliases.map(alias =>
+                                alias.trim().toLocaleLowerCase('de')
+                            );
+                            const image = Array.from(
+                                document.querySelectorAll('#offerlist .goto img[alt]')
+                            ).find(candidate =>
+                                normalizedAliases.includes(
+                                    candidate.alt.trim().toLocaleLowerCase('de')
+                                )
+                            );
+                            return image?.src || new URL(fallbackPath, window.location.origin).href;
+                        };
+                        const logos = {
+                            ebay: findMerchantLogo(
+                                ['eBay.de', 'eBay'],
+                                '/img/merchants/ebay.de_ico.gif'
+                            ),
+                            keepa: 'https://upload.wikimedia.org/wikipedia/commons/7/79/Keepa-logo.svg',
+                            bricklink: 'https://static2.bricklink.com/img/bricklink_2026.svg'
+                        };
+                        const createOffer = (buttonId, label, priceText, logoUrl) => {
+                            const button = document.querySelector(`a[data-bmid="${buttonId}"]`);
+                            if (!button || !priceText) return null;
+                            return {
+                                key: buttonId.replace(/^btn-/, ''),
+                                label,
+                                priceText,
+                                url: button.href,
+                                logoUrl
+                            };
+                        };
+                        const offers = [
+                            createOffer('btn-ebay', 'eBay', prices.ebay, logos.ebay),
+                            createOffer('btn-amz', 'Keepa', prices.amazon, logos.keepa),
+                            createOffer('btn-bl', 'Bricklink', prices.bricklink, logos.bricklink)
+                        ].filter(Boolean);
+                        injectMyBrickDepotOffers(offers);
                     }
                 },
                 onerror: function() {
@@ -647,8 +1582,9 @@
                     flex:0 0 auto;
                     min-height:72px;
                     padding:14px 18px 13px 22px;
-                    border-bottom:1px solid #ddd;
+                    border-bottom:0;
                     background:#fff;
+                    box-shadow:none;
                 }
                 .bm-minifig-header h2 {
                     margin:0;
@@ -753,7 +1689,7 @@
                     height:auto !important;
                     max-width:108px;
                     max-height:132px;
-                    margin:0 auto 5px;
+                    margin:0 auto;
                     object-fit:contain;
                 }
                 .bm-minifig-content a,
@@ -890,6 +1826,20 @@
                                 ['align', 'bgcolor', 'height', 'nowrap', 'style', 'valign', 'width']
                                     .forEach(attribute => cell.removeAttribute(attribute));
                             });
+
+                            const imageCell = row.cells[0];
+                            if (!imageCell?.querySelector('img')) return;
+                            Array.from(imageCell.childNodes).forEach(node => {
+                                if (node.nodeType === 3 && node.textContent.trim() === '*') {
+                                    node.remove();
+                                }
+                            });
+                            Array.from(imageCell.querySelectorAll('br')).forEach(br => {
+                                const trailingContent = Array.from(imageCell.childNodes)
+                                    .slice(Array.from(imageCell.childNodes).indexOf(br) + 1)
+                                    .some(node => node.textContent.trim());
+                                if (!trailingContent) br.remove();
+                            });
                         });
 
                         Array.from(table.querySelectorAll('a')).forEach(a => {
@@ -1017,11 +1967,10 @@
     // Funktionsdeklarationen in Strict Mode block-scoped sind. So bleibt die
     // Funktion aus Modul 4 (Observer/Load-Handler) sicher aufrufbar.
     function applyRetailerDiscounts() {
-        if (!CONFIG.retailerDiscounts || !Object.keys(CONFIG.retailerDiscounts).length) return;
-
         const offerlist = document.getElementById('offerlist');
         if (!offerlist) return;
         ensureTooltipBridge();
+        const entries = getConfiguredRetailerDiscounts();
 
         // Normalisiert Umlaute/ß, damit "Müller" == "mueller" gematcht wird.
         function normalizeRetailerString(str) {
@@ -1039,7 +1988,6 @@
         function matchRetailerDiscount(priceSpan, candidates) {
             const row = priceSpan.closest('[data-mid]');
             const mid = row ? row.getAttribute('data-mid') : null;
-            const entries = Object.entries(CONFIG.retailerDiscounts);
 
             if (mid) {
                 for (const [domain, discount] of entries) {
@@ -1073,9 +2021,10 @@
         function extractMerchantCandidates(priceSpan) {
             const candidates = [];
 
-            const anchor = priceSpan.closest('a[title]');
-            if (anchor) {
-                const titleMatch = anchor.title.match(/Link zu (.+?)(?:\s+-\s+|$)/i);
+            const anchor = priceSpan.closest('a');
+            const originalTitle = getOriginalOfferTitle(anchor);
+            if (originalTitle) {
+                const titleMatch = originalTitle.match(/Link zu (.+?)(?:\s+-\s+|$)/i);
                 if (titleMatch && titleMatch[1]) candidates.push(titleMatch[1].trim());
             }
 
@@ -1098,26 +2047,23 @@
         }
 
         offerlist.querySelectorAll('span.price').forEach(priceSpan => {
-            // Bereits verarbeitete Zeilen überspringen (idempotent bei MutationObserver-Reentry)
             const discountRow = priceSpan.closest('.pricerow');
-            if (discountRow?.dataset.bmDiscountApplied === 'true') return;
-
             const candidates = extractMerchantCandidates(priceSpan);
             const match = matchRetailerDiscount(priceSpan, candidates);
-            if (!match) return;
+            if (!match) {
+                if (discountRow) {
+                    delete discountRow.dataset.bmDiscountApplied;
+                    delete discountRow.dataset.bmRetailerRate;
+                    delete discountRow.dataset.bmRetailerDomain;
+                    delete discountRow.dataset.bmEffectivePrice;
+                    delete discountRow.dataset.bmEffectiveDiscount;
+                    discountRow.classList.remove('bm-has-retailer-discount');
+                }
+                return;
+            }
 
-            // Preistext isoliert vom Merchant-Namen (falls vorhanden) und "hier klicken"-Text extrahieren
-            const merchantSpan = priceSpan.querySelector('.merchant');
-            const rawText = merchantSpan
-                ? priceSpan.textContent.replace(merchantSpan.textContent, '')
-                : priceSpan.textContent;
-            const priceMatch = rawText.match(/(\d+[\d\s.,]*)\s*€/);
-            if (!priceMatch) return;
-
-            const originalPrice = parseFloat(
-                priceMatch[1].replace(/\s/g, '').replace(/\./g, '').replace(',', '.')
-            );
-            if (isNaN(originalPrice) || originalPrice <= 0) return;
+            const originalPrice = getBaseOfferPrice(priceSpan);
+            if (originalPrice === null || originalPrice <= 0) return;
 
             // Der Prozentwert muss zum angezeigten Cent-Preis passen. Andernfalls
             // können sich bei LEGO/Müller Abweichungen in der letzten Zehntelstelle ergeben.
@@ -1173,30 +2119,17 @@
                 }
 
                 discountRow.dataset.bmDiscountApplied = 'true';
+                discountRow.dataset.bmRetailerRate = String(match.rate);
+                discountRow.dataset.bmRetailerDomain = match.domain;
+                discountRow.dataset.bmEffectivePrice = String(effectivePrice);
+                if (effectiveDiscountPercent !== null) {
+                    discountRow.dataset.bmEffectiveDiscount = String(effectiveDiscountPercent);
+                } else {
+                    delete discountRow.dataset.bmEffectiveDiscount;
+                }
                 discountRow.classList.add('bm-has-retailer-discount');
             }
         });
-    }
-
-    if (CONFIG.retailerDiscounts && Object.keys(CONFIG.retailerDiscounts).length) {
-        let retailerDiscountTimer;
-        const scheduleRetailerDiscounts = () => {
-            clearTimeout(retailerDiscountTimer);
-            retailerDiscountTimer = setTimeout(applyRetailerDiscounts, 50);
-        };
-
-        const discountTarget = document.getElementById('offerlist');
-        if (discountTarget) {
-            applyRetailerDiscounts();
-            const retailerDiscountObserver = new MutationObserver(scheduleRetailerDiscounts);
-            retailerDiscountObserver.observe(discountTarget, { childList: true, subtree: true });
-        }
-
-        if (document.readyState === 'complete') {
-            scheduleRetailerDiscounts();
-        } else {
-            window.addEventListener('load', scheduleRetailerDiscounts, { once: true });
-        }
     }
 
     // ==========================================
@@ -1377,9 +2310,10 @@
             // (sonst rutscht der Text ohne Umbruch direkt hinter "vor X Tagen").
             const newEl = document.createElement('span');
             newEl.id = 'all-time-bestpreis-discount';
-            newEl.innerHTML = `<br />&nbsp;<span class="contentcolor" style="color: #b00;">|</span> Preis im Vergleich zum ATB: <strong style="color: ${color};">${percentStr}</strong>`;
+            newEl.innerHTML = `<br />&nbsp;<span class="contentcolor" style="color: #b00;">|</span> <a class="bm-price-history-link" href="#chartContainer" aria-controls="bigChart">Differenz zum ATB: <strong style="color: ${color};">${percentStr}</strong></a>`;
 
             matchedElement.parentNode.insertBefore(newEl, matchedElement.nextSibling);
+            decoratePriceHistoryLinks();
         }
 
         // MutationObserver für den Rabatt-Rechner (überwacht asynchrones Nachladen)
@@ -1411,10 +2345,117 @@
     }
 
     // ==========================================
-    // 6. VERSANDKOSTEN + SORTIERUNG NACH ANGEBOTSPREIS
+    // 6. VERSANDKOSTEN + SORTIERUNG
     // ==========================================
-    // Nur ausdrücklich genannte Versandkosten übernehmen. Eine fehlende Angabe
-    // darf nicht als "versandkostenfrei" interpretiert werden.
+    function removeOfferListPriceDecorations() {
+        const offerlist = document.getElementById('offerlist');
+        if (!offerlist) return;
+
+        offerlist.querySelectorAll(
+            '.medium-4.small-9.columns.pricerow[data-mid]'
+        ).forEach(priceRow => {
+            priceRow.style.removeProperty('background-image');
+            priceRow.style.removeProperty('background-size');
+            priceRow.closest('.row.collapse')?.querySelectorAll('.lowest')
+                .forEach(element => element.classList.remove('lowest'));
+        });
+
+        offerlist.querySelectorAll('.price > span[style]').forEach(span => {
+            const isAbsoluteBadge = span.style.position === 'absolute';
+            const isPercentage = /^\s*\d+(?:[.,]\d+)?\s*%\s*$/.test(span.textContent);
+            if (isAbsoluteBadge && isPercentage) span.remove();
+        });
+    }
+
+    function injectMyBrickDepotOffers(offers) {
+        const offerlist = document.getElementById('offerlist');
+        const firstPriceRow = offerlist?.querySelector(
+            '.medium-4.small-9.columns.pricerow[data-mid]:not([data-bm-source="mybrickdepot"])'
+        );
+        const parent = firstPriceRow?.closest('.row.collapse')?.parentElement;
+        if (!offerlist || !parent) return;
+
+        parent.querySelectorAll('.bm-mbd-offer').forEach(row => row.remove());
+
+        offers.forEach(offer => {
+            const price = parseEuroValue(offer.priceText);
+            if (price === null || !offer.url) return;
+
+            const mid = `mbd-${offer.key}`;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'row collapse bm-mbd-offer';
+            wrapper.dataset.bmSource = 'mybrickdepot';
+
+            const iconColumn = document.createElement('div');
+            iconColumn.className = 'goto medium-1 small-3 columns';
+            const iconRow = document.createElement('div');
+            iconRow.id = `mid${mid}`;
+            iconRow.className = `pricerow ${mid} row-a text-center`;
+            iconRow.dataset.mid = mid;
+            const iconLink = document.createElement('a');
+            iconLink.href = offer.url;
+            iconLink.target = '_blank';
+            iconLink.rel = 'noopener noreferrer';
+            iconLink.title = `${offer.label} öffnen`;
+            if (offer.key === 'ebay') {
+                iconLink.classList.add('bm-mbd-logo-stack');
+                const sourceLabel = document.createElement('span');
+                sourceLabel.className = 'bm-mbd-source-label';
+                sourceLabel.textContent = 'MyBrickDepot';
+                iconLink.appendChild(sourceLabel);
+            }
+            if (offer.logoUrl) {
+                const image = document.createElement('img');
+                image.src = offer.logoUrl;
+                image.alt = offer.label;
+                image.className = 'bm-marketplace-logo';
+                if (offer.key === 'amz') image.classList.add('bm-keepa-logo');
+                image.loading = 'lazy';
+                image.decoding = 'async';
+                image.referrerPolicy = 'no-referrer';
+                iconLink.appendChild(image);
+            } else {
+                iconLink.textContent = offer.label.slice(0, 1);
+            }
+            iconRow.appendChild(iconLink);
+            iconColumn.appendChild(iconRow);
+
+            const priceRow = document.createElement('div');
+            priceRow.className = `medium-4 small-9 columns pricerow ${mid} row-a`;
+            priceRow.dataset.mid = mid;
+            priceRow.dataset.bmSource = 'mybrickdepot';
+            priceRow.dataset.bmShippingUnknown = 'true';
+
+            const offerLink = document.createElement('a');
+            offerLink.href = offer.url;
+            offerLink.target = '_blank';
+            offerLink.rel = 'noopener noreferrer';
+            offerLink.className = 'tooltipster';
+            offerLink.title =
+                `Link zu ${offer.label} - Preis: ${formatEuroValue(price)} €. ` +
+                `Versandkosten unbekannt.`;
+
+            const priceSpan = document.createElement('span');
+            priceSpan.className = 'price';
+            const merchant = document.createElement('span');
+            merchant.className = 'show-for-small-only merchant';
+            merchant.append(`${offer.label}`);
+            merchant.appendChild(document.createElement('br'));
+            priceSpan.appendChild(merchant);
+            priceSpan.append(`${formatEuroValue(price)} €`);
+            offerLink.appendChild(priceSpan);
+            priceRow.appendChild(offerLink);
+
+            wrapper.appendChild(iconColumn);
+            wrapper.appendChild(priceRow);
+            parent.appendChild(wrapper);
+        });
+
+        scheduleOfferPresentation();
+    }
+
+    // Fehlt bei Brickmerge eine Versandangabe, gilt das Angebot als versandkostenfrei.
+    // Die zusätzlich abgefragten Marktplatzpreise sind die einzige Ausnahme.
     function parseEuroValue(text) {
         if (!text) return null;
         const match = text.match(/(\d+[\d\s.,]*)\s*€/);
@@ -1430,10 +2471,126 @@
         });
     }
 
+    function normalizeMerchantClickOuts() {
+        const offerlist = document.getElementById('offerlist');
+        if (!offerlist || !setNum) return;
+
+        offerlist.querySelectorAll(
+            '.medium-4.small-9.columns.pricerow[data-mid] > a'
+        ).forEach(link => {
+            const mid = link.closest('[data-mid]')?.dataset.mid;
+            if (!mid) return;
+
+            let currentUrl;
+            try {
+                currentUrl = new URL(link.href, window.location.origin);
+            } catch (e) {
+                return;
+            }
+
+            const isBrickmergeRedirect = currentUrl.origin === window.location.origin &&
+                (
+                    currentUrl.pathname === '/go2/' ||
+                    currentUrl.searchParams.has('go2i') ||
+                    currentUrl.searchParams.has('go2m') ||
+                    /\/go2\/\?/i.test(link.getAttribute('onclick') || '')
+                );
+            if (!isBrickmergeRedirect) return;
+
+            const itemNumber = currentUrl.searchParams.get('i') ||
+                currentUrl.searchParams.get('go2i') ||
+                `${setNum}-1`;
+            const directRedirect = new URL('/go2/', window.location.origin);
+            directRedirect.searchParams.set('m', mid);
+            directRedirect.searchParams.set('i', itemNumber);
+
+            link.href = `${directRedirect.pathname}${directRedirect.search}`;
+            link.removeAttribute('onclick');
+        });
+    }
+
     function getBaseOfferPrice(priceSpan) {
+        const originalPrice = priceSpan.querySelector(':scope > .bm-original-price');
+        if (originalPrice) {
+            const value = parseEuroValue(originalPrice.textContent);
+            if (value !== null) {
+                priceSpan.dataset.bmBasePrice = String(value);
+                return value;
+            }
+        }
+
+        const storedPrice = Number(priceSpan.dataset.bmBasePrice);
+        if (Number.isFinite(storedPrice) && storedPrice > 0) return storedPrice;
+
         const clone = priceSpan.cloneNode(true);
         clone.querySelectorAll('span').forEach(span => span.remove());
-        return parseEuroValue(clone.textContent);
+        const value = parseEuroValue(clone.textContent);
+        if (value !== null) priceSpan.dataset.bmBasePrice = String(value);
+        return value;
+    }
+
+    function ensureOriginalPriceElement(priceSpan) {
+        let originalPrice = priceSpan.querySelector(':scope > .bm-original-price');
+        if (originalPrice) return originalPrice;
+
+        const basePrice = getBaseOfferPrice(priceSpan);
+        if (basePrice === null) return null;
+
+        const priceTextNode = Array.from(priceSpan.childNodes).find(node => {
+            return node.nodeType === 3 && parseEuroValue(node.textContent) !== null;
+        });
+        if (!priceTextNode) return null;
+
+        originalPrice = document.createElement('span');
+        originalPrice.className = 'bm-original-price';
+        originalPrice.textContent = `${formatEuroValue(basePrice)} €`;
+        priceTextNode.replaceWith(originalPrice);
+        return originalPrice;
+    }
+
+    function placeNodeAfter(referenceNode, node) {
+        if (referenceNode.nextSibling !== node) referenceNode.after(node);
+    }
+
+    function getNativeShippingSpan(priceSpan) {
+        return Array.from(priceSpan.querySelectorAll(':scope > span.small'))
+            .find(span => {
+                if (span.classList.contains('merchant') ||
+                    span.classList.contains('code') ||
+                    span.classList.contains('show-for-small-only') ||
+                    span.classList.contains('bm-effective-info')) return false;
+                return /VK|Versand|^\+\s*[\d.,]+\s*€\s*=/i.test(span.textContent.trim());
+            }) || null;
+    }
+
+    function readShippingDetails(priceSpan) {
+        if (priceSpan.closest('[data-bm-shipping-unknown="true"]')) {
+            return { status: 'unknown', cost: null };
+        }
+
+        const title = getOriginalOfferTitle(priceSpan.closest('a'));
+        const titleCostMatch = title.match(
+            /\+\s*(?:Versand(?:skosten)?)\s*(\d+[\d\s.,]*)\s*€/i
+        );
+        if (titleCostMatch) {
+            const cost = parseEuroValue(`${titleCostMatch[1]} €`);
+            if (cost !== null) return { status: 'paid', cost };
+        }
+        if (/Versandkostenfrei|kostenloser Versand|VK frei/i.test(title)) {
+            return { status: 'free', cost: 0 };
+        }
+
+        const nativeShipping = getNativeShippingSpan(priceSpan);
+        if (nativeShipping) {
+            const nativeText = nativeShipping.textContent.trim();
+            if (/VK frei|Versandkostenfrei|kostenloser Versand/i.test(nativeText)) {
+                return { status: 'free', cost: 0 };
+            }
+            const nativeCost = parseEuroValue(nativeText);
+            if (nativeCost !== null) return { status: 'paid', cost: nativeCost };
+        }
+
+        return { status: 'free', cost: 0 };
     }
 
     function injectShippingCostsFromOfferTitles() {
@@ -1442,54 +2599,339 @@
         ensureTooltipBridge();
 
         offerlist.querySelectorAll('span.price').forEach(priceSpan => {
-            if (priceSpan.querySelector('.bm-shipping-info')) return;
-
-            // In der nativen Versandansicht ist die Angabe bereits vorhanden.
-            const nativeShipping = Array.from(priceSpan.querySelectorAll(':scope > span.small'))
-                .find(span => {
-                    if (span.classList.contains('merchant') ||
-                        span.classList.contains('code') ||
-                        span.classList.contains('show-for-small-only')) return false;
-                    return /VK frei|Versand|^\+\s*[\d.,]+\s*€\s*=/i.test(span.textContent.trim());
-                });
-            if (nativeShipping) return;
-
             const basePrice = getBaseOfferPrice(priceSpan);
-            const title = getOriginalOfferTitle(priceSpan.closest('a'));
-            const shippingMatch = title.match(/\+\s*Versand\s*(\d+[\d\s.,]*)\s*€/i);
-            const explicitlyFree = /Versandkostenfrei|kostenloser Versand|VK frei/i.test(title);
-            if (!shippingMatch && !explicitlyFree) return;
+            if (basePrice === null) return;
 
-            const shippingCost = shippingMatch ? parseEuroValue(`${shippingMatch[1]} €`) : 0;
-            if (basePrice === null || shippingCost === null) return;
+            const shipping = readShippingDetails(priceSpan);
+            const shippingStatus = shipping.status === 'paid'
+                ? 'paid'
+                : shipping.status === 'unknown'
+                    ? 'unknown'
+                    : 'free';
+            let small = priceSpan.querySelector(':scope > .bm-shipping-info') ||
+                getNativeShippingSpan(priceSpan);
+            if (!small) {
+                small = document.createElement('span');
+                priceSpan.appendChild(small);
+            }
 
-            const shippingText = shippingCost > 0
-                ? `VK ${formatEuroValue(shippingCost)} €`
-                : 'VK frei';
-
-            const small = document.createElement('span');
             small.className = 'small bm-shipping-info';
-            small.textContent = shippingText;
-            small.title = shippingCost > 0
-                ? `Versand ${formatEuroValue(shippingCost)} €; Gesamtpreis ${formatEuroValue(basePrice + shippingCost)} €`
-                : 'Versandkostenfrei';
-            priceSpan.appendChild(small);
+            small.classList.add(`bm-shipping-${shippingStatus}`);
+            small.dataset.shippingStatus = shippingStatus;
+            const setShippingText = text => {
+                if (small.textContent !== text) small.textContent = text;
+            };
+
+            if (shippingStatus === 'paid') {
+                small.dataset.shippingCost = String(shipping.cost);
+                setShippingText(`VK ${formatEuroValue(shipping.cost)} €`);
+                small.title = `Versandkosten: ${formatEuroValue(shipping.cost)} €; Gesamtpreis: ${formatEuroValue(basePrice + shipping.cost)} €`;
+            } else if (shippingStatus === 'free') {
+                small.dataset.shippingCost = '0';
+                setShippingText('VK frei');
+                small.title = `Versandkostenfrei; Gesamtpreis: ${formatEuroValue(basePrice)} €`;
+            } else {
+                delete small.dataset.shippingCost;
+                setShippingText('VK unbekannt');
+                small.title = 'Versandkosten und Gesamtpreis unbekannt';
+            }
         });
     }
 
-    function sortOffersByBasePrice() {
+    function getOfferMerchantName(priceSpan) {
+        const merchantSpan = priceSpan.querySelector('.merchant');
+        const merchantText = merchantSpan?.textContent?.trim();
+        if (merchantText) return merchantText;
+
+        const row = priceSpan.closest('[data-mid]');
+        const mid = row?.getAttribute('data-mid');
+        const icon = mid ? document.querySelector(`#mid${mid} img[alt]`) : null;
+        if (icon?.alt) return icon.alt.trim();
+
+        const title = getOriginalOfferTitle(priceSpan.closest('a'));
+        return title.match(/Link zu (.+?)(?:\s+-\s+|$)/i)?.[1]?.trim() || '';
+    }
+
+    function formatPercentValue(value, maximumFractionDigits = 1, minimumFractionDigits = 1) {
+        return value.toLocaleString('de-DE', {
+            minimumFractionDigits,
+            maximumFractionDigits
+        });
+    }
+
+    function updateOfferTooltips() {
         const offerlist = document.getElementById('offerlist');
         if (!offerlist) return;
 
+        offerlist.querySelectorAll('span.price').forEach(priceSpan => {
+            const offerLink = priceSpan.closest('a');
+            const priceRow = priceSpan.closest('.pricerow');
+            const offerPrice = getBaseOfferPrice(priceSpan);
+            const shippingSpan = priceSpan.querySelector(':scope > .bm-shipping-info');
+            if (!offerLink || !priceRow || offerPrice === null || !shippingSpan) return;
+
+            const originalTooltip = getOriginalOfferTitle(offerLink);
+            const merchantName = getOfferMerchantName(priceSpan);
+            const shippingStatus = shippingSpan.dataset.shippingStatus === 'paid'
+                ? 'paid'
+                : shippingSpan.dataset.shippingStatus === 'unknown'
+                    ? 'unknown'
+                    : 'free';
+            const shippingCost = shippingStatus === 'paid'
+                ? Number(shippingSpan.dataset.shippingCost || 0)
+                : shippingStatus === 'free'
+                    ? 0
+                    : null;
+            const totalPrice = shippingCost === null ? null : offerPrice + shippingCost;
+            const retailerRate = Number(priceRow.dataset.bmRetailerRate || 0);
+            const effectivePrice = Math.round(
+                (offerPrice * (1 - retailerRate) + Number.EPSILON) * 100
+            ) / 100;
+            const uvp = getCurrentSetUvp();
+            const parts = [];
+
+            if (merchantName) parts.push(`Händler: ${merchantName}.`);
+            parts.push(`Angebotspreis: ${formatEuroValue(offerPrice)} €.`);
+
+            if (shippingStatus === 'paid') {
+                parts.push(`Versandkosten: ${formatEuroValue(shippingCost)} €.`);
+            } else if (shippingStatus === 'free') {
+                parts.push('Versandkosten: frei.');
+            } else {
+                parts.push('Versandkosten: unbekannt.');
+            }
+
+            if (totalPrice === null) {
+                parts.push('Gesamtpreis: wegen unbekannter Versandkosten nicht berechenbar.');
+            } else {
+                parts.push(`Gesamtpreis: ${formatEuroValue(totalPrice)} €.`);
+            }
+
+            if (retailerRate > 0) {
+                parts.push(`Gutscheinrabatt: ${formatPercentValue(retailerRate * 100, 2, 0)}%.`);
+                let effectiveText = `Effektiv: ${formatEuroValue(effectivePrice)} €`;
+                if (uvp !== null && uvp > 0) {
+                    const effectiveDiscount = Math.max(0, (1 - (effectivePrice / uvp)) * 100);
+                    effectiveText += ` (${formatPercentValue(effectiveDiscount)}% zur UVP)`;
+                }
+                parts.push(`${effectiveText}.`);
+                if (shippingCost === null) {
+                    parts.push('Effektiver Gesamtpreis: wegen unbekannter Versandkosten nicht berechenbar.');
+                } else {
+                    parts.push(`Effektiver Gesamtpreis: ${formatEuroValue(effectivePrice + shippingCost)} €.`);
+                }
+            } else if (uvp !== null && uvp > 0) {
+                const uvpDiscount = Math.max(0, (1 - (offerPrice / uvp)) * 100);
+                parts.push(`Rabatt zur UVP: ${formatPercentValue(uvpDiscount)}%.`);
+            }
+
+            const timestamp = originalTooltip.match(/Preisangabe vom\s+(.+?):\s*[\d.,]+\s*€/i)?.[1];
+            if (timestamp) parts.push(`Stand: ${timestamp}.`);
+
+            const tooltip = parts.join(' ');
+            offerLink.dataset.bmTooltip = tooltip;
+            offerLink.setAttribute('title', tooltip);
+            offerLink.dispatchEvent(new CustomEvent('bm-tooltip-updated', { bubbles: true }));
+        });
+    }
+
+    function syncEffectivePriceLabels() {
+        const offerlist = document.getElementById('offerlist');
+        if (!offerlist) return;
+
+        offerlist.querySelectorAll('.bm-best-price-label').forEach(label => label.remove());
+        offerlist.querySelectorAll('.bm-effective-row').forEach(row => {
+            row.classList.remove('bm-effective-row');
+        });
+        offerlist.querySelectorAll('span.price').forEach(priceSpan => {
+            const priceRow = priceSpan.closest('.pricerow');
+            const retailerRate = Number(priceRow?.dataset.bmRetailerRate || 0);
+            let info = priceSpan.querySelector(':scope > .bm-effective-info');
+            const originalPrice = priceSpan.querySelector(':scope > .bm-original-price');
+            const shipping = priceSpan.querySelector(':scope > .bm-shipping-info');
+            const merchant = priceSpan.querySelector(':scope > .merchant');
+
+            if (!priceRow || retailerRate <= 0) {
+                info?.remove();
+                if (originalPrice) {
+                    originalPrice.classList.remove('bm-original-secondary');
+                    originalPrice.removeAttribute('title');
+                    originalPrice.removeAttribute('aria-label');
+                    if (merchant) {
+                        placeNodeAfter(merchant, originalPrice);
+                    } else if (priceSpan.firstChild !== originalPrice) {
+                        priceSpan.prepend(originalPrice);
+                    }
+                    if (shipping) placeNodeAfter(originalPrice, shipping);
+                }
+                return;
+            }
+
+            const offerPrice = getBaseOfferPrice(priceSpan);
+            if (offerPrice === null) {
+                info?.remove();
+                return;
+            }
+
+            const effectivePrice = Math.round(
+                (offerPrice * (1 - retailerRate) + Number.EPSILON) * 100
+            ) / 100;
+            const label = `(effektiv ${formatEuroValue(effectivePrice)} €)`;
+
+            if (!info) {
+                info = document.createElement('span');
+                info.className = 'bm-effective-info';
+            }
+            const stableOriginalPrice = originalPrice || ensureOriginalPriceElement(priceSpan);
+            if (!stableOriginalPrice) {
+                info.remove();
+                return;
+            }
+
+            stableOriginalPrice.classList.remove('bm-original-secondary');
+            stableOriginalPrice.title = `Angebotspreis: ${formatEuroValue(offerPrice)} €`;
+            stableOriginalPrice.setAttribute(
+                'aria-label',
+                `Angebotspreis ${formatEuroValue(offerPrice)} Euro`
+            );
+
+            if (merchant) {
+                placeNodeAfter(merchant, stableOriginalPrice);
+            } else if (priceSpan.firstChild !== stableOriginalPrice) {
+                priceSpan.prepend(stableOriginalPrice);
+            }
+            placeNodeAfter(stableOriginalPrice, info);
+            if (shipping) {
+                placeNodeAfter(info, shipping);
+            }
+
+            priceRow.closest('.row.collapse')?.classList.add('bm-effective-row');
+            if (info.textContent !== label) info.textContent = label;
+            info.title = `Persönlicher Rabatt: ${formatPercentValue(retailerRate * 100, 2, 0)}%`;
+        });
+    }
+
+    function syncOfferDiscountBubbles() {
+        const offerlist = document.getElementById('offerlist');
+        if (!offerlist) return;
+
+        const uvp = getCurrentSetUvp();
+        offerlist.querySelectorAll('span.price').forEach(priceSpan => {
+            const priceRow = priceSpan.closest('.pricerow');
+            const basePrice = getBaseOfferPrice(priceSpan);
+            const retailerRate = Number(priceRow?.dataset.bmRetailerRate || 0);
+            const comparedPrice = basePrice === null
+                ? null
+                : Math.round(
+                    (basePrice * (1 - retailerRate) + Number.EPSILON) * 100
+                ) / 100;
+            const shippingSpan = priceSpan.querySelector(
+                ':scope > .bm-shipping-info'
+            );
+            const shippingStatus = shippingSpan?.dataset.shippingStatus;
+            const shippingCost =
+                shippingStatus === 'paid'
+                    ? Number(shippingSpan.dataset.shippingCost || 0)
+                    : null;
+            let discountPercent = null;
+            let totalDiscountPercent = null;
+
+            if (comparedPrice !== null && uvp !== null && uvp > 0) {
+                discountPercent = (1 - (comparedPrice / uvp)) * 100;
+                if (shippingCost !== null && Number.isFinite(shippingCost)) {
+                    totalDiscountPercent =
+                        (1 - ((comparedPrice + shippingCost) / uvp)) * 100;
+                }
+            } else {
+                const title = getOriginalOfferTitle(priceSpan.closest('a'));
+                const originalDiscount = title.match(
+                    /(\d+(?:[.,]\d+)?)%\)\s*gespart/i
+                );
+                if (originalDiscount) {
+                    const baseDiscount = Number(
+                        originalDiscount[1].replace(',', '.')
+                    ) / 100;
+                    discountPercent = retailerRate > 0
+                        ? (1 - ((1 - baseDiscount) * (1 - retailerRate))) * 100
+                        : baseDiscount * 100;
+                }
+            }
+
+            let bubble = priceSpan.querySelector(':scope > .bm-offer-discount-bubble');
+            priceSpan.querySelectorAll(':scope > .bm-offer-discount-bubble')
+                .forEach((candidate, index) => {
+                    if (index > 0) candidate.remove();
+                });
+
+            if (discountPercent === null || discountPercent <= 0) {
+                bubble?.remove();
+            } else {
+                if (!bubble) {
+                    bubble = document.createElement('span');
+                    bubble.className = 'bm-offer-discount-bubble';
+                    priceSpan.appendChild(bubble);
+                }
+                const label = `${Math.round(discountPercent)}%`;
+                if (bubble.textContent !== label) bubble.textContent = label;
+                bubble.title =
+                    `Rabatt zur UVP: ${formatPercentValue(discountPercent)}%`;
+                bubble.setAttribute(
+                    'aria-label',
+                    `Rabatt zur UVP ${formatPercentValue(discountPercent)} Prozent`
+                );
+            }
+
+            let totalBubble = priceSpan.querySelector(
+                ':scope > .bm-total-discount-bubble'
+            );
+            priceSpan.querySelectorAll(':scope > .bm-total-discount-bubble')
+                .forEach((candidate, index) => {
+                    if (index > 0) candidate.remove();
+                });
+
+            if (totalDiscountPercent === null || totalDiscountPercent <= 0) {
+                totalBubble?.remove();
+                return;
+            }
+
+            if (!totalBubble) {
+                totalBubble = document.createElement('span');
+                totalBubble.className = 'bm-total-discount-bubble';
+                priceSpan.appendChild(totalBubble);
+            }
+            const totalLabel = `${Math.round(totalDiscountPercent)}%`;
+            if (totalBubble.textContent !== totalLabel) {
+                totalBubble.textContent = totalLabel;
+            }
+            totalBubble.title =
+                `Rabatt zur UVP inklusive Versand: ${formatPercentValue(totalDiscountPercent)}%`;
+            totalBubble.setAttribute(
+                'aria-label',
+                `Rabatt zur UVP inklusive Versand ${formatPercentValue(totalDiscountPercent)} Prozent`
+            );
+        });
+    }
+
+    function sortOffersByConfiguredPrice() {
+        const offerlist = document.getElementById('offerlist');
+        if (!offerlist) return;
+        const personalSettings = loadPersonalDiscountSettings();
+        const sortMode = personalSettings.enabled ? 'effective' : 'offer';
+
         const offers = Array.from(
             offerlist.querySelectorAll('.medium-4.small-9.columns.pricerow[data-mid]')
-        ).map((priceRow, originalIndex) => {
+        ).filter(priceRow => !priceRow.closest('#soldOut')).map((priceRow, originalIndex) => {
             const priceSpan = priceRow.querySelector('span.price');
+            const basePrice = priceSpan ? getBaseOfferPrice(priceSpan) : null;
+            const retailerRate = Number(priceRow.dataset.bmRetailerRate || 0);
+            const effectivePrice = basePrice === null
+                ? null
+                : Math.round((basePrice * (1 - retailerRate) + Number.EPSILON) * 100) / 100;
             return {
                 wrapper: priceRow.closest('.row.collapse'),
                 priceRow,
                 priceSpan,
-                price: priceSpan ? getBaseOfferPrice(priceSpan) : null,
+                price: sortMode === 'effective' ? effectivePrice : basePrice,
                 originalIndex
             };
         }).filter(offer => offer.wrapper && offer.wrapper.parentElement);
@@ -1502,15 +2944,14 @@
         });
 
         groups.forEach((group, parent) => {
+            const originalOrder = group.map(offer => offer.wrapper);
+            const insertionAnchor = originalOrder[originalOrder.length - 1]?.nextSibling || null;
             group.sort((a, b) => {
                 if (a.price === null && b.price === null) return a.originalIndex - b.originalIndex;
                 if (a.price === null) return 1;
                 if (b.price === null) return -1;
                 return (a.price - b.price) || (a.originalIndex - b.originalIndex);
             });
-
-            const lowestPrice = group.find(offer => offer.price !== null)?.price ?? null;
-            const fragment = document.createDocumentFragment();
 
             group.forEach((offer, index) => {
                 const stripeClass = index % 2 === 0 ? 'row-b' : 'row-a';
@@ -1520,43 +2961,60 @@
                 });
 
                 offer.wrapper.querySelectorAll('.lowest').forEach(element => element.classList.remove('lowest'));
-                if (lowestPrice !== null && offer.price === lowestPrice) {
-                    offer.priceRow.classList.add('lowest');
-                    if (offer.priceSpan) offer.priceSpan.classList.add('lowest');
-                }
-
-                fragment.appendChild(offer.wrapper);
             });
 
-            parent.appendChild(fragment);
+            const orderChanged = group.some(
+                (offer, index) => offer.wrapper !== originalOrder[index]
+            );
+            if (orderChanged) {
+                const fragment = document.createDocumentFragment();
+                group.forEach(offer => fragment.appendChild(offer.wrapper));
+                parent.insertBefore(fragment, insertionAnchor);
+            }
         });
     }
 
-    function resetNativeShippingPreference() {
-        const nativeShippingView = Boolean(
-            document.querySelector('#offerlist span.price > span.small:not(.show-for-small-only):not(.code)')
-        );
-        if (!nativeShippingView || !setNum) return;
-
-        const resetUrl = new URL('/', window.location.origin);
-        resetUrl.searchParams.set('find', `${setNum}-1`);
-        resetUrl.searchParams.set('shippingcosts', 'false');
-        fetch(resetUrl.href, { credentials: 'same-origin', cache: 'no-store' }).catch(() => {
-            console.warn('Brickmerge Toolkit: Versandkosten-Sitzung konnte nicht zurückgesetzt werden.');
-        });
-    }
-
+    let offerPresentationRunning = false;
     function applyOfferPresentation() {
-        injectShippingCostsFromOfferTitles();
-        sortOffersByBasePrice();
-        applyRetailerDiscounts();
-        resetNativeShippingPreference();
+        if (offerPresentationRunning) return;
+        offerPresentationRunning = true;
+        try {
+            removeOfferListPriceDecorations();
+            normalizeMerchantClickOuts();
+            injectShippingCostsFromOfferTitles();
+            applyRetailerDiscounts();
+            sortOffersByConfiguredPrice();
+            moveSoldOutAfterAvailableOffers();
+            updateOfferTooltips();
+            syncEffectivePriceLabels();
+            syncOfferDiscountBubbles();
+            decoratePriceHistoryLinks();
+            createDiscountSettingsUI();
+        } finally {
+            offerPresentationRunning = false;
+        }
+    }
+
+    let offerPresentationTimer;
+    const scheduleOfferPresentation = () => {
+        clearTimeout(offerPresentationTimer);
+        offerPresentationTimer = setTimeout(applyOfferPresentation, 80);
+    };
+
+    const offerPresentationTarget = document.getElementById('offerlist');
+    if (offerPresentationTarget) {
+        const offerPresentationObserver = new MutationObserver(scheduleOfferPresentation);
+        offerPresentationObserver.observe(offerPresentationTarget, {
+            childList: true,
+            subtree: true,
+            characterData: true
+        });
     }
 
     if (document.readyState === 'complete') {
-        setTimeout(applyOfferPresentation, 100);
+        scheduleOfferPresentation();
     } else {
-        window.addEventListener('load', () => setTimeout(applyOfferPresentation, 100), { once: true });
+        window.addEventListener('load', scheduleOfferPresentation, { once: true });
     }
 
 })();
