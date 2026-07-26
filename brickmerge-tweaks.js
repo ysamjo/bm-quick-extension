@@ -14,8 +14,8 @@
 // @connect      www.bricklink.com
 // @connect      mybrickdepot.de
 // @run-at       document-end
-// @updateURL    https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-tweaks.js
-// @downloadURL  https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-tweaks.js
+// @updateURL    https://raw.githubusercontent.com/ysamjo/bm-quick-extension/main/brickmerge-tweaks.js
+// @downloadURL  https://raw.githubusercontent.com/ysamjo/bm-quick-extension/main/brickmerge-tweaks.js
 // ==/UserScript==
 
 (function () {
