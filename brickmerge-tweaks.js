@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.14
+// @version      3.25
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -168,6 +168,67 @@
         void runMetaGptTransfer();
         return;
     }
+
+    // Die originalen Brickmerge-Angebotslinks bleiben unverändert. Auf einer
+    // zwischengeschalteten Weiterleitungsseite wird der Shop-Link sofort
+    // betätigt, auch wenn er erst nachträglich gerendert wird.
+    function autoContinueBrickmergeRedirect() {
+        const pageText = () => (document.body?.textContent || '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const pathLooksLikeRedirect =
+            /\/(?:go2|redirect|weiterleitung)\/?$/i.test(location.pathname);
+        const pageLooksLikeRedirect = () => {
+            const text = pageText();
+            return /\bweiterleitung\b/i.test(text) &&
+                /du verlässt nun die webseite brickmerge\.de|gewünschten shopseite/i.test(text);
+        };
+        if (!pathLooksLikeRedirect && !pageLooksLikeRedirect()) return false;
+
+        let completed = false;
+        const continueRedirect = () => {
+            if (completed) return true;
+            const target = Array.from(
+                document.querySelectorAll('a, button, input[type="submit"], input[type="button"]')
+            ).find(element => {
+                const label = [
+                    element.textContent,
+                    element.value,
+                    element.getAttribute('aria-label'),
+                    element.getAttribute('title')
+                ].filter(Boolean).join(' ');
+                const isBackLink = /zurück|homepage/i.test(label);
+                const isContinueLink =
+                    /jetzt\s+weiterleiten/i.test(label) ||
+                    (/\bzur\b/i.test(label) && /\bshopseite\b/i.test(label));
+                return !isBackLink && isContinueLink;
+            });
+            if (!target) return false;
+
+            completed = true;
+            if (target instanceof HTMLAnchorElement) {
+                target.target = '_self';
+            }
+            target.click();
+            return true;
+        };
+
+        if (continueRedirect()) return true;
+
+        const observer = new MutationObserver(() => {
+            if (!continueRedirect()) return;
+            observer.disconnect();
+            window.clearTimeout(timeout);
+        });
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true
+        });
+        const timeout = window.setTimeout(() => observer.disconnect(), 10000);
+        return true;
+    }
+
+    if (autoContinueBrickmergeRedirect()) return;
 
     // ==========================================
     // CONFIG
@@ -461,33 +522,44 @@
             top: 4px;
             right: 0.4rem;
             z-index: 4;
-            min-width: 25px;
-            min-height: 25px;
-            padding: 1px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            min-width: 26px;
+            min-height: 26px;
+            padding: 0;
             border-radius: 1000px;
             background: #b00;
             color: #fff;
             font-size: 0.7rem;
             font-weight: bolder;
-            line-height: 1.5rem;
+            line-height: 1;
             text-align: center;
             white-space: nowrap;
+            box-sizing: border-box;
         }
         #offerlist .bm-total-discount-bubble {
             position: absolute;
             top: 4px;
             right: 2.45rem;
             z-index: 4;
-            min-width: 25px;
-            min-height: 25px;
-            padding: 1px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            min-width: 26px;
+            min-height: 26px;
+            padding: 0;
             border: 1px solid #c9c9c9;
             border-radius: 1000px;
             background: #e7e7e7;
             color: #555;
             font-size: 0.7rem;
             font-weight: bolder;
-            line-height: calc(1.5rem - 2px);
+            line-height: 1;
             text-align: center;
             white-space: nowrap;
             box-sizing: border-box;
@@ -521,38 +593,50 @@
                 white-space: normal;
             }
             #offerlist .bm-offer-discount-bubble {
-                top: 5px;
+                top: 50%;
                 right: 0.25rem;
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                min-height: 32px;
+                font-size: 0.78rem;
+                transform: translateY(-50%);
             }
             #offerlist .bm-total-discount-bubble {
-                top: 5px;
-                right: 2.3rem;
+                top: 50%;
+                right: 2.55rem;
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                min-height: 32px;
+                font-size: 0.78rem;
+                transform: translateY(-50%);
             }
             #offerlist .price > .show-for-small-only.small {
                 display: none !important;
             }
             #offerlist .row.collapse.bm-effective-row {
-                min-height: 86px;
+                min-height: 72px;
             }
             #offerlist .row.collapse.bm-effective-row > .goto.small-3.columns,
             #offerlist .row.collapse.bm-effective-row > .goto.small-3.columns > .pricerow,
             #offerlist .row.collapse.bm-effective-row > .medium-4.small-9.columns.pricerow {
-                height: 86px !important;
-                min-height: 86px !important;
+                height: 72px !important;
+                min-height: 72px !important;
             }
             #offerlist .row.collapse.bm-marketplace-offer,
             #offerlist .row.collapse.bm-marketplace-offer > .goto.small-3.columns,
             #offerlist .row.collapse.bm-marketplace-offer > .goto.small-3.columns > .pricerow,
             #offerlist .row.collapse.bm-marketplace-offer > .medium-4.small-9.columns.pricerow {
-                height: 70px !important;
-                min-height: 70px !important;
+                height: 64px !important;
+                min-height: 64px !important;
             }
             #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row,
             #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .goto.small-3.columns,
             #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .goto.small-3.columns > .pricerow,
             #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .medium-4.small-9.columns.pricerow {
-                height: 86px !important;
-                min-height: 86px !important;
+                height: 72px !important;
+                min-height: 72px !important;
             }
             #offerlist .bm-marketplace-logo {
                 max-width: 72px;
@@ -574,7 +658,8 @@
         .content.setdetails .topprice span[style*="position: absolute"],
         .bm-bestprice-black-bubble {
             position: absolute !important;
-            top: calc(50% + 2px);
+            top: calc(50% + 4px) !important;
+            left: auto !important;
             z-index: 100 !important;
             display: inline-flex !important;
             align-items: center;
@@ -657,6 +742,11 @@
         }
         .bm-chart-overlay.bm-open {
             display: flex;
+        }
+        .bm-chart-overlay.bm-preloading {
+            display: flex;
+            visibility: hidden;
+            pointer-events: none;
         }
         .bm-chart-dialog {
             position: relative;
@@ -801,14 +891,46 @@
             margin-bottom: 0.75rem !important;
         }
         .bm-chart-controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            column-gap: 0.65rem;
             margin-bottom: 0 !important;
+        }
+        .bm-chart-best-price {
+            margin-bottom: 1.25rem;
+            color: #555;
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        .bm-chart-label-mobile {
+            display: none;
         }
         @media screen and (min-width: 1025px) {
             #offerlist {
+                display: grid;
+                grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+                align-items: start;
                 margin-top: -0.625rem;
             }
+            #offerlist::before,
+            #offerlist::after {
+                display: none !important;
+                content: none !important;
+            }
             #offerlist > #ol1st.bm-offer-layout {
-                width: 66.6667% !important;
+                grid-column: 1;
+                width: 100% !important;
+                float: none !important;
+            }
+            #offerlist > #ol2nd {
+                grid-column: 2;
+                width: 100% !important;
+                float: none !important;
+            }
+            #offerlist > .bm-full-product-description {
+                grid-column: 1 / -1;
             }
             #ol1st.bm-offer-layout {
                 display: grid;
@@ -865,6 +987,21 @@
                 background: #fff;
                 cursor: zoom-in;
                 text-decoration: none;
+                box-shadow: none;
+                transition: box-shadow 150ms ease;
+            }
+            .bm-product-gallery-host > .bm-unified-gallery-link {
+                display: flex !important;
+                width: 100%;
+                align-items: center;
+                justify-content: center;
+                padding: 0.2rem;
+                background: #fff;
+                cursor: zoom-in;
+                text-decoration: none;
+                box-shadow: none;
+                transition: box-shadow 150ms ease;
+                box-sizing: border-box;
             }
             .bm-offer-gallery-link img {
                 display: block !important;
@@ -873,12 +1010,21 @@
                 max-width: none !important;
                 margin: 0 !important;
                 object-fit: contain;
-                transform: scale(0.9) !important;
             }
-            .bm-offer-gallery-link:hover img,
-            .bm-offer-gallery-link:focus img {
-                transform: scale(1) !important;
+            .bm-unified-gallery-link > .bm-unified-gallery-image {
+                transform: scale(0.9) !important;
+                transform-origin: center;
+                box-shadow: none !important;
+                transition: transform 150ms ease;
+            }
+            .bm-unified-gallery-link:hover,
+            .bm-unified-gallery-link:focus {
                 box-shadow: 1px 1px 4px 0 rgba(0, 0, 0, 0.2);
+            }
+            .bm-unified-gallery-link:hover > .bm-unified-gallery-image,
+            .bm-unified-gallery-link:focus > .bm-unified-gallery-image {
+                transform: scale(1) !important;
+                box-shadow: none !important;
             }
             #ol1st .bm-instruction-source {
                 display: none !important;
@@ -938,16 +1084,16 @@
             #ol2nd .bm-sidebar-barcode {
                 margin-bottom: 0 !important;
                 padding-bottom: 1.25rem !important;
-                text-align: left !important;
+                text-align: center !important;
             }
             #ol2nd .bm-sidebar-barcode h3 {
                 margin-left: 0 !important;
-                text-align: left !important;
+                text-align: center !important;
             }
             #ol2nd .bm-sidebar-barcode #barcode {
                 display: block;
                 margin-right: auto !important;
-                margin-left: 0 !important;
+                margin-left: auto !important;
             }
             .bm-sidebar-parts h3 {
                 margin: 0 0 0.65rem;
@@ -991,9 +1137,43 @@
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            margin: 0 0 0.75rem;
+            margin: 0 0 0.2rem;
+        }
+        #ol1st .bm-offer-toolbar + .row.collapse {
+            margin-top: 0 !important;
         }
         @media screen and (max-width: 640px) {
+            #chartdiv2 {
+                margin-bottom: 0.4rem !important;
+            }
+            #chartTrigger {
+                min-width: 0;
+                flex: 0 0 auto;
+                margin-bottom: 0.35rem !important;
+                padding-right: 0.65rem !important;
+                padding-left: 0.65rem !important;
+                font-size: 0.7rem !important;
+                white-space: nowrap;
+            }
+            .bm-chart-controls {
+                flex-wrap: nowrap;
+                column-gap: 0.4rem;
+            }
+            .bm-chart-label-full {
+                display: none;
+            }
+            .bm-chart-label-mobile {
+                display: inline;
+            }
+            .bm-chart-best-price {
+                min-width: 0;
+                flex: 1 1 auto;
+                margin-bottom: 0.35rem;
+                font-size: 0.65rem;
+            }
+            .bm-offer-toolbar {
+                margin-bottom: 0.4rem;
+            }
             #wrap.bm-set-wrap {
                 margin-bottom: -104px !important;
             }
@@ -1289,7 +1469,8 @@
             }
             void setMetaGptValue(META_GPT_PENDING_KEY, transfer);
 
-            const label = link.querySelector('.bm-link-label');
+            const label = link.closest('.bm-meta-dual-link')
+                ?.querySelector('.bm-link-label');
             const defaultLabel = link.dataset.bmDefaultLabel ||
                 label?.textContent ||
                 'Meta';
@@ -1663,6 +1844,11 @@
         offerSection.classList.add('bm-offer-section');
         imageColumn.classList.add('bm-product-gallery-host');
 
+        const mainImageLink = imageColumn.querySelector(':scope > a.fancybox');
+        const mainImage = mainImageLink?.querySelector('img');
+        mainImageLink?.classList.add('bm-unified-gallery-link');
+        mainImage?.classList.add('bm-unified-gallery-image');
+
         const sourceTitle = sideColumn.querySelector('h3.more_images');
         sourceTitle?.classList.add('bm-gallery-source');
         sourceLinks.forEach(link => link.classList.add('bm-gallery-source'));
@@ -1683,7 +1869,8 @@
         sourceLinks.forEach((sourceLink, index) => {
             const sourceImage = sourceLink.querySelector('img.gallerieIco');
             const link = document.createElement('a');
-            link.className = 'bm-offer-gallery-link';
+            link.className =
+                'bm-offer-gallery-link bm-unified-gallery-link';
             link.href = sourceLink.href;
             link.rel = sourceLink.rel || 'group1';
             link.title = sourceLink.title || `Produktbild ${index + 1} öffnen`;
@@ -1700,6 +1887,7 @@
             image.removeAttribute('style');
             image.loading = 'lazy';
             image.alt = sourceImage.alt || `Produktbild ${index + 1}`;
+            image.classList.add('bm-unified-gallery-image');
             link.appendChild(image);
             list.appendChild(link);
         });
@@ -1714,8 +1902,8 @@
         barcodeBlock?.classList.add('bm-sidebar-barcode');
     }
 
-    // Die Anleitungen nutzen auf Desktop die nach dem Galerie-Umzug freie
-    // Seitenleiste. Die Originale bleiben für die Mobilansicht erhalten.
+    // Die Anleitungen stehen auf Desktop zwischen Barcode und Einzelteilelisten.
+    // Die Originale bleiben für die Mobilansicht erhalten.
     function setupDesktopSidebarInstructions() {
         const offerColumn = document.getElementById('ol1st');
         const sideColumn = document.getElementById('ol2nd');
@@ -1970,9 +2158,9 @@
         window.addEventListener('load', moveSoldOutAfterAvailableOffers, { once: true });
     }
 
-    // Der native Brickmerge-Detailchart wird beim ersten Öffnen weiterhin über
-    // den vorhandenen Schalter geladen, danach aber in einem eigenen Overlay
-    // angezeigt. So bleiben Brickmerges Chartdaten und Initialisierung erhalten.
+    // Der native Brickmerge-Detailchart wird im Hintergrund vorgeladen und
+    // anschließend im eigenen Overlay angezeigt. Dadurch ist der historische
+    // Bestpreis bereits neben dem Schalter verfügbar.
     let openPriceChartOverlay = null;
 
     function setupPriceChartOverlay() {
@@ -1985,6 +2173,22 @@
         chartTrigger.parentElement?.classList.add('bm-chart-controls');
         chartTrigger.setAttribute('aria-haspopup', 'dialog');
         chartTrigger.setAttribute('aria-controls', 'bm-price-chart-overlay');
+
+        const normalizeChartTriggerLabel = () => {
+            const buttonLabel = chartTrigger.querySelector('.chartbutton');
+            if (!buttonLabel || buttonLabel.querySelector('.bm-chart-label-full')) {
+                return;
+            }
+            buttonLabel.textContent = '';
+            const fullLabel = document.createElement('span');
+            fullLabel.className = 'bm-chart-label-full';
+            fullLabel.textContent = 'Preisentwicklung Details anzeigen';
+            const mobileLabel = document.createElement('span');
+            mobileLabel.className = 'bm-chart-label-mobile';
+            mobileLabel.textContent = 'Details anzeigen';
+            buttonLabel.append(fullLabel, mobileLabel);
+        };
+        normalizeChartTriggerLabel();
 
         const overlay = document.createElement('div');
         overlay.id = 'bm-price-chart-overlay';
@@ -2029,6 +2233,17 @@
         document.body.appendChild(overlay);
 
         let storedScrollY = 0;
+        let backgroundPreload = false;
+        let preloadReadyTimer = null;
+        let preloadTimeoutTimer = null;
+
+        const finishBackgroundPreload = () => {
+            window.clearTimeout(preloadReadyTimer);
+            window.clearTimeout(preloadTimeoutTimer);
+            preloadReadyTimer = null;
+            preloadTimeoutTimer = null;
+            overlay.classList.remove('bm-preloading');
+        };
 
         const customizeNativeChart = () => {
             const chartWrapper = bigChart.querySelector('#chartWrapper');
@@ -2098,11 +2313,35 @@
                 .find(element => element.querySelector?.('strong') &&
                     /bisheriger bestpreis/i.test(element.textContent || ''));
             if (historyRow) {
-                historyRow.classList.add('bm-chart-history-row');
-                const bestPrice = historyRow.querySelector('strong');
-                while (historyRow.firstChild && historyRow.firstChild !== bestPrice) {
-                    historyRow.firstChild.remove();
+                const bestPrice = Array.from(historyRow.querySelectorAll('strong'))
+                    .find(element => /bisheriger bestpreis/i.test(
+                        element.textContent || ''
+                    ));
+                const bestPriceText = (bestPrice?.textContent || '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                if (bestPriceText) {
+                    let summary = chartTrigger.parentElement?.querySelector(
+                        '.bm-chart-best-price'
+                    );
+                    if (!summary) {
+                        summary = document.createElement('span');
+                        summary.className = 'bm-chart-best-price';
+                        chartTrigger.insertAdjacentElement('afterend', summary);
+                    }
+                    summary.textContent = bestPriceText;
                 }
+                historyRow.remove();
+            }
+
+            if (
+                overlay.classList.contains('bm-preloading') &&
+                preloadReadyTimer === null
+            ) {
+                preloadReadyTimer = window.setTimeout(
+                    finishBackgroundPreload,
+                    500
+                );
             }
         };
 
@@ -2114,10 +2353,7 @@
             bigChart.style.display = 'block';
             customizeNativeChart();
 
-            const buttonLabel = chartTrigger.querySelector('.chartbutton');
-            if (buttonLabel) {
-                buttonLabel.textContent = 'Preisentwicklung Details anzeigen';
-            }
+            normalizeChartTriggerLabel();
 
             const offerColumn = document.getElementById('ol1st');
             offerColumn?.classList.remove('large-12');
@@ -2125,6 +2361,7 @@
         };
 
         const showOverlay = () => {
+            finishBackgroundPreload();
             if (!overlay.classList.contains('bm-open')) {
                 storedScrollY = window.scrollY;
             }
@@ -2158,7 +2395,7 @@
             const trigger = event.target.closest?.('#chartTrigger');
             if (!trigger) return;
 
-            showOverlay();
+            if (!backgroundPreload) showOverlay();
             if (chartTrigger.dataset.bmNativeChartActivated === 'true') {
                 event.preventDefault();
                 event.stopImmediatePropagation();
@@ -2170,6 +2407,30 @@
             window.setTimeout(normalizeNativeChartState, 900);
             window.setTimeout(normalizeNativeChartState, 1800);
         }, true);
+
+        const preloadNativeChart = () => {
+            if (chartTrigger.dataset.bmNativeChartActivated === 'true') return;
+
+            overlay.classList.add('bm-preloading');
+            backgroundPreload = true;
+            try {
+                chartTrigger.click();
+            } finally {
+                backgroundPreload = false;
+            }
+            preloadTimeoutTimer = window.setTimeout(() => {
+                normalizeNativeChartState();
+                finishBackgroundPreload();
+            }, 8000);
+        };
+
+        if (document.readyState === 'complete') {
+            window.setTimeout(preloadNativeChart, 100);
+        } else {
+            window.addEventListener('load', () => {
+                window.setTimeout(preloadNativeChart, 100);
+            }, { once: true });
+        }
 
         closeButton.addEventListener('click', closeOverlay);
         overlay.addEventListener('click', event => {
@@ -2270,13 +2531,13 @@
                     {
                         id: "btn-meta-gpt",
                         name: "Meta",
-                        url: META_GPT_URL,
-                        icons: [icon("meta-preisvergleich.de"), icon("chatgpt.com")]
+                        url: `https://meta-preisvergleich.de/index.cgi?q=lego+${setNum}&c=kategorie&id=lego_${setNum}__kategorie&offset=&qq=`,
+                        icon: icon("meta-preisvergleich.de"),
+                        secondaryUrl: META_GPT_URL,
+                        secondaryIcon: icon("chatgpt.com")
                     },
                     { name: "Geizhals", url: `https://www.google.com/search?q=site%3Ageizhals.de+lego+${setNum}&btnI=1`, icon: icon("geizhals.at") },
-                    { name: "idealo DE", url: `https://www.google.com/search?q=site%3Aidealo.de+lego+${setNum}&btnI=1`, icon: icon("idealo.de") },
-                    { id: "btn-mbd", name: "MyBrickDepot", url: `https://mybrickdepot.de/product/${setNum}`, icon: icon("mybrickdepot.de") },
-                    { name: "Brickset", url: `https://brickset.com/sets/${setNum}-1`, icon: icon("brickset.com") }
+                    { name: "idealo DE", url: `https://www.google.com/search?q=site%3Aidealo.de+lego+${setNum}&btnI=1`, icon: icon("idealo.de") }
                 ]
             },
             {
@@ -2309,6 +2570,7 @@
         .bm-link-viewport::-webkit-scrollbar { display: none; }
         .bm-info-links { display: flex; flex-wrap: nowrap; width: max-content; gap: 7px 11px; }
         .bm-link { display: inline-flex; flex: 0 0 auto; align-items: center; text-decoration: none; font-size: 0.93em; color: #222; font-weight: 500; background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 4px 8px 4px 6px; line-height: 1.2;}
+        .bm-link[hidden] { display: none !important; }
         .bm-link > img { width: 20px; height: 20px; object-fit: contain; border-radius: 3px; margin-right: 6px; }
         .bm-link-icons {
             display: inline-flex;
@@ -2325,6 +2587,43 @@
             object-fit: contain;
         }
         .bm-link:hover span { text-decoration: underline; }
+        .bm-meta-dual-link {
+            overflow: hidden;
+            padding: 0;
+        }
+        .bm-meta-dual-link > a {
+            display: inline-flex;
+            min-height: 28px;
+            align-items: center;
+            padding: 4px 6px;
+            color: #222;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+        .bm-meta-dual-link > a:hover,
+        .bm-meta-dual-link > a:focus {
+            background: #f0f0f0;
+        }
+        .bm-meta-dual-link img {
+            width: 20px;
+            height: 20px;
+            margin: 0;
+            border-radius: 3px;
+            object-fit: contain;
+        }
+        .bm-meta-site-link {
+            gap: 6px;
+        }
+        .bm-meta-gpt-trigger {
+            border-left: 1px solid #d5d5d5;
+        }
+        .bm-meta-dual-link:hover span {
+            text-decoration: none;
+        }
+        .bm-meta-site-link:hover .bm-link-label,
+        .bm-meta-site-link:focus .bm-link-label {
+            text-decoration: underline;
+        }
         .bm-link-scroll {
             position: absolute;
             top: 50%;
@@ -2372,6 +2671,23 @@
             document.head.appendChild(style);
         }
 
+        function syncBrickLinkMarketplaceLink() {
+            const shortcut = document.querySelector('a[data-bmid="btn-bl"]');
+            if (!shortcut) return;
+
+            const hasBrickLinkOffer = Array.from(document.querySelectorAll(
+                '#offerlist .medium-4.small-9.columns.pricerow[data-mid]'
+            )).some(priceRow => {
+                const offerRow = priceRow.closest('.row.collapse');
+                const merchant = priceRow.querySelector('.merchant')?.textContent || '';
+                const logo = offerRow?.querySelector('.goto img[alt]')?.alt || '';
+                const tooltip = priceRow.querySelector(':scope > a')?.getAttribute('title') || '';
+                return /\bbricklink\b/i.test(`${merchant} ${logo} ${tooltip}`);
+            });
+
+            shortcut.hidden = hasBrickLinkOffer;
+        }
+
         function buildBox() {
             const container = document.createElement("div");
             for (const group of groups) {
@@ -2398,7 +2714,51 @@
                 next.title = "Nach rechts";
                 next.setAttribute("aria-label", `${group.title}: nach rechts`);
                 next.appendChild(document.createElement("span"));
-                for (const { id, name, url, icon, icons } of group.links) {
+                for (const {
+                    id,
+                    name,
+                    url,
+                    icon,
+                    icons,
+                    secondaryUrl,
+                    secondaryIcon
+                } of group.links) {
+                    if (secondaryUrl && secondaryIcon) {
+                        const dualLink = document.createElement('span');
+                        dualLink.className = 'bm-link bm-meta-dual-link';
+
+                        const siteLink = document.createElement('a');
+                        siteLink.className = 'bm-meta-site-link';
+                        siteLink.href = url;
+                        siteLink.target = '_blank';
+                        siteLink.rel = 'noopener noreferrer';
+                        siteLink.title = 'Set im Meta-Preisvergleich suchen';
+                        const siteIcon = document.createElement('img');
+                        siteIcon.src = icon;
+                        siteIcon.alt = '';
+                        const siteLabel = document.createElement('span');
+                        siteLabel.className = 'bm-link-label';
+                        siteLabel.textContent = name;
+                        siteLink.append(siteIcon, siteLabel);
+
+                        const secondaryLink = document.createElement('a');
+                        secondaryLink.className = 'bm-meta-gpt-trigger';
+                        secondaryLink.href = secondaryUrl;
+                        secondaryLink.target = '_blank';
+                        secondaryLink.rel = 'noopener noreferrer';
+                        secondaryLink.title = 'Set mit vorbereitetem Prompt im Meta-GPT suchen';
+                        if (id) secondaryLink.dataset.bmid = id;
+                        secondaryLink.dataset.bmDefaultLabel = name;
+                        const gptIcon = document.createElement('img');
+                        gptIcon.src = secondaryIcon;
+                        gptIcon.alt = 'Meta-GPT';
+                        secondaryLink.appendChild(gptIcon);
+
+                        dualLink.append(siteLink, secondaryLink);
+                        row.appendChild(dualLink);
+                        continue;
+                    }
+
                     const a = document.createElement("a");
                     a.href = url; a.target = "_blank"; a.className = "bm-link";
                     if (id) a.dataset.bmid = id;
@@ -2482,6 +2842,17 @@
             }
             setupLinkSliders(box);
             setupMetaGptLink(box);
+            syncBrickLinkMarketplaceLink();
+            const offerlist = document.getElementById('offerlist');
+            if (offerlist) {
+                const brickLinkOfferObserver = new MutationObserver(
+                    syncBrickLinkMarketplaceLink
+                );
+                brickLinkOfferObserver.observe(offerlist, {
+                    childList: true,
+                    subtree: true
+                });
+            }
             fetchAndInjectPrices(setNum);
         }
 
@@ -3847,44 +4218,6 @@
         });
     }
 
-    function normalizeMerchantClickOuts() {
-        const offerlist = document.getElementById('offerlist');
-        if (!offerlist || !setNum) return;
-
-        offerlist.querySelectorAll(
-            '.medium-4.small-9.columns.pricerow[data-mid] > a'
-        ).forEach(link => {
-            const mid = link.closest('[data-mid]')?.dataset.mid;
-            if (!mid) return;
-
-            let currentUrl;
-            try {
-                currentUrl = new URL(link.href, window.location.origin);
-            } catch (e) {
-                return;
-            }
-
-            const isBrickmergeRedirect = currentUrl.origin === window.location.origin &&
-                (
-                    currentUrl.pathname === '/go2/' ||
-                    currentUrl.searchParams.has('go2i') ||
-                    currentUrl.searchParams.has('go2m') ||
-                    /\/go2\/\?/i.test(link.getAttribute('onclick') || '')
-                );
-            if (!isBrickmergeRedirect) return;
-
-            const itemNumber = currentUrl.searchParams.get('i') ||
-                currentUrl.searchParams.get('go2i') ||
-                `${setNum}-1`;
-            const directRedirect = new URL('/go2/', window.location.origin);
-            directRedirect.searchParams.set('m', mid);
-            directRedirect.searchParams.set('i', itemNumber);
-
-            link.href = `${directRedirect.pathname}${directRedirect.search}`;
-            link.removeAttribute('onclick');
-        });
-    }
-
     function getBaseOfferPrice(priceSpan) {
         const originalPrice = priceSpan.querySelector(':scope > .bm-original-price');
         if (originalPrice) {
@@ -4359,7 +4692,6 @@
         offerPresentationRunning = true;
         try {
             removeOfferListPriceDecorations();
-            normalizeMerchantClickOuts();
             injectShippingCostsFromOfferTitles();
             applyRetailerDiscounts();
             sortOffersByConfiguredPrice();
