@@ -1,7 +1,8 @@
 // ==UserScript==
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
-// @version      2.3
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
+// @version      3.14
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -14,8 +15,8 @@
 // @connect      www.bricklink.com
 // @connect      mybrickdepot.de
 // @run-at       document-end
-// @updateURL    https://raw.githubusercontent.com/ysamjo/bm-quick-extension/main/brickmerge-tweaks.js
-// @downloadURL  https://raw.githubusercontent.com/ysamjo/bm-quick-extension/main/brickmerge-tweaks.js
+// @updateURL    https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-tweaks.js
+// @downloadURL  https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-tweaks.js
 // ==/UserScript==
 
 (function () {
@@ -224,9 +225,14 @@
                 .find(([, discount]) => String(discount.mid) === String(mid));
             const key = knownEntry?.[0] || `mid:${mid}`;
             const knownDiscount = knownEntry?.[1];
-            const label = getOfferMerchantName(priceSpan) ||
-                knownDiscount?.label ||
-                `Händler ${mid}`;
+            const isMyBrickDepotEbay =
+                priceRow.dataset.bmSource === 'mybrickdepot' &&
+                String(mid) === 'mbd-ebay';
+            const label = isMyBrickDepotEbay
+                ? 'eBay (MyBrickDepot)'
+                : getOfferMerchantName(priceSpan) ||
+                    knownDiscount?.label ||
+                    `Händler ${mid}`;
 
             catalog.set(key, {
                 key,
@@ -350,6 +356,21 @@
         #offerlist .pricerow > a > .price {
             width: 95% !important;
             border: none !important;
+        }
+        #offerlist span.price,
+        #offerlist span.price > .merchant,
+        #offerlist span.price > .merchant * {
+            color: #b00 !important;
+        }
+        #offerlist .pricerow:hover span.price,
+        #offerlist .pricerow:hover span.price > .merchant,
+        #offerlist .pricerow:hover span.price > .merchant * {
+            color: #fff !important;
+        }
+        .content.setdetails .productprice > p,
+        .content.setdetails .productprice > .topprice {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
         }
         #offerlist .medium-4.small-9.columns.pricerow[data-mid] {
             background-image: none !important;
@@ -519,17 +540,17 @@
                 height: 86px !important;
                 min-height: 86px !important;
             }
-            #offerlist .row.collapse.bm-mbd-offer,
-            #offerlist .row.collapse.bm-mbd-offer > .goto.small-3.columns,
-            #offerlist .row.collapse.bm-mbd-offer > .goto.small-3.columns > .pricerow,
-            #offerlist .row.collapse.bm-mbd-offer > .medium-4.small-9.columns.pricerow {
+            #offerlist .row.collapse.bm-marketplace-offer,
+            #offerlist .row.collapse.bm-marketplace-offer > .goto.small-3.columns,
+            #offerlist .row.collapse.bm-marketplace-offer > .goto.small-3.columns > .pricerow,
+            #offerlist .row.collapse.bm-marketplace-offer > .medium-4.small-9.columns.pricerow {
                 height: 70px !important;
                 min-height: 70px !important;
             }
-            #offerlist .row.collapse.bm-mbd-offer.bm-effective-row,
-            #offerlist .row.collapse.bm-mbd-offer.bm-effective-row > .goto.small-3.columns,
-            #offerlist .row.collapse.bm-mbd-offer.bm-effective-row > .goto.small-3.columns > .pricerow,
-            #offerlist .row.collapse.bm-mbd-offer.bm-effective-row > .medium-4.small-9.columns.pricerow {
+            #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row,
+            #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .goto.small-3.columns,
+            #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .goto.small-3.columns > .pricerow,
+            #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .medium-4.small-9.columns.pricerow {
                 height: 86px !important;
                 min-height: 86px !important;
             }
@@ -538,17 +559,484 @@
                 max-height: 31px;
             }
         }
+        .bm-offer-gallery {
+            display: none;
+        }
+        .bm-sidebar-instructions {
+            display: none;
+        }
+        .bm-sidebar-parts {
+            display: none;
+        }
+        .content.setdetails .topprice {
+            position: relative !important;
+        }
+        .content.setdetails .topprice span[style*="position: absolute"],
+        .bm-bestprice-black-bubble {
+            position: absolute !important;
+            top: calc(50% + 2px);
+            z-index: 100 !important;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 28px !important;
+            height: 28px !important;
+            min-width: 28px !important;
+            min-height: 28px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 999px;
+            color: #fff !important;
+            font-size: 0.7rem;
+            font-weight: bold;
+            line-height: 1 !important;
+            text-align: center;
+            transform: translateY(-50%) !important;
+            box-sizing: border-box;
+        }
+        .content.setdetails .topprice span[style*="position: absolute"] {
+            right: 0.65rem !important;
+        }
+        .bm-bestprice-black-bubble {
+            right: 2.85rem;
+            border: 1px solid #000 !important;
+            background: #222 !important;
+        }
+        .bm-full-product-description {
+            float: none !important;
+            clear: both;
+            width: 100% !important;
+            margin: 1.5rem 0 0 !important;
+            padding-bottom: 0 !important;
+        }
+        .bm-full-product-description p,
+        .bm-full-product-description li,
+        .bm-full-product-description .padDoubleBottom {
+            line-height: 1.5 !important;
+        }
+        .bm-full-product-description p {
+            margin-bottom: 1rem;
+        }
+        .bm-full-product-description li {
+            margin-bottom: 0.2rem;
+        }
+        .bm-lego-article-link {
+            color: inherit;
+            text-decoration: underline;
+            text-decoration-color: rgba(176, 0, 0, 0.45);
+            text-underline-offset: 2px;
+        }
+        .bm-lego-article-link:hover,
+        .bm-lego-article-link:focus {
+            color: #700;
+            text-decoration-color: currentColor;
+        }
+        #wrap.bm-set-wrap {
+            margin-bottom: -58px !important;
+        }
+        #wrap.bm-set-wrap > *:last-child {
+            padding-bottom: 10px !important;
+        }
+        #footer.bm-compact-footer {
+            height: 58px !important;
+            min-height: 58px;
+        }
+        body.bm-chart-overlay-open {
+            overflow: hidden !important;
+        }
+        .bm-chart-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            background: rgba(0, 0, 0, 0.64);
+            box-sizing: border-box;
+        }
+        .bm-chart-overlay.bm-open {
+            display: flex;
+        }
+        .bm-chart-dialog {
+            position: relative;
+            display: flex;
+            width: min(1200px, calc(100vw - 2.5rem));
+            height: min(92vh, 900px);
+            flex-direction: column;
+            overflow: hidden;
+            border-top: 5px solid #b00;
+            border-radius: 4px;
+            background: #fff;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+        }
+        .bm-chart-dialog-header {
+            display: flex;
+            flex: 0 0 auto;
+            align-items: center;
+            gap: 1rem;
+            min-height: 64px;
+            padding: 0.8rem 4.25rem 0.8rem 1.25rem;
+            border-bottom: 1px solid #ddd;
+            background: #fff;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+        .bm-chart-dialog-title {
+            flex: 0 0 auto;
+            margin: 0;
+            color: #333;
+            font-size: 1.25rem;
+            font-weight: 700;
+            line-height: 1.2;
+            text-shadow: none !important;
+        }
+        .bm-chart-periods {
+            display: flex;
+            min-width: 0;
+            flex: 1 1 auto;
+            align-items: center;
+            gap: 0.25rem;
+            overflow-x: auto;
+            scrollbar-width: thin;
+        }
+        .bm-chart-periods .buttonPeriod {
+            flex: 0 0 auto;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0.3rem 0.55rem !important;
+            border: 1px solid #ccc !important;
+            background: #f4f4f4 !important;
+            color: #444 !important;
+            font-size: 0.72rem !important;
+            line-height: 1.1 !important;
+            text-shadow: none !important;
+        }
+        .bm-chart-periods .buttonPeriod.hasOrangeBg {
+            border-color: #ff771a !important;
+            background: #ff771a !important;
+            color: #222 !important;
+        }
+        .bm-chart-dialog-close {
+            position: absolute;
+            top: 0.65rem;
+            right: 0.8rem;
+            display: inline-flex;
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            background: #f7eaea;
+            color: #800;
+            border-radius: 4px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            line-height: 1;
+            text-shadow: none !important;
+            cursor: pointer;
+        }
+        .bm-chart-dialog-close:hover,
+        .bm-chart-dialog-close:focus {
+            background: #b00;
+            color: #fff;
+        }
+        .bm-chart-dialog-content {
+            min-height: 0;
+            flex: 1 1 auto;
+            overflow: auto;
+            padding: 1rem 1.25rem 1.25rem;
+        }
+        .bm-chart-dialog #chartContainer {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+        .bm-chart-dialog #chartWrapper,
+        .bm-chart-dialog #chartWrapper * {
+            text-shadow: none !important;
+        }
+        .bm-chart-dialog .bm-native-chart-title {
+            display: none !important;
+        }
+        .bm-chart-dialog .bm-chart-help {
+            margin: 0 0 0.5rem !important;
+            color: #666;
+            font-size: 0.75rem;
+            line-height: 1.3;
+        }
+        .bm-chart-dialog .bm-chart-history-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.25rem;
+            margin: 0 0 0.6rem !important;
+            line-height: 1.35rem !important;
+        }
+        .bm-chart-dialog .bm-chart-history-row strong {
+            color: #333 !important;
+        }
+        .bm-chart-dialog .bm-chart-history-row br {
+            display: none !important;
+        }
+        .bm-chart-dialog .bm-chart-history-row .button {
+            margin: 0.2rem 0.2rem 0.2rem 0 !important;
+            padding: 0.3rem 0.5rem !important;
+            font-size: 0.75rem !important;
+            line-height: 1.1 !important;
+            text-shadow: none !important;
+        }
+        .bm-chart-dialog #bigChart {
+            display: block;
+            width: 100% !important;
+            min-height: 60px;
+            padding: 0 !important;
+        }
+        .bm-chart-dialog #bigChart > * {
+            max-width: 100%;
+        }
+        #chartdiv2 {
+            margin-bottom: 0.75rem !important;
+        }
+        .bm-chart-controls {
+            margin-bottom: 0 !important;
+        }
+        @media screen and (min-width: 1025px) {
+            #offerlist {
+                margin-top: -0.625rem;
+            }
+            #offerlist > #ol1st.bm-offer-layout {
+                width: 66.6667% !important;
+            }
+            #ol1st.bm-offer-layout {
+                display: grid;
+                grid-template-columns: 30% minmax(0, 70%);
+                align-items: start;
+            }
+            #ol1st.bm-offer-layout > .bm-offer-section {
+                grid-column: 2;
+                grid-row: 1;
+                min-width: 0;
+            }
+            #ol1st.bm-offer-layout > :not(.bm-offer-section) {
+                grid-column: 1 / -1;
+            }
+            #ol1st.bm-offer-layout > .bm-offer-section
+                .row.collapse > .goto.medium-1.small-3.columns {
+                width: 11.9048% !important;
+            }
+            #ol1st.bm-offer-layout > .bm-offer-section
+                .row.collapse > .medium-4.small-9.columns.pricerow {
+                width: 88.0952% !important;
+            }
+            .bm-product-gallery-host {
+                position: relative;
+                width: 30% !important;
+            }
+            .bm-product-gallery-host + .large-9.medium-8.columns {
+                width: 70% !important;
+            }
+            .bm-product-gallery-host > .bm-offer-gallery {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                z-index: 2;
+                display: block;
+                width: 100%;
+                margin-top: 0.45rem;
+                padding-right: 0.9375rem;
+                text-align: left;
+                box-sizing: border-box;
+            }
+            .bm-offer-gallery-list {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.55rem;
+            }
+            .bm-offer-gallery-link {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 0;
+                aspect-ratio: 4 / 3;
+                padding: 0.2rem;
+                background: #fff;
+                cursor: zoom-in;
+                text-decoration: none;
+            }
+            .bm-offer-gallery-link img {
+                display: block !important;
+                width: 100% !important;
+                height: 100% !important;
+                max-width: none !important;
+                margin: 0 !important;
+                object-fit: contain;
+                transform: scale(0.9) !important;
+            }
+            .bm-offer-gallery-link:hover img,
+            .bm-offer-gallery-link:focus img {
+                transform: scale(1) !important;
+                box-shadow: 1px 1px 4px 0 rgba(0, 0, 0, 0.2);
+            }
+            #ol1st .bm-instruction-source {
+                display: none !important;
+            }
+            #ol1st .bm-parts-source {
+                display: none !important;
+            }
+            #ol2nd .bm-sidebar-instructions {
+                display: block;
+                margin: 0 0 1.25rem;
+                text-align: left;
+            }
+            .bm-sidebar-instructions h3 {
+                margin: 0 0 0.65rem;
+                color: #333;
+                font-size: 1.15rem;
+                line-height: 1.2;
+            }
+            .bm-sidebar-instruction-list {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.65rem;
+            }
+            .bm-sidebar-instruction-link {
+                display: block;
+                min-width: 0;
+                color: #b00;
+                font-size: 0.66rem;
+                line-height: 1.2;
+                text-align: center;
+                text-decoration: none;
+                overflow-wrap: anywhere;
+            }
+            .bm-sidebar-instruction-link img {
+                display: block;
+                width: 100%;
+                height: auto;
+                max-height: 105px;
+                margin: 0 auto 0.25rem;
+                border: 1px solid #ddd;
+                object-fit: contain;
+                background: #fff;
+            }
+            .bm-sidebar-instructions-more {
+                display: inline-block;
+                margin-top: 0.75rem;
+                color: #b00;
+                font-size: 0.72rem;
+                line-height: 1.25;
+                text-decoration: underline;
+            }
+            #ol2nd .bm-sidebar-parts {
+                display: block;
+                margin: 0 0 1.25rem;
+                text-align: left;
+            }
+            #ol2nd .bm-sidebar-barcode {
+                margin-bottom: 0 !important;
+                padding-bottom: 1.25rem !important;
+                text-align: left !important;
+            }
+            #ol2nd .bm-sidebar-barcode h3 {
+                margin-left: 0 !important;
+                text-align: left !important;
+            }
+            #ol2nd .bm-sidebar-barcode #barcode {
+                display: block;
+                margin-right: auto !important;
+                margin-left: 0 !important;
+            }
+            .bm-sidebar-parts h3 {
+                margin: 0 0 0.65rem;
+                color: #333;
+                font-size: 1.15rem;
+                line-height: 1.2;
+            }
+            .bm-sidebar-parts-list {
+                display: grid;
+                gap: 0.45rem;
+            }
+            .bm-sidebar-parts-link {
+                display: flex;
+                align-items: center;
+                gap: 0.4rem;
+                min-width: 0;
+                padding: 0.35rem 0.45rem;
+                color: #b00;
+                font-size: 0.72rem;
+                line-height: 1.25;
+                text-decoration: none;
+                background: #f2f2f2;
+            }
+            .bm-sidebar-parts-link:hover {
+                color: #fff;
+                background: #b00;
+            }
+            .bm-sidebar-parts-link img {
+                flex: 0 0 auto;
+                width: 18px;
+                height: 18px;
+                margin: 0;
+                object-fit: contain;
+            }
+            #ol2nd .bm-gallery-source,
+            #showmoreimages {
+                display: none !important;
+            }
+        }
         .bm-offer-toolbar {
             display: flex;
             align-items: center;
-            justify-content: flex-start;
-            margin: 0.25rem 0 0.75rem;
+            justify-content: flex-end;
+            margin: 0 0 0.75rem;
+        }
+        @media screen and (max-width: 640px) {
+            #wrap.bm-set-wrap {
+                margin-bottom: -104px !important;
+            }
+            #wrap.bm-set-wrap > *:last-child {
+                padding-bottom: 56px !important;
+            }
+            #footer.bm-compact-footer {
+                height: 104px !important;
+                min-height: 104px;
+            }
+            .bm-chart-overlay {
+                padding: 0;
+            }
+            .bm-chart-dialog {
+                width: 100vw;
+                height: 100vh;
+                border-top-width: 4px;
+            }
+            .bm-chart-dialog-header {
+                min-height: 0;
+                flex-wrap: wrap;
+                gap: 0.4rem;
+                padding: 0.65rem 3.75rem 0.55rem 1rem;
+            }
+            .bm-chart-dialog-title {
+                width: 100%;
+                font-size: 1rem;
+            }
+            .bm-chart-periods {
+                width: 100%;
+                flex-basis: 100%;
+            }
+            .bm-chart-dialog-content {
+                padding: 0.75rem;
+            }
         }
         .bm-discount-toolbar-control {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            width: 100%;
+            justify-content: flex-end;
+            width: auto;
+            margin-left: auto;
             min-height: 21px;
         }
         .bm-discount-toolbar-control .switch {
@@ -578,14 +1066,23 @@
             justify-content: center;
             width: 32px;
             height: 30px;
-            margin: 0 0 0 auto !important;
+            margin: 0 0 0 0.15rem !important;
             padding: 0 !important;
             background: transparent !important;
             border: 0 !important;
             border-radius: 0 !important;
             color: #666 !important;
-            font-size: 1.4rem !important;
             line-height: 1 !important;
+        }
+        .bm-discount-settings-trigger svg {
+            display: block;
+            width: 23px;
+            height: 23px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
         .bm-discount-settings-trigger:hover,
         .bm-discount-settings-trigger:focus {
@@ -600,7 +1097,7 @@
             align-items: center;
             justify-content: center;
             padding: 1rem;
-            background: rgba(0, 0, 0, 0.58);
+            background: rgba(0, 0, 0, 0.64);
         }
         .bm-settings-overlay.is-open {
             display: flex;
@@ -612,9 +1109,10 @@
             flex-direction: column;
             overflow: hidden;
             background: #fff;
-            border: 2px solid #a80000;
-            border-radius: 2px;
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+            border: 0;
+            border-top: 5px solid #b00;
+            border-radius: 4px;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
             color: #333;
         }
         .bm-settings-header,
@@ -622,28 +1120,45 @@
             display: flex;
             align-items: center;
             gap: 0.6rem;
-            padding: 0.85rem 1rem;
+            padding: 0.8rem 1.25rem;
         }
         .bm-settings-header {
             justify-content: space-between;
-            background: #a80000;
-            border-bottom: 1px solid #7c0000;
+            min-height: 64px;
+            background: #fff;
+            border-bottom: 1px solid #ddd;
+            box-shadow: none !important;
+            box-sizing: border-box;
         }
         .bm-settings-header h3 {
             margin: 0 !important;
-            color: #fff !important;
-            font-size: 1.1rem !important;
+            color: #333 !important;
+            font-size: 1.25rem !important;
+            font-weight: 700 !important;
+            line-height: 1.2 !important;
+            text-shadow: none !important;
         }
         .bm-settings-close {
-            width: 2rem;
-            height: 2rem;
+            display: inline-flex !important;
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
             margin: 0 !important;
             padding: 0 !important;
             border: 0 !important;
-            background: transparent !important;
+            border-radius: 4px !important;
+            background: #f7eaea !important;
+            color: #800 !important;
+            font-size: 1.8rem !important;
+            font-weight: bold !important;
+            line-height: 1 !important;
+            text-shadow: none !important;
+        }
+        .bm-settings-close:hover,
+        .bm-settings-close:focus {
+            background: #b00 !important;
             color: #fff !important;
-            font-size: 1.5rem !important;
-            line-height: 2rem !important;
         }
         .bm-settings-body {
             flex: 1 1 auto;
@@ -741,8 +1256,11 @@
             .replace(/\s+/g, ' ')
             .trim() || `LEGO ${setNumber}`;
         return [
-            `Suche aktuelle Angebote für ${title}.`,
-            'nur relevante Angebote, nur NEU und OVP.'
+            `Suche aktuelle Verkaufsangebote für ${title}.`,
+            'Berücksichtige relevante Angebote für Neuware in OVP von gewerblichen Händlern und privaten Verkäufern; Angebote von Privatverkäufern sind ausdrücklich erlaubt.',
+            'Gib ausschließlich eine Markdown-Tabelle mit den Spalten Plattform, Angebot, Artikelpreis, Versandkosten, Gesamtpreis und Link aus.',
+            'Nenne bei jedem Angebot die Plattform und die Versandkosten einzeln; falls Versandkosten nicht angegeben sind, schreibe "unbekannt".',
+            'Keine Einleitung, Erklärungen, Zusammenfassung oder sonstigen Texte außerhalb der Tabelle.'
         ].join(' ');
     }
 
@@ -771,11 +1289,14 @@
             }
             void setMetaGptValue(META_GPT_PENDING_KEY, transfer);
 
-            const label = link.querySelector('span');
+            const label = link.querySelector('.bm-link-label');
+            const defaultLabel = link.dataset.bmDefaultLabel ||
+                label?.textContent ||
+                'Meta';
             if (label) label.textContent = 'Wird geöffnet';
             window.open(META_GPT_URL, '_blank', 'noopener,noreferrer');
             window.setTimeout(() => {
-                if (label) label.textContent = 'Meta-GPT';
+                if (label) label.textContent = defaultLabel;
             }, 1400);
         });
     }
@@ -818,7 +1339,17 @@
                         aria-haspopup="dialog" aria-controls="bm-discount-settings"
                         title="Persönlichen Rabatt einstellen"
                         aria-label="Persönlichen Rabatt einstellen">
-                    ⚙
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <line x1="21" x2="14" y1="4" y2="4"></line>
+                        <line x1="10" x2="3" y1="4" y2="4"></line>
+                        <line x1="21" x2="12" y1="12" y2="12"></line>
+                        <line x1="8" x2="3" y1="12" y2="12"></line>
+                        <line x1="21" x2="16" y1="20" y2="20"></line>
+                        <line x1="12" x2="3" y1="20" y2="20"></line>
+                        <line x1="14" x2="14" y1="2" y2="6"></line>
+                        <line x1="8" x2="8" y1="10" y2="14"></line>
+                        <line x1="16" x2="16" y1="18" y2="22"></line>
+                    </svg>
                 </button>
             </div>
         `;
@@ -1109,6 +1640,313 @@
 
     if (setNum) cleaner();
 
+    // Auf Desktop liegt die Angebotsliste bündig unter dem Preisdiagramm.
+    // Die zusätzlichen Bilder beginnen direkt unter dem großen Produktbild.
+    function setupDesktopOfferGallery() {
+        const offerColumn = document.getElementById('ol1st');
+        const sideColumn = document.getElementById('ol2nd');
+        const imageColumn = document.querySelector(
+            '.content.setdetails .medium-8.medium-pull-4.columns ' +
+            '> .row.collapse > .large-3.medium-4.columns.hide-for-small'
+        );
+        if (!offerColumn || !sideColumn || !imageColumn) return;
+
+        const offerSection = Array.from(offerColumn.children).find(element =>
+            element.tagName === 'SECTION' && element.querySelector('.pricerow')
+        );
+        const sourceLinks = Array.from(
+            sideColumn.querySelectorAll('a.fancybox')
+        ).filter(link => link.querySelector('img.gallerieIco'));
+        if (!offerSection) return;
+
+        offerColumn.classList.add('bm-offer-layout');
+        offerSection.classList.add('bm-offer-section');
+        imageColumn.classList.add('bm-product-gallery-host');
+
+        const sourceTitle = sideColumn.querySelector('h3.more_images');
+        sourceTitle?.classList.add('bm-gallery-source');
+        sourceLinks.forEach(link => link.classList.add('bm-gallery-source'));
+
+        if (
+            sourceLinks.length === 0 ||
+            imageColumn.querySelector(':scope > .bm-offer-gallery')
+        ) {
+            return;
+        }
+
+        const gallery = document.createElement('aside');
+        gallery.className = 'bm-offer-gallery';
+        gallery.setAttribute('aria-label', 'Weitere Produktbilder');
+
+        const list = document.createElement('div');
+        list.className = 'bm-offer-gallery-list';
+        sourceLinks.forEach((sourceLink, index) => {
+            const sourceImage = sourceLink.querySelector('img.gallerieIco');
+            const link = document.createElement('a');
+            link.className = 'bm-offer-gallery-link';
+            link.href = sourceLink.href;
+            link.rel = sourceLink.rel || 'group1';
+            link.title = sourceLink.title || `Produktbild ${index + 1} öffnen`;
+            link.dataset.index = sourceLink.dataset.index || String(index + 1);
+            if (sourceLink.dataset.size) link.dataset.size = sourceLink.dataset.size;
+            link.addEventListener('click', event => {
+                event.preventDefault();
+                sourceLink.click();
+            });
+
+            const image = sourceImage.cloneNode(true);
+            image.removeAttribute('width');
+            image.removeAttribute('height');
+            image.removeAttribute('style');
+            image.loading = 'lazy';
+            image.alt = sourceImage.alt || `Produktbild ${index + 1}`;
+            link.appendChild(image);
+            list.appendChild(link);
+        });
+
+        gallery.appendChild(list);
+        imageColumn.appendChild(gallery);
+    }
+
+    function setupDesktopSidebarBarcode() {
+        const sideColumn = document.getElementById('ol2nd');
+        const barcodeBlock = sideColumn?.querySelector('#barcode')?.closest('div');
+        barcodeBlock?.classList.add('bm-sidebar-barcode');
+    }
+
+    // Die Anleitungen nutzen auf Desktop die nach dem Galerie-Umzug freie
+    // Seitenleiste. Die Originale bleiben für die Mobilansicht erhalten.
+    function setupDesktopSidebarInstructions() {
+        const offerColumn = document.getElementById('ol1st');
+        const sideColumn = document.getElementById('ol2nd');
+        if (!offerColumn || !sideColumn || sideColumn.querySelector('.bm-sidebar-instructions')) {
+            return;
+        }
+
+        const sourceHeading = Array.from(offerColumn.querySelectorAll('h3'))
+            .find(heading => heading.id === 'Bauanleitung' ||
+                /Bauanleitung/i.test(heading.textContent || ''));
+        const instructionImage = offerColumn.querySelector(
+            'img[src*="/img/instructions/"]'
+        );
+        const moreAnchor = offerColumn.querySelector(
+            'a[href*="/service/buildinginstructions/"]'
+        );
+        const moreParagraph = moreAnchor?.closest('p');
+        const sourceSection = sourceHeading?.closest('section') ||
+            instructionImage?.closest('section') ||
+            (moreParagraph?.previousElementSibling?.tagName === 'SECTION'
+                ? moreParagraph.previousElementSibling
+                : null);
+        if (!sourceSection) return;
+
+        const sourceAnchors = Array.from(sourceSection.querySelectorAll('a'))
+            .filter(anchor => anchor.querySelector('img[src*="/img/instructions/"]'));
+        if (sourceAnchors.length === 0 && !moreAnchor) return;
+
+        sourceSection.classList.add('bm-instruction-source');
+        if (moreAnchor) moreParagraph.classList.add('bm-instruction-source');
+
+        const panel = document.createElement('section');
+        panel.className = 'bm-sidebar-instructions';
+
+        const heading = document.createElement('h3');
+        heading.textContent = 'Bauanleitungen';
+
+        const list = document.createElement('div');
+        list.className = 'bm-sidebar-instruction-list';
+
+        sourceAnchors.forEach((sourceAnchor, index) => {
+            const sourceImage = sourceAnchor.querySelector('img');
+            const link = document.createElement('a');
+            link.className = 'bm-sidebar-instruction-link';
+            link.href = sourceAnchor.href;
+            link.target = '_blank';
+            link.rel = 'nofollow noopener';
+            link.title = sourceAnchor.title || `Bauanleitung ${index + 1} öffnen`;
+
+            const image = sourceImage.cloneNode(true);
+            image.removeAttribute('width');
+            image.removeAttribute('height');
+            image.removeAttribute('style');
+            image.loading = 'lazy';
+
+            const label = document.createElement('span');
+            label.textContent = sourceAnchor.textContent.trim() ||
+                sourceImage.alt ||
+                `Bauanleitung ${index + 1}`;
+
+            link.append(image, label);
+            list.appendChild(link);
+        });
+
+        panel.append(heading, list);
+
+        if (moreAnchor) {
+            const moreLink = document.createElement('a');
+            moreLink.className = 'bm-sidebar-instructions-more';
+            moreLink.href = moreAnchor.href;
+            moreLink.target = '_blank';
+            moreLink.rel = 'nofollow noopener';
+            moreLink.textContent = 'Weitere Bauanleitungen bei LEGO';
+            panel.appendChild(moreLink);
+        }
+
+        const barcodeBlock = sideColumn.querySelector('#barcode')?.closest('div');
+        barcodeBlock?.classList.add('bm-sidebar-barcode');
+        if (barcodeBlock) barcodeBlock.insertAdjacentElement('afterend', panel);
+        else sideColumn.prepend(panel);
+    }
+
+    // Die Einzelteilelinks werden auf Desktop ebenfalls in der rechten Spalte
+    // angezeigt. Auf kleinen Bildschirmen bleibt der Originalblock erhalten.
+    function setupDesktopSidebarParts() {
+        const offerColumn = document.getElementById('ol1st');
+        const sideColumn = document.getElementById('ol2nd');
+        if (!offerColumn || !sideColumn || sideColumn.querySelector('.bm-sidebar-parts')) {
+            return;
+        }
+
+        const sourceHeading = Array.from(offerColumn.querySelectorAll('h3'))
+            .find(heading => /Einzelteilelisten/i.test(heading.textContent));
+        const sourceSection = sourceHeading?.closest('section');
+        if (!sourceSection) return;
+
+        const sourceAnchors = Array.from(sourceSection.querySelectorAll('a'))
+            .filter(anchor => /Einzelteile/i.test(anchor.textContent));
+        if (sourceAnchors.length === 0) return;
+
+        sourceSection.classList.add('bm-parts-source');
+
+        const panel = document.createElement('section');
+        panel.className = 'bm-sidebar-parts';
+
+        const heading = document.createElement('h3');
+        heading.textContent = sourceHeading.textContent.trim();
+
+        const list = document.createElement('div');
+        list.className = 'bm-sidebar-parts-list';
+
+        sourceAnchors.forEach(sourceAnchor => {
+            const link = document.createElement('a');
+            link.className = 'bm-sidebar-parts-link';
+            link.href = sourceAnchor.href;
+            link.target = '_blank';
+            link.rel = sourceAnchor.rel || 'nofollow noopener';
+            link.title = sourceAnchor.title;
+
+            const sourceImage = sourceAnchor.querySelector('img');
+            if (sourceImage) {
+                const image = sourceImage.cloneNode(true);
+                image.removeAttribute('width');
+                image.removeAttribute('height');
+                image.removeAttribute('style');
+                link.appendChild(image);
+            }
+
+            const label = document.createElement('span');
+            label.textContent = sourceAnchor.textContent.trim();
+            link.appendChild(label);
+            list.appendChild(link);
+        });
+
+        panel.append(heading, list);
+
+        const instructionPanel = sideColumn.querySelector('.bm-sidebar-instructions');
+        if (instructionPanel) instructionPanel.insertAdjacentElement('afterend', panel);
+        else {
+            const barcodeBlock = sideColumn.querySelector('#barcode')?.closest('div');
+            if (barcodeBlock) barcodeBlock.insertAdjacentElement('afterend', panel);
+            else sideColumn.prepend(panel);
+        }
+    }
+
+    // Die offizielle Beschreibung gehört unter die komplette Dreispaltenzeile.
+    function expandProductDescription() {
+        const offerColumn = document.getElementById('ol1st');
+        const sideColumn = document.getElementById('ol2nd');
+        const heading = document.querySelector('h2.long_description');
+        const descriptionSection = heading?.closest('section');
+        const columnsRow = offerColumn?.parentElement;
+        if (
+            !offerColumn ||
+            !sideColumn ||
+            !descriptionSection ||
+            !columnsRow ||
+            descriptionSection.classList.contains('bm-full-product-description')
+        ) {
+            return;
+        }
+
+        const spacer = descriptionSection.nextElementSibling;
+        if (
+            spacer?.tagName === 'DIV' &&
+            spacer.children.length === 0 &&
+            /height\s*:\s*2rem/i.test(spacer.getAttribute('style') || '')
+        ) {
+            spacer.remove();
+        }
+
+        descriptionSection.classList.add(
+            'bm-full-product-description',
+            'small-12',
+            'columns'
+        );
+        columnsRow.appendChild(descriptionSection);
+    }
+
+    function linkLegoArticleNumber() {
+        const details = Array.from(
+            document.querySelectorAll('.content.setdetails p')
+        ).find(paragraph => /Artikel-Nr\s*:/i.test(paragraph.textContent || ''));
+        if (!details || details.querySelector('.bm-lego-article-link')) return;
+
+        const articleNumber = Array.from(details.querySelectorAll('strong'))
+            .find(strong => strong.textContent.trim() === setNum);
+        if (!articleNumber || articleNumber.closest('a')) return;
+
+        const link = document.createElement('a');
+        link.className = 'bm-lego-article-link';
+        link.href = `https://www.lego.com/de-de/product/${setNum}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.title = `LEGO ${setNum} bei LEGO öffnen`;
+        articleNumber.replaceWith(link);
+        link.appendChild(articleNumber);
+    }
+
+    function compactSetFooter() {
+        const footer = document.getElementById('footer');
+        const wrap = document.getElementById('wrap');
+        if (!footer || !wrap) return;
+
+        const socialButton = footer.querySelector('.footerButton');
+        const socialRow = socialButton?.closest('.small-12.columns');
+        socialRow?.remove();
+
+        footer.classList.add('bm-compact-footer');
+        wrap.classList.add('bm-set-wrap');
+    }
+
+    if (setNum) {
+        setupDesktopOfferGallery();
+        setupDesktopSidebarBarcode();
+        setupDesktopSidebarInstructions();
+        setupDesktopSidebarParts();
+        expandProductDescription();
+        linkLegoArticleNumber();
+        compactSetFooter();
+        window.addEventListener('load', () => {
+            setupDesktopOfferGallery();
+            setupDesktopSidebarBarcode();
+            setupDesktopSidebarInstructions();
+            setupDesktopSidebarParts();
+            expandProductDescription();
+            linkLegoArticleNumber();
+            compactSetFooter();
+        }, { once: true });
+    }
+
     // "Kürzlich ausverkauft" direkt nach den verfügbaren Angeboten platzieren.
     // Die IDs bleiben erhalten, daher funktioniert Brickmerges AJAX-Load weiter.
     function moveSoldOutAfterAvailableOffers() {
@@ -1132,6 +1970,220 @@
         window.addEventListener('load', moveSoldOutAfterAvailableOffers, { once: true });
     }
 
+    // Der native Brickmerge-Detailchart wird beim ersten Öffnen weiterhin über
+    // den vorhandenen Schalter geladen, danach aber in einem eigenen Overlay
+    // angezeigt. So bleiben Brickmerges Chartdaten und Initialisierung erhalten.
+    let openPriceChartOverlay = null;
+
+    function setupPriceChartOverlay() {
+        const chartTrigger = document.getElementById('chartTrigger');
+        const chartContainer = document.getElementById('chartContainer');
+        const bigChart = document.getElementById('bigChart');
+        if (!chartTrigger || !chartContainer || !bigChart) return;
+        if (document.getElementById('bm-price-chart-overlay')) return;
+
+        chartTrigger.parentElement?.classList.add('bm-chart-controls');
+        chartTrigger.setAttribute('aria-haspopup', 'dialog');
+        chartTrigger.setAttribute('aria-controls', 'bm-price-chart-overlay');
+
+        const overlay = document.createElement('div');
+        overlay.id = 'bm-price-chart-overlay';
+        overlay.className = 'bm-chart-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-hidden', 'true');
+        overlay.setAttribute('aria-labelledby', 'bm-price-chart-title');
+
+        const dialog = document.createElement('div');
+        dialog.className = 'bm-chart-dialog';
+
+        const header = document.createElement('div');
+        header.className = 'bm-chart-dialog-header';
+
+        const title = document.createElement('h2');
+        title.id = 'bm-price-chart-title';
+        title.className = 'bm-chart-dialog-title';
+        title.textContent = 'Preisentwicklung';
+
+        const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'bm-chart-dialog-close';
+        closeButton.setAttribute('aria-label', 'Preisentwicklung schließen');
+        closeButton.title = 'Schließen';
+        closeButton.textContent = '\u00d7';
+
+        const content = document.createElement('div');
+        content.className = 'bm-chart-dialog-content';
+
+        const amazonNote = Array.from(
+            chartTrigger.parentElement?.querySelectorAll('span') || []
+        ).find(element => /amazon-preise werden nicht im preisverlauf berücksichtigt/i.test(
+            element.textContent || ''
+        ));
+        amazonNote?.remove();
+
+        header.append(title, closeButton);
+        content.appendChild(chartContainer);
+        dialog.append(header, content);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        let storedScrollY = 0;
+
+        const customizeNativeChart = () => {
+            const chartWrapper = bigChart.querySelector('#chartWrapper');
+            if (!chartWrapper) return;
+
+            const nativeTitle = Array.from(chartWrapper.querySelectorAll('h3'))
+                .find(heading => /preis-?chart/i.test(heading.textContent || ''));
+            const nativeTitleRow = nativeTitle?.parentElement;
+            nativeTitleRow?.classList.add('bm-native-chart-title');
+            const helpRow = nativeTitleRow?.nextElementSibling;
+            helpRow?.classList.add('bm-chart-help');
+
+            const periodButtons = Array.from(
+                chartWrapper.querySelectorAll('a.buttonPeriod')
+            );
+            if (periodButtons.length) {
+                let periodBar = header.querySelector('.bm-chart-periods');
+                if (!periodBar) {
+                    periodBar = document.createElement('div');
+                    periodBar.className = 'bm-chart-periods';
+                    periodBar.setAttribute('aria-label', 'Zeitraum auswählen');
+                    header.insertBefore(periodBar, closeButton);
+                }
+                periodButtons.forEach(button => periodBar.appendChild(button));
+            }
+
+            const saleLink = Array.from(chartWrapper.querySelectorAll('a'))
+                .find(link => /im verkauf bei lego ab/i.test(link.textContent || ''));
+            if (saleLink) {
+                const match = (saleLink.textContent || '').match(
+                    /ab\s+(.+?)\s+bis heute/i
+                );
+                if (match?.[1]) {
+                    title.textContent = `Preisentwicklung seit ${match[1].trim()}`;
+                }
+
+                const separator = saleLink.nextSibling;
+                if (separator?.nodeType === Node.TEXT_NODE) {
+                    separator.textContent = separator.textContent.replace(
+                        /^\s*\|\s*/,
+                        ''
+                    );
+                }
+                saleLink.remove();
+            }
+
+            Array.from(chartWrapper.querySelectorAll('a'))
+                .filter(link => /zur (?:ebay|bricklink) history/i.test(
+                    link.textContent || ''
+                ))
+                .forEach(link => {
+                    const separator = link.nextSibling?.nodeType === Node.TEXT_NODE
+                        ? link.nextSibling
+                        : link.previousSibling?.nodeType === Node.TEXT_NODE
+                            ? link.previousSibling
+                            : null;
+                    if (separator) {
+                        separator.textContent = separator.textContent.replace(
+                            /\s*\|\s*/,
+                            ''
+                        );
+                    }
+                    link.remove();
+                });
+
+            const historyRow = Array.from(chartWrapper.children)
+                .find(element => element.querySelector?.('strong') &&
+                    /bisheriger bestpreis/i.test(element.textContent || ''));
+            if (historyRow) {
+                historyRow.classList.add('bm-chart-history-row');
+                const bestPrice = historyRow.querySelector('strong');
+                while (historyRow.firstChild && historyRow.firstChild !== bestPrice) {
+                    historyRow.firstChild.remove();
+                }
+            }
+        };
+
+        const chartObserver = new MutationObserver(customizeNativeChart);
+        chartObserver.observe(bigChart, { childList: true, subtree: true });
+
+        const normalizeNativeChartState = () => {
+            bigChart.classList.remove('hide');
+            bigChart.style.display = 'block';
+            customizeNativeChart();
+
+            const buttonLabel = chartTrigger.querySelector('.chartbutton');
+            if (buttonLabel) {
+                buttonLabel.textContent = 'Preisentwicklung Details anzeigen';
+            }
+
+            const offerColumn = document.getElementById('ol1st');
+            offerColumn?.classList.remove('large-12');
+            offerColumn?.classList.add('large-8');
+        };
+
+        const showOverlay = () => {
+            if (!overlay.classList.contains('bm-open')) {
+                storedScrollY = window.scrollY;
+            }
+            overlay.classList.add('bm-open');
+            overlay.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('bm-chart-overlay-open');
+            closeButton.focus({ preventScroll: true });
+        };
+
+        const closeOverlay = () => {
+            if (!overlay.classList.contains('bm-open')) return;
+            overlay.classList.remove('bm-open');
+            overlay.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('bm-chart-overlay-open');
+            window.scrollTo(0, storedScrollY);
+            chartTrigger.focus({ preventScroll: true });
+        };
+
+        openPriceChartOverlay = () => {
+            if (chartTrigger.dataset.bmNativeChartActivated === 'true') {
+                normalizeNativeChartState();
+                showOverlay();
+                return;
+            }
+            chartTrigger.click();
+        };
+
+        // Capture-Phase: Nach dem ersten nativen Laden werden weitere Klicks
+        // abgefangen, damit Brickmerge den Chart nicht wieder zuklappt.
+        document.addEventListener('click', event => {
+            const trigger = event.target.closest?.('#chartTrigger');
+            if (!trigger) return;
+
+            showOverlay();
+            if (chartTrigger.dataset.bmNativeChartActivated === 'true') {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                normalizeNativeChartState();
+                return;
+            }
+
+            chartTrigger.dataset.bmNativeChartActivated = 'true';
+            window.setTimeout(normalizeNativeChartState, 900);
+            window.setTimeout(normalizeNativeChartState, 1800);
+        }, true);
+
+        closeButton.addEventListener('click', closeOverlay);
+        overlay.addEventListener('click', event => {
+            if (event.target === overlay) closeOverlay();
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && overlay.classList.contains('bm-open')) {
+                closeOverlay();
+            }
+        });
+    }
+
+    if (setNum) setupPriceChartOverlay();
+
     // Historische Preisangaben öffnen dieselbe Preisverlaufsansicht wie
     // Brickmerges eigener Chart-Schalter.
     function isPriceHistoryLink(link) {
@@ -1146,8 +2198,8 @@
 
         Array.from(document.querySelectorAll('a')).filter(isPriceHistoryLink).forEach(link => {
             link.classList.add('bm-price-history-link');
-            link.setAttribute('href', '#chartContainer');
-            link.setAttribute('aria-controls', 'bigChart');
+            link.setAttribute('href', '#bm-price-chart-overlay');
+            link.setAttribute('aria-controls', 'bm-price-chart-overlay');
         });
 
         if (document.documentElement.dataset.bmPriceHistoryBound === 'true') return;
@@ -1157,18 +2209,7 @@
             const link = event.target.closest?.('a');
             if (!isPriceHistoryLink(link)) return;
             event.preventDefault();
-
-            const chartIsClosed = bigChart.classList.contains('hide') ||
-                window.getComputedStyle(bigChart).display === 'none';
-
-            if (chartIsClosed) {
-                chartTrigger.click();
-            } else {
-                document.getElementById('chartContainer')?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
+            openPriceChartOverlay?.();
         });
     }
     if (setNum) {
@@ -1202,15 +2243,6 @@
 
         const groups = [
             {
-                title: "Shops",
-                links: [
-                    { name: "LEGO", url: `https://www.lego.com/de-de/product/${setNum}`, icon: icon("lego.com") },
-                    { name: "Müller", url: `https://u6.at/d/mueller/${setNum}/`, icon: icon("mueller.de") },
-                    { name: "Smyths", url: `https://www.google.com/search?q=site%3Asmythstoys.com/de+lego+${setNum}&btnI=1`, icon: icon("smythstoys.com") },
-                    { id: "btn-meta-gpt", name: "Meta-GPT", url: META_GPT_URL, icon: icon("chatgpt.com") }
-                ]
-            },
-            {
                 title: "Marktplätze",
                 links: [
                     { id: "btn-ebay", name: "eBay", url: `https://www.ebay.de/sch/i.html?_dcat=19006&_fsrp=1&_from=R40&_nkw=lego+${setNum}&_sacat=0&LH_BIN=1&LH_PrefLoc=1&LH_ItemCondition=1000&_sop=15`, icon: icon("ebay.de") },
@@ -1218,7 +2250,7 @@
                     { name: "Vinted", url: `https://www.vinted.de/catalog?search_text=lego+${setNum}`, icon: icon("vinted.de") },
                     { name: "StockX", url: `https://www.google.com/search?q=site%3Astockx.com/de+lego+${setNum}&btnI=1`, icon: icon("stockx.com") },
                     { name: "BrickOwl", url: `https://www.brickowl.com/search/catalog?query=+${setNum}`, icon: icon("brickowl.com") },
-                    { id: "btn-bl", name: "Bricklink", url: `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setNum}-1#T=S&O={%22ss%22:%22DE%22,%22cond%22:%22N%22,%22ii%22:0,%22reg%22:%22-1%22,%22iconly%22:0}`, icon: icon("bricklink.com") }
+                    { id: "btn-bl", name: "Bricklink", url: `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setNum}-1#T=S&O={%22ss%22:%22DE%22,%22cond%22:%22N%22,%22ii%22:0,%22loc%22:%22DE%22,%22iconly%22:0}`, icon: icon("bricklink.com") }
                 ]
             },
             {
@@ -1235,7 +2267,12 @@
                 title: "Ressourcen",
                 links: [
                     { name: "Rebrickable", url: `https://rebrickable.com/sets/${setNum}-1/#alt_builds`, icon: icon("rebrickable.com") },
-                    { name: "Meta", url: `https://meta-preisvergleich.de/index.cgi?q=lego+${setNum}&c=kategorie&id=lego_${setNum}__kategorie&offset=&qq=`, icon: icon("meta-preisvergleich.de") },
+                    {
+                        id: "btn-meta-gpt",
+                        name: "Meta",
+                        url: META_GPT_URL,
+                        icons: [icon("meta-preisvergleich.de"), icon("chatgpt.com")]
+                    },
                     { name: "Geizhals", url: `https://www.google.com/search?q=site%3Ageizhals.de+lego+${setNum}&btnI=1`, icon: icon("geizhals.at") },
                     { name: "idealo DE", url: `https://www.google.com/search?q=site%3Aidealo.de+lego+${setNum}&btnI=1`, icon: icon("idealo.de") },
                     { id: "btn-mbd", name: "MyBrickDepot", url: `https://mybrickdepot.de/product/${setNum}`, icon: icon("mybrickdepot.de") },
@@ -1258,10 +2295,35 @@
         .bm-info-group:last-child { margin-bottom: 1.8em; }
         .bm-info-title { font-size: 1.05em; font-weight: bold; margin: 0 0 0.45em 0; color: #333; }
         .bm-link-slider { position: relative; min-width: 0; }
-        .bm-link-viewport { overflow: hidden; min-width: 0; scroll-behavior: smooth; }
+        .bm-link-viewport {
+            overflow-x: auto;
+            overflow-y: hidden;
+            min-width: 0;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            touch-action: pan-x;
+            overscroll-behavior-inline: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+        .bm-link-viewport::-webkit-scrollbar { display: none; }
         .bm-info-links { display: flex; flex-wrap: nowrap; width: max-content; gap: 7px 11px; }
         .bm-link { display: inline-flex; flex: 0 0 auto; align-items: center; text-decoration: none; font-size: 0.93em; color: #222; font-weight: 500; background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 4px 8px 4px 6px; line-height: 1.2;}
-        .bm-link img { width: 20px; height: 20px; object-fit: contain; border-radius: 3px; margin-right: 6px; }
+        .bm-link > img { width: 20px; height: 20px; object-fit: contain; border-radius: 3px; margin-right: 6px; }
+        .bm-link-icons {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            gap: 2px;
+            margin-right: 6px;
+        }
+        .bm-link-icons img {
+            width: 20px;
+            height: 20px;
+            margin: 0;
+            border-radius: 3px;
+            object-fit: contain;
+        }
         .bm-link:hover span { text-decoration: underline; }
         .bm-link-scroll {
             position: absolute;
@@ -1284,6 +2346,16 @@
             font-weight: bold !important;
             line-height: 1 !important;
         }
+        .bm-link-scroll > span {
+            display: block;
+            width: 0.46rem;
+            height: 0.46rem;
+            border-top: 2px solid currentColor;
+            border-right: 2px solid currentColor;
+            box-sizing: border-box;
+        }
+        .bm-link-scroll-prev > span { transform: rotate(-135deg); }
+        .bm-link-scroll-next > span { transform: rotate(45deg); }
         .bm-link-scroll.is-visible { display: flex; }
         .bm-link-scroll-prev { left: 0.15rem; }
         .bm-link-scroll-next { right: 0.15rem; }
@@ -1319,20 +2391,38 @@
                 previous.className = "bm-link-scroll bm-link-scroll-prev";
                 previous.title = "Nach links";
                 previous.setAttribute("aria-label", `${group.title}: nach links`);
-                previous.textContent = "‹";
+                previous.appendChild(document.createElement("span"));
                 const next = document.createElement("button");
                 next.type = "button";
                 next.className = "bm-link-scroll bm-link-scroll-next";
                 next.title = "Nach rechts";
                 next.setAttribute("aria-label", `${group.title}: nach rechts`);
-                next.textContent = "›";
-                for (const { id, name, url, icon } of group.links) {
+                next.appendChild(document.createElement("span"));
+                for (const { id, name, url, icon, icons } of group.links) {
                     const a = document.createElement("a");
                     a.href = url; a.target = "_blank"; a.className = "bm-link";
                     if (id) a.dataset.bmid = id;
-                    const img = document.createElement("img"); img.src = icon; img.alt = "";
-                    const span = document.createElement("span"); span.textContent = name;
-                    a.appendChild(img); a.appendChild(span);
+                    if (Array.isArray(icons) && icons.length) {
+                        const iconGroup = document.createElement('span');
+                        iconGroup.className = 'bm-link-icons';
+                        icons.forEach(source => {
+                            const image = document.createElement('img');
+                            image.src = source;
+                            image.alt = '';
+                            iconGroup.appendChild(image);
+                        });
+                        a.appendChild(iconGroup);
+                    } else {
+                        const img = document.createElement("img");
+                        img.src = icon;
+                        img.alt = "";
+                        a.appendChild(img);
+                    }
+                    const span = document.createElement("span");
+                    span.className = 'bm-link-label';
+                    span.textContent = name;
+                    a.dataset.bmDefaultLabel = name;
+                    a.appendChild(span);
                     row.appendChild(a);
                 }
                 viewport.appendChild(row);
@@ -1400,6 +2490,90 @@
 
         // --- PREIS-ABFRAGE & INTEGRATION ---
         function fetchAndInjectPrices(setNumber) {
+            const offersByKey = new Map();
+            const normalizeMerchantText = value => String(value || '')
+                .toLocaleLowerCase('de')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/ü/g, 'u')
+                .replace(/\s+/g, ' ')
+                .trim();
+            const hasNativeMerchant = aliases => {
+                const normalizedAliases = aliases.map(normalizeMerchantText);
+                return Array.from(document.querySelectorAll(
+                    '#offerlist .medium-4.small-9.columns.pricerow[data-mid]' +
+                    ':not([data-bm-marketplace="true"])'
+                )).some(priceRow => {
+                    const mid = priceRow.dataset.mid;
+                    const merchant = priceRow.querySelector('.merchant')?.textContent || '';
+                    const logo = mid
+                        ? document.getElementById(`mid${mid}`)?.querySelector('img[alt]')?.alt || ''
+                        : '';
+                    const link = priceRow.querySelector(':scope > a');
+                    const tooltip = link?.dataset.bmOriginalTooltip ||
+                        link?.getAttribute('title') ||
+                        '';
+                    const haystack = normalizeMerchantText(
+                        `${merchant} ${logo} ${tooltip}`
+                    );
+                    return normalizedAliases.some(alias =>
+                        haystack === alias ||
+                        haystack.startsWith(`${alias} `) ||
+                        haystack.includes(`link zu ${alias} `)
+                    );
+                });
+            };
+            const syncOffers = () => {
+                const offers = Array.from(offersByKey.values()).filter(offer => {
+                    if (offer.key === 'amz') {
+                        return !hasNativeMerchant(['amazon']);
+                    }
+                    if (offer.key === 'mueller-search') {
+                        return !hasNativeMerchant(['müller', 'mueller']);
+                    }
+                    return true;
+                });
+                injectMarketplaceOffers(offers);
+            };
+            const storeOffers = offers => {
+                offers.filter(Boolean).forEach(offer => {
+                    offersByKey.set(offer.key, offer);
+                });
+                syncOffers();
+            };
+            const directSearchOffers = [
+                {
+                    key: 'smyths-search',
+                    label: 'Smyths',
+                    priceText: '',
+                    url:
+                        `https://www.google.com/search?q=` +
+                        `site%3Asmythstoys.com/de+lego+${setNumber}&btnI=1`,
+                    logoUrl:
+                        'https://commons.wikimedia.org/wiki/' +
+                        'Special:Redirect/file/Smyths_Logo.svg',
+                    logoFallbackUrl:
+                        'https://www.google.com/s2/favicons?sz=128&domain_url=smythstoys.com',
+                    source: 'direct-search',
+                    allowUnknownPrice: true
+                },
+                {
+                    key: 'mueller-search',
+                    label: 'Müller',
+                    priceText: '',
+                    url: `https://u6.at/d/mueller/${setNumber}/`,
+                    logoUrl: new URL(
+                        '/img/merchants/m_ller_ico.gif',
+                        window.location.origin
+                    ).href,
+                    logoFallbackUrl:
+                        'https://www.google.com/s2/favicons?sz=128&domain_url=mueller.de',
+                    source: 'direct-search',
+                    allowUnknownPrice: true
+                }
+            ];
+            directSearchOffers.forEach(offer => offersByKey.set(offer.key, offer));
+            window.setTimeout(syncOffers, 0);
             function extractPrice(html, regex) {
                 const match = html.match(regex);
                 return match ? match[1] + ' €' : '';
@@ -1407,10 +2581,89 @@
             function parseMyBrickHtml(html) {
                 return {
                     ebay: extractPrice(html, /eBay Preis(?:[^0-9]+)?(\d+(?:,\d+)?)/i),
-                    amazon: extractPrice(html, /Amazon Preis(?:[^0-9]+)?(\d+(?:,\d+)?)/i),
-                    bricklink: extractPrice(html, /Bricklink Preis(?:[^0-9]+)?(\d+(?:,\d+)?)/i)
+                    amazon: extractPrice(html, /Amazon Preis(?:[^0-9]+)?(\d+(?:,\d+)?)/i)
                 };
             }
+            function parseBrickLinkItemId(html) {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const scriptText = Array.from(doc.scripts)
+                    .map(script => script.textContent || '')
+                    .join('\n');
+                const scriptMatch = scriptText.match(/\bidItem\s*:\s*(\d+)/);
+                const dataItemId = doc.querySelector('[data-itemid]')?.dataset.itemid;
+                const itemId = Number(scriptMatch?.[1] || dataItemId);
+                return Number.isInteger(itemId) && itemId > 0 ? itemId : null;
+            }
+            function parseBrickLinkPrice(priceText) {
+                const match = String(priceText || '').match(
+                    /(?:EUR|€)\s*([\d.,]+)/i
+                );
+                if (!match) return null;
+
+                const raw = match[1];
+                const comma = raw.lastIndexOf(',');
+                const dot = raw.lastIndexOf('.');
+                let normalized = raw;
+                if (comma >= 0 && dot >= 0) {
+                    normalized = comma > dot
+                        ? raw.replace(/\./g, '').replace(',', '.')
+                        : raw.replace(/,/g, '');
+                } else if (comma >= 0) {
+                    normalized = raw.replace(',', '.');
+                }
+
+                const price = Number(normalized);
+                return Number.isFinite(price) && price > 0 ? price : null;
+            }
+            function parseBrickLinkGermanOffers(jsonText) {
+                let payload;
+                try {
+                    payload = JSON.parse(jsonText);
+                } catch (error) {
+                    return null;
+                }
+
+                const offers = Array.isArray(payload?.list)
+                    ? payload.list.filter(offer =>
+                        offer?.strSellerCountryCode === 'DE' &&
+                        offer?.codeNew === 'N' &&
+                        offer?.codeComplete !== 'I'
+                    ).map(offer => ({
+                        price: parseBrickLinkPrice(
+                            offer.mDisplaySalePrice || offer.mInvSalePrice
+                        ),
+                        storeName: String(offer.strStorename || '').trim()
+                    })).filter(offer => offer.price !== null)
+                    : [];
+                if (offers.length === 0) return null;
+
+                offers.sort((a, b) => a.price - b.price);
+                return {
+                    ...offers[0],
+                    totalLots: offers.length
+                };
+            }
+            const createOffer = (
+                buttonId,
+                label,
+                priceText,
+                logoUrl,
+                source,
+                priceSource = ''
+            ) => {
+                const button = document.querySelector(`a[data-bmid="${buttonId}"]`);
+                if (!button || !priceText) return null;
+                return {
+                    key: buttonId.replace(/^btn-/, ''),
+                    label,
+                    priceText,
+                    url: button.href,
+                    logoUrl,
+                    source,
+                    priceSource
+                };
+            };
+
             GM_xmlhttpRequest({
                 method: "GET",
                 url: "https://mybrickdepot.de/product/" + setNumber,
@@ -1437,26 +2690,25 @@
                                 ['eBay.de', 'eBay'],
                                 '/img/merchants/ebay.de_ico.gif'
                             ),
-                            keepa: 'https://upload.wikimedia.org/wikipedia/commons/7/79/Keepa-logo.svg',
-                            bricklink: 'https://static2.bricklink.com/img/bricklink_2026.svg'
-                        };
-                        const createOffer = (buttonId, label, priceText, logoUrl) => {
-                            const button = document.querySelector(`a[data-bmid="${buttonId}"]`);
-                            if (!button || !priceText) return null;
-                            return {
-                                key: buttonId.replace(/^btn-/, ''),
-                                label,
-                                priceText,
-                                url: button.href,
-                                logoUrl
-                            };
+                            keepa: 'https://upload.wikimedia.org/wikipedia/commons/7/79/Keepa-logo.svg'
                         };
                         const offers = [
-                            createOffer('btn-ebay', 'eBay', prices.ebay, logos.ebay),
-                            createOffer('btn-amz', 'Keepa', prices.amazon, logos.keepa),
-                            createOffer('btn-bl', 'Bricklink', prices.bricklink, logos.bricklink)
+                            createOffer(
+                                'btn-ebay',
+                                'eBay',
+                                prices.ebay,
+                                logos.ebay,
+                                'mybrickdepot'
+                            ),
+                            createOffer(
+                                'btn-amz',
+                                'Keepa',
+                                prices.amazon,
+                                logos.keepa,
+                                'mybrickdepot'
+                            )
                         ].filter(Boolean);
-                        injectMyBrickDepotOffers(offers);
+                        storeOffers(offers);
                     }
                 },
                 onerror: function() {
@@ -1464,6 +2716,84 @@
                 },
                 ontimeout: function() {
                     console.warn("Brickmerge Toolkit: Preisabfrage bei MyBrickDepot - Timeout.");
+                }
+            });
+
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url:
+                    `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setNumber}-1`,
+                headers: {
+                    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8'
+                },
+                timeout: 15000,
+                onload: response => {
+                    if (response.status !== 200) return;
+                    const itemId = parseBrickLinkItemId(response.responseText);
+                    if (!itemId) {
+                        console.warn(
+                            'Brickmerge Tweaker: BrickLink-Artikelkennung konnte nicht gelesen werden.'
+                        );
+                        return;
+                    }
+
+                    GM_xmlhttpRequest({
+                        method: 'GET',
+                        url:
+                            'https://www.bricklink.com/ajax/clone/catalogifs.ajax' +
+                            `?itemid=${encodeURIComponent(itemId)}` +
+                            '&ss=DE&cond=N&ii=0&loc=DE&iconly=0&rpp=100&pi=1&st=1',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8'
+                        },
+                        timeout: 15000,
+                        onload: offerResponse => {
+                            if (offerResponse.status !== 200) return;
+                            const germanOffers = parseBrickLinkGermanOffers(
+                                offerResponse.responseText
+                            );
+                            if (!germanOffers) {
+                                console.warn(
+                                    'Brickmerge Tweaker: Keine passenden deutschen BrickLink-Angebote gefunden.'
+                                );
+                                return;
+                            }
+
+                            const sellerDescription = germanOffers.storeName
+                                ? `; günstigstes Angebot von ${germanOffers.storeName}`
+                                : '';
+                            const offer = createOffer(
+                                'btn-bl',
+                                'BrickLink',
+                                `${formatEuroValue(germanOffers.price)} €`,
+                                'https://static2.bricklink.com/img/bricklink_2026.svg',
+                                'bricklink-de',
+                                `BrickLink: niedrigster aktueller Neupreis bei deutschen Händlern aus ${germanOffers.totalLots} Angeboten${sellerDescription}`
+                            );
+                            if (offer) storeOffers([offer]);
+                        },
+                        onerror: () => {
+                            console.warn(
+                                'Brickmerge Tweaker: Deutsche BrickLink-Angebote konnten nicht geladen werden.'
+                            );
+                        },
+                        ontimeout: () => {
+                            console.warn(
+                                'Brickmerge Tweaker: Deutsche BrickLink-Angebote - Timeout.'
+                            );
+                        }
+                    });
+                },
+                onerror: () => {
+                    console.warn(
+                        'Brickmerge Tweaker: BrickLink-Artikelseite konnte nicht geladen werden.'
+                    );
+                },
+                ontimeout: () => {
+                    console.warn(
+                        'Brickmerge Tweaker: BrickLink-Artikelseite - Timeout.'
+                    );
                 }
             });
         }
@@ -1554,7 +2884,7 @@
                 .bm-minifig-backdrop {
                     position:absolute;
                     inset:0;
-                    background:rgba(20,20,20,0.58);
+                    background:rgba(0,0,0,0.64);
                     z-index:0;
                     animation:bmfadein 0.16s ease-out;
                 }
@@ -1569,9 +2899,9 @@
                     max-height:min(84vh,760px);
                     overflow:hidden;
                     background:#fff;
-                    border-top:4px solid #b00;
-                    border-radius:6px;
-                    box-shadow:0 18px 55px rgba(0,0,0,0.38);
+                    border-top:5px solid #b00;
+                    border-radius:4px;
+                    box-shadow:0 18px 48px rgba(0,0,0,0.32);
                     z-index:1;
                     animation:bmzoom 0.16s ease-out;
                 }
@@ -1580,11 +2910,11 @@
                     align-items:center;
                     justify-content:space-between;
                     flex:0 0 auto;
-                    min-height:72px;
-                    padding:14px 18px 13px 22px;
-                    border-bottom:0;
+                    min-height:64px;
+                    padding:0.8rem 0.8rem 0.8rem 1.25rem;
+                    border-bottom:1px solid #ddd;
                     background:#fff;
-                    box-shadow:none;
+                    box-shadow:none !important;
                 }
                 .bm-minifig-header h2 {
                     margin:0;
@@ -1593,6 +2923,7 @@
                     font-size:1.25rem;
                     font-weight:700;
                     line-height:1.25;
+                    text-shadow:none !important;
                 }
                 .bm-minifig-subtitle {
                     margin-top:3px;
@@ -1604,22 +2935,23 @@
                     display:flex;
                     align-items:center;
                     justify-content:center;
-                    flex:0 0 36px;
-                    width:36px;
-                    height:36px;
+                    flex:0 0 40px;
+                    width:40px;
+                    height:40px;
                     margin:0;
-                    padding:0 0 3px;
+                    padding:0;
                     border:0;
                     border-radius:4px;
-                    background:transparent;
-                    color:#777;
+                    background:#f7eaea;
+                    color:#800;
                     cursor:pointer;
-                    font:400 1.8rem/1 Arial,sans-serif;
+                    font:bold 1.8rem/1 Arial,sans-serif;
+                    text-shadow:none !important;
                 }
                 .bm-minifig-close:hover,
                 .bm-minifig-close:focus {
-                    background:#f7eaea;
-                    color:#600;
+                    background:#b00;
+                    color:#fff;
                     outline:none;
                 }
                 .bm-minifig-content {
@@ -1950,6 +3282,25 @@
                     syncTooltip(event.target);
                 }, true);
 
+                document.addEventListener('bm-tooltip-disable-request', event => {
+                    const anchor = event.target;
+                    captureTooltip(anchor);
+
+                    if (window.jQuery && typeof window.jQuery.fn?.tooltipster === 'function') {
+                        try {
+                            const target = window.jQuery(anchor);
+                            if (target.hasClass('tooltipstered')) {
+                                target.tooltipster('hide');
+                                target.tooltipster('destroy');
+                            }
+                        } catch (e) {}
+                    }
+
+                    anchor.removeAttribute('title');
+                    anchor.classList.remove('tooltipster', 'tooltipstered');
+                    anchor.dataset.bmTooltipDisabled = 'true';
+                }, true);
+
                 document.addEventListener('mouseover', event => {
                     const anchor = event.target.closest?.('a.tooltipster');
                     if (!anchor) return;
@@ -1961,6 +3312,30 @@
             })();
         `;
         document.documentElement.appendChild(bridge);
+    }
+
+    function disableOfferListTooltips() {
+        const offerlist = document.getElementById('offerlist');
+        if (!offerlist) return;
+        ensureTooltipBridge();
+
+        offerlist.querySelectorAll('a').forEach(anchor => {
+            const hasTooltip = anchor.classList.contains('tooltipster') ||
+                anchor.classList.contains('tooltipstered') ||
+                anchor.hasAttribute('title') ||
+                anchor.dataset.bmOriginalTooltip ||
+                anchor.dataset.bmTooltip;
+            if (!hasTooltip) return;
+
+            // Erst jetzt deaktivieren: Versandkosten, Gutscheine und Zeitstempel
+            // wurden in den vorherigen Verarbeitungsschritten bereits gelesen.
+            getOriginalOfferTitle(anchor);
+            anchor.dispatchEvent(new CustomEvent('bm-tooltip-disable-request', {
+                bubbles: true
+            }));
+            anchor.removeAttribute('title');
+            anchor.classList.remove('tooltipster', 'tooltipstered');
+        });
     }
 
     // Bewusst auf oberster Ebene deklariert (nicht in einem if-Block), da
@@ -2184,16 +3559,12 @@
                     // Rabatt als ganze Zahl runden
                     const discount = ((1 - (price1 / price2)) * 100).toFixed(0);
 
-                    if (discount > 0) {
+                    if (Number(discount) >= 0) {
                         const redBubbles = document.querySelectorAll('.off');
                         if (redBubbles.length > 0) {
                             createBlackBubble(discount, redBubbles);
-                        } else {
-                            // Kein rotes UVP-Rabatt-Badge vorhanden (Preis liegt aktuell auf/über
-                            // UVP) - trotzdem eine eigene schwarze Bubble mit dem Abstand zum
-                            // zweitbesten (bzw. nächst-unterschiedlichen) Angebot anzeigen.
-                            createStandaloneBlackBubble(discount);
                         }
+                        createBestPriceBlackBubble(discount);
                     }
                 }
 
@@ -2236,35 +3607,17 @@
             });
         }
 
-        // Fallback-Bubble, wenn keine rote .off-Bubble existiert (z.B. weil der
-        // aktuelle Preis auf/über der UVP liegt und die Seite deshalb kein
-        // UVP-Rabatt-Badge rendert). Wird direkt neben den Preis im
-        // "Top-Angebot"-Kasten (.topprice) gehängt, da dieser Container auch nach
-        // dem Cleaner-Modul zuverlässig erhalten bleibt.
-        function createStandaloneBlackBubble(discountText) {
-            const topprice = document.querySelector('.topprice');
-            if (!topprice) return;
-
-            // Die Preis-Spalte robust anhand des €-Zeichens finden, statt uns auf eine
-            // feste nth-child-Position zu verlassen (die je nach Cleaner-Lauf variieren kann).
-            const priceCells = topprice.querySelectorAll('a > div');
-            const priceCell = Array.from(priceCells).find(d => d.textContent.includes('€')) || topprice;
-
-            const badge = document.createElement('span');
-            badge.className = 'black-discount-bubble';
-            badge.textContent = `${discountText}%`;
-            badge.title = `${discountText}% günstiger als das nächstteurere Angebot`;
-            badge.style.setProperty('display', 'inline-block', 'important');
-            badge.style.setProperty('background-color', '#222222', 'important');
-            badge.style.setProperty('color', '#ffffff', 'important');
-            badge.style.setProperty('border-radius', '999px', 'important');
-            badge.style.setProperty('padding', '0.1rem 0.6rem', 'important');
-            badge.style.setProperty('font-size', '0.8rem', 'important');
-            badge.style.setProperty('font-weight', 'bold', 'important');
-            badge.style.setProperty('margin-left', '0.6em', 'important');
-            badge.style.setProperty('vertical-align', 'middle', 'important');
-
-            priceCell.appendChild(badge);
+        // Der Abstand zum nächstteureren Angebot gehört auch immer an den
+        // Brickmerge-Bestpreis, unabhängig davon, ob dort ein UVP-Badge existiert.
+        function createBestPriceBlackBubble(discountText) {
+            document.querySelectorAll('.topprice').forEach(topprice => {
+                const badge = document.createElement('span');
+                badge.className = 'black-discount-bubble bm-bestprice-black-bubble';
+                badge.textContent = `${discountText}%`;
+                badge.title = `${discountText}% günstiger als das nächstteurere Angebot`;
+                topprice.style.setProperty('position', 'relative');
+                topprice.appendChild(badge);
+            });
         }
 
         // Suche nach dem "bisherigen Bestpreis"
@@ -2310,7 +3663,7 @@
             // (sonst rutscht der Text ohne Umbruch direkt hinter "vor X Tagen").
             const newEl = document.createElement('span');
             newEl.id = 'all-time-bestpreis-discount';
-            newEl.innerHTML = `<br />&nbsp;<span class="contentcolor" style="color: #b00;">|</span> <a class="bm-price-history-link" href="#chartContainer" aria-controls="bigChart">Differenz zum ATB: <strong style="color: ${color};">${percentStr}</strong></a>`;
+            newEl.innerHTML = `<br />&nbsp;<span class="contentcolor" style="color: #b00;">|</span> <a class="bm-price-history-link" href="#bm-price-chart-overlay" aria-controls="bm-price-chart-overlay">Differenz zum ATB: <strong style="color: ${color};">${percentStr}</strong></a>`;
 
             matchedElement.parentNode.insertBefore(newEl, matchedElement.nextSibling);
             decoratePriceHistoryLinks();
@@ -2367,24 +3720,28 @@
         });
     }
 
-    function injectMyBrickDepotOffers(offers) {
+    function injectMarketplaceOffers(offers) {
         const offerlist = document.getElementById('offerlist');
         const firstPriceRow = offerlist?.querySelector(
-            '.medium-4.small-9.columns.pricerow[data-mid]:not([data-bm-source="mybrickdepot"])'
+            '.medium-4.small-9.columns.pricerow[data-mid]:not([data-bm-marketplace="true"])'
         );
         const parent = firstPriceRow?.closest('.row.collapse')?.parentElement;
         if (!offerlist || !parent) return;
 
-        parent.querySelectorAll('.bm-mbd-offer').forEach(row => row.remove());
+        parent.querySelectorAll('.bm-marketplace-offer').forEach(row => row.remove());
 
         offers.forEach(offer => {
             const price = parseEuroValue(offer.priceText);
-            if (price === null || !offer.url) return;
+            const hasUnknownPrice = price === null && offer.allowUnknownPrice === true;
+            if ((!hasUnknownPrice && price === null) || !offer.url) return;
 
-            const mid = `mbd-${offer.key}`;
+            const mid = offer.source === 'mybrickdepot'
+                ? `mbd-${offer.key}`
+                : `market-${offer.key}`;
             const wrapper = document.createElement('div');
-            wrapper.className = 'row collapse bm-mbd-offer';
-            wrapper.dataset.bmSource = 'mybrickdepot';
+            wrapper.className = 'row collapse bm-marketplace-offer';
+            wrapper.dataset.bmSource = offer.source || 'marketplace';
+            wrapper.dataset.bmMarketplace = 'true';
 
             const iconColumn = document.createElement('div');
             iconColumn.className = 'goto medium-1 small-3 columns';
@@ -2397,7 +3754,7 @@
             iconLink.target = '_blank';
             iconLink.rel = 'noopener noreferrer';
             iconLink.title = `${offer.label} öffnen`;
-            if (offer.key === 'ebay') {
+            if (offer.key === 'ebay' && offer.source === 'mybrickdepot') {
                 iconLink.classList.add('bm-mbd-logo-stack');
                 const sourceLabel = document.createElement('span');
                 sourceLabel.className = 'bm-mbd-source-label';
@@ -2413,6 +3770,13 @@
                 image.loading = 'lazy';
                 image.decoding = 'async';
                 image.referrerPolicy = 'no-referrer';
+                if (offer.logoFallbackUrl) {
+                    image.addEventListener('error', () => {
+                        if (image.src !== offer.logoFallbackUrl) {
+                            image.src = offer.logoFallbackUrl;
+                        }
+                    }, { once: true });
+                }
                 iconLink.appendChild(image);
             } else {
                 iconLink.textContent = offer.label.slice(0, 1);
@@ -2423,17 +3787,27 @@
             const priceRow = document.createElement('div');
             priceRow.className = `medium-4 small-9 columns pricerow ${mid} row-a`;
             priceRow.dataset.mid = mid;
-            priceRow.dataset.bmSource = 'mybrickdepot';
+            priceRow.dataset.bmSource = offer.source || 'marketplace';
+            priceRow.dataset.bmMarketplace = 'true';
             priceRow.dataset.bmShippingUnknown = 'true';
+            if (hasUnknownPrice) priceRow.dataset.bmPriceUnknown = 'true';
+            if (offer.priceSource) {
+                priceRow.dataset.bmPriceSource = offer.priceSource;
+            }
 
             const offerLink = document.createElement('a');
             offerLink.href = offer.url;
             offerLink.target = '_blank';
             offerLink.rel = 'noopener noreferrer';
             offerLink.className = 'tooltipster';
-            offerLink.title =
-                `Link zu ${offer.label} - Preis: ${formatEuroValue(price)} €. ` +
-                `Versandkosten unbekannt.`;
+            offerLink.title = hasUnknownPrice
+                ? `Link zu ${offer.label}. Preis unbekannt.`
+                : (
+                    `Link zu ${offer.label} - ` +
+                    `${offer.priceSource ? `${offer.priceSource}. ` : ''}` +
+                    `Preis: ${formatEuroValue(price)} €. ` +
+                    `Versandkosten unbekannt.`
+                );
 
             const priceSpan = document.createElement('span');
             priceSpan.className = 'price';
@@ -2442,7 +3816,9 @@
             merchant.append(`${offer.label}`);
             merchant.appendChild(document.createElement('br'));
             priceSpan.appendChild(merchant);
-            priceSpan.append(`${formatEuroValue(price)} €`);
+            priceSpan.append(
+                hasUnknownPrice ? 'Preis unbekannt' : `${formatEuroValue(price)} €`
+            );
             offerLink.appendChild(priceSpan);
             priceRow.appendChild(offerLink);
 
@@ -2691,6 +4067,9 @@
             const parts = [];
 
             if (merchantName) parts.push(`Händler: ${merchantName}.`);
+            if (priceRow.dataset.bmPriceSource) {
+                parts.push(`${priceRow.dataset.bmPriceSource}.`);
+            }
             parts.push(`Angebotspreis: ${formatEuroValue(offerPrice)} €.`);
 
             if (shippingStatus === 'paid') {
@@ -2990,6 +4369,7 @@
             syncOfferDiscountBubbles();
             decoratePriceHistoryLinks();
             createDiscountSettingsUI();
+            disableOfferListTooltips();
         } finally {
             offerPresentationRunning = false;
         }
