@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.25
+// @version      3.55
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -13,6 +13,9 @@
 // @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
 // @connect      www.bricklink.com
+// @connect      www.brickowl.com
+// @connect      brickowl.com
+// @connect      *.brickowl.com
 // @connect      mybrickdepot.de
 // @run-at       document-end
 // @updateURL    https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-tweaks.js
@@ -200,7 +203,8 @@
                 const isBackLink = /zurück|homepage/i.test(label);
                 const isContinueLink =
                     /jetzt\s+weiterleiten/i.test(label) ||
-                    (/\bzur\b/i.test(label) && /\bshopseite\b/i.test(label));
+                    (/\bzur\b/i.test(label) &&
+                        /\b(?:shop|shops|shopseite)\b/i.test(label));
                 return !isBackLink && isContinueLink;
             });
             if (!target) return false;
@@ -457,6 +461,14 @@
             border-radius: 2px;
             box-sizing: content-box;
         }
+        #offerlist .bm-marketplace-logo.bm-brickowl-logo {
+            max-width: 54px;
+            max-height: 16px;
+            padding: 1px 3px;
+            background: #4a3527;
+            border-radius: 2px;
+            box-sizing: content-box;
+        }
         #offerlist .bm-mbd-logo-stack {
             display: flex !important;
             height: 100%;
@@ -655,6 +667,10 @@
         .content.setdetails .topprice {
             position: relative !important;
         }
+        .content.setdetails .large-3.medium-4.columns.hide-for-small,
+        .content.setdetails .show-for-small-only.text-center {
+            position: relative;
+        }
         .content.setdetails .topprice span[style*="position: absolute"],
         .bm-bestprice-black-bubble {
             position: absolute !important;
@@ -683,16 +699,53 @@
             right: 0.65rem !important;
         }
         .bm-bestprice-black-bubble {
-            right: 2.85rem;
+            right: 2.85rem !important;
             border: 1px solid #000 !important;
             background: #222 !important;
+        }
+        .bm-bestprice-black-bubble.bm-bestprice-black-bubble-single {
+            right: 0.65rem !important;
+        }
+        .content.setdetails .large-3.medium-4.columns.hide-for-small
+            > .off:not(.bm-bestprice-black-bubble),
+        .content.setdetails .show-for-small-only.text-center
+            > .off:not(.bm-bestprice-black-bubble) {
+            top: 0.45rem !important;
+            left: 0.75rem !important;
+        }
+        .bm-featured-black-bubble {
+            position: absolute !important;
+            top: 0.45rem !important;
+            left: 0.75rem !important;
+            z-index: 99 !important;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 54px !important;
+            height: 54px !important;
+            min-width: 54px !important;
+            min-height: 54px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 1px solid #000 !important;
+            border-radius: 999px !important;
+            background: #222 !important;
+            color: #fff !important;
+            font-size: 1rem !important;
+            font-weight: bold !important;
+            line-height: 1 !important;
+            text-align: center;
+            box-sizing: border-box;
         }
         .bm-full-product-description {
             float: none !important;
             clear: both;
             width: 100% !important;
             margin: 1.5rem 0 0 !important;
+            padding-left: 0.9375rem !important;
+            padding-right: 0.9375rem !important;
             padding-bottom: 0 !important;
+            box-sizing: border-box;
         }
         .bm-full-product-description p,
         .bm-full-product-description li,
@@ -745,7 +798,16 @@
         }
         .bm-chart-overlay.bm-preloading {
             display: flex;
-            visibility: hidden;
+            top: -200vh;
+            left: -200vw;
+            right: auto;
+            bottom: auto;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+            opacity: 0;
             pointer-events: none;
         }
         .bm-chart-dialog {
@@ -898,7 +960,7 @@
             margin-bottom: 0 !important;
         }
         .bm-chart-best-price {
-            margin-bottom: 1.25rem;
+            margin-bottom: 0.5rem;
             color: #555;
             font-size: 0.75rem;
             font-weight: 600;
@@ -908,48 +970,92 @@
             display: none;
         }
         @media screen and (min-width: 1025px) {
-            #offerlist {
+            .content.setdetails .bm-detail-layout {
                 display: grid;
-                grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+                grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
                 align-items: start;
-                margin-top: -0.625rem;
+                column-gap: 1.875rem;
+                width: 100%;
+            }
+            .content.setdetails .bm-detail-left,
+            .content.setdetails .bm-detail-right {
+                min-width: 0;
+            }
+            .content.setdetails .bm-detail-left > .medium-8.medium-pull-4.columns,
+            .content.setdetails .bm-detail-right > .productprice,
+            .content.setdetails .bm-detail-right > #ol2nd,
+            .content.setdetails .bm-detail-left > #offerlist,
+            .content.setdetails .bm-detail-left > #offerlist > #ol1st {
+                position: static !important;
+                right: auto !important;
+                left: auto !important;
+                width: 100% !important;
+                float: none !important;
+                max-width: none !important;
+                padding-right: 0 !important;
+                padding-left: 0 !important;
+            }
+            .content.setdetails .bm-detail-left > #offerlist {
+                display: block;
+                margin-top: 0.85rem !important;
+            }
+            .content.setdetails .bm-chart-content-column > #offerlist {
+                display: block;
+                width: 100% !important;
+                float: none !important;
+                max-width: none !important;
+                margin: 0.35rem 0 0 !important;
+                padding: 0 !important;
+            }
+            .content.setdetails .bm-chart-content-column > #offerlist > #ol1st {
+                position: static !important;
+                right: auto !important;
+                left: auto !important;
+                display: block;
+                width: 100% !important;
+                float: none !important;
+                max-width: none !important;
+                padding-right: 0 !important;
+                padding-left: 0 !important;
+            }
+            .content.setdetails .bm-detail-right > #ol2nd {
+                margin-top: 1.25rem;
             }
             #offerlist::before,
             #offerlist::after {
                 display: none !important;
                 content: none !important;
             }
-            #offerlist > #ol1st.bm-offer-layout {
-                grid-column: 1;
-                width: 100% !important;
-                float: none !important;
-            }
-            #offerlist > #ol2nd {
-                grid-column: 2;
-                width: 100% !important;
-                float: none !important;
-            }
-            #offerlist > .bm-full-product-description {
+            .content.setdetails .bm-detail-layout > .bm-full-product-description {
                 grid-column: 1 / -1;
+                width: 100% !important;
+                float: none !important;
+                max-width: none !important;
+                padding-right: 0.9375rem !important;
+                padding-left: 0.9375rem !important;
             }
             #ol1st.bm-offer-layout {
-                display: grid;
-                grid-template-columns: 30% minmax(0, 70%);
-                align-items: start;
+                display: block;
             }
             #ol1st.bm-offer-layout > .bm-offer-section {
-                grid-column: 2;
-                grid-row: 1;
                 min-width: 0;
+                margin-top: 0;
+            }
+            #ol1st.bm-offer-layout > .bm-offer-section > p:empty {
+                display: none !important;
             }
             #ol1st.bm-offer-layout > :not(.bm-offer-section) {
                 grid-column: 1 / -1;
             }
             #ol1st.bm-offer-layout > .bm-offer-section
+                .row.collapse > .goto.medium-1.small-3.columns,
+            #offerlist.bm-offer-under-chart
                 .row.collapse > .goto.medium-1.small-3.columns {
                 width: 11.9048% !important;
             }
             #ol1st.bm-offer-layout > .bm-offer-section
+                .row.collapse > .medium-4.small-9.columns.pricerow,
+            #offerlist.bm-offer-under-chart
                 .row.collapse > .medium-4.small-9.columns.pricerow {
                 width: 88.0952% !important;
             }
@@ -961,15 +1067,25 @@
                 width: 70% !important;
             }
             .bm-product-gallery-host > .bm-offer-gallery {
-                position: absolute;
-                top: 100%;
-                left: 0;
+                position: relative;
+                top: auto;
+                left: auto;
                 z-index: 2;
                 display: block;
                 width: 100%;
                 margin-top: 0.45rem;
                 padding-right: 0.9375rem;
                 text-align: left;
+                box-sizing: border-box;
+            }
+            .bm-product-gallery-host > .bm-offer-videos {
+                position: relative;
+                clear: both;
+                z-index: 2;
+                display: block;
+                width: 100%;
+                margin-top: 0.65rem;
+                padding-right: 0.9375rem;
                 box-sizing: border-box;
             }
             .bm-offer-gallery-list {
@@ -984,11 +1100,14 @@
                 min-width: 0;
                 aspect-ratio: 4 / 3;
                 padding: 0.2rem;
+                border: 1px solid transparent;
+                border-radius: 2px;
                 background: #fff;
                 cursor: zoom-in;
                 text-decoration: none;
                 box-shadow: none;
-                transition: box-shadow 150ms ease;
+                overflow: hidden;
+                transition: border-color 150ms ease, box-shadow 150ms ease;
             }
             .bm-product-gallery-host > .bm-unified-gallery-link {
                 display: flex !important;
@@ -996,11 +1115,14 @@
                 align-items: center;
                 justify-content: center;
                 padding: 0.2rem;
+                border: 1px solid transparent;
+                border-radius: 2px;
                 background: #fff;
                 cursor: zoom-in;
                 text-decoration: none;
                 box-shadow: none;
-                transition: box-shadow 150ms ease;
+                overflow: hidden;
+                transition: border-color 150ms ease, box-shadow 150ms ease;
                 box-sizing: border-box;
             }
             .bm-offer-gallery-link img {
@@ -1010,21 +1132,41 @@
                 max-width: none !important;
                 margin: 0 !important;
                 object-fit: contain;
+                box-shadow: none !important;
+                opacity: 1 !important;
             }
             .bm-unified-gallery-link > .bm-unified-gallery-image {
                 transform: scale(0.9) !important;
                 transform-origin: center;
                 box-shadow: none !important;
+                opacity: 1 !important;
                 transition: transform 150ms ease;
             }
             .bm-unified-gallery-link:hover,
             .bm-unified-gallery-link:focus {
+                border-color: #d7d7d7;
                 box-shadow: 1px 1px 4px 0 rgba(0, 0, 0, 0.2);
             }
             .bm-unified-gallery-link:hover > .bm-unified-gallery-image,
             .bm-unified-gallery-link:focus > .bm-unified-gallery-image {
                 transform: scale(1) !important;
                 box-shadow: none !important;
+            }
+            .bm-offer-videos .flex-video,
+            .bm-offer-videos iframe,
+            .bm-offer-videos video {
+                display: block;
+                width: 100%;
+                max-width: 100%;
+                margin: 0 0 0.6rem;
+            }
+            .bm-offer-video-link {
+                display: block;
+                margin: 0 0 0.55rem;
+                color: #b00;
+                font-size: 0.72rem;
+                line-height: 1.25;
+                text-decoration: underline;
             }
             #ol1st .bm-instruction-source {
                 display: none !important;
@@ -1084,16 +1226,16 @@
             #ol2nd .bm-sidebar-barcode {
                 margin-bottom: 0 !important;
                 padding-bottom: 1.25rem !important;
-                text-align: center !important;
+                text-align: left !important;
             }
             #ol2nd .bm-sidebar-barcode h3 {
                 margin-left: 0 !important;
-                text-align: center !important;
+                text-align: left !important;
             }
             #ol2nd .bm-sidebar-barcode #barcode {
                 display: block;
                 margin-right: auto !important;
-                margin-left: auto !important;
+                margin-left: 0 !important;
             }
             .bm-sidebar-parts h3 {
                 margin: 0 0 0.65rem;
@@ -1129,6 +1271,7 @@
                 object-fit: contain;
             }
             #ol2nd .bm-gallery-source,
+            #ol2nd .bm-video-source,
             #showmoreimages {
                 display: none !important;
             }
@@ -1137,7 +1280,46 @@
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            margin: 0 0 0.2rem;
+            gap: 0.75rem;
+            margin: 0 0 0.15rem;
+        }
+        .bm-offer-processing {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-right: auto;
+            color: #777;
+            font-size: 0.72rem;
+            line-height: 1;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.12s ease;
+        }
+        .bm-offer-processing.is-visible {
+            opacity: 1;
+        }
+        .bm-offer-processing svg {
+            display: block;
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: #b00000;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            animation: bm-spin 0.9s linear infinite;
+        }
+        @keyframes bm-spin {
+            to { transform: rotate(360deg); }
+        }
+        @media screen and (min-width: 1025px) {
+            .bm-chart-controls {
+                margin-bottom: 0.15rem !important;
+            }
+            .bm-offer-toolbar {
+                min-height: 24px;
+                margin: 0 0 0.15rem !important;
+            }
         }
         #ol1st .bm-offer-toolbar + .row.collapse {
             margin-top: 0 !important;
@@ -1172,7 +1354,10 @@
                 font-size: 0.65rem;
             }
             .bm-offer-toolbar {
-                margin-bottom: 0.4rem;
+                margin: 0.1rem 0 0.25rem !important;
+            }
+            .bm-offer-processing {
+                font-size: 0.68rem;
             }
             #wrap.bm-set-wrap {
                 margin-bottom: -104px !important;
@@ -1190,13 +1375,17 @@
             .bm-chart-dialog {
                 width: 100vw;
                 height: 100vh;
+                height: 100dvh;
                 border-top-width: 4px;
             }
             .bm-chart-dialog-header {
                 min-height: 0;
                 flex-wrap: wrap;
                 gap: 0.4rem;
-                padding: 0.65rem 3.75rem 0.55rem 1rem;
+                padding: calc(1.35rem + env(safe-area-inset-top, 0px)) 3.75rem 0.55rem 1rem;
+            }
+            .bm-chart-dialog-close {
+                top: calc(0.85rem + env(safe-area-inset-top, 0px));
             }
             .bm-chart-dialog-title {
                 width: 100%;
@@ -1216,6 +1405,7 @@
             gap: 0.5rem;
             justify-content: flex-end;
             width: auto;
+            margin-top: 0;
             margin-left: auto;
             min-height: 21px;
         }
@@ -1497,6 +1687,137 @@
         return null;
     })();
 
+    function parseHistoricalBestPriceText(rawText) {
+        const text = String(rawText || '').replace(/\s+/g, ' ').trim();
+        if (!/bisheriger bestpreis/i.test(text)) return null;
+
+        const priceMatch = text.match(/(\d+[\d\s.,]*)\s*€/i);
+        if (!priceMatch) return null;
+
+        const priceLabel = `${priceMatch[1].trim()} €`;
+        const price = parseFloat(
+            priceMatch[1].replace(/\s/g, '').replace(/\./g, '').replace(',', '.')
+        );
+        if (!Number.isFinite(price) || price <= 0) return null;
+
+        const afterPriceText = text.slice(
+            text.indexOf(priceMatch[0]) + priceMatch[0].length
+        ).replace(/\s+/g, ' ').trim();
+        const detailSuffix = afterPriceText
+            .replace(/^[:|,-]?\s*/, '')
+            .trim();
+
+        return {
+            text,
+            price,
+            priceLabel,
+            detailSuffix
+        };
+    }
+
+    let nativeChartHistoricalBestPriceInfo = null;
+
+    function removeRelativeDayLabelsFromBestPriceLines(root = null) {
+        const scanRoot = root ||
+            document.querySelector('.content.setdetails .productprice') ||
+            document.querySelector('.content.setdetails');
+        if (!scanRoot) return;
+
+        const walker = document.createTreeWalker(
+            scanRoot,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode(node) {
+                    const parent = node.parentElement;
+                    if (!parent) return NodeFilter.FILTER_REJECT;
+                    if (parent.closest('#bm-price-chart-overlay, #chartWrapper, #bigChart, #chartContainer, #offerlist')) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    if (!/vor\s+\d+\s+Tagen\b/i.test(node.nodeValue || '')) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            }
+        );
+        const nodes = [];
+        let node;
+        while (node = walker.nextNode()) nodes.push(node);
+        nodes.forEach(textNode => {
+            textNode.nodeValue = textNode.nodeValue
+                .replace(/\s+vor\s+\d+\s+Tagen\b/gi, '');
+        });
+    }
+
+    function findHistoricalBestPriceSidebarTextNode(seedElement = null) {
+        const roots = [];
+        const seedRoot = seedElement?.closest?.('p, div, li');
+        if (seedRoot) roots.push(seedRoot);
+
+        const detailsRoot = document.querySelector('.content.setdetails');
+        if (detailsRoot && !roots.includes(detailsRoot)) roots.push(detailsRoot);
+        roots.push(document.body);
+
+        for (const root of roots.filter(Boolean)) {
+            const walker = document.createTreeWalker(
+                root,
+                NodeFilter.SHOW_TEXT,
+                {
+                    acceptNode(node) {
+                        const parent = node.parentElement;
+                        if (!parent) return NodeFilter.FILTER_REJECT;
+                        if (!/bisheriger bestpreis/i.test(node.nodeValue || '')) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        if (parent.closest('#bm-price-chart-overlay, #chartWrapper, #bigChart, #chartContainer')) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        if (parent.closest('#all-time-bestpreis-discount')) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                }
+            );
+            const match = walker.nextNode();
+            if (match) return match;
+        }
+
+        return null;
+    }
+
+    function writeHistoricalBestPriceDetailToSidebar(detailSuffix, seedElement = null) {
+        const suffix = String(detailSuffix || '').replace(/\s+/g, ' ').trim();
+        document.querySelectorAll('.bm-historical-bestprice-detail')
+            .forEach(element => element.remove());
+        if (!suffix) return;
+
+        const textNode = findHistoricalBestPriceSidebarTextNode(seedElement);
+        const parent = textNode?.parentElement;
+        if (!textNode || !parent) return;
+        removeRelativeDayLabelsFromBestPriceLines(parent);
+
+        const lineNodes = Array.from(parent.childNodes);
+        const startIndex = lineNodes.indexOf(textNode);
+        let lineText = '';
+        for (let index = Math.max(0, startIndex); index < lineNodes.length; index += 1) {
+            const node = lineNodes[index];
+            if (index > startIndex && node.nodeName === 'BR') break;
+            lineText += node.textContent || '';
+        }
+        lineText = lineText.replace(/\s+/g, ' ').trim();
+        if (lineText.includes(suffix)) return;
+
+        const detail = document.createElement('span');
+        detail.className = 'bm-historical-bestprice-detail';
+        detail.textContent = ` ${suffix}`;
+
+        const insertBefore = lineNodes
+            .slice(startIndex + 1)
+            .find(node => node.nodeName === 'BR') || null;
+        parent.insertBefore(detail, insertBefore);
+    }
+
     function createDiscountSettingsUI() {
         if (!setNum || document.getElementById('bm-discount-settings')) return;
 
@@ -1509,6 +1830,20 @@
         const toolbar = document.createElement('div');
         toolbar.className = 'bm-offer-toolbar';
         toolbar.innerHTML = `
+            <div class="bm-offer-processing" role="status" aria-live="polite">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 2v3"></path>
+                    <path d="M12 19v3"></path>
+                    <path d="M4.93 4.93l2.12 2.12"></path>
+                    <path d="M16.95 16.95l2.12 2.12"></path>
+                    <path d="M2 12h3"></path>
+                    <path d="M19 12h3"></path>
+                    <path d="M4.93 19.07l2.12-2.12"></path>
+                    <path d="M16.95 7.05l2.12-2.12"></path>
+                </svg>
+                <span>rechnet</span>
+            </div>
             <div class="bm-discount-toolbar-control">
                 <label class="switch" title="Persönlichen Rabatt ein- oder ausschalten">
                     <input id="bm-personal-enabled" type="checkbox"
@@ -1703,6 +2038,21 @@
                 h3.remove();
             }
         });
+        document.querySelectorAll('a, button').forEach(element => {
+            if (!/^\s*Zur\s+LEGO\s+Seite\s*$/i.test(element.textContent || '')) {
+                return;
+            }
+            const parent = element.parentElement;
+            element.remove();
+            if (
+                parent &&
+                parent !== document.body &&
+                parent.children.length === 0 &&
+                !parent.textContent.replace(/\|/g, '').trim()
+            ) {
+                parent.remove();
+            }
+        });
 
         // Verwaiste Anker-IDs entfernen: Diese id-Attribute dienten ausschließlich
         // als Sprungziel für die oben entfernte Inhaltsverzeichnis-Box und werden
@@ -1781,9 +2131,7 @@
             // NICHT die .goto.medium-1-Logospalte, die bleibt erhalten.
             offerlist.querySelectorAll('.goto.medium-7').forEach(el => el.remove());
         }
-        document.querySelectorAll("div[style*='padding-bottom']").forEach(div => {
-            if (div.textContent?.includes("Zur LEGO Seite") && div.textContent.includes("Zur ebay History") && div.innerHTML.includes("bricklink.com")) div.remove();
-        });
+        removeSidebarHistoryLinks();
         // Hinweis: der frühere Selektor für einen einzelnen <span> im Breadcrumb-Bereich
         // (body > section > div:nth-child(2) > ...) wurde entfernt, da er auf der
         // aktuellen Seitenstruktur nicht mehr matcht (totes Selektor-Ziel).
@@ -1821,27 +2169,157 @@
 
     if (setNum) cleaner();
 
-    // Auf Desktop liegt die Angebotsliste bündig unter dem Preisdiagramm.
-    // Die zusätzlichen Bilder beginnen direkt unter dem großen Produktbild.
+    function removeSidebarHistoryLinks() {
+        const historyLinkPattern = /^\s*Zur\s+(?:ebay|bricklink)\s+History\s*$/i;
+        const roots = [
+            document.querySelector('.content.setdetails .productprice'),
+            document.getElementById('ol2nd'),
+            document.querySelector('.content.setdetails .bm-detail-right')
+        ].filter(Boolean);
+
+        roots.forEach(root => {
+            Array.from(root.querySelectorAll('a'))
+                .filter(link => historyLinkPattern.test(link.textContent || ''))
+                .forEach(link => {
+                    const parent = link.parentElement;
+                    [link.previousSibling, link.nextSibling].forEach(node => {
+                        if (
+                            node?.nodeType === Node.TEXT_NODE &&
+                            /^\s*\|?\s*$/.test(node.nodeValue || '')
+                        ) {
+                            node.remove();
+                        }
+                    });
+                    link.remove();
+
+                    if (
+                        parent &&
+                        parent !== root &&
+                        parent.children.length === 0 &&
+                        !parent.textContent.replace(/\|/g, '').trim()
+                    ) {
+                        parent.remove();
+                    }
+                });
+        });
+    }
+
+    // Auf Desktop werden die Brickmerge-Push/Pull-Spalten in ein echtes Grid
+    // überführt: links Bild/Chart und direkt darunter die Offerlist, rechts
+    // Produktdaten, EAN, Bauanleitungen und Einzelteilelisten.
+    function setupDesktopDetailGrid() {
+        if (!window.matchMedia('(min-width: 1025px)').matches) return;
+
+        const container = document.querySelector('.content.setdetails');
+        const offerList = document.getElementById('offerlist');
+        const offerColumn = document.getElementById('ol1st');
+        const sideColumn = document.getElementById('ol2nd');
+        const productPriceColumn = container?.querySelector('.productprice');
+        const chartColumn = container?.querySelector('.medium-8.medium-pull-4.columns');
+        if (
+            !container ||
+            !offerList ||
+            !offerColumn ||
+            !sideColumn ||
+            !productPriceColumn ||
+            !chartColumn
+        ) {
+            return;
+        }
+
+        let layout = container.querySelector(':scope > .bm-detail-layout');
+        let leftColumn = layout?.querySelector(':scope > .bm-detail-left');
+        let rightColumn = layout?.querySelector(':scope > .bm-detail-right');
+
+        const originalProductRow = productPriceColumn.closest('.row') ||
+            chartColumn.closest('.row');
+
+        if (!layout || !leftColumn || !rightColumn) {
+            layout = document.createElement('div');
+            layout.className = 'bm-detail-layout';
+            leftColumn = document.createElement('div');
+            leftColumn.className = 'bm-detail-left';
+            rightColumn = document.createElement('div');
+            rightColumn.className = 'bm-detail-right';
+            layout.append(leftColumn, rightColumn);
+            container.insertBefore(layout, originalProductRow || offerList);
+        }
+
+        chartColumn.classList.add('bm-detail-chart-column');
+        productPriceColumn.classList.add('bm-detail-price-column');
+        sideColumn.classList.add('bm-detail-side-column');
+
+        if (chartColumn.parentElement !== leftColumn) {
+            leftColumn.appendChild(chartColumn);
+        }
+        if (offerList.parentElement !== leftColumn) {
+            leftColumn.appendChild(offerList);
+        }
+        if (productPriceColumn.parentElement !== rightColumn) {
+            rightColumn.appendChild(productPriceColumn);
+        }
+        if (sideColumn.parentElement !== rightColumn) {
+            rightColumn.appendChild(sideColumn);
+        }
+
+        if (
+            originalProductRow &&
+            originalProductRow !== layout &&
+            originalProductRow.parentElement &&
+            originalProductRow.childElementCount === 0
+        ) {
+            originalProductRow.remove();
+        }
+    }
+
+    // Auf Desktop liegt die Angebotsliste in derselben Unterspalte wie das
+    // Preisdiagramm. Die zusätzlichen Bilder beginnen links direkt unter dem
+    // großen Produktbild und beeinflussen die Offerlist-Höhe nicht.
     function setupDesktopOfferGallery() {
+        if (!window.matchMedia('(min-width: 1025px)').matches) return;
+
+        const offerList = document.getElementById('offerlist');
         const offerColumn = document.getElementById('ol1st');
         const sideColumn = document.getElementById('ol2nd');
         const imageColumn = document.querySelector(
             '.content.setdetails .medium-8.medium-pull-4.columns ' +
             '> .row.collapse > .large-3.medium-4.columns.hide-for-small'
         );
-        if (!offerColumn || !sideColumn || !imageColumn) return;
+        const chartContentColumn = imageColumn
+            ?.parentElement
+            ?.querySelector(':scope > .large-9.medium-8.columns') ||
+            imageColumn?.nextElementSibling;
+        if (!offerList || !offerColumn || !sideColumn || !imageColumn ||
+            !chartContentColumn) return;
 
-        const offerSection = Array.from(offerColumn.children).find(element =>
-            element.tagName === 'SECTION' && element.querySelector('.pricerow')
-        );
+        const firstPriceRow = offerColumn.querySelector('.pricerow');
+        const firstOfferRow = firstPriceRow?.closest('.row.collapse');
+        const offerSection = firstPriceRow?.closest('section') ||
+            (
+                firstOfferRow?.parentElement &&
+                firstOfferRow.parentElement !== offerColumn
+                    ? firstOfferRow.parentElement
+                    : null
+            );
         const sourceLinks = Array.from(
             sideColumn.querySelectorAll('a.fancybox')
         ).filter(link => link.querySelector('img.gallerieIco'));
-        if (!offerSection) return;
 
+        chartContentColumn.classList.add('bm-chart-content-column');
+        if (offerList.parentElement !== chartContentColumn) {
+            chartContentColumn.appendChild(offerList);
+        }
+        offerList.classList.add('bm-offer-under-chart');
         offerColumn.classList.add('bm-offer-layout');
-        offerSection.classList.add('bm-offer-section');
+        offerSection?.classList.add('bm-offer-section');
+        offerSection?.querySelectorAll(':scope > p').forEach(paragraph => {
+            const hasEmbeddedContent = paragraph.querySelector(
+                'a, button, input, select, textarea, img, svg, iframe, video'
+            );
+            if (!hasEmbeddedContent && !paragraph.textContent.trim()) {
+                paragraph.remove();
+            }
+        });
         imageColumn.classList.add('bm-product-gallery-host');
 
         const mainImageLink = imageColumn.querySelector(':scope > a.fancybox');
@@ -1853,47 +2331,92 @@
         sourceTitle?.classList.add('bm-gallery-source');
         sourceLinks.forEach(link => link.classList.add('bm-gallery-source'));
 
-        if (
-            sourceLinks.length === 0 ||
-            imageColumn.querySelector(':scope > .bm-offer-gallery')
-        ) {
-            return;
-        }
+        let gallery = imageColumn.querySelector(':scope > .bm-offer-gallery');
+        if (sourceLinks.length > 0 && !gallery) {
+            gallery = document.createElement('aside');
+            gallery.className = 'bm-offer-gallery';
+            gallery.setAttribute('aria-label', 'Weitere Produktbilder');
 
-        const gallery = document.createElement('aside');
-        gallery.className = 'bm-offer-gallery';
-        gallery.setAttribute('aria-label', 'Weitere Produktbilder');
+            const list = document.createElement('div');
+            list.className = 'bm-offer-gallery-list';
+            sourceLinks.forEach((sourceLink, index) => {
+                const sourceImage = sourceLink.querySelector('img.gallerieIco');
+                const link = document.createElement('a');
+                link.className =
+                    'bm-offer-gallery-link bm-unified-gallery-link';
+                link.href = sourceLink.href;
+                link.rel = sourceLink.rel || 'group1';
+                link.title = sourceLink.title || `Produktbild ${index + 1} öffnen`;
+                link.dataset.index = sourceLink.dataset.index || String(index + 1);
+                if (sourceLink.dataset.size) link.dataset.size = sourceLink.dataset.size;
+                link.addEventListener('click', event => {
+                    event.preventDefault();
+                    sourceLink.click();
+                });
 
-        const list = document.createElement('div');
-        list.className = 'bm-offer-gallery-list';
-        sourceLinks.forEach((sourceLink, index) => {
-            const sourceImage = sourceLink.querySelector('img.gallerieIco');
-            const link = document.createElement('a');
-            link.className =
-                'bm-offer-gallery-link bm-unified-gallery-link';
-            link.href = sourceLink.href;
-            link.rel = sourceLink.rel || 'group1';
-            link.title = sourceLink.title || `Produktbild ${index + 1} öffnen`;
-            link.dataset.index = sourceLink.dataset.index || String(index + 1);
-            if (sourceLink.dataset.size) link.dataset.size = sourceLink.dataset.size;
-            link.addEventListener('click', event => {
-                event.preventDefault();
-                sourceLink.click();
+                const image = sourceImage.cloneNode(true);
+                image.removeAttribute('width');
+                image.removeAttribute('height');
+                image.removeAttribute('style');
+                image.loading = 'lazy';
+                image.alt = sourceImage.alt || `Produktbild ${index + 1}`;
+                image.classList.add('bm-unified-gallery-image');
+                link.appendChild(image);
+                list.appendChild(link);
             });
 
-            const image = sourceImage.cloneNode(true);
-            image.removeAttribute('width');
-            image.removeAttribute('height');
-            image.removeAttribute('style');
-            image.loading = 'lazy';
-            image.alt = sourceImage.alt || `Produktbild ${index + 1}`;
-            image.classList.add('bm-unified-gallery-image');
-            link.appendChild(image);
-            list.appendChild(link);
-        });
+            gallery.appendChild(list);
+            imageColumn.appendChild(gallery);
+        }
 
-        gallery.appendChild(list);
-        imageColumn.appendChild(gallery);
+        const videoBlocks = Array.from(sideColumn.querySelectorAll(
+            '.flex-video, iframe[src*="youtube"], iframe[src*="youtu"], ' +
+            'iframe[src*="vimeo"], video, a[href*="youtube.com"], ' +
+            'a[href*="youtu.be"], a[href*="vimeo.com"]'
+        )).map(element => {
+            if (element.dataset.bmVideoMoved === 'true') return null;
+            return element.closest('.flex-video') ||
+                element.closest('p') ||
+                element.closest('li') ||
+                element.closest('div') ||
+                element;
+        }).filter((element, index, elements) =>
+            element &&
+            element !== sideColumn &&
+            !element.closest('.bm-offer-videos') &&
+            elements.indexOf(element) === index
+        );
+        if (videoBlocks.length === 0) return;
+
+        let videos = imageColumn.querySelector(':scope > .bm-offer-videos');
+        if (!videos) {
+            videos = document.createElement('aside');
+            videos.className = 'bm-offer-videos';
+            videos.setAttribute('aria-label', 'Videos');
+        }
+        if (gallery && videos.previousElementSibling !== gallery) {
+            gallery.after(videos);
+        } else if (!gallery && videos.parentElement !== imageColumn) {
+            imageColumn.appendChild(videos);
+        }
+        Array.from(sideColumn.querySelectorAll('h3, h4'))
+            .filter(heading => /video/i.test(heading.textContent || ''))
+            .forEach(heading => heading.classList.add('bm-video-source'));
+
+        videoBlocks.forEach(block => {
+            block.dataset.bmVideoMoved = 'true';
+            const links = block.matches('a[href]')
+                ? [block]
+                : Array.from(block.querySelectorAll('a[href]'));
+            links.forEach(link => {
+                if (/youtu|youtube|vimeo/i.test(link.href)) {
+                    link.classList.add('bm-offer-video-link');
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                }
+            });
+            videos.appendChild(block);
+        });
     }
 
     function setupDesktopSidebarBarcode() {
@@ -2055,7 +2578,8 @@
         const sideColumn = document.getElementById('ol2nd');
         const heading = document.querySelector('h2.long_description');
         const descriptionSection = heading?.closest('section');
-        const columnsRow = offerColumn?.parentElement;
+        const columnsRow = document.querySelector('.content.setdetails .bm-detail-layout') ||
+            offerColumn?.parentElement;
         if (
             !offerColumn ||
             !sideColumn ||
@@ -2103,6 +2627,104 @@
         link.appendChild(articleNumber);
     }
 
+    function linkPackageDimensionsCalculator() {
+        const details = Array.from(
+            document.querySelectorAll('.content.setdetails p')
+        ).find(paragraph =>
+            /OVP-Maße\s*:/i.test(paragraph.textContent || '') &&
+            /Setgewicht\s*:/i.test(paragraph.textContent || '')
+        );
+        if (!details || details.querySelector('.bm-package-dimensions-link')) return;
+
+        const text = (details.textContent || '').replace(/\s+/g, ' ');
+        const dimensionsMatch = text.match(
+            /OVP-Maße\s*:\s*([\d.,]+)\s*[x×]\s*([\d.,]+)\s*[x×]\s*([\d.,]+)\s*cm/i
+        );
+        const weightMatch = text.match(
+            /Setgewicht\s*:\s*[≈~]?\s*([\d.,]+)\s*(kg|g)\b/i
+        );
+        if (!dimensionsMatch || !weightMatch) return;
+
+        const parseDecimalValue = value => {
+            const raw = String(value || '').replace(/\s/g, '');
+            if (/^\d{1,3}(?:\.\d{3})+(?:,\d+)?$/.test(raw)) {
+                return Number(raw.replace(/\./g, '').replace(',', '.'));
+            }
+            return Number(raw.replace(',', '.'));
+        };
+        const parseWeightKg = (value, unit) => {
+            const parsed = parseDecimalValue(value);
+            if (!Number.isFinite(parsed) || parsed <= 0) return null;
+            return unit.toLowerCase() === 'g' ? parsed / 1000 : parsed;
+        };
+        const formatParam = (value, decimals = 2) =>
+            Number(value).toFixed(decimals).replace(/\.?0+$/, '');
+        const formatDimensionCm = value => String(Math.ceil(value));
+
+        const width = parseDecimalValue(dimensionsMatch[1]);
+        const length = parseDecimalValue(dimensionsMatch[2]);
+        const height = parseDecimalValue(dimensionsMatch[3]);
+        const weightKg = parseWeightKg(weightMatch[1], weightMatch[2]);
+        if (![width, length, height, weightKg].every(value =>
+            Number.isFinite(value) && value > 0
+        )) {
+            return;
+        }
+
+        const url = new URL('https://www.paketda.de/paket-preis-rechner.php');
+        url.searchParams.set('action', 'submit');
+        url.searchParams.set('breite', formatDimensionCm(width * 1.1));
+        url.searchParams.set('laenge', formatDimensionCm(length * 1.1));
+        url.searchParams.set('hoehe', formatDimensionCm(height * 1.1));
+        url.searchParams.set('gewicht', formatParam(weightKg * 1.1));
+        url.hash = 'ergebnis';
+
+        const dimensionTextPattern = new RegExp(
+            `${dimensionsMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[x×]\\s*` +
+            `${dimensionsMatch[2].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[x×]\\s*` +
+            `${dimensionsMatch[3].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*cm`,
+            'i'
+        );
+
+        const dimensionStrong = Array.from(details.querySelectorAll('strong'))
+            .find(strong => dimensionTextPattern.test(strong.textContent || ''));
+        const createLink = () => {
+            const link = document.createElement('a');
+            link.className = 'bm-lego-article-link bm-package-dimensions-link';
+            link.href = url.href;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.title = 'Paketpreis mit 10% Aufschlag auf Maße und Gewicht berechnen';
+            return link;
+        };
+
+        if (dimensionStrong && !dimensionStrong.closest('a')) {
+            const link = createLink();
+            dimensionStrong.replaceWith(link);
+            link.appendChild(dimensionStrong);
+            return;
+        }
+
+        const walker = document.createTreeWalker(details, NodeFilter.SHOW_TEXT);
+        let node;
+        while (node = walker.nextNode()) {
+            if (node.parentElement?.closest('a')) continue;
+            const match = node.nodeValue.match(dimensionTextPattern);
+            if (!match) continue;
+
+            const before = node.nodeValue.slice(0, match.index);
+            const after = node.nodeValue.slice(match.index + match[0].length);
+            const fragment = document.createDocumentFragment();
+            fragment.appendChild(document.createTextNode(before));
+            const link = createLink();
+            link.textContent = match[0];
+            fragment.appendChild(link);
+            fragment.appendChild(document.createTextNode(after));
+            node.parentNode.replaceChild(fragment, node);
+            return;
+        }
+    }
+
     function compactSetFooter() {
         const footer = document.getElementById('footer');
         const wrap = document.getElementById('wrap');
@@ -2117,20 +2739,30 @@
     }
 
     if (setNum) {
+        setupDesktopDetailGrid();
+        removeSidebarHistoryLinks();
+        removeRelativeDayLabelsFromBestPriceLines();
         setupDesktopOfferGallery();
         setupDesktopSidebarBarcode();
         setupDesktopSidebarInstructions();
         setupDesktopSidebarParts();
         expandProductDescription();
         linkLegoArticleNumber();
+        linkPackageDimensionsCalculator();
+        createDiscountSettingsUI();
         compactSetFooter();
         window.addEventListener('load', () => {
+            setupDesktopDetailGrid();
+            removeSidebarHistoryLinks();
+            removeRelativeDayLabelsFromBestPriceLines();
             setupDesktopOfferGallery();
             setupDesktopSidebarBarcode();
             setupDesktopSidebarInstructions();
             setupDesktopSidebarParts();
             expandProductDescription();
             linkLegoArticleNumber();
+            linkPackageDimensionsCalculator();
+            createDiscountSettingsUI();
             compactSetFooter();
         }, { once: true });
     }
@@ -2236,6 +2868,7 @@
         let backgroundPreload = false;
         let preloadReadyTimer = null;
         let preloadTimeoutTimer = null;
+        let defaultChartPeriodApplied = false;
 
         const finishBackgroundPreload = () => {
             window.clearTimeout(preloadReadyTimer);
@@ -2268,6 +2901,18 @@
                     header.insertBefore(periodBar, closeButton);
                 }
                 periodButtons.forEach(button => periodBar.appendChild(button));
+
+                if (!defaultChartPeriodApplied) {
+                    const defaultPeriodButton = periodButtons.find(button =>
+                        /letzte\s+30\s+tage/i.test(button.textContent || '')
+                    );
+                    if (defaultPeriodButton) {
+                        defaultChartPeriodApplied = true;
+                        if (!defaultPeriodButton.classList.contains('hasOrangeBg')) {
+                            window.setTimeout(() => defaultPeriodButton.click(), 0);
+                        }
+                    }
+                }
             }
 
             const saleLink = Array.from(chartWrapper.querySelectorAll('a'))
@@ -2317,20 +2962,17 @@
                     .find(element => /bisheriger bestpreis/i.test(
                         element.textContent || ''
                     ));
-                const bestPriceText = (bestPrice?.textContent || '')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-                if (bestPriceText) {
-                    let summary = chartTrigger.parentElement?.querySelector(
-                        '.bm-chart-best-price'
+                const historicalInfo = parseHistoricalBestPriceText(
+                    historyRow.textContent || bestPrice?.textContent || ''
+                );
+                if (historicalInfo?.detailSuffix) {
+                    nativeChartHistoricalBestPriceInfo = historicalInfo;
+                    writeHistoricalBestPriceDetailToSidebar(
+                        historicalInfo.detailSuffix
                     );
-                    if (!summary) {
-                        summary = document.createElement('span');
-                        summary.className = 'bm-chart-best-price';
-                        chartTrigger.insertAdjacentElement('afterend', summary);
-                    }
-                    summary.textContent = bestPriceText;
                 }
+                chartTrigger.parentElement?.querySelector('.bm-chart-best-price')
+                    ?.remove();
                 historyRow.remove();
             }
 
@@ -2501,6 +3143,10 @@
     if (setNum) {
         const icon = domain => `https://www.google.com/s2/favicons?sz=32&domain_url=${encodeURIComponent(domain)}`;
         const amazonIcon = icon("amazon.de");
+        const brickOwlCatalogSearchUrl = value =>
+            `https://www.brickowl.com/search/catalog?cat=3&query=${encodeURIComponent(`${value}-1`)}`;
+        const brickOwlSearchUrl = value =>
+            `https://www.brickowl.com/search/catalog?cat=3&query=${encodeURIComponent(`${value}-1`)}`;
 
         const groups = [
             {
@@ -2510,7 +3156,7 @@
                     { name: "Kleinanzeigen", url: `https://www.kleinanzeigen.de/s-spielzeug/sortierung:preis/lego-${setNum}/k0c23+spielzeug.condition_s:new`, icon: icon("kleinanzeigen.de") },
                     { name: "Vinted", url: `https://www.vinted.de/catalog?search_text=lego+${setNum}`, icon: icon("vinted.de") },
                     { name: "StockX", url: `https://www.google.com/search?q=site%3Astockx.com/de+lego+${setNum}&btnI=1`, icon: icon("stockx.com") },
-                    { name: "BrickOwl", url: `https://www.brickowl.com/search/catalog?query=+${setNum}`, icon: icon("brickowl.com") },
+                    { id: "btn-bo", name: "BrickOwl", url: brickOwlSearchUrl(setNum), icon: icon("brickowl.com") },
                     { id: "btn-bl", name: "Bricklink", url: `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setNum}-1#T=S&O={%22ss%22:%22DE%22,%22cond%22:%22N%22,%22ii%22:0,%22loc%22:%22DE%22,%22iconly%22:0}`, icon: icon("bricklink.com") }
                 ]
             },
@@ -2563,13 +3209,19 @@
             scroll-behavior: smooth;
             scrollbar-width: none;
             -ms-overflow-style: none;
-            touch-action: pan-x;
-            overscroll-behavior-inline: contain;
+            touch-action: auto;
+            overscroll-behavior-inline: auto;
             -webkit-overflow-scrolling: touch;
         }
         .bm-link-viewport::-webkit-scrollbar { display: none; }
         .bm-info-links { display: flex; flex-wrap: nowrap; width: max-content; gap: 7px 11px; }
         .bm-link { display: inline-flex; flex: 0 0 auto; align-items: center; text-decoration: none; font-size: 0.93em; color: #222; font-weight: 500; background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 4px 8px 4px 6px; line-height: 1.2;}
+        .bm-link:hover,
+        .bm-link:focus {
+            background: #fff !important;
+            border-color: #ccc !important;
+            color: #222 !important;
+        }
         .bm-link[hidden] { display: none !important; }
         .bm-link > img { width: 20px; height: 20px; object-fit: contain; border-radius: 3px; margin-right: 6px; }
         .bm-link-icons {
@@ -2596,13 +3248,14 @@
             min-height: 28px;
             align-items: center;
             padding: 4px 6px;
-            color: #222;
+            color: #222 !important;
             text-decoration: none;
             box-sizing: border-box;
         }
         .bm-meta-dual-link > a:hover,
         .bm-meta-dual-link > a:focus {
-            background: #f0f0f0;
+            background: transparent !important;
+            color: #222 !important;
         }
         .bm-meta-dual-link img {
             width: 20px;
@@ -2622,6 +3275,7 @@
         }
         .bm-meta-site-link:hover .bm-link-label,
         .bm-meta-site-link:focus .bm-link-label {
+            color: #222 !important;
             text-decoration: underline;
         }
         .bm-link-scroll {
@@ -2671,21 +3325,33 @@
             document.head.appendChild(style);
         }
 
-        function syncBrickLinkMarketplaceLink() {
-            const shortcut = document.querySelector('a[data-bmid="btn-bl"]');
-            if (!shortcut) return;
-
-            const hasBrickLinkOffer = Array.from(document.querySelectorAll(
+        function syncMarketplaceShortcutLinks() {
+            const hasOffer = pattern => Array.from(document.querySelectorAll(
                 '#offerlist .medium-4.small-9.columns.pricerow[data-mid]'
             )).some(priceRow => {
                 const offerRow = priceRow.closest('.row.collapse');
                 const merchant = priceRow.querySelector('.merchant')?.textContent || '';
                 const logo = offerRow?.querySelector('.goto img[alt]')?.alt || '';
                 const tooltip = priceRow.querySelector(':scope > a')?.getAttribute('title') || '';
-                return /\bbricklink\b/i.test(`${merchant} ${logo} ${tooltip}`);
+                const source = [
+                    priceRow.dataset.bmSource,
+                    priceRow.dataset.mid,
+                    offerRow?.dataset.bmSource,
+                    merchant,
+                    logo,
+                    tooltip
+                ].filter(Boolean).join(' ');
+                return pattern.test(source);
             });
 
-            shortcut.hidden = hasBrickLinkOffer;
+            const rules = [
+                { id: 'btn-bl', pattern: /\bbricklink\b/i },
+                { id: 'btn-bo', pattern: /\bbrickowl\b|brickowl-de/i }
+            ];
+            rules.forEach(({ id, pattern }) => {
+                const shortcut = document.querySelector(`a[data-bmid="${id}"]`);
+                if (shortcut) shortcut.hidden = hasOffer(pattern);
+            });
         }
 
         function buildBox() {
@@ -2842,13 +3508,13 @@
             }
             setupLinkSliders(box);
             setupMetaGptLink(box);
-            syncBrickLinkMarketplaceLink();
+            syncMarketplaceShortcutLinks();
             const offerlist = document.getElementById('offerlist');
             if (offerlist) {
-                const brickLinkOfferObserver = new MutationObserver(
-                    syncBrickLinkMarketplaceLink
+                const marketplaceOfferObserver = new MutationObserver(
+                    syncMarketplaceShortcutLinks
                 );
-                brickLinkOfferObserver.observe(offerlist, {
+                marketplaceOfferObserver.observe(offerlist, {
                     childList: true,
                     subtree: true
                 });
@@ -2899,12 +3565,16 @@
                     if (offer.key === 'amz') {
                         return !hasNativeMerchant(['amazon']);
                     }
+                    if (offer.key === 'ebay' && offer.source === 'mybrickdepot') {
+                        return !hasNativeMerchant(['ebay', 'ebay.de']);
+                    }
                     if (offer.key === 'mueller-search') {
                         return !hasNativeMerchant(['müller', 'mueller']);
                     }
                     return true;
                 });
                 injectMarketplaceOffers(offers);
+                syncMarketplaceShortcutLinks();
             };
             const storeOffers = offers => {
                 offers.filter(Boolean).forEach(offer => {
@@ -2967,11 +3637,11 @@
             }
             function parseBrickLinkPrice(priceText) {
                 const match = String(priceText || '').match(
-                    /(?:EUR|€)\s*([\d.,]+)/i
+                    /(?:EUR|€)\s*([\d.,]+)|([\d.,]+)\s*(?:EUR|€)/i
                 );
                 if (!match) return null;
 
-                const raw = match[1];
+                const raw = match[1] || match[2];
                 const comma = raw.lastIndexOf(',');
                 const dot = raw.lastIndexOf('.');
                 let normalized = raw;
@@ -3014,13 +3684,117 @@
                     totalLots: offers.length
                 };
             }
+            function parseBrickOwlGermanOffers(html, fallbackUrl) {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const rows = Array.from(doc.querySelectorAll(
+                    '#buy table.buy-table tbody tr, table.buy-table tbody tr, ' +
+                    '#buy tr, .buy-table tr'
+                ));
+                const offers = rows.map(row => {
+                    const cells = Array.from(row.children);
+                    if (cells.length < 7) return null;
+
+                    const rowText = (row.textContent || '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    const condition = (cells[1].textContent || '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    if (!/New\s*\(Sealed\)|Neu\s*\((?:Sealed|Versiegelt|Verschlossen|Ungeöffnet|Originalverpackt)\)|\bNeu\b/i.test(condition || rowText)) {
+                        return null;
+                    }
+
+                    const flag = cells[6].querySelector('img.flag');
+                    const country = `${flag?.alt || ''} ${flag?.title || ''} ${cells[6].textContent || ''}`;
+                    if (!/\bGermany\b|Deutschland/i.test(country)) return null;
+
+                    const price = parseBrickLinkPrice(cells[4].textContent || '');
+                    if (price === null) return null;
+
+                    const total = parseBrickLinkPrice(cells[5].textContent || '');
+                    const shippingFromStore = parseBrickLinkPrice(
+                        (cells[6].textContent || '').match(/(?:Shipping|Versand)\s*(?:~\s*)?(€?\s*[\d.,]+|[\d.,]+\s*€)/i)?.[1] || ''
+                    );
+                    const shippingCost = total !== null
+                        ? Math.max(0, Math.round(((total - price) + Number.EPSILON) * 100) / 100)
+                        : shippingFromStore;
+                    const shippingStatus = shippingCost === null
+                        ? 'unknown'
+                        : shippingCost <= 0.004
+                            ? 'free'
+                            : 'paid';
+                    const storeLink = cells[6].querySelector('.after-flag a[href]') ||
+                        cells[6].querySelector('a[href]');
+                    const itemLink = cells[2].querySelector('a[href]') ||
+                        cells[0].querySelector('a[href]');
+                    const href = itemLink?.getAttribute('href') ||
+                        storeLink?.getAttribute('href') ||
+                        fallbackUrl;
+                    const storeName = (storeLink?.textContent || '').trim();
+
+                    return {
+                        price,
+                        total: total !== null ? total : null,
+                        sortPrice: total !== null ? total : price,
+                        shippingCost,
+                        shippingStatus,
+                        storeName,
+                        url: new URL(href, 'https://www.brickowl.com').href
+                    };
+                }).filter(Boolean);
+
+                if (offers.length === 0) return null;
+                offers.sort((a, b) =>
+                    (a.sortPrice - b.sortPrice) || (a.price - b.price)
+                );
+                return {
+                    ...offers[0],
+                    totalLots: offers.length
+                };
+            }
+            function findBrickOwlCatalogUrl(html, setNumber, baseUrl) {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const canonical = doc.querySelector(
+                    'link[rel="canonical"][href*="/catalog/"]'
+                )?.getAttribute('href');
+                if (canonical && !/\/search\//i.test(canonical)) {
+                    return new URL(canonical, baseUrl).href;
+                }
+
+                const escapedSetNumber = String(setNumber)
+                    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const setPattern = new RegExp(
+                    `(?:^|[^0-9])${escapedSetNumber}(?:[^0-9]|$)`
+                );
+                const link = Array.from(
+                    doc.querySelectorAll('a[href*="/catalog/"]')
+                ).find(anchor => {
+                    const href = anchor.getAttribute('href') || '';
+                    const label = anchor.textContent || '';
+                    return setPattern.test(`${href} ${label}`);
+                });
+                return link ? new URL(link.getAttribute('href'), baseUrl).href : '';
+            }
+            function getResponseHeader(headers, name) {
+                const target = name.toLowerCase();
+                for (const line of String(headers || '').split(/\r?\n/)) {
+                    const separatorIndex = line.indexOf(':');
+                    if (separatorIndex < 0) continue;
+                    const key = line.slice(0, separatorIndex).trim().toLowerCase();
+                    if (key === target) {
+                        return line.slice(separatorIndex + 1).trim();
+                    }
+                }
+                return '';
+            }
             const createOffer = (
                 buttonId,
                 label,
                 priceText,
                 logoUrl,
                 source,
-                priceSource = ''
+                priceSource = '',
+                extra = {}
             ) => {
                 const button = document.querySelector(`a[data-bmid="${buttonId}"]`);
                 if (!button || !priceText) return null;
@@ -3031,7 +3805,8 @@
                     url: button.href,
                     logoUrl,
                     source,
-                    priceSource
+                    priceSource,
+                    ...extra
                 };
             };
 
@@ -3167,6 +3942,103 @@
                     );
                 }
             });
+
+            function fetchBrickOwlOffers(url, redirectCount = 0) {
+                GM_xmlhttpRequest({
+                    method: 'GET',
+                    url,
+                    headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+                        'User-Agent': 'Mozilla/5.0'
+                    },
+                    timeout: 15000,
+                    onload: response => {
+                        if ([301, 302, 303, 307, 308].includes(response.status) &&
+                            redirectCount < 5) {
+                            const location = getResponseHeader(
+                                response.responseHeaders,
+                                'location'
+                            );
+                            if (location) {
+                                fetchBrickOwlOffers(
+                                    new URL(location, url).href,
+                                    redirectCount + 1
+                                );
+                                return;
+                            }
+                        }
+
+                        if (response.status !== 200) {
+                            console.warn(
+                                `Brickmerge Tweaker: BrickOwl antwortete mit Status ${response.status} für ${url}.`
+                            );
+                            return;
+                        }
+
+                        const pageUrl = response.finalUrl || url;
+                        const brickOwlOffer = parseBrickOwlGermanOffers(
+                            response.responseText,
+                            pageUrl
+                        );
+                        if (!brickOwlOffer) {
+                            const catalogUrl = redirectCount < 5
+                                ? findBrickOwlCatalogUrl(
+                                    response.responseText,
+                                    setNumber,
+                                    pageUrl
+                                )
+                                : '';
+                            if (
+                                catalogUrl &&
+                                catalogUrl !== pageUrl &&
+                                !/\/search\//i.test(catalogUrl)
+                            ) {
+                                fetchBrickOwlOffers(catalogUrl, redirectCount + 1);
+                                return;
+                            }
+                            console.warn(
+                                `Brickmerge Tweaker: Keine passenden deutschen BrickOwl-Angebote gefunden (${pageUrl}).`
+                            );
+                            return;
+                        }
+
+                        const sellerDescription = brickOwlOffer.storeName
+                            ? `; günstigstes Angebot von ${brickOwlOffer.storeName}`
+                            : '';
+                        const shippingDescription = brickOwlOffer.shippingStatus === 'paid'
+                            ? `; Versand ${formatEuroValue(brickOwlOffer.shippingCost)} €`
+                            : brickOwlOffer.shippingStatus === 'free'
+                                ? '; Versand frei'
+                                : '; Versand unbekannt';
+                        const offer = createOffer(
+                            'btn-bo',
+                            'BrickOwl',
+                            `${formatEuroValue(brickOwlOffer.price)} €`,
+                            'https://img.brickowl.com/sites/default/themes/bs_ss/images/logo-svg-v3-shifted.svg',
+                            'brickowl-de',
+                            `BrickOwl: günstigstes aktuelles Neupreis-Angebot bei deutschen Händlern aus ${brickOwlOffer.totalLots} Angeboten${sellerDescription}${shippingDescription}`,
+                            {
+                                url: brickOwlOffer.url,
+                                shippingStatus: brickOwlOffer.shippingStatus,
+                                shippingCost: brickOwlOffer.shippingCost
+                            }
+                        );
+                        if (offer) storeOffers([offer]);
+                    },
+                    onerror: () => {
+                        console.warn(
+                            'Brickmerge Tweaker: BrickOwl-Angebote konnten nicht geladen werden.'
+                        );
+                    },
+                    ontimeout: () => {
+                        console.warn(
+                            'Brickmerge Tweaker: BrickOwl-Angebote - Timeout.'
+                        );
+                    }
+                });
+            }
+            fetchBrickOwlOffers(brickOwlCatalogSearchUrl(setNumber));
         }
     }
 
@@ -3213,11 +4085,79 @@
             }
             walk(document.body);
             document.body.addEventListener('click', function (e) {
-                if (e.target && e.target.classList.contains('bm-minifig-link')) {
+                const link = e.target?.closest?.('.bm-minifig-link, .bm-minifig-count-link');
+                if (link) {
                     e.preventDefault();
-                    showMinifigOverlay(e.target, setNum);
+                    showMinifigOverlay(link, setNum);
                 }
             });
+        }
+
+        function linkMinifigureCount(setNum) {
+            const details = Array.from(
+                document.querySelectorAll('.content.setdetails p, #ol2nd p, p')
+            ).find(paragraph => /Minifiguren\s*:/i.test(paragraph.textContent || ''));
+            if (!details || details.querySelector('.bm-minifig-count-link')) return;
+
+            const createCountLink = countText => {
+                const link = document.createElement('a');
+                link.href = '#';
+                link.className = 'bm-lego-article-link bm-minifig-count-link';
+                link.title = 'Minifiguren anzeigen';
+                link.setAttribute('aria-label', `${countText.trim()} Minifiguren anzeigen`);
+                return link;
+            };
+
+            const range = document.createRange();
+            const strongMatch = Array.from(details.querySelectorAll('strong'))
+                .find(strong => {
+                    if (!/^\s*\d+\s*$/.test(strong.textContent || '')) return false;
+                    range.selectNodeContents(details);
+                    try {
+                        range.setEndBefore(strong);
+                    } catch (error) {
+                        return false;
+                    }
+                    return /Minifiguren\s*:\s*$/i.test(
+                        range.toString().replace(/\s+/g, ' ')
+                    );
+                });
+            range.detach?.();
+
+            if (strongMatch && !strongMatch.closest('a')) {
+                const link = createCountLink(strongMatch.textContent);
+                strongMatch.replaceWith(link);
+                link.appendChild(strongMatch);
+                return;
+            }
+
+            const walker = document.createTreeWalker(details, NodeFilter.SHOW_TEXT);
+            let labelSeen = false;
+            let textNode;
+            while (textNode = walker.nextNode()) {
+                if (textNode.parentElement?.closest('a')) continue;
+                const text = textNode.nodeValue || '';
+                const sameNodeMatch = text.match(/Minifiguren\s*:\s*(\d+)/i);
+                const numberMatch = sameNodeMatch || (labelSeen ? text.match(/\d+/) : null);
+                if (numberMatch) {
+                    const countText = sameNodeMatch ? sameNodeMatch[1] : numberMatch[0];
+                    const numberStart = sameNodeMatch
+                        ? sameNodeMatch.index + sameNodeMatch[0].lastIndexOf(countText)
+                        : numberMatch.index;
+                    const numberEnd = numberStart + countText.length;
+                    const fragment = document.createDocumentFragment();
+                    fragment.appendChild(document.createTextNode(text.slice(0, numberStart)));
+                    const link = createCountLink(countText);
+                    link.textContent = countText;
+                    fragment.appendChild(link);
+                    fragment.appendChild(document.createTextNode(text.slice(numberEnd)));
+                    textNode.parentNode.replaceChild(fragment, textNode);
+                    return;
+                }
+                if (/Minifiguren\s*:\s*$/i.test(text.replace(/\s+/g, ' '))) {
+                    labelSeen = true;
+                }
+            }
         }
 
         function showMinifigOverlay(link, setNum) {
@@ -3575,6 +4515,8 @@
             });
         }
         replaceMinifigurenWithLink(setNum);
+        linkMinifigureCount(setNum);
+        window.addEventListener('load', () => linkMinifigureCount(setNum), { once: true });
     }
 
     // ==========================================
@@ -3931,10 +4873,12 @@
                     const discount = ((1 - (price1 / price2)) * 100).toFixed(0);
 
                     if (Number(discount) >= 0) {
-                        const redBubbles = document.querySelectorAll('.off');
+                        const redBubbles = Array.from(document.querySelectorAll('.off'))
+                            .filter(bubble => !bubble.classList.contains('black-discount-bubble'));
                         if (redBubbles.length > 0) {
                             createBlackBubble(discount, redBubbles);
                         }
+                        ensureFeaturedBlackBubble(discount);
                         createBestPriceBlackBubble(discount);
                     }
                 }
@@ -3944,7 +4888,12 @@
                     const currentBestPrice = uniqueSortedPrices[0];
                     const historicalData = findAllTimeBestPrice();
                     if (historicalData) {
-                        insertAllTimeDiscountRow(currentBestPrice, historicalData.price, historicalData.element);
+                        insertAllTimeDiscountRow(
+                            currentBestPrice,
+                            historicalData.price,
+                            historicalData.element,
+                            historicalData.detailSuffix
+                        );
                     }
                 }
 
@@ -3978,6 +4927,34 @@
             });
         }
 
+        // Wenn es auf dem Produktbild keine rote UVP-Bubble gibt, fehlt sonst die
+        // Vorlage zum Klonen. In dem Fall zeigen wir die schwarze Bubble einzeln.
+        function ensureFeaturedBlackBubble(discountText) {
+            const featuredContainers = [
+                document.querySelector(
+                    '.content.setdetails .large-3.medium-4.columns.hide-for-small'
+                ),
+                document.querySelector(
+                    '.content.setdetails .show-for-small-only.text-center'
+                )
+            ].filter(Boolean);
+
+            featuredContainers.forEach(container => {
+                if (container.querySelector(':scope > .off:not(.black-discount-bubble)')) {
+                    return;
+                }
+
+                let bubble = container.querySelector(':scope > .bm-featured-black-bubble');
+                if (!bubble) {
+                    bubble = document.createElement('div');
+                    bubble.className = 'black-discount-bubble bm-featured-black-bubble';
+                    container.prepend(bubble);
+                }
+                bubble.textContent = `${discountText}%`;
+                bubble.title = `${discountText}% günstiger als das nächstteurere Angebot`;
+            });
+        }
+
         // Der Abstand zum nächstteureren Angebot gehört auch immer an den
         // Brickmerge-Bestpreis, unabhängig davon, ob dort ein UVP-Badge existiert.
         function createBestPriceBlackBubble(discountText) {
@@ -3986,6 +4963,15 @@
                 badge.className = 'black-discount-bubble bm-bestprice-black-bubble';
                 badge.textContent = `${discountText}%`;
                 badge.title = `${discountText}% günstiger als das nächstteurere Angebot`;
+                const hasNativeDiscountBubble = Array.from(
+                    topprice.querySelectorAll('span[style*="position: absolute"]')
+                ).some(element =>
+                    !element.classList.contains('black-discount-bubble') &&
+                    /%/.test(element.textContent || '')
+                );
+                if (!hasNativeDiscountBubble) {
+                    badge.classList.add('bm-bestprice-black-bubble-single');
+                }
                 topprice.style.setProperty('position', 'relative');
                 topprice.appendChild(badge);
             });
@@ -3999,27 +4985,49 @@
             while (node = walker.nextNode()) {
                 if (node.nodeValue.toLowerCase().includes('bisheriger bestpreis')) {
                     let container = node.parentElement;
-                    const text = container.textContent;
-
-                    const match = text.match(/(\d+[\d\s.,]*)\s*€/);
-                    if (match) {
-                        let price = parseFloat(match[1].replace(/\s/g, '').replace(/\./g, '').replace(',', '.'));
-                        if (price > 0) {
-                            // Hinweis: bewusst KEIN Hochklettern mehr zu LI/DIV/P/TR.
-                            // Auf Detailseiten steckt "bisheriger Bestpreis" in einem
-                            // einzigen großen <p> zusammen mit vielen anderen Infozeilen;
-                            // das alte Hochklettern hängte die Vergleichszeile dadurch
-                            // ans Ende des kompletten Absatzes statt direkt dahinter.
-                            return { element: container, price: price };
-                        }
+                    const historicalInfo = parseHistoricalBestPriceText(
+                        container.textContent
+                    );
+                    if (historicalInfo) {
+                        // Hinweis: bewusst KEIN Hochklettern mehr zu LI/DIV/P/TR.
+                        // Auf Detailseiten steckt "bisheriger Bestpreis" in einem
+                        // einzigen großen <p> zusammen mit vielen anderen Infozeilen;
+                        // das alte Hochklettern hängte die Vergleichszeile dadurch
+                        // ans Ende des kompletten Absatzes statt direkt dahinter.
+                        return { element: container, ...historicalInfo };
                     }
                 }
             }
             return null;
         }
 
+        function findSidebarHistoricalBestPriceRow(seedElement) {
+            if (!seedElement) return null;
+
+            const directMatch = seedElement.closest?.('p, div, li, span');
+            if (
+                directMatch &&
+                /bisheriger bestpreis/i.test(directMatch.textContent || '')
+            ) {
+                return directMatch;
+            }
+
+            return Array.from(document.querySelectorAll('p, div, li, span')).find(
+                element =>
+                    /bisheriger bestpreis/i.test(element.textContent || '') &&
+                    /€/.test(element.textContent || '')
+            ) || null;
+        }
+
+        function updateSidebarHistoricalBestPriceDetail(matchedElement, detailSuffix) {
+            writeHistoricalBestPriceDetailToSidebar(
+                nativeChartHistoricalBestPriceInfo?.detailSuffix || detailSuffix,
+                matchedElement
+            );
+        }
+
         // Fügt die Rabatt-Zeile ein
-        function insertAllTimeDiscountRow(currentPrice, allTimeBest, matchedElement) {
+        function insertAllTimeDiscountRow(currentPrice, allTimeBest, matchedElement, detailSuffix = '') {
             // Differenz: Negativ = günstiger, Positiv = teurer
             const diffPercent = ((currentPrice - allTimeBest) / allTimeBest) * 100;
 
@@ -4036,6 +5044,7 @@
             newEl.id = 'all-time-bestpreis-discount';
             newEl.innerHTML = `<br />&nbsp;<span class="contentcolor" style="color: #b00;">|</span> <a class="bm-price-history-link" href="#bm-price-chart-overlay" aria-controls="bm-price-chart-overlay">Differenz zum ATB: <strong style="color: ${color};">${percentStr}</strong></a>`;
 
+            updateSidebarHistoricalBestPriceDetail(matchedElement, detailSuffix);
             matchedElement.parentNode.insertBefore(newEl, matchedElement.nextSibling);
             decoratePriceHistoryLinks();
         }
@@ -4138,6 +5147,7 @@
                 image.alt = offer.label;
                 image.className = 'bm-marketplace-logo';
                 if (offer.key === 'amz') image.classList.add('bm-keepa-logo');
+                if (offer.key === 'bo') image.classList.add('bm-brickowl-logo');
                 image.loading = 'lazy';
                 image.decoding = 'async';
                 image.referrerPolicy = 'no-referrer';
@@ -4160,7 +5170,14 @@
             priceRow.dataset.mid = mid;
             priceRow.dataset.bmSource = offer.source || 'marketplace';
             priceRow.dataset.bmMarketplace = 'true';
-            priceRow.dataset.bmShippingUnknown = 'true';
+            if (offer.shippingStatus === 'paid' &&
+                Number.isFinite(Number(offer.shippingCost))) {
+                priceRow.dataset.bmShippingCost = String(Number(offer.shippingCost));
+            } else if (offer.shippingStatus === 'free') {
+                priceRow.dataset.bmShippingFree = 'true';
+            } else {
+                priceRow.dataset.bmShippingUnknown = 'true';
+            }
             if (hasUnknownPrice) priceRow.dataset.bmPriceUnknown = 'true';
             if (offer.priceSource) {
                 priceRow.dataset.bmPriceSource = offer.priceSource;
@@ -4171,13 +5188,19 @@
             offerLink.target = '_blank';
             offerLink.rel = 'noopener noreferrer';
             offerLink.className = 'tooltipster';
+            const shippingTitle = offer.shippingStatus === 'paid' &&
+                Number.isFinite(Number(offer.shippingCost))
+                ? `Versandkosten: ${formatEuroValue(Number(offer.shippingCost))} €.`
+                : offer.shippingStatus === 'free'
+                    ? 'Versandkostenfrei.'
+                    : 'Versandkosten unbekannt.';
             offerLink.title = hasUnknownPrice
                 ? `Link zu ${offer.label}. Preis unbekannt.`
                 : (
                     `Link zu ${offer.label} - ` +
                     `${offer.priceSource ? `${offer.priceSource}. ` : ''}` +
                     `Preis: ${formatEuroValue(price)} €. ` +
-                    `Versandkosten unbekannt.`
+                    shippingTitle
                 );
 
             const priceSpan = document.createElement('span');
@@ -4273,7 +5296,21 @@
     }
 
     function readShippingDetails(priceSpan) {
-        if (priceSpan.closest('[data-bm-shipping-unknown="true"]')) {
+        const explicitShippingRow = priceSpan.closest(
+            '[data-bm-shipping-cost], [data-bm-shipping-free], [data-bm-shipping-unknown]'
+        );
+        if (explicitShippingRow?.dataset.bmShippingCost) {
+            const cost = Number(explicitShippingRow.dataset.bmShippingCost);
+            if (Number.isFinite(cost) && cost >= 0) {
+                return cost <= 0.004
+                    ? { status: 'free', cost: 0 }
+                    : { status: 'paid', cost };
+            }
+        }
+        if (explicitShippingRow?.dataset.bmShippingFree === 'true') {
+            return { status: 'free', cost: 0 };
+        }
+        if (explicitShippingRow?.dataset.bmShippingUnknown === 'true') {
             return { status: 'unknown', cost: null };
         }
 
@@ -4686,6 +5723,26 @@
         });
     }
 
+    let offerProcessingHideTimer;
+    function showOfferProcessingIndicator() {
+        clearTimeout(offerProcessingHideTimer);
+        createDiscountSettingsUI();
+        const indicator = document.querySelector('.bm-offer-processing');
+        if (!indicator) return;
+        indicator.classList.add('is-visible');
+        indicator.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideOfferProcessingIndicator() {
+        clearTimeout(offerProcessingHideTimer);
+        offerProcessingHideTimer = setTimeout(() => {
+            const indicator = document.querySelector('.bm-offer-processing');
+            if (!indicator) return;
+            indicator.classList.remove('is-visible');
+            indicator.setAttribute('aria-hidden', 'true');
+        }, 180);
+    }
+
     let offerPresentationRunning = false;
     function applyOfferPresentation() {
         if (offerPresentationRunning) return;
@@ -4704,11 +5761,13 @@
             disableOfferListTooltips();
         } finally {
             offerPresentationRunning = false;
+            hideOfferProcessingIndicator();
         }
     }
 
     let offerPresentationTimer;
     const scheduleOfferPresentation = () => {
+        showOfferProcessingIndicator();
         clearTimeout(offerPresentationTimer);
         offerPresentationTimer = setTimeout(applyOfferPresentation, 80);
     };
