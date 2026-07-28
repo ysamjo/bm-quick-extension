@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.55
+// @version      3.56
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -4837,6 +4837,7 @@
                 if (existingRow) existingRow.remove();
 
                 const prices = [];
+                const brickmergeOfferPrices = [];
 
                 // Aktuelle Preise sammeln
                 const priceElements = document.querySelectorAll('.theprice, .price, .offer-price, td.price, span.price, .topprice');
@@ -4859,15 +4860,29 @@
                     }
                 });
 
-                const uniqueSortedPrices = [...new Set(prices)].sort((a, b) => a - b);
+                document.querySelectorAll(
+                    '#offerlist .medium-4.small-9.columns.pricerow[data-mid]' +
+                    ':not([data-bm-marketplace="true"])'
+                ).forEach(priceRow => {
+                    const priceSpan = priceRow.querySelector('span.price');
+                    const price = priceSpan ? getBaseOfferPrice(priceSpan) : null;
+                    if (price !== null && price > 0) {
+                        brickmergeOfferPrices.push(price);
+                    }
+                });
 
-                if (uniqueSortedPrices.length >= 2) {
-                    const price1 = uniqueSortedPrices[0]; // Günstigster Shop
-                    // uniqueSortedPrices entsteht aus einem Set numerischer Werte, d.h. exakt
+                const uniqueSortedPrices = [...new Set(prices)].sort((a, b) => a - b);
+                const uniqueSortedBrickmergeOfferPrices = [
+                    ...new Set(brickmergeOfferPrices)
+                ].sort((a, b) => a - b);
+
+                if (uniqueSortedBrickmergeOfferPrices.length >= 2) {
+                    const price1 = uniqueSortedBrickmergeOfferPrices[0]; // Günstigstes Brickmerge-Angebot
+                    // uniqueSortedBrickmergeOfferPrices entsteht aus einem Set numerischer Werte, d.h. exakt
                     // identische Preise sind hier bereits herausgefiltert. price2 ist also immer
                     // schon der nächst-*unterschiedliche* (höhere) Preis - "wenn zweitbestes
                     // identisch, dann drittbestes nehmen" ist dadurch automatisch erfüllt.
-                    const price2 = uniqueSortedPrices[1]; // nächstteureres, abweichendes Angebot
+                    const price2 = uniqueSortedBrickmergeOfferPrices[1]; // nächstteureres, abweichendes Brickmerge-Angebot
 
                     // Rabatt als ganze Zahl runden
                     const discount = ((1 - (price1 / price2)) * 100).toFixed(0);
@@ -4912,6 +4927,8 @@
 
                 // Text auf ganze Prozent setzen
                 blackBubble.textContent = `${discountText}%`;
+                blackBubble.title =
+                    `${discountText}% günstiger als das nächstteurere Brickmerge-Angebot`;
 
                 // Styling: Schwarz statt rot/orange
                 blackBubble.style.setProperty('background-color', '#222222', 'important');
@@ -4951,7 +4968,7 @@
                     container.prepend(bubble);
                 }
                 bubble.textContent = `${discountText}%`;
-                bubble.title = `${discountText}% günstiger als das nächstteurere Angebot`;
+                bubble.title = `${discountText}% günstiger als das nächstteurere Brickmerge-Angebot`;
             });
         }
 
@@ -4962,7 +4979,7 @@
                 const badge = document.createElement('span');
                 badge.className = 'black-discount-bubble bm-bestprice-black-bubble';
                 badge.textContent = `${discountText}%`;
-                badge.title = `${discountText}% günstiger als das nächstteurere Angebot`;
+                badge.title = `${discountText}% günstiger als das nächstteurere Brickmerge-Angebot`;
                 const hasNativeDiscountBubble = Array.from(
                     topprice.querySelectorAll('span[style*="position: absolute"]')
                 ).some(element =>
