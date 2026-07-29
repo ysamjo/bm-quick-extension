@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.70
+// @version      3.74
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -2709,19 +2709,36 @@
                 }
                 return false;
             });
-        const designer = designerStrong?.textContent?.replace(/\s+/g, ' ').trim();
-        if (!designer || designerStrong.closest('a')) return;
+        const designerText = designerStrong?.textContent
+            ?.replace(/\s+/g, ' ')
+            .trim();
+        if (!designerText || designerStrong.closest('a')) return;
 
-        const query = `site:brickmerge.de Designer: ${designer}`;
-        const link = document.createElement('a');
-        link.className = 'bm-lego-article-link bm-designer-link';
-        link.href =
-            `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.title = `Brickmerge-Sets von ${designer} in Google Bilder suchen`;
-        designerStrong.replaceWith(link);
-        link.appendChild(designerStrong);
+        const designers = designerText
+            .split(/\s*\|\s*/)
+            .map(name => name.trim())
+            .filter(Boolean);
+        if (designers.length === 0) return;
+
+        const fragment = document.createDocumentFragment();
+        designers.forEach((designer, index) => {
+            if (index > 0) {
+                fragment.appendChild(document.createTextNode(' | '));
+            }
+            const query = `site:brickmerge.de Designer: ${designer}`;
+            const link = document.createElement('a');
+            link.className = 'bm-lego-article-link bm-designer-link';
+            link.href =
+                `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.title = `Brickmerge-Sets von ${designer} in Google Bilder suchen`;
+            const strong = document.createElement('strong');
+            strong.textContent = designer;
+            link.appendChild(strong);
+            fragment.appendChild(link);
+        });
+        designerStrong.replaceWith(fragment);
     }
 
     function linkPackageDimensionsCalculator() {
@@ -3328,7 +3345,7 @@
         const brickOwlCatalogSearchUrl = value =>
             `https://www.brickowl.com/search/catalog?cat=3&query=${encodeURIComponent(`${value}-1`)}`;
         const brickOwlSearchUrl = value =>
-            `https://www.brickowl.com/search/catalog?cat=3&query=${encodeURIComponent(`${value}-1`)}`;
+            `https://www.brickowl.com/search/catalog?cat=3&jump=1&query=${encodeURIComponent(`${value}-1`)}`;
 
         const groups = [
             {
@@ -3562,6 +3579,45 @@
                 next.title = "Nach rechts";
                 next.setAttribute("aria-label", `${group.title}: nach rechts`);
                 next.appendChild(document.createElement("span"));
+
+                // iOS Safari übernimmt für dynamische Buttons gelegentlich die
+                // großen roten Brickmerge-Standardwerte. Die kritischen Maße
+                // und Farben stehen deshalb zusätzlich direkt am Element.
+                [previous, next].forEach(control => {
+                    const fixedStyles = {
+                        display: 'none',
+                        position: 'absolute',
+                        top: '50%',
+                        zIndex: '5',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '1.65rem',
+                        height: '1.65rem',
+                        minWidth: '1.65rem',
+                        minHeight: '1.65rem',
+                        margin: '0',
+                        padding: '0',
+                        transform: 'translateY(-50%)',
+                        background: '#fff',
+                        border: '1px solid #aaa',
+                        borderRadius: '50%',
+                        boxShadow: '0 1px 4px rgba(0, 0, 0, 0.22)',
+                        color: '#a80000',
+                        lineHeight: '1',
+                        boxSizing: 'border-box'
+                    };
+                    Object.entries(fixedStyles).forEach(([property, value]) => {
+                        control.style.setProperty(
+                            property.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`),
+                            value,
+                            'important'
+                        );
+                    });
+                    control.style.setProperty('-webkit-appearance', 'none', 'important');
+                });
+                previous.style.setProperty('left', '0.15rem', 'important');
+                next.style.setProperty('right', '0.15rem', 'important');
+
                 for (const {
                     id,
                     name,
@@ -3652,8 +3708,20 @@
 
                 const update = () => {
                     const maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
-                    previous.classList.toggle('is-visible', viewport.scrollLeft > 2);
-                    next.classList.toggle('is-visible', viewport.scrollLeft < maxScroll - 2);
+                    const showPrevious = viewport.scrollLeft > 2;
+                    const showNext = viewport.scrollLeft < maxScroll - 2;
+                    previous.classList.toggle('is-visible', showPrevious);
+                    next.classList.toggle('is-visible', showNext);
+                    previous.style.setProperty(
+                        'display',
+                        showPrevious ? 'flex' : 'none',
+                        'important'
+                    );
+                    next.style.setProperty(
+                        'display',
+                        showNext ? 'flex' : 'none',
+                        'important'
+                    );
                 };
                 const scroll = direction => {
                     viewport.scrollBy({
@@ -4623,6 +4691,26 @@
                     color:#555;
                     font-size:0.88rem;
                 }
+                .bm-minifig-retry {
+                    display:inline-flex;
+                    align-items:center;
+                    min-height:34px;
+                    margin:12px 0 0;
+                    padding:7px 12px;
+                    border:0;
+                    border-radius:3px;
+                    background:#b00;
+                    color:#fff;
+                    cursor:pointer;
+                    font:inherit;
+                    font-weight:600;
+                }
+                .bm-minifig-retry:hover,
+                .bm-minifig-retry:focus {
+                    background:#800;
+                    color:#fff;
+                    outline:none;
+                }
                 .bm-minifig-content table {
                     width:100%;
                     margin:0;
@@ -4765,9 +4853,18 @@
             const previousBodyOverflow = document.body.style.overflow;
             document.body.appendChild(overlay);
 
+            const requestHandles = new Set();
             const closeButton = overlay.querySelector('.bm-minifig-close');
             const close = () => {
                 document.removeEventListener('keydown', handleKeydown);
+                requestHandles.forEach(request => {
+                    try {
+                        request?.abort?.();
+                    } catch (error) {
+                        // The request may already have completed.
+                    }
+                });
+                requestHandles.clear();
                 document.body.style.overflow = previousBodyOverflow;
                 overlay.remove();
                 link?.focus();
@@ -4782,81 +4879,360 @@
             closeButton.onclick = close;
             closeButton.focus();
 
-            const url = `https://www.bricklink.com/catalogItemInv.asp?S=${setNum}-1&viewItemType=M`;
-            GM_xmlhttpRequest({
-                method: "GET",
-                url: url,
-                onload: function (response) {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(response.responseText, "text/html");
-                    const table = doc.querySelector("#id-main-legacy-table > tbody > tr > td > table:nth-child(4) > tbody > tr > td > center > form > table");
-                    if (table) {
-                        const rows = table.querySelectorAll('tr');
-                        if (rows.length > 2) { rows[0].remove(); rows[1].remove(); }
+            const content = overlay.querySelector('.bm-minifig-content');
+            const subtitle = overlay.querySelector('.bm-minifig-subtitle');
+            const cacheKey = `bm-minifigures-v2-${setNum}`;
+            const cacheMaxAge = 6 * 60 * 60 * 1000;
+            let loadSequence = 0;
 
-                        const headingRow = table.rows[0];
-                        if (headingRow && /minifigures/i.test(headingRow.textContent)) {
-                            headingRow.remove();
-                        }
-
-                        table.removeAttribute('border');
-                        table.removeAttribute('cellpadding');
-                        table.removeAttribute('cellspacing');
-                        table.removeAttribute('width');
-                        table.removeAttribute('style');
-
-                        Array.from(table.rows).forEach(row => {
-                            if (row.cells.length > 1) row.deleteCell(-1);
-                            row.removeAttribute('style');
-                            row.removeAttribute('height');
-                            Array.from(row.cells).forEach(cell => {
-                                ['align', 'bgcolor', 'height', 'nowrap', 'style', 'valign', 'width']
-                                    .forEach(attribute => cell.removeAttribute(attribute));
-                            });
-
-                            const imageCell = row.cells[0];
-                            if (!imageCell?.querySelector('img')) return;
-                            Array.from(imageCell.childNodes).forEach(node => {
-                                if (node.nodeType === 3 && node.textContent.trim() === '*') {
-                                    node.remove();
-                                }
-                            });
-                            Array.from(imageCell.querySelectorAll('br')).forEach(br => {
-                                const trailingContent = Array.from(imageCell.childNodes)
-                                    .slice(Array.from(imageCell.childNodes).indexOf(br) + 1)
-                                    .some(node => node.textContent.trim());
-                                if (!trailingContent) br.remove();
-                            });
-                        });
-
-                        Array.from(table.querySelectorAll('a')).forEach(a => {
-                            if (a.getAttribute('href')?.startsWith('/')) {
-                                a.href = 'https://www.bricklink.com' + a.getAttribute('href');
-                            }
-                            a.target = '_blank';
-                            a.rel = 'noopener noreferrer';
-                        });
-
-                        const figureCount = table.rows.length;
-                        const subtitle = overlay.querySelector('.bm-minifig-subtitle');
-                        subtitle.textContent = `${figureCount} ${figureCount === 1 ? 'Figur' : 'Figuren'} · LEGO Set ${setNum}`;
-
-                        overlay.querySelector('.bm-minifig-content').innerHTML = "";
-                        overlay.querySelector('.bm-minifig-content').appendChild(table);
-                    } else {
-                        overlay.querySelector('.bm-minifig-content').innerHTML =
-                            '<div class="bm-minifig-status">Keine Minifiguren gefunden.</div>';
-                    }
-                },
-                onerror: function () {
-                    overlay.querySelector('.bm-minifig-content').innerHTML =
-                        '<div class="bm-minifig-status">Fehler beim Laden von Bricklink.</div>';
-                },
-                ontimeout: function () {
-                    overlay.querySelector('.bm-minifig-content').innerHTML =
-                        '<div class="bm-minifig-status">Zeitüberschreitung beim Laden von Bricklink.</div>';
+            const setStatus = (message, allowRetry = false) => {
+                if (!overlay.isConnected) return;
+                content.replaceChildren();
+                const status = document.createElement('div');
+                status.className = 'bm-minifig-status';
+                const text = document.createElement('div');
+                text.textContent = message;
+                status.appendChild(text);
+                if (allowRetry) {
+                    const retry = document.createElement('button');
+                    retry.type = 'button';
+                    retry.className = 'bm-minifig-retry';
+                    retry.textContent = 'Erneut versuchen';
+                    retry.addEventListener('click', () => loadMinifigures(true));
+                    status.appendChild(retry);
                 }
-            });
+                content.appendChild(status);
+            };
+
+            const makeAbsoluteUrl = value => {
+                if (!value || value === '#') return value;
+                try {
+                    return new URL(value, 'https://www.bricklink.com').href;
+                } catch (error) {
+                    return value;
+                }
+            };
+
+            const cloneAndCleanCell = sourceCell => {
+                const cell = sourceCell.cloneNode(true);
+                cell.querySelectorAll(
+                    'script,style,iframe,object,embed,form,input,button'
+                ).forEach(node => node.remove());
+                [cell, ...cell.querySelectorAll('*')].forEach(element => {
+                    Array.from(element.attributes || []).forEach(attribute => {
+                        const name = attribute.name.toLowerCase();
+                        if (
+                            name.startsWith('on') ||
+                            ['align', 'bgcolor', 'border', 'cellpadding', 'cellspacing',
+                                'height', 'nowrap', 'style', 'valign', 'width'
+                            ].includes(name)
+                        ) {
+                            element.removeAttribute(attribute.name);
+                        }
+                    });
+                });
+                cell.querySelectorAll('span').forEach(span => {
+                    if (
+                        !span.querySelector('img') &&
+                        span.textContent.replace(/\s+/g, '') === '*'
+                    ) {
+                        span.remove();
+                    }
+                });
+                cell.querySelectorAll('a[href]').forEach(anchor => {
+                    anchor.href = makeAbsoluteUrl(anchor.getAttribute('href'));
+                    anchor.target = '_blank';
+                    anchor.rel = 'noopener noreferrer';
+                });
+                cell.querySelectorAll('img[src]').forEach(image => {
+                    image.src = makeAbsoluteUrl(image.getAttribute('src'));
+                    image.loading = 'lazy';
+                    image.referrerPolicy = 'no-referrer';
+                });
+                return cell;
+            };
+
+            const buildFigureTable = figureRows => {
+                const table = document.createElement('table');
+                table.className = 'bm-minifig-table';
+                const tbody = document.createElement('tbody');
+                let figureCount = 0;
+
+                figureRows.forEach(({ imageCell, quantityCell, itemCell, descriptionCell }) => {
+                    if (!imageCell || !quantityCell || !itemCell || !descriptionCell) return;
+                    const row = document.createElement('tr');
+                    row.append(
+                        cloneAndCleanCell(imageCell),
+                        cloneAndCleanCell(quantityCell),
+                        cloneAndCleanCell(itemCell),
+                        cloneAndCleanCell(descriptionCell)
+                    );
+                    const quantity = Number.parseInt(
+                        quantityCell.textContent.match(/\d+/)?.[0] || '1',
+                        10
+                    );
+                    figureCount += Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+                    tbody.appendChild(row);
+                });
+
+                table.appendChild(tbody);
+                return tbody.rows.length > 0
+                    ? { kind: 'found', table, figureCount }
+                    : null;
+            };
+
+            const parseModernInventory = html => {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const inventoryTable = doc.querySelector('table.pciinvMainTable');
+                if (!inventoryTable) return null;
+
+                const figureRows = Array.from(
+                    inventoryTable.querySelectorAll('tr.pciinvItemRow')
+                ).filter(row => row.querySelector(
+                    'a[href*="catalogitem.page?M="], a[href*="catalogItemInv.asp?M="]'
+                )).map(row => {
+                    const cells = Array.from(row.cells);
+                    return {
+                        imageCell: cells[1],
+                        quantityCell: cells[2],
+                        itemCell: cells[3],
+                        descriptionCell: cells[4]
+                    };
+                });
+                return buildFigureTable(figureRows) || { kind: 'none' };
+            };
+
+            const parseLegacyInventory = html => {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                if (!doc.querySelector('#id-main-legacy-table')) return null;
+
+                const sourceRows = Array.from(doc.querySelectorAll('tr')).filter(row =>
+                    row.querySelector(
+                        'a[href*="catalogitem.page?M="], a[href*="catalogItemInv.asp?M="]'
+                    ) && row.querySelector('img')
+                );
+                const figureRows = sourceRows.map(row => {
+                    const cells = Array.from(row.cells);
+                    const imageIndex = cells.findIndex(cell => cell.querySelector('img'));
+                    const itemIndex = cells.findIndex(cell => cell.querySelector(
+                        'a[href*="catalogitem.page?M="], a[href*="catalogItemInv.asp?M="]'
+                    ));
+                    const quantityIndex = cells.findIndex((cell, index) =>
+                        index > imageIndex &&
+                        index < itemIndex &&
+                        /^\s*\d+\s*$/.test(cell.textContent || '')
+                    );
+                    const descriptionIndex = cells.findIndex((cell, index) =>
+                        index > itemIndex &&
+                        !/^\s*(?:PG|MID)?\s*$/.test(cell.textContent || '')
+                    );
+                    return {
+                        imageCell: cells[imageIndex],
+                        quantityCell: cells[quantityIndex],
+                        itemCell: cells[itemIndex],
+                        descriptionCell: cells[descriptionIndex]
+                    };
+                });
+                return buildFigureTable(figureRows);
+            };
+
+            const readCache = () => {
+                try {
+                    const cached = JSON.parse(sessionStorage.getItem(cacheKey) || 'null');
+                    if (
+                        !cached ||
+                        Date.now() - cached.savedAt > cacheMaxAge ||
+                        !cached.tableHtml
+                    ) {
+                        return null;
+                    }
+                    const doc = new DOMParser().parseFromString(cached.tableHtml, 'text/html');
+                    const table = doc.querySelector('table');
+                    const figureCount = Number(cached.figureCount);
+                    if (!table || !Number.isInteger(figureCount) || figureCount < 1) {
+                        return null;
+                    }
+                    return {
+                        kind: 'found',
+                        table: document.importNode(table, true),
+                        figureCount
+                    };
+                } catch (error) {
+                    return null;
+                }
+            };
+
+            const renderResult = (result, sequence, saveToCache = true) => {
+                if (
+                    sequence !== loadSequence ||
+                    !overlay.isConnected ||
+                    result?.kind !== 'found'
+                ) {
+                    return;
+                }
+                subtitle.textContent =
+                    `${result.figureCount} ` +
+                    `${result.figureCount === 1 ? 'Figur' : 'Figuren'} · ` +
+                    `LEGO Set ${setNum}`;
+                content.replaceChildren(result.table);
+                if (saveToCache) {
+                    try {
+                        sessionStorage.setItem(cacheKey, JSON.stringify({
+                            savedAt: Date.now(),
+                            figureCount: result.figureCount,
+                            tableHtml: result.table.outerHTML
+                        }));
+                    } catch (error) {
+                        // The overlay still works when session storage is unavailable.
+                    }
+                }
+            };
+
+            const requestWithRetry = (
+                url,
+                parseResponse,
+                sequence,
+                onSuccess,
+                onExhausted,
+                attempt = 0
+            ) => {
+                if (sequence !== loadSequence || !overlay.isConnected) return;
+                let request;
+                let finished = false;
+                const retryOrFail = () => {
+                    if (finished) return;
+                    finished = true;
+                    requestHandles.delete(request);
+                    if (sequence !== loadSequence || !overlay.isConnected) return;
+                    if (attempt < 1) {
+                        window.setTimeout(() => requestWithRetry(
+                            url,
+                            parseResponse,
+                            sequence,
+                            onSuccess,
+                            onExhausted,
+                            attempt + 1
+                        ), 550);
+                    } else {
+                        onExhausted();
+                    }
+                };
+                request = GM_xmlhttpRequest({
+                    method: 'GET',
+                    url,
+                    headers: {
+                        'Accept': 'text/html,application/xhtml+xml',
+                        'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8'
+                    },
+                    timeout: 15000,
+                    onload: response => {
+                        if (finished) return;
+                        requestHandles.delete(request);
+                        if (sequence !== loadSequence || !overlay.isConnected) return;
+                        const body = String(response.responseText || '');
+                        const parsed = response.status === 200 && body.length > 200
+                            ? parseResponse(body)
+                            : null;
+                        if (parsed) {
+                            finished = true;
+                            onSuccess(parsed);
+                        } else {
+                            retryOrFail();
+                        }
+                    },
+                    onerror: retryOrFail,
+                    ontimeout: retryOrFail
+                });
+                if (request) requestHandles.add(request);
+            };
+
+            const loadLegacyInventory = sequence => {
+                const legacyUrl =
+                    `https://www.bricklink.com/catalogItemInv.asp?S=${setNum}-1` +
+                    '&viewItemType=M';
+                requestWithRetry(
+                    legacyUrl,
+                    parseLegacyInventory,
+                    sequence,
+                    result => renderResult(result, sequence),
+                    () => {
+                        if (sequence !== loadSequence || !overlay.isConnected) return;
+                        setStatus(
+                            'BrickLink blockiert die Anfrage momentan. Bitte versuche es erneut.',
+                            true
+                        );
+                    }
+                );
+            };
+
+            const loadModernInventory = sequence => {
+                const catalogUrl =
+                    `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setNum}-1`;
+                requestWithRetry(
+                    catalogUrl,
+                    html => {
+                        const match = html.match(/\bidItem\s*:\s*(\d+)/);
+                        const itemId = Number(match?.[1]);
+                        return Number.isInteger(itemId) && itemId > 0 ? itemId : null;
+                    },
+                    sequence,
+                    itemId => {
+                        const inventoryUrl =
+                            'https://www.bricklink.com/v2/catalog/' +
+                            'catalogitem_invtab.page' +
+                            `?idItem=${encodeURIComponent(itemId)}` +
+                            '&st=1&show_invid=0&show_matchcolor=0' +
+                            '&show_pglink=0&show_pcc=0&show_missingpcc=0' +
+                            `&itemNoSeq=${encodeURIComponent(`${setNum}-1`)}`;
+                        requestWithRetry(
+                            inventoryUrl,
+                            parseModernInventory,
+                            sequence,
+                            result => {
+                                if (result.kind === 'none') {
+                                    setStatus('Keine Minifiguren gefunden.');
+                                    return;
+                                }
+                                renderResult(result, sequence);
+                            },
+                            () => loadLegacyInventory(sequence)
+                        );
+                    },
+                    () => loadLegacyInventory(sequence)
+                );
+            };
+
+            const loadMinifigures = forceReload => {
+                loadSequence += 1;
+                const sequence = loadSequence;
+                requestHandles.forEach(request => {
+                    try {
+                        request?.abort?.();
+                    } catch (error) {
+                        // The request may already have completed.
+                    }
+                });
+                requestHandles.clear();
+
+                if (!forceReload) {
+                    const cached = readCache();
+                    if (cached) {
+                        renderResult(cached, sequence, false);
+                        return;
+                    }
+                } else {
+                    try {
+                        sessionStorage.removeItem(cacheKey);
+                    } catch (error) {
+                        // Continue without cache invalidation.
+                    }
+                }
+                subtitle.textContent = `LEGO Set ${setNum}`;
+                setStatus('Minifiguren werden von BrickLink geladen …');
+                loadModernInventory(sequence);
+            };
+
+            loadMinifigures(false);
         }
         try {
             replaceMinifigurenWithLink(setNum);
