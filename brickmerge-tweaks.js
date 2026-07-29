@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.74
+// @version      3.75
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -190,6 +190,23 @@
         if (!pathLooksLikeRedirect && !pageLooksLikeRedirect()) return false;
 
         let completed = false;
+        const navigateToTarget = target => {
+            const href = target?.href ||
+                target?.formAction ||
+                target?.dataset?.href ||
+                target?.closest?.('a[href]')?.href ||
+                target?.closest?.('form[action]')?.action ||
+                '';
+            if (href) {
+                window.location.assign(href);
+                return true;
+            }
+            if (target instanceof HTMLAnchorElement) {
+                target.target = '_self';
+            }
+            target?.click?.();
+            return false;
+        };
         const continueRedirect = () => {
             if (completed) return true;
             const target = Array.from(
@@ -211,10 +228,7 @@
             if (!target) return false;
 
             completed = true;
-            if (target instanceof HTMLAnchorElement) {
-                target.target = '_self';
-            }
-            target.click();
+            navigateToTarget(target);
             return true;
         };
 
