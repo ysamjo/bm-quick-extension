@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.86
+// @version      3.87
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -1940,55 +1940,14 @@
             });
         });
 
-        const findBingEmbed = () => document.querySelector(
-            'iframe[src*="bing" i], iframe[title*="bing" i], [data-bing-search]'
-        );
-
-        const googleUrl = `https://www.google.com/search?igu=1&hl=de&q=${encodeURIComponent(
-            `site:brickmerge.de ${searchTerm}`
-        )}`;
-
-        const makeGoogleEmbed = () => {
-            const section = document.createElement('section');
-            section.className = 'bm-google-search-embed';
-            section.setAttribute('aria-label', `Google-Suche nach ${searchTerm}`);
-            section.style.cssText = [
-                'width:100%',
-                'margin:1rem 0 1.5rem',
-                'border:1px solid #ddd',
-                'background:#fff',
-                'box-sizing:border-box'
-            ].join(';');
-
-            const frame = document.createElement('iframe');
-            frame.src = googleUrl;
-            frame.title = `Google-Suche site:brickmerge.de ${searchTerm}`;
-            frame.loading = 'lazy';
-            frame.referrerPolicy = 'no-referrer';
-            frame.style.cssText = [
-                'display:block',
-                'width:100%',
-                'height:620px',
-                'border:0',
-                'background:#fff'
-            ].join(';');
-
-            const fallback = document.createElement('a');
-            fallback.href = googleUrl;
-            fallback.target = '_blank';
-            fallback.rel = 'noopener noreferrer';
-            fallback.textContent = 'Google-Suche öffnen';
-            fallback.style.cssText = [
-                'display:block',
-                'padding:0.55rem 0.8rem',
-                'color:#b00000',
-                'font-size:0.9rem',
-                'text-decoration:underline'
-            ].join(';');
-
-            section.append(frame, fallback);
-            return section;
-        };
+        const googleQuery = `site:brickmerge.de ${searchTerm}`;
+        const googleLuckyUrl =
+            'https://www.google.com/search?btnI=1&hl=de&q=' +
+            encodeURIComponent(googleQuery);
+        const googleResultsUrl =
+            'https://www.google.com/search?hl=de&q=' +
+            encodeURIComponent(googleQuery);
+        const redirectKey = `bm-google-lucky-${searchTerm.toLocaleLowerCase('de')}`;
 
         let applied = false;
         const apply = () => {
@@ -1996,23 +1955,19 @@
             const messageNodes = findMessageNodes();
             if (messageNodes.length === 0) return false;
 
-            const bingEmbed = findBingEmbed();
-            const googleEmbed = makeGoogleEmbed();
-            if (bingEmbed) {
-                // Brickmerge puts the messages, iframe and homepage link into
-                // one <p>. Replace that complete fallback block so the newly
-                // inserted Google search cannot be removed with the old text.
-                const fallbackBlock = bingEmbed.closest('p.pad') || bingEmbed.parentElement;
-                if (fallbackBlock) fallbackBlock.replaceWith(googleEmbed);
-                else bingEmbed.replaceWith(googleEmbed);
-            } else {
-                const insertionPoint = messageNodes[messageNodes.length - 1];
-                insertionPoint.after(googleEmbed);
-                messageNodes.forEach(element => {
-                    if (element.isConnected) element.remove();
-                });
-            }
             applied = true;
+            let previousRedirect = 0;
+            try {
+                previousRedirect = Number(sessionStorage.getItem(redirectKey) || 0);
+                sessionStorage.setItem(redirectKey, String(Date.now()));
+            } catch (error) {
+                // Die Weiterleitung funktioniert auch ohne Session-Speicher.
+            }
+
+            const targetUrl = Date.now() - previousRedirect < 60000
+                ? googleResultsUrl
+                : googleLuckyUrl;
+            window.location.replace(targetUrl);
             return true;
         };
 
