@@ -13,6 +13,7 @@
 // @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
 // @connect      www.bricklink.com
+// @connect      bricklink.com
 // @connect      www.brickowl.com
 // @connect      brickowl.com
 // @connect      *.brickowl.com
@@ -4042,13 +4043,14 @@
                 };
             }
             function parseBrickLinkItemId(html) {
+                const rawItemId = String(html || '').match(/\bidItem\s*[:=]\s*(\d+)/)?.[1];
                 const doc = new DOMParser().parseFromString(html, 'text/html');
                 const scriptText = Array.from(doc.scripts)
                     .map(script => script.textContent || '')
                     .join('\n');
                 const scriptMatch = scriptText.match(/\bidItem\s*:\s*(\d+)/);
                 const dataItemId = doc.querySelector('[data-itemid]')?.dataset.itemid;
-                const itemId = Number(scriptMatch?.[1] || dataItemId);
+                const itemId = Number(rawItemId || scriptMatch?.[1] || dataItemId);
                 return Number.isInteger(itemId) && itemId > 0 ? itemId : null;
             }
             function parseBrickLinkPrice(priceText) {
@@ -4696,9 +4698,7 @@
                 },
                 value => Number.isInteger(Number(value)) && Number(value) > 0
             ).catch(() => null);
-            if (!itemId) return null;
-
-            return fetchWithCache(
+            const currentPrice = itemId ? await fetchWithCache(
                 makeApiCacheKey('bricklink-minifig-current-price-v2', cleanId),
                 MINIFIG_PRICE_CACHE_TTL,
                 async () => {
@@ -4743,6 +4743,30 @@
                         .filter(value => value !== null)
                         .sort((a, b) => a - b);
                     return prices[0] ?? null;
+                },
+                value => Number.isFinite(Number(value)) && Number(value) > 0
+            ).catch(() => null) : null;
+            if (Number.isFinite(Number(currentPrice)) && Number(currentPrice) > 0) {
+                return Number(currentPrice);
+            }
+
+            // BrickLink liefert die Preisübersicht für einzelne Figuren teilweise
+            // noch über den älteren catalogpg-Endpunkt, auch wenn die Artikelseite
+            // bereits das neue Layout verwendet.
+            return fetchWithCache(
+                makeApiCacheKey('bricklink-minifig-price-guide-v1', cleanId),
+                MINIFIG_PRICE_CACHE_TTL,
+                async () => {
+                    const jsonText = await requestText(
+                        'https://www.bricklink.com/ajax/clone/catalogpg.ajax' +
+                        `?itemType=M&itemNo=${encodeURIComponent(cleanId)}` +
+                        '&chartType=price&gross=1'
+                    );
+                    const payload = JSON.parse(jsonText);
+                    const value = Number(
+                        payload?.avg_price_6mo_new || payload?.avg_price || 0
+                    );
+                    return Number.isFinite(value) && value > 0 ? value : null;
                 },
                 value => Number.isFinite(Number(value)) && Number(value) > 0
             ).catch(() => null);
@@ -5677,7 +5701,9 @@
                         descriptionCell: cells[4]
                     };
                 });
-                return buildFigureTable(figureRows) || { kind: 'none' };
+                // Null zwingt den Aufrufer in den Legacy-Fallback. BrickLink
+                // liefert gelegentlich eine gültige Tabelle ohne Figurenzeilen.
+                return buildFigureTable(figureRows);
             };
 
             const parseLegacyInventory = html => {
