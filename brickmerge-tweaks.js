@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.82
+// @version      3.83
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -12,6 +12,10 @@
 // @grant        GM_getValue
 // @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
+// @grant        GM.getValue
+// @grant        GM.setValue
+// @grant        GM.deleteValue
+// @grant        GM.xmlHttpRequest
 // @connect      www.bricklink.com
 // @connect      bricklink.com
 // @connect      www.brickowl.com
@@ -36,13 +40,91 @@
     const MINIFIG_INVENTORY_CACHE_TTL = 6 * 60 * 60 * 1000;
     const MINIFIG_PRICE_CACHE_TTL = 24 * 60 * 60 * 1000;
     const cacheRequestsInFlight = new Map();
+    const gmApi = typeof GM !== 'undefined' ? GM : null;
 
-    const setMetaGptValue = (key, value) =>
-        Promise.resolve(GM_setValue(key, value));
-    const getMetaGptValue = (key, fallback = null) =>
-        Promise.resolve(GM_getValue(key, fallback));
-    const deleteMetaGptValue = key =>
-        Promise.resolve(GM_deleteValue(key));
+    const readLocalFallback = (key, fallback = null) => {
+        try {
+            const value = window.localStorage.getItem(key);
+            return value === null ? fallback : JSON.parse(value);
+        } catch (error) {
+            return fallback;
+        }
+    };
+    const writeLocalFallback = (key, value) => {
+        try {
+            window.localStorage.setItem(key, JSON.stringify(value));
+        } catch (error) {}
+    };
+    const removeLocalFallback = key => {
+        try {
+            window.localStorage.removeItem(key);
+        } catch (error) {}
+    };
+    const readStoredValue = (key, fallback = null) =>
+        typeof GM_getValue === 'function'
+            ? Promise.resolve(GM_getValue(key, fallback))
+            : typeof gmApi?.getValue === 'function'
+                ? Promise.resolve(gmApi.getValue(key, fallback))
+                : Promise.resolve(readLocalFallback(key, fallback));
+    const writeStoredValue = (key, value) =>
+        typeof GM_setValue === 'function'
+            ? Promise.resolve(GM_setValue(key, value))
+            : typeof gmApi?.setValue === 'function'
+                ? Promise.resolve(gmApi.setValue(key, value))
+                : Promise.resolve(writeLocalFallback(key, value));
+    const deleteStoredValue = key =>
+        typeof GM_deleteValue === 'function'
+            ? Promise.resolve(GM_deleteValue(key))
+            : typeof gmApi?.deleteValue === 'function'
+                ? Promise.resolve(gmApi.deleteValue(key))
+                : Promise.resolve(removeLocalFallback(key));
+
+    function requestWithGm(details) {
+        if (typeof GM_xmlhttpRequest === 'function') {
+            return GM_xmlhttpRequest(details);
+        }
+        if (typeof gmApi?.xmlHttpRequest === 'function') {
+            return gmApi.xmlHttpRequest(details);
+        }
+
+        const controller = new AbortController();
+        const fetchHeaders = { ...(details.headers || {}) };
+        Object.keys(fetchHeaders).forEach(name => {
+            if (/^(?:user-agent|referer|origin|host|content-length)$/i.test(name)) {
+                delete fetchHeaders[name];
+            }
+        });
+        const timeoutId = details.timeout
+            ? window.setTimeout(() => {
+                controller.abort();
+                details.ontimeout?.();
+            }, details.timeout)
+            : null;
+        fetch(details.url, {
+            method: details.method || 'GET',
+            headers: fetchHeaders,
+            credentials: 'omit',
+            signal: controller.signal
+        }).then(async response => {
+            if (timeoutId !== null) window.clearTimeout(timeoutId);
+            const responseText = await response.text();
+            details.onload?.({
+                status: response.status,
+                responseText,
+                responseHeaders: '',
+                finalUrl: response.url
+            });
+        }).catch(error => {
+            if (timeoutId !== null) window.clearTimeout(timeoutId);
+            if (error?.name === 'AbortError') details.onabort?.();
+            else details.onerror?.(error);
+        });
+        return { abort: () => controller.abort() };
+    }
+
+    const setMetaGptValue = (key, value) => writeStoredValue(key, value);
+    const getMetaGptValue = (key, fallback = null) => readStoredValue(key, fallback);
+    const deleteMetaGptValue = key => deleteStoredValue(key);
 
     function makeApiCacheKey(scope, value) {
         const input = String(value || '');
@@ -60,7 +142,7 @@
         fetchFn,
         isCacheable = value => value !== null && value !== undefined
     ) {
-        const cached = await Promise.resolve(GM_getValue(key, null));
+        const cached = await readStoredValue(key, null);
         const cachedIsUsable = cached &&
             Number.isFinite(Number(cached.timestamp)) &&
             cached.data !== undefined;
@@ -76,10 +158,10 @@
             try {
                 const freshData = await fetchFn();
                 if (isCacheable(freshData)) {
-                    await Promise.resolve(GM_setValue(key, {
+                    await writeStoredValue(key, {
                         timestamp: Date.now(),
                         data: freshData
-                    }));
+                    });
                     return freshData;
                 }
                 return cachedIsUsable ? cached.data : freshData;
@@ -106,7 +188,7 @@
         } = details;
 
         void fetchWithCache(cacheKey, ttlMs, () => new Promise((resolve, reject) => {
-            liveRequest = GM_xmlhttpRequest({
+            liveRequest = requestWithGm({
                 ...requestDetails,
                 onload: response => {
                     const body = String(response.responseText || '');
@@ -748,6 +830,35 @@
             text-align: center;
             white-space: nowrap;
             box-sizing: border-box;
+        }
+        #offerlist .bm-native-black-bubble {
+            position: absolute !important;
+            top: 50% !important;
+            right: 2.45rem !important;
+            transform: translateY(-50%) !important;
+            z-index: 5 !important;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 26px !important;
+            height: 26px !important;
+            min-width: 26px !important;
+            min-height: 26px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 1px solid #000 !important;
+            border-radius: 1000px !important;
+            background: #222 !important;
+            color: #fff !important;
+            font-size: 0.7rem !important;
+            font-weight: bolder !important;
+            line-height: 1 !important;
+            text-align: center;
+            white-space: nowrap;
+            box-sizing: border-box;
+        }
+        #offerlist .bm-native-bubble-row {
+            position: relative !important;
         }
         @media screen and (max-width: 640px) {
             #offerlist .bm-effective-row span.price {
@@ -4215,12 +4326,13 @@
                 extra = {}
             ) => {
                 const button = document.querySelector(`a[data-bmid="${buttonId}"]`);
-                if (!button || !priceText) return null;
+                const targetUrl = extra.url || button?.href || '';
+                if (!targetUrl || !priceText) return null;
                 return {
                     key: buttonId.replace(/^btn-/, ''),
                     label,
                     priceText,
-                    url: button.href,
+                    url: targetUrl,
                     logoUrl,
                     source,
                     priceSource,
@@ -4449,7 +4561,12 @@
                                 `${formatEuroValue(germanOffers.price)} €`,
                                 'https://static2.bricklink.com/img/bricklink_2026.svg',
                                 'bricklink-de',
-                                `BrickLink: niedrigster aktueller Neupreis bei deutschen Händlern aus ${germanOffers.totalLots} Angeboten${sellerDescription}`
+                                `BrickLink: niedrigster aktueller Neupreis bei deutschen Händlern aus ${germanOffers.totalLots} Angeboten${sellerDescription}`,
+                                {
+                                    url:
+                                        `https://www.bricklink.com/v2/catalog/catalogitem.page` +
+                                        `?S=${setNumber}-1#T=S&O={%22ss%22:%22DE%22,%22cond%22:%22N%22,%22ii%22:0,%22loc%22:%22DE%22,%22iconly%22:0}`
+                                }
                             );
                             if (offer) storeOffers([offer]);
                         },
@@ -4660,7 +4777,7 @@
             if (!cleanId) return null;
 
             const requestText = url => new Promise((resolve, reject) => {
-                GM_xmlhttpRequest({
+                requestWithGm({
                     method: 'GET',
                     url,
                     headers: {
@@ -4814,21 +4931,21 @@
             valueLine.title =
                 'Summe der niedrigsten aktuellen Neupreise deutscher BrickLink-Händler, ohne Versand';
             if (saveToCache) {
-                void Promise.resolve(GM_setValue(
+                void writeStoredValue(
                     makeApiCacheKey('bricklink-minifig-current-total-v2', setNum),
                     {
                         timestamp: Date.now(),
                         data: totalValue
                     }
-                ));
+                );
             }
         }
 
         function showCachedMinifigureValue() {
-            void Promise.resolve(GM_getValue(
+            void readStoredValue(
                 makeApiCacheKey('bricklink-minifig-current-total-v2', setNum),
                 null
-            )).then(cached => {
+            ).then(cached => {
                 if (
                     cached &&
                     Date.now() - Number(cached.timestamp) < MINIFIG_PRICE_CACHE_TTL &&
@@ -4852,9 +4969,7 @@
                     'bricklink-minifig-current-total-v2',
                     setNum
                 );
-                const cachedTotal = await Promise.resolve(
-                    GM_getValue(totalCacheKey, null)
-                );
+                const cachedTotal = await readStoredValue(totalCacheKey, null);
                 if (
                     cachedTotal &&
                     Date.now() - Number(cachedTotal.timestamp) <
@@ -4873,7 +4988,7 @@
                     makeApiCacheKey('bricklink-minifig-inventory', url),
                     MINIFIG_INVENTORY_CACHE_TTL,
                     () => new Promise((resolve, reject) => {
-                        GM_xmlhttpRequest({
+                        requestWithGm({
                             method: 'GET',
                             url,
                             headers: {
@@ -5073,28 +5188,66 @@
 
         function replaceMinifigurenWithLink(setNum) {
             function walk(node) {
-                if (node.nodeType === 3 && /minifiguren/i.test(node.textContent)) {
+                if (
+                    node.nodeType === 3 &&
+                    /minifiguren/i.test(node.textContent || '') &&
+                    !node.parentElement?.closest('a, script, style, noscript, iframe')
+                ) {
                     const span = document.createElement('span');
                     span.innerHTML = node.textContent.replace(/(minifiguren)/i, '<a href="#" class="bm-minifig-link">$1</a>');
                     node.parentNode.replaceChild(span, node);
-                } else if (node.nodeType === 1 && !['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME'].includes(node.tagName)) {
+                } else if (
+                    node.nodeType === 1 &&
+                    !['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME'].includes(node.tagName) &&
+                    !node.closest('a')
+                ) {
                     Array.from(node.childNodes).forEach(walk);
                 }
             }
-            walk(document.body);
-            document.body.addEventListener('click', function (e) {
-                const link = e.target?.closest?.('.bm-minifig-link, .bm-minifig-count-link');
-                if (link) {
-                    e.preventDefault();
-                    showMinifigOverlay(link, setNum);
-                }
+            const scan = () => {
+                if (document.body) walk(document.body);
+                linkMinifigureCount(setNum);
+            };
+            scan();
+
+            if (!document.body.dataset.bmMinifigClickHandler) {
+                document.body.dataset.bmMinifigClickHandler = 'true';
+                document.body.addEventListener('click', function (e) {
+                    const link = e.target?.closest?.('.bm-minifig-link, .bm-minifig-count-link');
+                    if (link) {
+                        e.preventDefault();
+                        showMinifigOverlay(link, setNum);
+                    }
+                });
+            }
+
+            if (!document.body.dataset.bmMinifigObserver) {
+                document.body.dataset.bmMinifigObserver = 'true';
+                let scanTimer = 0;
+                const observer = new MutationObserver(() => {
+                    window.clearTimeout(scanTimer);
+                    scanTimer = window.setTimeout(scan, 80);
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+            }
+            [0, 350, 1000, 2500].forEach(delay => {
+                window.setTimeout(scan, delay);
             });
         }
 
         function linkMinifigureCount(setNum) {
-            const details = Array.from(
-                document.querySelectorAll('.content.setdetails p, #ol2nd p, p')
-            ).find(paragraph => /Minifiguren\s*:/i.test(paragraph.textContent || ''));
+            const candidates = Array.from(new Set([
+                ...document.querySelectorAll('.content.setdetails .productprice p'),
+                ...document.querySelectorAll('.content.setdetails p'),
+                ...document.querySelectorAll('#ol2nd p'),
+                ...document.querySelectorAll('p')
+            ]));
+            const details = candidates.find(paragraph =>
+                /Minifiguren\s*:/i.test(paragraph.textContent || '') &&
+                /Artikel-Nr\s*:|Setgewicht|EAN\s*:/i.test(paragraph.textContent || '')
+            ) || candidates.find(paragraph =>
+                /Minifiguren\s*:/i.test(paragraph.textContent || '')
+            );
             if (!details || details.querySelector('.bm-minifig-count-link')) return;
 
             const walker = document.createTreeWalker(details, NodeFilter.SHOW_TEXT);
@@ -5689,7 +5842,7 @@
                 if (!inventoryTable) return null;
 
                 const figureRows = Array.from(
-                    inventoryTable.querySelectorAll('tr.pciinvItemRow')
+                    inventoryTable.querySelectorAll('tr.pciinvItemRow, tr')
                 ).filter(row => row.querySelector(
                     'a[href*="catalogitem.page?M="], a[href*="catalogItemInv.asp?M="]'
                 )).map(row => {
@@ -6339,13 +6492,9 @@
                     const discount = ((1 - (price1 / price2)) * 100).toFixed(0);
 
                     if (Number(discount) >= 0) {
-                        const redBubbles = Array.from(document.querySelectorAll('.off'))
-                            .filter(bubble => !bubble.classList.contains('black-discount-bubble'));
-                        if (redBubbles.length > 0) {
-                            createBlackBubble(discount, redBubbles);
-                        }
                         ensureFeaturedBlackBubble(discount);
                         createBestPriceBlackBubble(discount);
+                        createNativeOfferBlackBubbles(discount);
                     }
                 }
 
@@ -6368,6 +6517,40 @@
             } finally {
                 isModifying = false;
             }
+    }
+
+    function createNativeOfferBlackBubbles(discountText) {
+        const offerlist = document.getElementById('offerlist');
+        if (!offerlist) return;
+
+        offerlist.querySelectorAll(
+            '.medium-4.small-9.columns.pricerow[data-mid]'
+        ).forEach(priceRow => {
+            if (
+                priceRow.dataset.bmMarketplace === 'true' ||
+                priceRow.dataset.bmSoldOut === 'true' ||
+                priceRow.closest('[data-bm-sold-out="true"]')
+            ) return;
+
+            const priceSpan = priceRow.querySelector('span.price');
+            if (!priceSpan || getBaseOfferPrice(priceSpan) === null) return;
+
+            let bubble = Array.from(priceRow.children).find(element =>
+                element.classList.contains('bm-native-black-bubble')
+            );
+            if (!bubble) {
+                bubble = document.createElement('span');
+                bubble.className = 'bm-native-black-bubble black-discount-bubble';
+                priceRow.classList.add('bm-native-bubble-row');
+                priceRow.appendChild(bubble);
+            }
+            bubble.textContent = `${discountText}%`;
+            bubble.title = `${discountText}% günstiger als das nächstteurere Brickmerge-Angebot`;
+            bubble.setAttribute(
+                'aria-label',
+                `${discountText}% günstiger als das nächstteurere Brickmerge-Angebot`
+            );
+        });
     }
 
     // Funktion für die schwarze Bubble (klont vorhandene rote .off-Badges)
@@ -6408,10 +6591,6 @@
             ].filter(Boolean);
 
             featuredContainers.forEach(container => {
-                if (container.querySelector(':scope > .off:not(.black-discount-bubble)')) {
-                    return;
-                }
-
                 let bubble = container.querySelector(':scope > .bm-featured-black-bubble');
                 if (!bubble) {
                     bubble = document.createElement('div');
