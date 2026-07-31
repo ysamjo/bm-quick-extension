@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.87
+// @version      3.88
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -5639,9 +5639,13 @@
                 <div class="bm-minifig-backdrop"></div>
                 <div class="bm-minifig-modal" role="dialog" aria-modal="true" aria-labelledby="bm-minifig-title">
                     <header class="bm-minifig-header">
-                        <div>
+                        <div class="bm-minifig-heading">
                             <h2 id="bm-minifig-title">Minifiguren</h2>
-                            <div class="bm-minifig-subtitle">LEGO Set ${setNum}</div>
+                            <div class="bm-minifig-subtitle-row">
+                                <div class="bm-minifig-subtitle">LEGO Set ${setNum}</div>
+                                <span class="bm-minifig-price-spinner" role="status"
+                                    aria-label="BrickLink-Preise werden geladen"></span>
+                            </div>
                         </div>
                         <button type="button" class="bm-minifig-close" title="Schließen" aria-label="Schließen">×</button>
                     </header>
@@ -5694,23 +5698,49 @@
                     min-height:64px;
                     padding:0.8rem 0.8rem 0.8rem 1.25rem;
                     border-bottom:1px solid #ddd;
-                    background:#fff;
+                    background:#fff !important;
                     box-shadow:none !important;
+                }
+                .bm-minifig-heading {
+                    min-width:0;
                 }
                 .bm-minifig-header h2 {
                     margin:0;
                     padding:0;
-                    color:#333;
+                    color:#333 !important;
                     font-size:1.25rem;
                     font-weight:700;
                     line-height:1.25;
                     text-shadow:none !important;
+                }
+                .bm-minifig-subtitle-row {
+                    display:flex;
+                    align-items:center;
+                    gap:7px;
+                    min-height:16px;
                 }
                 .bm-minifig-subtitle {
                     margin-top:3px;
                     color:#777;
                     font-size:0.75rem;
                     line-height:1.2;
+                }
+                .bm-minifig-price-spinner {
+                    display:none;
+                    flex:0 0 13px;
+                    width:13px;
+                    height:13px;
+                    border:2px solid #d8d8d8;
+                    border-top-color:#b00;
+                    border-radius:50%;
+                    box-sizing:border-box;
+                    animation:bm-minifig-price-spin 0.7s linear infinite;
+                }
+                .bm-minifig-price-spinner.is-active {
+                    display:inline-block;
+                }
+                @keyframes bm-minifig-price-spin {
+                    to { transform:rotate(360deg); }
                 }
                 .bm-minifig-close {
                     display:flex;
@@ -5950,9 +5980,16 @@
 
             const content = overlay.querySelector('.bm-minifig-content');
             const subtitle = overlay.querySelector('.bm-minifig-subtitle');
+            const priceSpinner = overlay.querySelector('.bm-minifig-price-spinner');
             const cacheKey = `bm-minifigures-v3-${setNum}`;
             const cacheMaxAge = 6 * 60 * 60 * 1000;
             let loadSequence = 0;
+
+            const setPriceSpinnerActive = active => {
+                if (!priceSpinner) return;
+                priceSpinner.classList.toggle('is-active', active);
+                priceSpinner.setAttribute('aria-hidden', active ? 'false' : 'true');
+            };
 
             const setStatus = (message, allowRetry = false) => {
                 if (!overlay.isConnected) return;
@@ -6080,79 +6117,89 @@
 
             const loadFigurePrices = async (table, sequence) => {
                 const figures = extractFigureData(table);
-                if (figures.length === 0) return;
-
-                const figuresWithPriceIds = await Promise.all(
-                    figures.map(async figure => ({
-                        ...figure,
-                        brickLinkItemNo: await resolveBrickLinkMinifigId(
-                            figure.itemNo
-                        )
-                    }))
-                );
-                if (sequence !== loadSequence || !overlay.isConnected) return;
-
-                figuresWithPriceIds.forEach(({ row }) => {
-                    const descriptionCell = row.cells[row.cells.length - 1];
-                    if (!descriptionCell) return;
-                    let priceLabel = descriptionCell.querySelector('.bm-minifig-price');
-                    if (!priceLabel) {
-                        priceLabel = document.createElement('span');
-                        priceLabel.className = 'bm-minifig-price is-loading';
-                        descriptionCell.appendChild(priceLabel);
-                    }
-                    priceLabel.textContent = 'BrickLink-Wert wird geladen …';
-                });
-
-                const uniqueItemNumbers = [...new Set(
-                    figuresWithPriceIds
-                        .map(figure => figure.brickLinkItemNo)
-                        .filter(Boolean)
-                )];
-                const priceEntries = [];
-                for (let index = 0; index < uniqueItemNumbers.length; index += 3) {
-                    const batch = uniqueItemNumbers.slice(index, index + 3);
-                    priceEntries.push(...await Promise.all(
-                        batch.map(async itemNo => [
-                            itemNo,
-                            await getMinifigPrice(itemNo)
-                        ])
-                    ));
+                if (figures.length === 0) {
+                    setPriceSpinnerActive(false);
+                    return;
                 }
-                if (sequence !== loadSequence || !overlay.isConnected) return;
 
-                const prices = new Map(priceEntries);
-                let totalValue = 0;
-                let valuedFigureCount = 0;
-                const expectedFigureCount = figures.reduce(
-                    (sum, figure) => sum + figure.quantity,
-                    0
-                );
-                figuresWithPriceIds.forEach(({ row, brickLinkItemNo, quantity }) => {
-                    const price = Number(prices.get(brickLinkItemNo));
-                    const priceLabel = row.querySelector('.bm-minifig-price');
-                    if (!priceLabel) return;
-                    priceLabel.classList.remove('is-loading');
-                    if (!Number.isFinite(price) || price <= 0) {
-                        priceLabel.textContent = 'BrickLink-Wert nicht verfügbar';
-                        return;
-                    }
-                    priceLabel.textContent =
-                        `BrickLink-Wert: ${formatEuroValue(price)} €` +
-                        `${quantity > 1 ? ' je Figur' : ''}`;
-                    priceLabel.title =
-                        'Niedrigster aktueller Neupreis bei deutschen BrickLink-Händlern, ohne Versand';
-                    totalValue += price * quantity;
-                    valuedFigureCount += quantity;
-                });
-
-                if (
-                    valuedFigureCount > 0 &&
-                    valuedFigureCount === expectedFigureCount
-                ) {
-                    updateMinifigureValueInDataBox(
-                        Math.round((totalValue + Number.EPSILON) * 100) / 100
+                setPriceSpinnerActive(true);
+                try {
+                    const figuresWithPriceIds = await Promise.all(
+                        figures.map(async figure => ({
+                            ...figure,
+                            brickLinkItemNo: await resolveBrickLinkMinifigId(
+                                figure.itemNo
+                            )
+                        }))
                     );
+                    if (sequence !== loadSequence || !overlay.isConnected) return;
+
+                    figuresWithPriceIds.forEach(({ row }) => {
+                        const descriptionCell = row.cells[row.cells.length - 1];
+                        if (!descriptionCell) return;
+                        let priceLabel = descriptionCell.querySelector('.bm-minifig-price');
+                        if (!priceLabel) {
+                            priceLabel = document.createElement('span');
+                            priceLabel.className = 'bm-minifig-price is-loading';
+                            descriptionCell.appendChild(priceLabel);
+                        }
+                        priceLabel.textContent = 'BrickLink-Wert wird geladen …';
+                    });
+
+                    const uniqueItemNumbers = [...new Set(
+                        figuresWithPriceIds
+                            .map(figure => figure.brickLinkItemNo)
+                            .filter(Boolean)
+                    )];
+                    const priceEntries = [];
+                    for (let index = 0; index < uniqueItemNumbers.length; index += 3) {
+                        const batch = uniqueItemNumbers.slice(index, index + 3);
+                        priceEntries.push(...await Promise.all(
+                            batch.map(async itemNo => [
+                                itemNo,
+                                await getMinifigPrice(itemNo)
+                            ])
+                        ));
+                    }
+                    if (sequence !== loadSequence || !overlay.isConnected) return;
+
+                    const prices = new Map(priceEntries);
+                    let totalValue = 0;
+                    let valuedFigureCount = 0;
+                    const expectedFigureCount = figures.reduce(
+                        (sum, figure) => sum + figure.quantity,
+                        0
+                    );
+                    figuresWithPriceIds.forEach(({ row, brickLinkItemNo, quantity }) => {
+                        const price = Number(prices.get(brickLinkItemNo));
+                        const priceLabel = row.querySelector('.bm-minifig-price');
+                        if (!priceLabel) return;
+                        priceLabel.classList.remove('is-loading');
+                        if (!Number.isFinite(price) || price <= 0) {
+                            priceLabel.textContent = 'BrickLink-Wert nicht verfügbar';
+                            return;
+                        }
+                        priceLabel.textContent =
+                            `BrickLink-Wert: ${formatEuroValue(price)} €` +
+                            `${quantity > 1 ? ' je Figur' : ''}`;
+                        priceLabel.title =
+                            'Niedrigster aktueller Neupreis bei deutschen BrickLink-Händlern, ohne Versand';
+                        totalValue += price * quantity;
+                        valuedFigureCount += quantity;
+                    });
+
+                    if (
+                        valuedFigureCount > 0 &&
+                        valuedFigureCount === expectedFigureCount
+                    ) {
+                        updateMinifigureValueInDataBox(
+                            Math.round((totalValue + Number.EPSILON) * 100) / 100
+                        );
+                    }
+                } finally {
+                    if (sequence === loadSequence && overlay.isConnected) {
+                        setPriceSpinnerActive(false);
+                    }
                 }
             };
 
@@ -6252,7 +6299,9 @@
                     `${result.figureCount === 1 ? 'Figur' : 'Figuren'} · ` +
                     `LEGO Set ${setNum}`;
                 content.replaceChildren(result.table);
-                void loadFigurePrices(result.table, sequence);
+                void loadFigurePrices(result.table, sequence).catch(error => {
+                    console.warn('BrickLink-Minifigurenpreise konnten nicht geladen werden:', error);
+                });
                 if (saveToCache) {
                     try {
                         sessionStorage.setItem(cacheKey, JSON.stringify({
