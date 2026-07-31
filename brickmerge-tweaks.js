@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.85
+// @version      3.86
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -44,6 +44,7 @@
     const REBRICKABLE_API_KEY_STORAGE_KEY = 'brickmerge-rebrickable-api-key-v1';
     const REBRICKABLE_MINIFIG_CACHE_TTL = 24 * 60 * 60 * 1000;
     const cacheRequestsInFlight = new Map();
+    const animatedMarketplaceOfferKeys = new Set();
     const gmApi = typeof GM !== 'undefined' ? GM : null;
 
     const readLocalFallback = (key, fallback = null) => {
@@ -5002,7 +5003,9 @@
                 const quantity = Number.isFinite(parsedQuantity) && parsedQuantity > 0
                     ? parsedQuantity
                     : 1;
-                const name = String(entry?.name || itemNo).trim();
+                const name = String(
+                    entry?.set_name || entry?.name || itemNo
+                ).trim();
                 const imageUrl = String(entry?.set_img_url || '').trim();
                 const catalogUrl = String(entry?.set_url || '').trim() ||
                     `https://rebrickable.com/minifigs/${encodeURIComponent(itemNo)}/`;
@@ -5992,7 +5995,7 @@
 
             const content = overlay.querySelector('.bm-minifig-content');
             const subtitle = overlay.querySelector('.bm-minifig-subtitle');
-            const cacheKey = `bm-minifigures-v2-${setNum}`;
+            const cacheKey = `bm-minifigures-v3-${setNum}`;
             const cacheMaxAge = 6 * 60 * 60 * 1000;
             let loadSequence = 0;
 
@@ -7143,8 +7146,6 @@
             if (isAbsoluteBadge && isPercentage) span.remove();
         });
     }
-
-    const animatedMarketplaceOfferKeys = new Set();
 
     function injectMarketplaceOffers(offers) {
         const offerlist = document.getElementById('offerlist');
