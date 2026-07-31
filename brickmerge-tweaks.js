@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.88
+// @version      3.89
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -5708,6 +5708,11 @@
                     margin:0;
                     padding:0;
                     color:#333 !important;
+                    -webkit-text-fill-color:#333 !important;
+                    -webkit-background-clip:border-box !important;
+                    background-clip:border-box !important;
+                    background-color:transparent !important;
+                    background-image:none !important;
                     font-size:1.25rem;
                     font-weight:700;
                     line-height:1.25;
