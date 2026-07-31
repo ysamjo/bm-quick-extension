@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.84
+// @version      3.85
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -21,6 +21,8 @@
 // @connect      www.brickowl.com
 // @connect      brickowl.com
 // @connect      *.brickowl.com
+// @connect      www.rebrickable.com
+// @connect      rebrickable.com
 // @connect      mybrickdepot.de
 // @connect      brickbank.app
 // @run-at       document-end
@@ -39,6 +41,8 @@
     const OFFER_CACHE_TTL = 2 * 60 * 60 * 1000;
     const MINIFIG_INVENTORY_CACHE_TTL = 6 * 60 * 60 * 1000;
     const MINIFIG_PRICE_CACHE_TTL = 24 * 60 * 60 * 1000;
+    const REBRICKABLE_API_KEY_STORAGE_KEY = 'brickmerge-rebrickable-api-key-v1';
+    const REBRICKABLE_MINIFIG_CACHE_TTL = 24 * 60 * 60 * 1000;
     const cacheRequestsInFlight = new Map();
     const gmApi = typeof GM !== 'undefined' ? GM : null;
 
@@ -1020,6 +1024,9 @@
             line-height: 1 !important;
             text-align: center;
             box-sizing: border-box;
+        }
+        .bm-featured-black-bubble.bm-featured-black-bubble-stacked {
+            top: calc(0.45rem + 60px) !important;
         }
         .bm-full-product-description {
             float: none !important;
@@ -4339,8 +4346,8 @@
             function parseBrickOwlGermanOffers(html, fallbackUrl) {
                 const doc = new DOMParser().parseFromString(html, 'text/html');
                 const rows = Array.from(doc.querySelectorAll(
-                    '#buy table.buy-table tbody tr, table.buy-table tbody tr, ' +
-                    '#buy tr, .buy-table tr'
+                    '#buy table.buy-table > tbody > tr, ' +
+                    'table.buy-table > tbody > tr'
                 ));
                 const offers = rows.map(row => {
                     const cells = Array.from(row.children);
@@ -4893,6 +4900,209 @@
             );
         }
 
+        let rebrickableApiKeyPromise = null;
+
+        async function getRebrickableApiKey() {
+            if (rebrickableApiKeyPromise) return rebrickableApiKeyPromise;
+
+            rebrickableApiKeyPromise = (async () => {
+                const storedKey = String(
+                    await readStoredValue(REBRICKABLE_API_KEY_STORAGE_KEY, '') || ''
+                ).trim();
+                if (storedKey) return storedKey;
+
+                const enteredKey = window.prompt(
+                    'Rebrickable API-Key für die Minifiguren eintragen.\n' +
+                    'Der Schlüssel wird nur lokal im Userscript gespeichert:'
+                );
+                const apiKey = String(enteredKey || '').trim();
+                if (apiKey) {
+                    await writeStoredValue(
+                        REBRICKABLE_API_KEY_STORAGE_KEY,
+                        apiKey
+                    );
+                }
+                return apiKey;
+            })().catch(error => {
+                rebrickableApiKeyPromise = null;
+                throw error;
+            });
+
+            return rebrickableApiKeyPromise;
+        }
+
+        function hasPageMinifigures() {
+            const detailsText = Array.from(document.querySelectorAll(
+                '.content.setdetails .productprice p, ' +
+                '.content.setdetails p, #ol2nd p'
+            )).map(paragraph => paragraph.textContent || '').join(' ');
+            return Number(detailsText.match(/Minifiguren\s*:\s*(\d+)/i)?.[1] || 0) > 0;
+        }
+
+        async function fetchRebrickableMinifigs() {
+            const apiKey = await getRebrickableApiKey();
+            if (!apiKey) return null;
+
+            const cacheKey = makeApiCacheKey(
+                'rebrickable-minifigs-v1',
+                `${setNum}-1`
+            );
+            return fetchWithCache(
+                cacheKey,
+                REBRICKABLE_MINIFIG_CACHE_TTL,
+                () => new Promise((resolve, reject) => {
+                    requestWithGm({
+                        method: 'GET',
+                        url: 'https://rebrickable.com/api/v3/lego/sets/' +
+                            `${encodeURIComponent(`${setNum}-1`)}/minifigs/` +
+                            '?page_size=100',
+                        headers: {
+                            Authorization: `key ${apiKey}`,
+                            Accept: 'application/json',
+                            'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8'
+                        },
+                        timeout: 15000,
+                        onload: response => {
+                            if (response.status !== 200) {
+                                reject(new Error(`HTTP ${response.status}`));
+                                return;
+                            }
+                            try {
+                                const payload = JSON.parse(
+                                    response.responseText || '{}'
+                                );
+                                resolve(Array.isArray(payload?.results)
+                                    ? payload.results
+                                    : null);
+                            } catch (error) {
+                                reject(error);
+                            }
+                        },
+                        onerror: () => reject(new Error('Netzwerkfehler')),
+                        ontimeout: () => reject(new Error('Zeitüberschreitung'))
+                    });
+                }),
+                value => Array.isArray(value)
+            );
+        }
+
+        function buildRebrickableFigureTable(entries) {
+            const table = document.createElement('table');
+            table.className = 'bm-minifig-table';
+            const tbody = document.createElement('tbody');
+            let figureCount = 0;
+            const seen = new Set();
+
+            (Array.isArray(entries) ? entries : []).forEach(entry => {
+                const itemNo = String(entry?.set_num || '').trim();
+                if (!itemNo || seen.has(itemNo)) return;
+                seen.add(itemNo);
+
+                const parsedQuantity = Number.parseInt(entry?.quantity, 10);
+                const quantity = Number.isFinite(parsedQuantity) && parsedQuantity > 0
+                    ? parsedQuantity
+                    : 1;
+                const name = String(entry?.name || itemNo).trim();
+                const imageUrl = String(entry?.set_img_url || '').trim();
+                const catalogUrl = String(entry?.set_url || '').trim() ||
+                    `https://rebrickable.com/minifigs/${encodeURIComponent(itemNo)}/`;
+
+                const row = document.createElement('tr');
+                const imageCell = document.createElement('td');
+                if (imageUrl) {
+                    const image = document.createElement('img');
+                    image.src = imageUrl;
+                    image.alt = name;
+                    image.loading = 'lazy';
+                    image.referrerPolicy = 'no-referrer';
+                    imageCell.appendChild(image);
+                }
+
+                const quantityCell = document.createElement('td');
+                quantityCell.textContent = String(quantity);
+
+                const itemCell = document.createElement('td');
+                const itemLink = document.createElement('a');
+                itemLink.href =
+                    'https://www.bricklink.com/v2/catalog/catalogitem.page' +
+                    `?M=${encodeURIComponent(itemNo)}`;
+                itemLink.target = '_blank';
+                itemLink.rel = 'noopener noreferrer';
+                itemLink.textContent = itemNo;
+                itemCell.appendChild(itemLink);
+
+                const descriptionCell = document.createElement('td');
+                const title = document.createElement('strong');
+                title.textContent = name;
+                const catalogBreak = document.createElement('br');
+                const catalogLink = document.createElement('a');
+                catalogLink.href = catalogUrl;
+                catalogLink.target = '_blank';
+                catalogLink.rel = 'noopener noreferrer';
+                catalogLink.textContent = 'Catalog: Minifigures: Rebrickable';
+                descriptionCell.append(title, catalogBreak, catalogLink);
+
+                row.append(
+                    imageCell,
+                    quantityCell,
+                    itemCell,
+                    descriptionCell
+                );
+                tbody.appendChild(row);
+                figureCount += quantity;
+            });
+
+            if (!tbody.rows.length) return null;
+            table.appendChild(tbody);
+            return { kind: 'found', table, figureCount };
+        }
+
+        async function resolveBrickLinkMinifigId(itemNo) {
+            const sourceId = String(itemNo || '').trim();
+            if (!sourceId) return null;
+            if (!/^fig-/i.test(sourceId)) return sourceId;
+
+            return fetchWithCache(
+                makeApiCacheKey('rebrickable-bricklink-minifig-id-v1', sourceId),
+                REBRICKABLE_MINIFIG_CACHE_TTL,
+                () => new Promise((resolve, reject) => {
+                    requestWithGm({
+                        method: 'GET',
+                        url: `https://rebrickable.com/minifigs/${encodeURIComponent(sourceId)}/`,
+                        headers: {
+                            Accept: 'text/html,application/xhtml+xml',
+                            'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8'
+                        },
+                        timeout: 15000,
+                        onload: response => {
+                            if (response.status !== 200) {
+                                reject(new Error(`HTTP ${response.status}`));
+                                return;
+                            }
+                            const doc = new DOMParser().parseFromString(
+                                response.responseText || '',
+                                'text/html'
+                            );
+                            const brickLinkAnchor = Array.from(
+                                doc.querySelectorAll('a[href*="bricklink.com"]')
+                            ).find(anchor => /[?&]M=/i.test(
+                                anchor.getAttribute('href') || ''
+                            ));
+                            const href = brickLinkAnchor?.getAttribute('href') || '';
+                            const itemId = href.match(/[?&]M=([^&#]+)/i)?.[1] ||
+                                (doc.body.textContent || '').match(
+                                    /BrickLink\s*\|?\s*([a-z0-9-]+)/i
+                                )?.[1] || '';
+                            resolve(itemId ? decodeURIComponent(itemId) : null);
+                        },
+                        onerror: () => reject(new Error('Netzwerkfehler')),
+                        ontimeout: () => reject(new Error('Zeitüberschreitung'))
+                    });
+                }),
+                value => typeof value === 'string' && value.length > 0
+            ).catch(() => null);
+        }
+
         async function getMinifigPrice(blItemNo) {
             const cleanId = String(blItemNo || '')
                 .replace(/^fig-/i, '')
@@ -5083,6 +5293,7 @@
         let minifigureValuePreloadPromise = null;
 
         function preloadMinifigureValue() {
+            if (!hasPageMinifigures()) return Promise.resolve();
             if (minifigureValuePreloadPromise) {
                 return minifigureValuePreloadPromise;
             }
@@ -5225,11 +5436,24 @@
                     }));
                 };
 
-                const catalogUrl =
-                    `https://www.bricklink.com/v2/catalog/catalogitem.page` +
-                    `?S=${encodeURIComponent(`${setNum}-1`)}`;
                 let figures = [];
+                let brickLinkFigures = [];
                 try {
+                    const rebrickableEntries = await fetchRebrickableMinifigs();
+                    if (Array.isArray(rebrickableEntries)) {
+                        figures = rebrickableEntries.map(entry => ({
+                            itemNo: String(entry?.set_num || '').trim(),
+                            quantity: Number.parseInt(entry?.quantity, 10) || 1
+                        })).filter(figure => figure.itemNo);
+                    }
+                } catch (error) {
+                    // BrickLink remains the fallback when Rebrickable is unavailable.
+                }
+
+                try {
+                    const catalogUrl =
+                        `https://www.bricklink.com/v2/catalog/catalogitem.page` +
+                        `?S=${encodeURIComponent(`${setNum}-1`)}`;
                     const catalogResponse =
                         await requestInventoryPage(catalogUrl);
                     const itemId = Number(
@@ -5247,7 +5471,7 @@
                             `&itemNoSeq=${encodeURIComponent(`${setNum}-1`)}`;
                         const inventoryResponse =
                             await requestInventoryPage(inventoryUrl);
-                        figures = extractFigures(
+                        brickLinkFigures = extractFigures(
                             inventoryResponse.responseText,
                             true
                         );
@@ -5256,7 +5480,7 @@
                     // The legacy inventory below remains available as fallback.
                 }
 
-                if (figures.length === 0) {
+                if (brickLinkFigures.length === 0) {
                     try {
                         const legacyUrl =
                             'https://www.bricklink.com/catalogItemInv.asp' +
@@ -5264,13 +5488,16 @@
                             '&viewItemType=M';
                         const legacyResponse =
                             await requestInventoryPage(legacyUrl);
-                        figures = extractFigures(
+                        brickLinkFigures = extractFigures(
                             legacyResponse.responseText,
                             false
                         );
                     } catch (error) {
                         return;
                     }
+                }
+                if (brickLinkFigures.length > 0) {
+                    figures = brickLinkFigures;
                 }
                 if (figures.length === 0) return;
 
@@ -5897,7 +6124,17 @@
                 const figures = extractFigureData(table);
                 if (figures.length === 0) return;
 
-                figures.forEach(({ row }) => {
+                const figuresWithPriceIds = await Promise.all(
+                    figures.map(async figure => ({
+                        ...figure,
+                        brickLinkItemNo: await resolveBrickLinkMinifigId(
+                            figure.itemNo
+                        )
+                    }))
+                );
+                if (sequence !== loadSequence || !overlay.isConnected) return;
+
+                figuresWithPriceIds.forEach(({ row }) => {
                     const descriptionCell = row.cells[row.cells.length - 1];
                     if (!descriptionCell) return;
                     let priceLabel = descriptionCell.querySelector('.bm-minifig-price');
@@ -5910,7 +6147,9 @@
                 });
 
                 const uniqueItemNumbers = [...new Set(
-                    figures.map(figure => figure.itemNo)
+                    figuresWithPriceIds
+                        .map(figure => figure.brickLinkItemNo)
+                        .filter(Boolean)
                 )];
                 const priceEntries = [];
                 for (let index = 0; index < uniqueItemNumbers.length; index += 3) {
@@ -5931,8 +6170,8 @@
                     (sum, figure) => sum + figure.quantity,
                     0
                 );
-                figures.forEach(({ row, itemNo, quantity }) => {
-                    const price = Number(prices.get(itemNo));
+                figuresWithPriceIds.forEach(({ row, brickLinkItemNo, quantity }) => {
+                    const price = Number(prices.get(brickLinkItemNo));
                     const priceLabel = row.querySelector('.bm-minifig-price');
                     if (!priceLabel) return;
                     priceLabel.classList.remove('is-loading');
@@ -6186,6 +6425,23 @@
                 );
             };
 
+            const loadPreferredInventory = async sequence => {
+                try {
+                    const entries = await fetchRebrickableMinifigs();
+                    if (sequence !== loadSequence || !overlay.isConnected) return;
+                    const result = buildRebrickableFigureTable(entries);
+                    if (result) {
+                        renderResult(result, sequence);
+                        return;
+                    }
+                } catch (error) {
+                    // BrickLink remains the fallback when Rebrickable is unavailable.
+                }
+                if (sequence === loadSequence && overlay.isConnected) {
+                    loadModernInventory(sequence);
+                }
+            };
+
             const loadMinifigures = forceReload => {
                 loadSequence += 1;
                 const sequence = loadSequence;
@@ -6212,8 +6468,8 @@
                     }
                 }
                 subtitle.textContent = `LEGO Set ${setNum}`;
-                setStatus('Minifiguren werden von BrickLink geladen …');
-                loadModernInventory(sequence);
+                setStatus('Minifiguren werden geladen …');
+                void loadPreferredInventory(sequence);
             };
 
             loadMinifigures(false);
@@ -6720,6 +6976,18 @@
                     bubble.className = 'black-discount-bubble bm-featured-black-bubble';
                     container.prepend(bubble);
                 }
+                const nativeRedBubble = Array.from(container.querySelectorAll(
+                    ':scope > .off, :scope > span[style*="position"], ' +
+                    ':scope > div[style*="position"]'
+                )).find(element =>
+                    element !== bubble &&
+                    !element.classList.contains('black-discount-bubble') &&
+                    /%/.test(element.textContent || '')
+                );
+                bubble.classList.toggle(
+                    'bm-featured-black-bubble-stacked',
+                    Boolean(nativeRedBubble)
+                );
                 bubble.textContent = `${discountText}%`;
                 bubble.title = `${discountText}% günstiger als das nächstteurere Brickmerge-Angebot`;
             });
@@ -6734,11 +7002,16 @@
                 badge.textContent = `${discountText}%`;
                 badge.title = `${discountText}% günstiger als das nächstteurere Brickmerge-Angebot`;
                 const hasNativeDiscountBubble = Array.from(
-                    topprice.querySelectorAll('span[style*="position: absolute"]')
-                ).some(element =>
-                    !element.classList.contains('black-discount-bubble') &&
-                    /%/.test(element.textContent || '')
-                );
+                    topprice.querySelectorAll('*')
+                ).some(element => {
+                    if (element.classList.contains('black-discount-bubble')) return false;
+                    if (!/%/.test(element.textContent || '')) return false;
+                    const inlineStyle = element.getAttribute('style') || '';
+                    const computedPosition = window.getComputedStyle(element).position;
+                    return element.classList.contains('off') ||
+                        /position\s*:\s*absolute/i.test(inlineStyle) ||
+                        computedPosition === 'absolute';
+                });
                 if (!hasNativeDiscountBubble) {
                     badge.classList.add('bm-bestprice-black-bubble-single');
                 }
