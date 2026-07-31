@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.90
+// @version      3.91
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -4933,8 +4933,9 @@
                     entry?.set_name || entry?.name || itemNo
                 ).trim();
                 const imageUrl = String(entry?.set_img_url || '').trim();
-                const catalogUrl = String(entry?.set_url || '').trim() ||
-                    `https://rebrickable.com/minifigs/${encodeURIComponent(itemNo)}/`;
+                const brickLinkUrl =
+                    'https://www.bricklink.com/v2/catalog/catalogitem.page' +
+                    `?M=${encodeURIComponent(itemNo)}`;
 
                 const row = document.createElement('tr');
                 const imageCell = document.createElement('td');
@@ -4952,9 +4953,8 @@
 
                 const itemCell = document.createElement('td');
                 const itemLink = document.createElement('a');
-                itemLink.href =
-                    'https://www.bricklink.com/v2/catalog/catalogitem.page' +
-                    `?M=${encodeURIComponent(itemNo)}`;
+                itemLink.href = brickLinkUrl;
+                itemLink.className = 'bm-minifig-item-link';
                 itemLink.target = '_blank';
                 itemLink.rel = 'noopener noreferrer';
                 itemLink.textContent = itemNo;
@@ -4965,10 +4965,11 @@
                 title.textContent = name;
                 const catalogBreak = document.createElement('br');
                 const catalogLink = document.createElement('a');
-                catalogLink.href = catalogUrl;
+                catalogLink.href = brickLinkUrl;
+                catalogLink.className = 'bm-minifig-catalog-link';
                 catalogLink.target = '_blank';
                 catalogLink.rel = 'noopener noreferrer';
-                catalogLink.textContent = 'Catalog: Minifigures: Rebrickable';
+                catalogLink.textContent = 'Catalog: Minifigures: BrickLink';
                 descriptionCell.append(title, catalogBreak, catalogLink);
 
                 row.append(
@@ -5957,7 +5958,7 @@
             const content = overlay.querySelector('.bm-minifig-content');
             const subtitle = overlay.querySelector('.bm-minifig-subtitle');
             const priceSpinner = overlay.querySelector('.bm-minifig-price-spinner');
-            const cacheKey = `bm-minifigures-v3-${setNum}`;
+            const cacheKey = `bm-minifigures-v4-${setNum}`;
             const cacheMaxAge = 6 * 60 * 60 * 1000;
             let loadSequence = 0;
 
@@ -6110,7 +6111,27 @@
                     );
                     if (sequence !== loadSequence || !overlay.isConnected) return;
 
-                    figuresWithPriceIds.forEach(({ row }) => {
+                    figuresWithPriceIds.forEach(({ row, brickLinkItemNo }) => {
+                        const targetUrl = brickLinkItemNo
+                            ? 'https://www.bricklink.com/v2/catalog/catalogitem.page' +
+                                `?M=${encodeURIComponent(brickLinkItemNo)}`
+                            : 'https://www.bricklink.com/v2/search.page?q=' +
+                                encodeURIComponent(
+                                    row.querySelector('strong')?.textContent || ''
+                                );
+                        row.querySelectorAll('a[href]').forEach(anchor => {
+                            anchor.href = targetUrl;
+                            anchor.target = '_blank';
+                            anchor.rel = 'noopener noreferrer';
+                        });
+                        const itemLink = row.querySelector('.bm-minifig-item-link');
+                        if (itemLink && brickLinkItemNo) {
+                            itemLink.textContent = brickLinkItemNo;
+                        }
+                        const catalogLink = row.querySelector('.bm-minifig-catalog-link');
+                        if (catalogLink) {
+                            catalogLink.textContent = 'Catalog: Minifigures: BrickLink';
+                        }
                         const descriptionCell = row.cells[row.cells.length - 1];
                         if (!descriptionCell) return;
                         let priceLabel = descriptionCell.querySelector('.bm-minifig-price');
