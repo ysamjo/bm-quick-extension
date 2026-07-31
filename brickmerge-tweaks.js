@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.83
+// @version      3.84
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -1899,6 +1899,129 @@
         return null;
     }
     const setNum = getSetNum();
+
+    function setupSearchResultsFallback() {
+        if (setNum) return;
+
+        let searchTerm = '';
+        try {
+            searchTerm = (new URLSearchParams(window.location.search).get('find') || '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        } catch (error) {
+            return;
+        }
+        if (!searchTerm) return;
+
+        const normalize = value => String(value || '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const noExactResultsPattern = /es wurden keine exakten treffen gefunden/i;
+        const bingMessagePattern = /alternativ haben wir mit bing nach passenden treffern gesucht/i;
+        const findMessageNodes = () => Array.from(
+            document.querySelectorAll('p, h1, h2, h3, h4, h5, div, span')
+        ).filter(element => {
+            const text = normalize(element.textContent);
+            if (!noExactResultsPattern.test(text) && !bingMessagePattern.test(text)) {
+                return false;
+            }
+            return !Array.from(element.children).some(child => {
+                const childText = normalize(child.textContent);
+                return noExactResultsPattern.test(childText) ||
+                    bingMessagePattern.test(childText);
+            });
+        });
+
+        const findBingEmbed = () => document.querySelector(
+            'iframe[src*="bing" i], iframe[title*="bing" i], [data-bing-search]'
+        );
+
+        const googleUrl = `https://www.google.com/search?igu=1&hl=de&q=${encodeURIComponent(
+            `site:brickmerge.de ${searchTerm}`
+        )}`;
+
+        const makeGoogleEmbed = () => {
+            const section = document.createElement('section');
+            section.className = 'bm-google-search-embed';
+            section.setAttribute('aria-label', `Google-Suche nach ${searchTerm}`);
+            section.style.cssText = [
+                'width:100%',
+                'margin:1rem 0 1.5rem',
+                'border:1px solid #ddd',
+                'background:#fff',
+                'box-sizing:border-box'
+            ].join(';');
+
+            const frame = document.createElement('iframe');
+            frame.src = googleUrl;
+            frame.title = `Google-Suche site:brickmerge.de ${searchTerm}`;
+            frame.loading = 'lazy';
+            frame.referrerPolicy = 'no-referrer';
+            frame.style.cssText = [
+                'display:block',
+                'width:100%',
+                'height:620px',
+                'border:0',
+                'background:#fff'
+            ].join(';');
+
+            const fallback = document.createElement('a');
+            fallback.href = googleUrl;
+            fallback.target = '_blank';
+            fallback.rel = 'noopener noreferrer';
+            fallback.textContent = 'Google-Suche öffnen';
+            fallback.style.cssText = [
+                'display:block',
+                'padding:0.55rem 0.8rem',
+                'color:#b00000',
+                'font-size:0.9rem',
+                'text-decoration:underline'
+            ].join(';');
+
+            section.append(frame, fallback);
+            return section;
+        };
+
+        let applied = false;
+        const apply = () => {
+            if (applied) return true;
+            const messageNodes = findMessageNodes();
+            if (messageNodes.length === 0) return false;
+
+            const bingEmbed = findBingEmbed();
+            const googleEmbed = makeGoogleEmbed();
+            if (bingEmbed) {
+                // Brickmerge puts the messages, iframe and homepage link into
+                // one <p>. Replace that complete fallback block so the newly
+                // inserted Google search cannot be removed with the old text.
+                const fallbackBlock = bingEmbed.closest('p.pad') || bingEmbed.parentElement;
+                if (fallbackBlock) fallbackBlock.replaceWith(googleEmbed);
+                else bingEmbed.replaceWith(googleEmbed);
+            } else {
+                const insertionPoint = messageNodes[messageNodes.length - 1];
+                insertionPoint.after(googleEmbed);
+                messageNodes.forEach(element => {
+                    if (element.isConnected) element.remove();
+                });
+            }
+            applied = true;
+            return true;
+        };
+
+        if (apply()) return;
+
+        const observer = new MutationObserver(() => {
+            if (apply()) observer.disconnect();
+        });
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true
+        });
+        window.setTimeout(() => observer.disconnect(), 10000);
+    }
+
+    if (document.readyState !== 'loading') setupSearchResultsFallback();
+    else window.addEventListener('DOMContentLoaded', setupSearchResultsFallback, { once: true });
 
     function createMetaGptTransferId() {
         if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
