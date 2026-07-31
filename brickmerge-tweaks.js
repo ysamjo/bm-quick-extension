@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.89
+// @version      3.90
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -835,35 +835,6 @@
             text-align: center;
             white-space: nowrap;
             box-sizing: border-box;
-        }
-        #offerlist .bm-native-black-bubble {
-            position: absolute !important;
-            top: 50% !important;
-            right: 2.45rem !important;
-            transform: translateY(-50%) !important;
-            z-index: 5 !important;
-            display: inline-flex !important;
-            align-items: center;
-            justify-content: center;
-            width: 26px !important;
-            height: 26px !important;
-            min-width: 26px !important;
-            min-height: 26px !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            border: 1px solid #000 !important;
-            border-radius: 1000px !important;
-            background: #222 !important;
-            color: #fff !important;
-            font-size: 0.7rem !important;
-            font-weight: bolder !important;
-            line-height: 1 !important;
-            text-align: center;
-            white-space: nowrap;
-            box-sizing: border-box;
-        }
-        #offerlist .bm-native-bubble-row {
-            position: relative !important;
         }
         @media screen and (max-width: 640px) {
             #offerlist .bm-effective-row span.price {
@@ -6885,7 +6856,6 @@
                     if (Number(discount) >= 0) {
                         ensureFeaturedBlackBubble(discount);
                         createBestPriceBlackBubble(discount);
-                        createNativeOfferBlackBubbles(discount);
                     }
                 }
 
@@ -6908,40 +6878,6 @@
             } finally {
                 isModifying = false;
             }
-    }
-
-    function createNativeOfferBlackBubbles(discountText) {
-        const offerlist = document.getElementById('offerlist');
-        if (!offerlist) return;
-
-        offerlist.querySelectorAll(
-            '.medium-4.small-9.columns.pricerow[data-mid]'
-        ).forEach(priceRow => {
-            if (
-                priceRow.dataset.bmMarketplace === 'true' ||
-                priceRow.dataset.bmSoldOut === 'true' ||
-                priceRow.closest('[data-bm-sold-out="true"]')
-            ) return;
-
-            const priceSpan = priceRow.querySelector('span.price');
-            if (!priceSpan || getBaseOfferPrice(priceSpan) === null) return;
-
-            let bubble = Array.from(priceRow.children).find(element =>
-                element.classList.contains('bm-native-black-bubble')
-            );
-            if (!bubble) {
-                bubble = document.createElement('span');
-                bubble.className = 'bm-native-black-bubble black-discount-bubble';
-                priceRow.classList.add('bm-native-bubble-row');
-                priceRow.appendChild(bubble);
-            }
-            bubble.textContent = `${discountText}%`;
-            bubble.title = `${discountText}% günstiger als das nächstteurere Brickmerge-Angebot`;
-            bubble.setAttribute(
-                'aria-label',
-                `${discountText}% günstiger als das nächstteurere Brickmerge-Angebot`
-            );
-        });
     }
 
     // Funktion für die schwarze Bubble (klont vorhandene rote .off-Badges)
