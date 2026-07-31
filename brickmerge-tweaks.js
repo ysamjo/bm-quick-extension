@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.75
+// @version      3.81
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -31,6 +31,10 @@
     const META_GPT_PENDING_KEY = 'brickmerge-meta-gpt-pending-v1';
     const META_GPT_LAST_SUBMITTED_KEY = 'brickmerge-meta-gpt-last-submitted-v1';
     const META_GPT_MAX_PENDING_AGE = 10 * 60 * 1000;
+    const OFFER_CACHE_TTL = 2 * 60 * 60 * 1000;
+    const MINIFIG_INVENTORY_CACHE_TTL = 6 * 60 * 60 * 1000;
+    const MINIFIG_PRICE_CACHE_TTL = 24 * 60 * 60 * 1000;
+    const cacheRequestsInFlight = new Map();
 
     const setMetaGptValue = (key, value) =>
         Promise.resolve(GM_setValue(key, value));
@@ -38,6 +42,106 @@
         Promise.resolve(GM_getValue(key, fallback));
     const deleteMetaGptValue = key =>
         Promise.resolve(GM_deleteValue(key));
+
+    function makeApiCacheKey(scope, value) {
+        const input = String(value || '');
+        let hash = 2166136261;
+        for (let index = 0; index < input.length; index += 1) {
+            hash ^= input.charCodeAt(index);
+            hash = Math.imul(hash, 16777619);
+        }
+        return `bm-api-cache-v1-${scope}-${(hash >>> 0).toString(36)}`;
+    }
+
+    async function fetchWithCache(
+        key,
+        ttlMs,
+        fetchFn,
+        isCacheable = value => value !== null && value !== undefined
+    ) {
+        const cached = await Promise.resolve(GM_getValue(key, null));
+        const cachedIsUsable = cached &&
+            Number.isFinite(Number(cached.timestamp)) &&
+            cached.data !== undefined;
+        if (cachedIsUsable && Date.now() - Number(cached.timestamp) < ttlMs) {
+            return cached.data;
+        }
+
+        if (cacheRequestsInFlight.has(key)) {
+            return cacheRequestsInFlight.get(key);
+        }
+
+        const request = (async () => {
+            try {
+                const freshData = await fetchFn();
+                if (isCacheable(freshData)) {
+                    await Promise.resolve(GM_setValue(key, {
+                        timestamp: Date.now(),
+                        data: freshData
+                    }));
+                    return freshData;
+                }
+                return cachedIsUsable ? cached.data : freshData;
+            } catch (error) {
+                if (cachedIsUsable) return cached.data;
+                throw error;
+            } finally {
+                cacheRequestsInFlight.delete(key);
+            }
+        })();
+        cacheRequestsInFlight.set(key, request);
+        return request;
+    }
+
+    function cachedGmRequest(cacheKey, ttlMs, details) {
+        let liveRequest = null;
+        let aborted = false;
+        const {
+            onload,
+            onerror,
+            ontimeout,
+            onabort,
+            ...requestDetails
+        } = details;
+
+        void fetchWithCache(cacheKey, ttlMs, () => new Promise((resolve, reject) => {
+            liveRequest = GM_xmlhttpRequest({
+                ...requestDetails,
+                onload: response => {
+                    const body = String(response.responseText || '');
+                    if (response.status >= 200 && response.status < 400 && body) {
+                        resolve({
+                            status: response.status,
+                            responseText: body,
+                            responseHeaders: response.responseHeaders || '',
+                            finalUrl: response.finalUrl || requestDetails.url
+                        });
+                    } else {
+                        reject(new Error(`HTTP ${response.status}`));
+                    }
+                },
+                onerror: () => reject(new Error('Netzwerkfehler')),
+                ontimeout: () => reject(new Error('Zeitüberschreitung')),
+                onabort: () => reject(new Error('Abgebrochen'))
+            });
+        })).then(response => {
+            if (!aborted && response) {
+                onload?.(response);
+            } else if (!aborted) {
+                onerror?.();
+            }
+        }).catch(() => {
+            if (!aborted) onerror?.();
+        });
+
+        return {
+            abort() {
+                aborted = true;
+                liveRequest?.abort?.();
+                onabort?.();
+            }
+        };
+    }
 
     function waitForMetaGptElement(getElement, timeout = 60000) {
         return new Promise(resolve => {
@@ -1351,34 +1455,39 @@
             gap: 0.75rem;
             margin: 0 0 0.15rem;
         }
-        .bm-offer-processing {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            margin-right: auto;
-            color: #777;
-            font-size: 0.72rem;
-            line-height: 1;
-            opacity: 0;
+        #offerlist .bm-marketplace-offer.bm-offer-entering {
+            animation: bm-offer-enter 0.24s ease-out both;
+            transform-origin: top center;
+        }
+        .bm-link.bm-shortcut-leaving {
             pointer-events: none;
-            transition: opacity 0.12s ease;
+            animation: bm-shortcut-leave 0.2s ease-in both;
         }
-        .bm-offer-processing.is-visible {
-            opacity: 1;
+        @keyframes bm-offer-enter {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        .bm-offer-processing svg {
-            display: block;
-            width: 18px;
-            height: 18px;
-            fill: none;
-            stroke: #b00000;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            animation: bm-spin 0.9s linear infinite;
+        @keyframes bm-shortcut-leave {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.94);
+            }
         }
-        @keyframes bm-spin {
-            to { transform: rotate(360deg); }
+        @media (prefers-reduced-motion: reduce) {
+            #offerlist .bm-marketplace-offer.bm-offer-entering,
+            .bm-link.bm-shortcut-leaving {
+                animation: none;
+            }
         }
         @media screen and (min-width: 1025px) {
             .bm-chart-controls {
@@ -1423,9 +1532,6 @@
             }
             .bm-offer-toolbar {
                 margin: 0.1rem 0 0.25rem !important;
-            }
-            .bm-offer-processing {
-                font-size: 0.68rem;
             }
             #wrap.bm-set-wrap {
                 margin-bottom: -104px !important;
@@ -1757,7 +1863,7 @@
 
     function parseHistoricalBestPriceText(rawText) {
         const text = String(rawText || '').replace(/\s+/g, ' ').trim();
-        if (!/bisheriger bestpreis/i.test(text)) return null;
+        if (!/(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(text)) return null;
 
         const priceMatch = text.match(/(\d+[\d\s.,]*)\s*€/i);
         if (!priceMatch) return null;
@@ -1781,6 +1887,28 @@
             priceLabel,
             detailSuffix
         };
+    }
+
+    function renameHistoricalBestPriceLabel() {
+        const root = document.querySelector(
+            '.content.setdetails .productprice'
+        );
+        if (!root) return;
+
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        let node;
+        while (node = walker.nextNode()) {
+            if (/bisheriger bestpreis/i.test(node.nodeValue || '')) {
+                nodes.push(node);
+            }
+        }
+        nodes.forEach(textNode => {
+            textNode.nodeValue = textNode.nodeValue.replace(
+                /bisheriger bestpreis/gi,
+                'All-Time-Bestpreis'
+            );
+        });
     }
 
     let nativeChartHistoricalBestPriceInfo = null;
@@ -1834,7 +1962,7 @@
                     acceptNode(node) {
                         const parent = node.parentElement;
                         if (!parent) return NodeFilter.FILTER_REJECT;
-                        if (!/bisheriger bestpreis/i.test(node.nodeValue || '')) {
+                        if (!/(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(node.nodeValue || '')) {
                             return NodeFilter.FILTER_REJECT;
                         }
                         if (parent.closest('#bm-price-chart-overlay, #chartWrapper, #bigChart, #chartContainer')) {
@@ -1900,20 +2028,6 @@
         const toolbar = document.createElement('div');
         toolbar.className = 'bm-offer-toolbar';
         toolbar.innerHTML = `
-            <div class="bm-offer-processing" role="status" aria-live="polite">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M12 2v3"></path>
-                    <path d="M12 19v3"></path>
-                    <path d="M4.93 4.93l2.12 2.12"></path>
-                    <path d="M16.95 16.95l2.12 2.12"></path>
-                    <path d="M2 12h3"></path>
-                    <path d="M19 12h3"></path>
-                    <path d="M4.93 19.07l2.12-2.12"></path>
-                    <path d="M16.95 7.05l2.12-2.12"></path>
-                </svg>
-                <span>rechnet</span>
-            </div>
             <div class="bm-discount-toolbar-control">
                 <label class="switch" title="Persönlichen Rabatt ein- oder ausschalten">
                     <input id="bm-personal-enabled" type="checkbox"
@@ -3169,10 +3283,10 @@
 
             const historyRow = Array.from(chartWrapper.children)
                 .find(element => element.querySelector?.('strong') &&
-                    /bisheriger bestpreis/i.test(element.textContent || ''));
+                    /(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(element.textContent || ''));
             if (historyRow) {
                 const bestPrice = Array.from(historyRow.querySelectorAll('strong'))
-                    .find(element => /bisheriger bestpreis/i.test(
+                    .find(element => /(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(
                         element.textContent || ''
                     ));
                 const historicalInfo = parseHistoricalBestPriceText(
@@ -3304,7 +3418,7 @@
     // Brickmerges eigener Chart-Schalter.
     function isPriceHistoryLink(link) {
         const text = link?.textContent || '';
-        return /bisheriger\s+bestpreis|180\s*tage\s+bestpreis|preis\s+im\s+vergleich\s+zum\s+atb|differenz\s+zum\s+atb/i.test(text);
+        return /bisheriger\s+bestpreis|all-time-bestpreis|180\s*tage\s+bestpreis|preis\s+im\s+vergleich\s+zum\s+atb|differenz\s+zum\s+atb/i.test(text);
     }
 
     function decoratePriceHistoryLinks() {
@@ -3396,7 +3510,8 @@
                         secondaryIcon: icon("chatgpt.com")
                     },
                     { name: "Geizhals", url: `https://www.google.com/search?q=site%3Ageizhals.de+lego+${setNum}&btnI=1`, icon: icon("geizhals.at") },
-                    { name: "idealo DE", url: `https://www.google.com/search?q=site%3Aidealo.de+lego+${setNum}&btnI=1`, icon: icon("idealo.de") }
+                    { name: "idealo DE", url: `https://www.google.com/search?q=site%3Aidealo.de+lego+${setNum}&btnI=1`, icon: icon("idealo.de") },
+                    { name: "Reviews", url: `https://www.youtube.com/results?search_query=${encodeURIComponent(`lego ${setNum} review`)}`, icon: icon("youtube.com") }
                 ]
             },
             {
@@ -3563,7 +3678,28 @@
             ];
             rules.forEach(({ id, pattern }) => {
                 const shortcut = document.querySelector(`a[data-bmid="${id}"]`);
-                if (shortcut) shortcut.hidden = hasOffer(pattern);
+                if (!shortcut) return;
+                const bubble = shortcut.closest('.bm-link') || shortcut;
+                const shouldHide = hasOffer(pattern);
+
+                if (!shouldHide) {
+                    clearTimeout(Number(bubble.dataset.bmHideTimer || 0));
+                    delete bubble.dataset.bmHideTimer;
+                    bubble.classList.remove('bm-shortcut-leaving');
+                    bubble.hidden = false;
+                    return;
+                }
+                if (bubble.hidden || bubble.classList.contains('bm-shortcut-leaving')) {
+                    return;
+                }
+
+                bubble.classList.add('bm-shortcut-leaving');
+                const hideTimer = window.setTimeout(() => {
+                    bubble.hidden = true;
+                    bubble.classList.remove('bm-shortcut-leaving');
+                    delete bubble.dataset.bmHideTimer;
+                }, 210);
+                bubble.dataset.bmHideTimer = String(hideTimer);
             });
         }
 
@@ -4090,7 +4226,10 @@
                 };
             };
 
-            GM_xmlhttpRequest({
+            cachedGmRequest(
+                makeApiCacheKey('mybrickdepot', setNumber),
+                OFFER_CACHE_TTL,
+                {
                 method: "GET",
                 url: "https://mybrickdepot.de/product/" + setNumber,
                 headers: { "User-Agent": "Mozilla/5.0" },
@@ -4145,7 +4284,10 @@
                 }
             });
 
-            GM_xmlhttpRequest({
+            cachedGmRequest(
+                makeApiCacheKey('brickbank', setNumber),
+                OFFER_CACHE_TTL,
+                {
                 method: 'GET',
                 url:
                     `https://brickbank.app/public/ajax/search/?db=pvg&s=` +
@@ -4249,7 +4391,10 @@
                 }
             });
 
-            GM_xmlhttpRequest({
+            cachedGmRequest(
+                makeApiCacheKey('bricklink-catalog', setNumber),
+                OFFER_CACHE_TTL,
+                {
                 method: 'GET',
                 url:
                     `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setNumber}-1`,
@@ -4267,7 +4412,10 @@
                         return;
                     }
 
-                    GM_xmlhttpRequest({
+                    cachedGmRequest(
+                        makeApiCacheKey('bricklink-offers-de', itemId),
+                        OFFER_CACHE_TTL,
+                        {
                         method: 'GET',
                         url:
                             'https://www.bricklink.com/ajax/clone/catalogifs.ajax' +
@@ -4328,7 +4476,10 @@
             });
 
             function fetchBrickOwlOffers(url, redirectCount = 0) {
-                GM_xmlhttpRequest({
+                cachedGmRequest(
+                    makeApiCacheKey('brickowl-de', url),
+                    OFFER_CACHE_TTL,
+                    {
                     method: 'GET',
                     url,
                     headers: {
@@ -4442,6 +4593,7 @@
             placeSoldOutBadgesAfterShipping,
             calculateDiscount,
             decoratePriceHistoryLinks,
+            renameHistoricalBestPriceLabel,
             createDiscountSettingsUI,
             disableOfferListTooltips
         ].forEach(step => {
@@ -4499,6 +4651,402 @@
             );
         }
 
+        async function getMinifigPrice(blItemNo) {
+            const cleanId = String(blItemNo || '')
+                .replace(/^fig-/i, '')
+                .trim();
+            if (!cleanId) return null;
+
+            const requestText = url => new Promise((resolve, reject) => {
+                GM_xmlhttpRequest({
+                    method: 'GET',
+                    url,
+                    headers: {
+                        'Accept': 'text/html,application/json;q=0.9,*/*;q=0.8',
+                        'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+                        'Referer': 'https://www.bricklink.com/'
+                    },
+                    timeout: 15000,
+                    onload: response => {
+                        if (response.status !== 200) {
+                            reject(new Error(`HTTP ${response.status}`));
+                            return;
+                        }
+                        resolve(String(response.responseText || ''));
+                    },
+                    onerror: () => reject(new Error('Netzwerkfehler')),
+                    ontimeout: () => reject(new Error('Zeitüberschreitung'))
+                });
+            });
+
+            const itemId = await fetchWithCache(
+                makeApiCacheKey('bricklink-minifig-item-id-v2', cleanId),
+                MINIFIG_PRICE_CACHE_TTL,
+                async () => {
+                    const html = await requestText(
+                        'https://www.bricklink.com/v2/catalog/catalogitem.page' +
+                        `?M=${encodeURIComponent(cleanId)}`
+                    );
+                    const parsedId = Number(
+                        html.match(/\bidItem\s*:\s*(\d+)/)?.[1]
+                    );
+                    return Number.isInteger(parsedId) && parsedId > 0
+                        ? parsedId
+                        : null;
+                },
+                value => Number.isInteger(Number(value)) && Number(value) > 0
+            ).catch(() => null);
+            if (!itemId) return null;
+
+            return fetchWithCache(
+                makeApiCacheKey('bricklink-minifig-current-price-v2', cleanId),
+                MINIFIG_PRICE_CACHE_TTL,
+                async () => {
+                    const jsonText = await requestText(
+                        'https://www.bricklink.com/ajax/clone/catalogifs.ajax' +
+                        `?itemid=${encodeURIComponent(itemId)}` +
+                        '&ss=DE&cond=N&ii=0&loc=DE&iconly=0&rpp=100&pi=1&st=1'
+                    );
+                    const payload = JSON.parse(jsonText);
+                    const prices = (Array.isArray(payload?.list) ? payload.list : [])
+                        .filter(offer =>
+                            offer?.strSellerCountryCode === 'DE' &&
+                            offer?.codeNew === 'N' &&
+                            offer?.codeComplete !== 'I'
+                        )
+                        .map(offer => {
+                            const priceText = String(
+                                offer.mDisplaySalePrice ||
+                                offer.mInvSalePrice ||
+                                ''
+                            );
+                            const match = priceText.match(
+                                /(?:EUR|€)\s*([\d.,]+)|([\d.,]+)\s*(?:EUR|€)/i
+                            );
+                            if (!match) return null;
+                            const raw = match[1] || match[2];
+                            const commaIndex = raw.lastIndexOf(',');
+                            const dotIndex = raw.lastIndexOf('.');
+                            let normalized = raw;
+                            if (commaIndex >= 0 && dotIndex >= 0) {
+                                normalized = commaIndex > dotIndex
+                                    ? raw.replace(/\./g, '').replace(',', '.')
+                                    : raw.replace(/,/g, '');
+                            } else if (commaIndex >= 0) {
+                                normalized = raw.replace(',', '.');
+                            }
+                            const value = Number(normalized);
+                            return Number.isFinite(value) && value > 0
+                                ? value
+                                : null;
+                        })
+                        .filter(value => value !== null)
+                        .sort((a, b) => a - b);
+                    return prices[0] ?? null;
+                },
+                value => Number.isFinite(Number(value)) && Number(value) > 0
+            ).catch(() => null);
+        }
+
+        function updateMinifigureValueInDataBox(totalValue, saveToCache = true) {
+            if (!Number.isFinite(totalValue) || totalValue <= 0) return;
+            const details = Array.from(
+                document.querySelectorAll(
+                    '.content.setdetails .productprice p, ' +
+                    '.content.setdetails p, #ol2nd p'
+                )
+            ).find(paragraph => /Minifiguren\s*:/i.test(paragraph.textContent || ''));
+            if (!details) return;
+
+            details.querySelectorAll('.bm-minifig-total-value-break')
+                .forEach(lineBreak => lineBreak.remove());
+
+            const breaks = Array.from(details.querySelectorAll('br'));
+            const targetBreak = breaks.find((lineBreak, index) => {
+                const range = document.createRange();
+                if (index > 0) {
+                    range.setStartAfter(breaks[index - 1]);
+                } else {
+                    range.setStart(details, 0);
+                }
+                range.setEndBefore(lineBreak);
+                const isMinifigureLine = /Minifiguren\s*:/i.test(range.toString());
+                range.detach?.();
+                return isMinifigureLine;
+            });
+
+            let valueLine = details.querySelector('.bm-minifig-total-value');
+            if (!valueLine) {
+                valueLine = document.createElement('span');
+                valueLine.className = 'bm-minifig-total-value';
+            }
+            if (targetBreak) {
+                targetBreak.before(valueLine);
+            } else if (!valueLine.isConnected) {
+                details.appendChild(valueLine);
+            }
+            valueLine.innerHTML =
+                `&nbsp;| <strong>${formatEuroValue(totalValue)} €</strong>`;
+            valueLine.title =
+                'Summe der niedrigsten aktuellen Neupreise deutscher BrickLink-Händler, ohne Versand';
+            if (saveToCache) {
+                void Promise.resolve(GM_setValue(
+                    makeApiCacheKey('bricklink-minifig-current-total-v2', setNum),
+                    {
+                        timestamp: Date.now(),
+                        data: totalValue
+                    }
+                ));
+            }
+        }
+
+        function showCachedMinifigureValue() {
+            void Promise.resolve(GM_getValue(
+                makeApiCacheKey('bricklink-minifig-current-total-v2', setNum),
+                null
+            )).then(cached => {
+                if (
+                    cached &&
+                    Date.now() - Number(cached.timestamp) < MINIFIG_PRICE_CACHE_TTL &&
+                    Number.isFinite(Number(cached.data)) &&
+                    Number(cached.data) > 0
+                ) {
+                    updateMinifigureValueInDataBox(Number(cached.data), false);
+                }
+            });
+        }
+
+        let minifigureValuePreloadPromise = null;
+
+        function preloadMinifigureValue() {
+            if (minifigureValuePreloadPromise) {
+                return minifigureValuePreloadPromise;
+            }
+
+            minifigureValuePreloadPromise = (async () => {
+                const totalCacheKey = makeApiCacheKey(
+                    'bricklink-minifig-current-total-v2',
+                    setNum
+                );
+                const cachedTotal = await Promise.resolve(
+                    GM_getValue(totalCacheKey, null)
+                );
+                if (
+                    cachedTotal &&
+                    Date.now() - Number(cachedTotal.timestamp) <
+                        MINIFIG_PRICE_CACHE_TTL &&
+                    Number.isFinite(Number(cachedTotal.data)) &&
+                    Number(cachedTotal.data) > 0
+                ) {
+                    updateMinifigureValueInDataBox(
+                        Number(cachedTotal.data),
+                        false
+                    );
+                    return;
+                }
+
+                const requestInventoryPage = url => fetchWithCache(
+                    makeApiCacheKey('bricklink-minifig-inventory', url),
+                    MINIFIG_INVENTORY_CACHE_TTL,
+                    () => new Promise((resolve, reject) => {
+                        GM_xmlhttpRequest({
+                            method: 'GET',
+                            url,
+                            headers: {
+                                'Accept':
+                                    'text/html,application/xhtml+xml',
+                                'Accept-Language':
+                                    'de-DE,de;q=0.9,en;q=0.8'
+                            },
+                            timeout: 15000,
+                            onload: response => {
+                                const body = String(
+                                    response.responseText || ''
+                                );
+                                if (response.status !== 200 || body.length < 200) {
+                                    reject(new Error(
+                                        `HTTP ${response.status}`
+                                    ));
+                                    return;
+                                }
+                                resolve({
+                                    status: response.status,
+                                    responseText: body,
+                                    responseHeaders:
+                                        response.responseHeaders || '',
+                                    finalUrl: response.finalUrl || url
+                                });
+                            },
+                            onerror: () => reject(
+                                new Error('Netzwerkfehler')
+                            ),
+                            ontimeout: () => reject(
+                                new Error('Zeitüberschreitung')
+                            )
+                        });
+                    }),
+                    response =>
+                        typeof response?.responseText === 'string' &&
+                        response.responseText.length > 200
+                );
+
+                const extractFigures = (html, modern = true) => {
+                    const doc = new DOMParser().parseFromString(
+                        html,
+                        'text/html'
+                    );
+                    const rows = modern
+                        ? Array.from(doc.querySelectorAll(
+                            'table.pciinvMainTable tr.pciinvItemRow'
+                        ))
+                        : Array.from(doc.querySelectorAll('tr'));
+                    const figures = new Map();
+
+                    rows.forEach(row => {
+                        const itemLink = row.querySelector(
+                            'a[href*="catalogitem.page?M="], ' +
+                            'a[href*="catalogItemInv.asp?M="]'
+                        );
+                        if (!itemLink) return;
+
+                        const href = itemLink.getAttribute('href') || '';
+                        const encodedItemNo =
+                            href.match(/[?&]M=([^&#]+)/i)?.[1] || '';
+                        if (!encodedItemNo) return;
+
+                        let itemNo = encodedItemNo;
+                        try {
+                            itemNo = decodeURIComponent(encodedItemNo);
+                        } catch (error) {
+                            // BrickLink item numbers are normally plain ASCII.
+                        }
+
+                        const cells = Array.from(row.cells || []);
+                        let quantityText = modern
+                            ? cells[2]?.textContent || ''
+                            : '';
+                        if (!modern) {
+                            const imageIndex = cells.findIndex(cell =>
+                                cell.querySelector('img')
+                            );
+                            const itemIndex = cells.findIndex(cell =>
+                                cell.contains(itemLink)
+                            );
+                            const quantityCell = cells.find((cell, index) =>
+                                index > imageIndex &&
+                                index < itemIndex &&
+                                /^\s*\d+\s*$/.test(cell.textContent || '')
+                            );
+                            quantityText = quantityCell?.textContent || '';
+                        }
+
+                        const quantity = Number.parseInt(
+                            quantityText.match(/\d+/)?.[0] || '1',
+                            10
+                        );
+                        const cleanItemNo = itemNo.trim();
+                        if (!cleanItemNo) return;
+                        figures.set(
+                            cleanItemNo,
+                            (figures.get(cleanItemNo) || 0) +
+                            (
+                                Number.isFinite(quantity) && quantity > 0
+                                    ? quantity
+                                    : 1
+                            )
+                        );
+                    });
+
+                    return Array.from(figures, ([itemNo, quantity]) => ({
+                        itemNo,
+                        quantity
+                    }));
+                };
+
+                const catalogUrl =
+                    `https://www.bricklink.com/v2/catalog/catalogitem.page` +
+                    `?S=${encodeURIComponent(`${setNum}-1`)}`;
+                let figures = [];
+                try {
+                    const catalogResponse =
+                        await requestInventoryPage(catalogUrl);
+                    const itemId = Number(
+                        catalogResponse.responseText.match(
+                            /\bidItem\s*:\s*(\d+)/
+                        )?.[1]
+                    );
+                    if (Number.isInteger(itemId) && itemId > 0) {
+                        const inventoryUrl =
+                            'https://www.bricklink.com/v2/catalog/' +
+                            'catalogitem_invtab.page' +
+                            `?idItem=${encodeURIComponent(itemId)}` +
+                            '&st=1&show_invid=0&show_matchcolor=0' +
+                            '&show_pglink=0&show_pcc=0&show_missingpcc=0' +
+                            `&itemNoSeq=${encodeURIComponent(`${setNum}-1`)}`;
+                        const inventoryResponse =
+                            await requestInventoryPage(inventoryUrl);
+                        figures = extractFigures(
+                            inventoryResponse.responseText,
+                            true
+                        );
+                    }
+                } catch (error) {
+                    // The legacy inventory below remains available as fallback.
+                }
+
+                if (figures.length === 0) {
+                    try {
+                        const legacyUrl =
+                            'https://www.bricklink.com/catalogItemInv.asp' +
+                            `?S=${encodeURIComponent(`${setNum}-1`)}` +
+                            '&viewItemType=M';
+                        const legacyResponse =
+                            await requestInventoryPage(legacyUrl);
+                        figures = extractFigures(
+                            legacyResponse.responseText,
+                            false
+                        );
+                    } catch (error) {
+                        return;
+                    }
+                }
+                if (figures.length === 0) return;
+
+                const prices = new Map();
+                for (let index = 0; index < figures.length; index += 3) {
+                    const batch = figures.slice(index, index + 3);
+                    const entries = await Promise.all(batch.map(
+                        async figure => [
+                            figure.itemNo,
+                            await getMinifigPrice(figure.itemNo)
+                        ]
+                    ));
+                    entries.forEach(([itemNo, price]) =>
+                        prices.set(itemNo, price)
+                    );
+                }
+
+                let totalValue = 0;
+                for (const figure of figures) {
+                    const price = Number(prices.get(figure.itemNo));
+                    if (!Number.isFinite(price) || price <= 0) return;
+                    totalValue += price * figure.quantity;
+                }
+                if (totalValue <= 0) return;
+
+                updateMinifigureValueInDataBox(
+                    Math.round((totalValue + Number.EPSILON) * 100) / 100
+                );
+            })().catch(error => {
+                console.warn(
+                    'Brickmerge Tweaker: Minifiguren-Wert konnte nicht vorgeladen werden.',
+                    error
+                );
+            });
+
+            return minifigureValuePreloadPromise;
+        }
+
         function replaceMinifigurenWithLink(setNum) {
             function walk(node) {
                 if (node.nodeType === 3 && /minifiguren/i.test(node.textContent)) {
@@ -4525,65 +5073,76 @@
             ).find(paragraph => /Minifiguren\s*:/i.test(paragraph.textContent || ''));
             if (!details || details.querySelector('.bm-minifig-count-link')) return;
 
-            const createCountLink = countText => {
-                const link = document.createElement('a');
-                link.href = '#';
-                link.className = 'bm-lego-article-link bm-minifig-count-link';
-                link.title = 'Minifiguren anzeigen';
-                link.setAttribute('aria-label', `${countText.trim()} Minifiguren anzeigen`);
-                return link;
-            };
-
-            const range = document.createRange();
-            const strongMatch = Array.from(details.querySelectorAll('strong'))
-                .find(strong => {
-                    if (!/^\s*\d+\s*$/.test(strong.textContent || '')) return false;
-                    range.selectNodeContents(details);
-                    try {
-                        range.setEndBefore(strong);
-                    } catch (error) {
-                        return false;
-                    }
-                    return /Minifiguren\s*:\s*$/i.test(
-                        range.toString().replace(/\s+/g, ' ')
-                    );
-                });
-            range.detach?.();
-
-            if (strongMatch && !strongMatch.closest('a')) {
-                const link = createCountLink(strongMatch.textContent);
-                strongMatch.replaceWith(link);
-                link.appendChild(strongMatch);
-                return;
-            }
-
             const walker = document.createTreeWalker(details, NodeFilter.SHOW_TEXT);
+            const labelLink = details.querySelector('.bm-minifig-link');
             let labelSeen = false;
+            let valueNode = null;
+            let valueOffset = 0;
             let textNode;
             while (textNode = walker.nextNode()) {
-                if (textNode.parentElement?.closest('a')) continue;
                 const text = textNode.nodeValue || '';
-                const sameNodeMatch = text.match(/Minifiguren\s*:\s*(\d+)/i);
-                const numberMatch = sameNodeMatch || (labelSeen ? text.match(/\d+/) : null);
-                if (numberMatch) {
-                    const countText = sameNodeMatch ? sameNodeMatch[1] : numberMatch[0];
-                    const numberStart = sameNodeMatch
-                        ? sameNodeMatch.index + sameNodeMatch[0].lastIndexOf(countText)
-                        : numberMatch.index;
-                    const numberEnd = numberStart + countText.length;
-                    const fragment = document.createDocumentFragment();
-                    fragment.appendChild(document.createTextNode(text.slice(0, numberStart)));
-                    const link = createCountLink(countText);
-                    link.textContent = countText;
-                    fragment.appendChild(link);
-                    fragment.appendChild(document.createTextNode(text.slice(numberEnd)));
-                    textNode.parentNode.replaceChild(fragment, textNode);
-                    return;
+
+                if (labelLink?.contains(textNode)) {
+                    labelSeen = true;
+                    continue;
                 }
-                if (/Minifiguren\s*:\s*$/i.test(text.replace(/\s+/g, ' '))) {
+
+                const sameNodeMatch = text.match(/Minifiguren\s*:\s*(\d+)/i);
+                if (sameNodeMatch) {
+                    valueNode = textNode;
+                    valueOffset =
+                        sameNodeMatch.index +
+                        sameNodeMatch[0].lastIndexOf(sameNodeMatch[1]);
+                    break;
+                }
+
+                if (labelSeen) {
+                    const numberMatch = text.match(/\d+/);
+                    if (numberMatch) {
+                        valueNode = textNode;
+                        valueOffset = numberMatch.index;
+                        break;
+                    }
+                } else if (/Minifiguren\s*:\s*$/i.test(
+                    text.replace(/\s+/g, ' ')
+                )) {
                     labelSeen = true;
                 }
             }
+            if (!valueNode || valueNode.parentElement?.closest('a')) return;
+
+            const followingBreak = Array.from(details.querySelectorAll('br'))
+                .find(lineBreak =>
+                    Boolean(
+                        valueNode.compareDocumentPosition(lineBreak) &
+                        Node.DOCUMENT_POSITION_FOLLOWING
+                    )
+                );
+            const range = document.createRange();
+            range.setStart(valueNode, valueOffset);
+            if (followingBreak) {
+                range.setEndBefore(followingBreak);
+            } else {
+                range.setEnd(details, details.childNodes.length);
+            }
+
+            const linkedText = range.toString().replace(/\s+/g, ' ').trim();
+            if (!linkedText) {
+                range.detach?.();
+                return;
+            }
+
+            const link = document.createElement('a');
+            link.href = '#';
+            link.className = 'bm-lego-article-link bm-minifig-count-link';
+            link.title = 'Minifiguren anzeigen';
+            link.setAttribute(
+                'aria-label',
+                `${linkedText} – Minifiguren anzeigen`
+            );
+            link.appendChild(range.extractContents());
+            range.insertNode(link);
+            range.detach?.();
         }
 
         function showMinifigOverlay(link, setNum) {
@@ -4797,6 +5356,17 @@
                 .bm-minifig-content font {
                     color:#333 !important;
                 }
+                .bm-minifig-price {
+                    display:block;
+                    margin-top:5px;
+                    color:#777;
+                    font-size:0.78rem;
+                    font-weight:600;
+                    line-height:1.25;
+                }
+                .bm-minifig-price.is-loading {
+                    font-weight:400;
+                }
                 @media screen and (max-width:640px) {
                     .bm-minifig-modal {
                         width:calc(100vw - 16px);
@@ -4966,6 +5536,34 @@
                 return cell;
             };
 
+            const extractFigureData = table => Array.from(
+                table.querySelectorAll('tbody > tr')
+            ).map(row => {
+                const itemLink = row.querySelector(
+                    'a[href*="catalogitem.page?M="], ' +
+                    'a[href*="catalogItemInv.asp?M="]'
+                );
+                const href = itemLink?.getAttribute('href') || '';
+                const itemNo = href.match(/[?&]M=([^&#]+)/i)?.[1] ||
+                    itemLink?.textContent?.match(/\b([a-z]{2,}\d+[a-z0-9]*)\b/i)?.[1] ||
+                    '';
+                const quantity = Number.parseInt(
+                    row.cells[1]?.textContent?.match(/\d+/)?.[0] || '1',
+                    10
+                );
+                let cleanItemNo = itemNo;
+                try {
+                    cleanItemNo = decodeURIComponent(itemNo);
+                } catch (error) {
+                    // BrickLink item numbers are normally plain ASCII.
+                }
+                return {
+                    row,
+                    itemNo: cleanItemNo.trim(),
+                    quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1
+                };
+            }).filter(figure => figure.itemNo);
+
             const buildFigureTable = figureRows => {
                 const table = document.createElement('table');
                 table.className = 'bm-minifig-table';
@@ -4993,6 +5591,72 @@
                 return tbody.rows.length > 0
                     ? { kind: 'found', table, figureCount }
                     : null;
+            };
+
+            const loadFigurePrices = async (table, sequence) => {
+                const figures = extractFigureData(table);
+                if (figures.length === 0) return;
+
+                figures.forEach(({ row }) => {
+                    const descriptionCell = row.cells[row.cells.length - 1];
+                    if (!descriptionCell) return;
+                    let priceLabel = descriptionCell.querySelector('.bm-minifig-price');
+                    if (!priceLabel) {
+                        priceLabel = document.createElement('span');
+                        priceLabel.className = 'bm-minifig-price is-loading';
+                        descriptionCell.appendChild(priceLabel);
+                    }
+                    priceLabel.textContent = 'BrickLink-Wert wird geladen …';
+                });
+
+                const uniqueItemNumbers = [...new Set(
+                    figures.map(figure => figure.itemNo)
+                )];
+                const priceEntries = [];
+                for (let index = 0; index < uniqueItemNumbers.length; index += 3) {
+                    const batch = uniqueItemNumbers.slice(index, index + 3);
+                    priceEntries.push(...await Promise.all(
+                        batch.map(async itemNo => [
+                            itemNo,
+                            await getMinifigPrice(itemNo)
+                        ])
+                    ));
+                }
+                if (sequence !== loadSequence || !overlay.isConnected) return;
+
+                const prices = new Map(priceEntries);
+                let totalValue = 0;
+                let valuedFigureCount = 0;
+                const expectedFigureCount = figures.reduce(
+                    (sum, figure) => sum + figure.quantity,
+                    0
+                );
+                figures.forEach(({ row, itemNo, quantity }) => {
+                    const price = Number(prices.get(itemNo));
+                    const priceLabel = row.querySelector('.bm-minifig-price');
+                    if (!priceLabel) return;
+                    priceLabel.classList.remove('is-loading');
+                    if (!Number.isFinite(price) || price <= 0) {
+                        priceLabel.textContent = 'BrickLink-Wert nicht verfügbar';
+                        return;
+                    }
+                    priceLabel.textContent =
+                        `BrickLink-Wert: ${formatEuroValue(price)} €` +
+                        `${quantity > 1 ? ' je Figur' : ''}`;
+                    priceLabel.title =
+                        'Niedrigster aktueller Neupreis bei deutschen BrickLink-Händlern, ohne Versand';
+                    totalValue += price * quantity;
+                    valuedFigureCount += quantity;
+                });
+
+                if (
+                    valuedFigureCount > 0 &&
+                    valuedFigureCount === expectedFigureCount
+                ) {
+                    updateMinifigureValueInDataBox(
+                        Math.round((totalValue + Number.EPSILON) * 100) / 100
+                    );
+                }
             };
 
             const parseModernInventory = html => {
@@ -5089,6 +5753,7 @@
                     `${result.figureCount === 1 ? 'Figur' : 'Figuren'} · ` +
                     `LEGO Set ${setNum}`;
                 content.replaceChildren(result.table);
+                void loadFigurePrices(result.table, sequence);
                 if (saveToCache) {
                     try {
                         sessionStorage.setItem(cacheKey, JSON.stringify({
@@ -5131,7 +5796,10 @@
                         onExhausted();
                     }
                 };
-                request = GM_xmlhttpRequest({
+                request = cachedGmRequest(
+                    makeApiCacheKey('bricklink-minifig-inventory', url),
+                    MINIFIG_INVENTORY_CACHE_TTL,
+                    {
                     method: 'GET',
                     url,
                     headers: {
@@ -5251,6 +5919,10 @@
         try {
             replaceMinifigurenWithLink(setNum);
             linkMinifigureCount(setNum);
+            showCachedMinifigureValue();
+            window.setTimeout(() => {
+                void preloadMinifigureValue();
+            }, 350);
             window.addEventListener('load', () => {
                 try {
                     linkMinifigureCount(setNum);
@@ -5753,7 +6425,7 @@
             let node;
 
             while (node = walker.nextNode()) {
-                if (node.nodeValue.toLowerCase().includes('bisheriger bestpreis')) {
+                if (/(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(node.nodeValue)) {
                     let container = node.parentElement;
                     const historicalInfo = parseHistoricalBestPriceText(
                         container.textContent
@@ -5777,14 +6449,14 @@
             const directMatch = seedElement.closest?.('p, div, li, span');
             if (
                 directMatch &&
-                /bisheriger bestpreis/i.test(directMatch.textContent || '')
+                /(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(directMatch.textContent || '')
             ) {
                 return directMatch;
             }
 
             return Array.from(document.querySelectorAll('p, div, li, span')).find(
                 element =>
-                    /bisheriger bestpreis/i.test(element.textContent || '') &&
+                    /(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(element.textContent || '') &&
                     /€/.test(element.textContent || '')
             ) || null;
     }
@@ -5871,6 +6543,8 @@
         });
     }
 
+    const animatedMarketplaceOfferKeys = new Set();
+
     function injectMarketplaceOffers(offers) {
         const offerlist = document.getElementById('offerlist');
         const firstPriceRow = offerlist?.querySelector(
@@ -5894,12 +6568,16 @@
             const price = parseEuroValue(offer.priceText);
             const hasUnknownPrice = price === null && offer.allowUnknownPrice === true;
             if ((!hasUnknownPrice && price === null) || !offer.url) return;
+            const animationKey = `${offer.source || 'marketplace'}:${offer.key}`;
+            const animateEntry = !animatedMarketplaceOfferKeys.has(animationKey);
+            animatedMarketplaceOfferKeys.add(animationKey);
 
             const mid = offer.source === 'mybrickdepot'
                 ? `mbd-${offer.key}`
                 : `market-${offer.key}`;
             const wrapper = document.createElement('div');
             wrapper.className = 'row collapse bm-marketplace-offer';
+            if (animateEntry) wrapper.classList.add('bm-offer-entering');
             wrapper.dataset.bmSource = offer.source || 'marketplace';
             wrapper.dataset.bmMarketplace = 'true';
 
@@ -5999,6 +6677,12 @@
             wrapper.appendChild(iconColumn);
             wrapper.appendChild(priceRow);
             parent.appendChild(wrapper);
+            if (animateEntry) {
+                window.setTimeout(
+                    () => wrapper.classList.remove('bm-offer-entering'),
+                    280
+                );
+            }
         });
 
         mergeSoldOutOffersIntoOfferList();
@@ -6515,26 +7199,6 @@
         });
     }
 
-    let offerProcessingHideTimer;
-    function showOfferProcessingIndicator() {
-        clearTimeout(offerProcessingHideTimer);
-        createDiscountSettingsUI();
-        const indicator = document.querySelector('.bm-offer-processing');
-        if (!indicator) return;
-        indicator.classList.add('is-visible');
-        indicator.setAttribute('aria-hidden', 'false');
-    }
-
-    function hideOfferProcessingIndicator() {
-        clearTimeout(offerProcessingHideTimer);
-        offerProcessingHideTimer = setTimeout(() => {
-            const indicator = document.querySelector('.bm-offer-processing');
-            if (!indicator) return;
-            indicator.classList.remove('is-visible');
-            indicator.setAttribute('aria-hidden', 'true');
-        }, 180);
-    }
-
     let offerPresentationRunning = false;
     function applyOfferPresentation() {
         if (offerPresentationRunning) return;
@@ -6543,13 +7207,12 @@
             runOfferPresentationSteps();
         } finally {
             offerPresentationRunning = false;
-            hideOfferProcessingIndicator();
         }
     }
 
     let offerPresentationTimer;
     const scheduleOfferPresentation = () => {
-        showOfferProcessingIndicator();
+        createDiscountSettingsUI();
         clearTimeout(offerPresentationTimer);
         offerPresentationTimer = setTimeout(applyOfferPresentation, 80);
     };
