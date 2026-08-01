@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.14
+// @version      4.15
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -7302,7 +7302,11 @@
 
                     const effectiveTooltip = effectiveDiscountLabel === null
                         ? `Gutscheinrabatt: ${voucherDiscountLabel}%. Effektivpreis nach Händlerrabatt: ${effectivePriceLabel} €.`
-                        : `Gutscheinrabatt: ${voucherDiscountLabel}%. Effektivpreis nach Händlerrabatt: ${effectivePriceLabel} € (${effectiveDiscountLabel}% Rabatt zur UVP von ${formatEuroValue(uvp)} €).`;
+                        : `Gutscheinrabatt: ${voucherDiscountLabel}%. ` +
+                            `Effektivpreis nach Händlerrabatt: ${effectivePriceLabel} € ` +
+                            `(${effectiveDiscountLabel}% Rabatt ` +
+                            `${priceReference.relation} von ` +
+                            `${formatEuroValue(priceReference.value)} €).`;
                     const combinedTooltip = [originalTooltip, effectiveTooltip].filter(Boolean).join(' ');
 
                     if (offerLink.dataset.bmTooltip !== combinedTooltip) {
