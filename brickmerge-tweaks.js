@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.91
+// @version      3.92
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -4969,7 +4969,7 @@
                 catalogLink.className = 'bm-minifig-catalog-link';
                 catalogLink.target = '_blank';
                 catalogLink.rel = 'noopener noreferrer';
-                catalogLink.textContent = 'Catalog: Minifigures: BrickLink';
+                catalogLink.textContent = itemNo;
                 descriptionCell.append(title, catalogBreak, catalogLink);
 
                 row.append(
@@ -5812,11 +5812,13 @@
                     text-align:center;
                 }
                 .bm-minifig-content td:nth-child(2) {
+                    display:none !important;
                     width:44px;
                     color:#777 !important;
                     text-align:center;
                 }
                 .bm-minifig-content td:nth-child(3) {
+                    display:none !important;
                     width:150px;
                 }
                 .bm-minifig-content td:last-child {
@@ -5877,7 +5879,7 @@
                     }
                     .bm-minifig-content tr {
                         display:grid;
-                        grid-template-columns:92px 38px minmax(0,1fr);
+                        grid-template-columns:92px minmax(0,1fr);
                         width:100%;
                         min-height:132px;
                     }
@@ -5892,22 +5894,16 @@
                         padding:14px 6px;
                     }
                     .bm-minifig-content td:nth-child(2) {
-                        grid-column:2;
-                        grid-row:1;
-                        align-self:end;
-                        padding:12px 2px 4px;
+                        display:none !important;
                     }
                     .bm-minifig-content td:nth-child(3) {
-                        grid-column:3;
-                        grid-row:1;
-                        align-self:end;
-                        padding:12px 10px 4px 4px;
+                        display:none !important;
                     }
                     .bm-minifig-content td:last-child {
-                        grid-column:2 / 4;
-                        grid-row:2;
+                        grid-column:2;
+                        grid-row:1;
                         align-self:start;
-                        padding:4px 10px 12px 4px;
+                        padding:14px 10px 14px 4px;
                     }
                     .bm-minifig-content img {
                         max-width:78px;
@@ -5958,7 +5954,7 @@
             const content = overlay.querySelector('.bm-minifig-content');
             const subtitle = overlay.querySelector('.bm-minifig-subtitle');
             const priceSpinner = overlay.querySelector('.bm-minifig-price-spinner');
-            const cacheKey = `bm-minifigures-v4-${setNum}`;
+            const cacheKey = `bm-minifigures-v5-${setNum}`;
             const cacheMaxAge = 6 * 60 * 60 * 1000;
             let loadSequence = 0;
 
@@ -6130,7 +6126,7 @@
                         }
                         const catalogLink = row.querySelector('.bm-minifig-catalog-link');
                         if (catalogLink) {
-                            catalogLink.textContent = 'Catalog: Minifigures: BrickLink';
+                            catalogLink.textContent = brickLinkItemNo || catalogLink.textContent;
                         }
                         const descriptionCell = row.cells[row.cells.length - 1];
                         if (!descriptionCell) return;
