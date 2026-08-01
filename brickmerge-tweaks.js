@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.95
+// @version      3.96
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -5496,25 +5496,10 @@
         }
 
         function replaceMinifigurenWithLink(setNum) {
-            function walk(node) {
-                if (
-                    node.nodeType === 3 &&
-                    /minifiguren/i.test(node.textContent || '') &&
-                    !node.parentElement?.closest('a, script, style, noscript, iframe')
-                ) {
-                    const span = document.createElement('span');
-                    span.innerHTML = node.textContent.replace(/(minifiguren)/i, '<a href="#" class="bm-minifig-link">$1</a>');
-                    node.parentNode.replaceChild(span, node);
-                } else if (
-                    node.nodeType === 1 &&
-                    !['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME'].includes(node.tagName) &&
-                    !node.closest('a')
-                ) {
-                    Array.from(node.childNodes).forEach(walk);
-                }
-            }
             const scan = () => {
-                if (document.body) walk(document.body);
+                document.querySelectorAll('.bm-minifig-link').forEach(link => {
+                    link.replaceWith(document.createTextNode(link.textContent || 'Minifiguren'));
+                });
                 linkMinifigureCount(setNum);
             };
             scan();
@@ -5522,7 +5507,7 @@
             if (!document.body.dataset.bmMinifigClickHandler) {
                 document.body.dataset.bmMinifigClickHandler = 'true';
                 document.body.addEventListener('click', function (e) {
-                    const link = e.target?.closest?.('.bm-minifig-link, .bm-minifig-count-link');
+                    const link = e.target?.closest?.('.bm-minifig-count-link');
                     if (link) {
                         e.preventDefault();
                         showMinifigOverlay(link, setNum);
@@ -6170,7 +6155,7 @@
                             priceLabel.className = 'bm-minifig-price is-loading';
                             descriptionCell.appendChild(priceLabel);
                         }
-                        priceLabel.textContent = 'BrickLink-Wert wird geladen …';
+                        priceLabel.textContent = 'Aktueller dt. BrickLink-Preis wird geladen …';
                     });
 
                     const uniqueItemNumbers = [...new Set(
@@ -6203,11 +6188,11 @@
                         if (!priceLabel) return;
                         priceLabel.classList.remove('is-loading');
                         if (!Number.isFinite(price) || price <= 0) {
-                            priceLabel.textContent = 'BrickLink-Wert nicht verfügbar';
+                            priceLabel.textContent = 'Aktueller dt. BrickLink-Preis nicht verfügbar';
                             return;
                         }
                         priceLabel.textContent =
-                            `BrickLink-Wert: ${formatEuroValue(price)} €` +
+                            `Aktueller dt. BrickLink-Preis: ${formatEuroValue(price)} €` +
                             `${quantity > 1 ? ' je Figur' : ''}`;
                         priceLabel.title =
                             'Niedrigster aktueller Neupreis bei deutschen BrickLink-Händlern, ohne Versand';
