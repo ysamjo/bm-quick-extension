@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.07
+// @version      4.08
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -25,6 +25,7 @@
 // @connect      rebrickable.com
 // @connect      mybrickdepot.de
 // @connect      brickbank.app
+// @connect      duckduckgo.com
 // @run-at       document-end
 // @updateURL    https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-tweaks.js
 // @downloadURL  https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-tweaks.js
@@ -1998,6 +1999,52 @@
             `!ducky site:brickmerge.de ${searchTerm}`
         );
 
+        const getBrickmergeTarget = rawUrl => {
+            try {
+                const target = new URL(rawUrl);
+                return /^(?:www\.)?brickmerge\.de$/i.test(target.hostname) &&
+                    !/(?:^|[?&])find=/i.test(target.search)
+                    ? target.href
+                    : '';
+            } catch (error) {
+                return '';
+            }
+        };
+
+        const resolveLuckyTarget = () => new Promise(resolve => {
+            requestWithGm({
+                method: 'GET',
+                url: luckyUrl.href,
+                headers: {
+                    'Accept': 'text/html,application/xhtml+xml',
+                    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.7'
+                },
+                timeout: 10000,
+                onload: response => {
+                    const finalTarget = getBrickmergeTarget(
+                        response.finalUrl || ''
+                    );
+                    if (finalTarget) {
+                        resolve(finalTarget);
+                        return;
+                    }
+                    const html = String(response.responseText || '');
+                    const encodedTarget = html.match(
+                        /[?&]uddg=([^&'"<>\s]+)/i
+                    )?.[1] || '';
+                    let decodedTarget = '';
+                    try {
+                        decodedTarget = decodeURIComponent(encodedTarget);
+                    } catch (error) {
+                        // An invalid result is handled like a missing result.
+                    }
+                    resolve(getBrickmergeTarget(decodedTarget));
+                },
+                onerror: () => resolve(''),
+                ontimeout: () => resolve('')
+            });
+        });
+
         let applied = false;
         const apply = () => {
             if (applied) return true;
@@ -2005,7 +2052,9 @@
             if (messageNodes.length === 0) return false;
 
             applied = true;
-            window.location.replace(luckyUrl.href);
+            void resolveLuckyTarget().then(target => {
+                if (target) window.location.replace(target);
+            });
             return true;
         };
 
