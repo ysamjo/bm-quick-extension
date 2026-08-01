@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.13
+// @version      4.14
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -1474,14 +1474,23 @@
                 transition: transform 150ms ease;
             }
             .bm-unified-gallery-link:hover,
-            .bm-unified-gallery-link:focus {
-                border-color: #d7d7d7;
-                box-shadow: 1px 1px 4px 0 rgba(0, 0, 0, 0.2);
+            .bm-unified-gallery-link:focus,
+            .bm-unified-gallery-link:active {
+                border-color: #d7d7d7 !important;
+                background: #fff !important;
+                color: inherit !important;
+                box-shadow: 1px 1px 4px 0 rgba(0, 0, 0, 0.2) !important;
+                outline: none;
             }
             .bm-unified-gallery-link:hover > .bm-unified-gallery-image,
-            .bm-unified-gallery-link:focus > .bm-unified-gallery-image {
+            .bm-unified-gallery-link:focus > .bm-unified-gallery-image,
+            .bm-unified-gallery-link:active > .bm-unified-gallery-image {
                 transform: scale(1) !important;
                 box-shadow: none !important;
+            }
+            .bm-product-gallery-host .bm-unified-gallery-link,
+            .bm-product-gallery-host .bm-unified-gallery-link:visited {
+                background: #fff !important;
             }
             .bm-offer-videos .flex-video,
             .bm-offer-videos iframe,
