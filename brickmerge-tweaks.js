@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.94
+// @version      3.95
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -5167,6 +5167,20 @@
             ).catch(() => null);
         }
 
+        const minifigPriceRequestsInFlight = new Map();
+        function getSharedMinifigPrice(blItemNo) {
+            const cleanId = String(blItemNo || '').trim();
+            if (!cleanId) return Promise.resolve(null);
+            if (minifigPriceRequestsInFlight.has(cleanId)) {
+                return minifigPriceRequestsInFlight.get(cleanId);
+            }
+            const request = getMinifigPrice(cleanId).finally(() => {
+                minifigPriceRequestsInFlight.delete(cleanId);
+            });
+            minifigPriceRequestsInFlight.set(cleanId, request);
+            return request;
+        }
+
         function updateMinifigureValueInDataBox(totalValue, saveToCache = true) {
             if (!Number.isFinite(totalValue) || totalValue <= 0) return;
             const details = Array.from(
@@ -5210,7 +5224,7 @@
                 'Summe der niedrigsten aktuellen Neupreise deutscher BrickLink-Händler, ohne Versand';
             if (saveToCache) {
                 void writeStoredValue(
-                    makeApiCacheKey('bricklink-minifig-current-total-v2', setNum),
+                    makeApiCacheKey('bricklink-minifig-current-total-v3', setNum),
                     {
                         timestamp: Date.now(),
                         data: totalValue
@@ -5221,7 +5235,7 @@
 
         function showCachedMinifigureValue() {
             void readStoredValue(
-                makeApiCacheKey('bricklink-minifig-current-total-v2', setNum),
+                makeApiCacheKey('bricklink-minifig-current-total-v3', setNum),
                 null
             ).then(cached => {
                 if (
@@ -5245,7 +5259,7 @@
 
             minifigureValuePreloadPromise = (async () => {
                 const totalCacheKey = makeApiCacheKey(
-                    'bricklink-minifig-current-total-v2',
+                    'bricklink-minifig-current-total-v3',
                     setNum
                 );
                 const cachedTotal = await readStoredValue(totalCacheKey, null);
@@ -5452,7 +5466,7 @@
                     const entries = await Promise.all(batch.map(
                         async figure => [
                             figure.itemNo,
-                            await getMinifigPrice(figure.itemNo)
+                            await getSharedMinifigPrice(figure.itemNo)
                         ]
                     ));
                     entries.forEach(([itemNo, price]) =>
@@ -6170,7 +6184,7 @@
                         priceEntries.push(...await Promise.all(
                             batch.map(async itemNo => [
                                 itemNo,
-                                await getMinifigPrice(itemNo)
+                                await getSharedMinifigPrice(itemNo)
                             ])
                         ));
                     }
