@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.99
+// @version      4.00
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -41,6 +41,7 @@
     const OFFER_CACHE_TTL = 2 * 60 * 60 * 1000;
     const MINIFIG_INVENTORY_CACHE_TTL = 6 * 60 * 60 * 1000;
     const MINIFIG_PRICE_CACHE_TTL = 24 * 60 * 60 * 1000;
+    const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-v4';
     const REBRICKABLE_API_KEY_STORAGE_KEY = 'brickmerge-rebrickable-api-key-v1';
     const REBRICKABLE_MINIFIG_CACHE_TTL = 24 * 60 * 60 * 1000;
     const cacheRequestsInFlight = new Map();
@@ -5198,21 +5199,81 @@
         }
 
         const minifigPriceRequestsInFlight = new Map();
+        const minifigurePriceSnapshot = new Map();
+
+        function getMinifigPriceSnapshotKeys(itemNo) {
+            const cleanId = String(itemNo || '').trim();
+            if (!cleanId) return [];
+            return [...new Set([
+                cleanId,
+                cleanId.replace(/^fig-/i, '')
+            ])].filter(Boolean);
+        }
+
+        function getSnapshotMinifigPrice(itemNo) {
+            const snapshotKeys = getMinifigPriceSnapshotKeys(itemNo);
+            const key = snapshotKeys.find(snapshotKey =>
+                minifigurePriceSnapshot.has(snapshotKey)
+            );
+            return key === undefined ? undefined : minifigurePriceSnapshot.get(key);
+        }
+
+        function rememberMinifigPrice(itemNo, price) {
+            const normalizedPrice = Number.isFinite(Number(price)) &&
+                Number(price) > 0
+                ? Number(price)
+                : null;
+            getMinifigPriceSnapshotKeys(itemNo).forEach(key =>
+                minifigurePriceSnapshot.set(key, normalizedPrice)
+            );
+            return price;
+        }
+
+        function serializeMinifigPriceSnapshot() {
+            return Object.fromEntries(minifigurePriceSnapshot.entries());
+        }
+
+        function restoreMinifigPriceSnapshot(snapshot) {
+            if (!snapshot || typeof snapshot !== 'object') return false;
+            const entries = Object.entries(snapshot).filter(([key, value]) =>
+                key && (value === null || (
+                    Number.isFinite(Number(value)) && Number(value) > 0
+                ))
+            );
+            if (entries.length === 0) return false;
+            minifigurePriceSnapshot.clear();
+            entries.forEach(([key, value]) =>
+                minifigurePriceSnapshot.set(key, value === null ? null : Number(value))
+            );
+            return true;
+        }
+
         function getSharedMinifigPrice(blItemNo) {
             const cleanId = String(blItemNo || '').trim();
             if (!cleanId) return Promise.resolve(null);
+            const cachedPrice = getSnapshotMinifigPrice(cleanId);
+            if (cachedPrice !== undefined) return Promise.resolve(cachedPrice);
             if (minifigPriceRequestsInFlight.has(cleanId)) {
                 return minifigPriceRequestsInFlight.get(cleanId);
             }
-            const request = getMinifigPrice(cleanId).finally(() => {
-                minifigPriceRequestsInFlight.delete(cleanId);
-            });
+            const request = getMinifigPrice(cleanId)
+                .then(price => rememberMinifigPrice(cleanId, price))
+                .finally(() => minifigPriceRequestsInFlight.delete(cleanId));
             minifigPriceRequestsInFlight.set(cleanId, request);
             return request;
         }
 
-        function updateMinifigureValueInDataBox(totalValue, saveToCache = true) {
+        function updateMinifigureValueInDataBox(
+            totalValue,
+            saveToCache = true,
+            priceSnapshot = null
+        ) {
             if (!Number.isFinite(totalValue) || totalValue <= 0) return;
+            if (priceSnapshot instanceof Map) {
+                priceSnapshot.forEach((price, itemNo) =>
+                    rememberMinifigPrice(itemNo, price)
+                );
+            }
             const details = Array.from(
                 document.querySelectorAll(
                     '.content.setdetails .productprice p, ' +
@@ -5254,10 +5315,13 @@
                 'Summe der niedrigsten aktuellen Neupreise deutscher BrickLink-Händler, ohne Versand';
             if (saveToCache) {
                 void writeStoredValue(
-                    makeApiCacheKey('bricklink-minifig-current-total-v3', setNum),
+                    makeApiCacheKey(MINIFIG_TOTAL_CACHE_SCOPE, setNum),
                     {
                         timestamp: Date.now(),
-                        data: totalValue
+                        data: {
+                            total: totalValue,
+                            prices: serializeMinifigPriceSnapshot()
+                        }
                     }
                 );
             }
@@ -5265,16 +5329,18 @@
 
         function showCachedMinifigureValue() {
             void readStoredValue(
-                makeApiCacheKey('bricklink-minifig-current-total-v3', setNum),
+                makeApiCacheKey(MINIFIG_TOTAL_CACHE_SCOPE, setNum),
                 null
             ).then(cached => {
+                const total = Number(cached?.data?.total);
                 if (
                     cached &&
                     Date.now() - Number(cached.timestamp) < MINIFIG_PRICE_CACHE_TTL &&
-                    Number.isFinite(Number(cached.data)) &&
-                    Number(cached.data) > 0
+                    Number.isFinite(total) &&
+                    total > 0 &&
+                    restoreMinifigPriceSnapshot(cached.data.prices)
                 ) {
-                    updateMinifigureValueInDataBox(Number(cached.data), false);
+                    updateMinifigureValueInDataBox(total, false);
                 }
             });
         }
@@ -5289,19 +5355,21 @@
 
             minifigureValuePreloadPromise = (async () => {
                 const totalCacheKey = makeApiCacheKey(
-                    'bricklink-minifig-current-total-v3',
+                    MINIFIG_TOTAL_CACHE_SCOPE,
                     setNum
                 );
                 const cachedTotal = await readStoredValue(totalCacheKey, null);
+                const cachedValue = Number(cachedTotal?.data?.total);
                 if (
                     cachedTotal &&
                     Date.now() - Number(cachedTotal.timestamp) <
                         MINIFIG_PRICE_CACHE_TTL &&
-                    Number.isFinite(Number(cachedTotal.data)) &&
-                    Number(cachedTotal.data) > 0
+                    Number.isFinite(cachedValue) &&
+                    cachedValue > 0 &&
+                    restoreMinifigPriceSnapshot(cachedTotal.data.prices)
                 ) {
                     updateMinifigureValueInDataBox(
-                        Number(cachedTotal.data),
+                        cachedValue,
                         false
                     );
                     return;
@@ -5493,12 +5561,14 @@
                 const prices = new Map();
                 for (let index = 0; index < figures.length; index += 3) {
                     const batch = figures.slice(index, index + 3);
-                    const entries = await Promise.all(batch.map(
-                        async figure => [
-                            figure.itemNo,
-                            await getSharedMinifigPrice(figure.itemNo)
-                        ]
-                    ));
+                    const entries = await Promise.all(batch.map(async figure => {
+                        const priceItemNo = await resolveBrickLinkMinifigId(
+                            figure.itemNo
+                        ) || figure.itemNo;
+                        const price = await getSharedMinifigPrice(priceItemNo);
+                        rememberMinifigPrice(figure.itemNo, price);
+                        return [figure.itemNo, price];
+                    }));
                     entries.forEach(([itemNo, price]) =>
                         prices.set(itemNo, price)
                     );
@@ -5513,7 +5583,9 @@
                 if (totalValue <= 0) return;
 
                 updateMinifigureValueInDataBox(
-                    Math.round((totalValue + Number.EPSILON) * 100) / 100
+                    Math.round((totalValue + Number.EPSILON) * 100) / 100,
+                    true,
+                    prices
                 );
             })().catch(error => {
                 console.warn(
@@ -6203,7 +6275,19 @@
                             priceLabel.className = 'bm-minifig-price is-loading';
                             descriptionCell.appendChild(priceLabel);
                         }
-                        priceLabel.textContent = 'Aktueller dt. BrickLink-Preis wird geladen …';
+                        const cachedPrice = getSnapshotMinifigPrice(brickLinkItemNo);
+                        if (Number.isFinite(Number(cachedPrice)) && Number(cachedPrice) > 0) {
+                            priceLabel.classList.remove('is-loading');
+                            priceLabel.textContent =
+                                `Aktueller dt. BrickLink-Preis: ${formatEuroValue(cachedPrice)} €`;
+                        } else if (cachedPrice === null) {
+                            priceLabel.classList.remove('is-loading');
+                            priceLabel.textContent =
+                                'Aktueller dt. BrickLink-Preis nicht verfügbar';
+                        } else {
+                            priceLabel.textContent =
+                                'Aktueller dt. BrickLink-Preis wird geladen …';
+                        }
                     });
 
                     const uniqueItemNumbers = [...new Set(
@@ -6253,7 +6337,9 @@
                         valuedFigureCount === expectedFigureCount
                     ) {
                         updateMinifigureValueInDataBox(
-                            Math.round((totalValue + Number.EPSILON) * 100) / 100
+                            Math.round((totalValue + Number.EPSILON) * 100) / 100,
+                            true,
+                            prices
                         );
                     }
                 } finally {
