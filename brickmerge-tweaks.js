@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.03
+// @version      4.04
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -1039,10 +1039,18 @@
             text-decoration: none;
         }
         .bm-detail-line-link:hover,
-        .bm-detail-line-link:focus {
+        .bm-detail-line-link:focus,
+        .bm-price-history-link:hover,
+        .bm-price-history-link:focus {
             color: #fff !important;
             background-color: #700;
             text-decoration: none;
+        }
+        .bm-detail-line-link:hover *,
+        .bm-detail-line-link:focus *,
+        .bm-price-history-link:hover *,
+        .bm-price-history-link:focus * {
+            color: #fff !important;
         }
         #wrap.bm-set-wrap {
             margin-bottom: -58px !important;
@@ -2991,18 +2999,16 @@
         ).find(paragraph => /Artikel-Nr\s*:/i.test(paragraph.textContent || ''));
         if (!details || details.querySelector('.bm-lego-article-link')) return;
 
-        const articleNumber = Array.from(details.querySelectorAll('strong'))
-            .find(strong => strong.textContent.trim() === setNum);
-        if (!articleNumber || articleNumber.closest('a')) return;
+        const line = findDetailsLineRange(details, /Artikel-Nr\s*:/i);
+        if (!line || !new RegExp(`\\b${setNum}\\b`).test(line.text)) return;
 
-        const link = document.createElement('a');
-        link.className = 'bm-lego-article-link';
-        link.href = `https://www.lego.com/de-de/product/${setNum}`;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.title = `LEGO ${setNum} bei LEGO öffnen`;
-        articleNumber.replaceWith(link);
-        link.appendChild(articleNumber);
+        const link = createDetailsLineLink(
+            'bm-lego-article-link',
+            `https://www.lego.com/de-de/product/${setNum}`,
+            `LEGO ${setNum} bei LEGO öffnen`
+        );
+        link.appendChild(line.range.extractContents());
+        line.range.insertNode(link);
     }
 
     function findDetailsLineRange(details, linePattern) {
@@ -5374,7 +5380,10 @@
                 valueLine = document.createElement('span');
                 valueLine.className = 'bm-minifig-total-value';
             }
-            if (targetBreak) {
+            const minifigureLink = details.querySelector('.bm-minifig-count-link');
+            if (minifigureLink) {
+                minifigureLink.appendChild(valueLine);
+            } else if (targetBreak) {
                 targetBreak.before(valueLine);
             } else if (!valueLine.isConnected) {
                 details.appendChild(valueLine);
