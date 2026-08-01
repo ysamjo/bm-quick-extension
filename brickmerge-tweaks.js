@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.12
+// @version      4.13
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -6975,6 +6975,31 @@
         return null;
     }
 
+    function getDiscountPriceReference() {
+        const uvp = getCurrentSetUvp();
+        if (uvp !== null && uvp > 0) {
+            return {
+                value: uvp,
+                relation: 'zur UVP'
+            };
+        }
+
+        const offerlist = document.getElementById('offerlist');
+        if (!offerlist) return null;
+        const prices = Array.from(offerlist.querySelectorAll('span.price'))
+            .filter(priceSpan => !priceSpan.closest(
+                '[data-bm-sold-out="true"], #soldOut'
+            ))
+            .map(getBaseOfferPrice)
+            .filter(price => Number.isFinite(price) && price > 0);
+        if (prices.length === 0) return null;
+
+        return {
+            value: Math.max(...prices),
+            relation: 'zum höchsten Angebotspreis'
+        };
+    }
+
     function getOriginalOfferTitle(anchor) {
         if (!anchor) return '';
 
@@ -7107,6 +7132,7 @@
         if (!offerlist) return;
         ensureTooltipBridge();
         const entries = getConfiguredRetailerDiscounts();
+        const priceReference = getDiscountPriceReference();
 
         // Normalisiert Umlaute/ß, damit "Müller" == "mueller" gematcht wird.
         function normalizeRetailerString(str) {
@@ -7227,11 +7253,11 @@
             const effectivePrice = Math.round(
                 (originalPrice * (1 - match.rate) + Number.EPSILON) * 100
             ) / 100;
-            const uvp = getCurrentSetUvp();
             let effectiveDiscountPercent = null;
 
-            if (uvp !== null && uvp > 0) {
-                effectiveDiscountPercent = (1 - (effectivePrice / uvp)) * 100;
+            if (priceReference) {
+                effectiveDiscountPercent =
+                    (1 - (effectivePrice / priceReference.value)) * 100;
             } else {
                 // Fallback: vorhandenen Brickmerge-Rabatt mit dem Händlerrabatt
                 // kombinieren, falls auf der Seite keine UVP-Zeile vorhanden ist.
@@ -7905,6 +7931,7 @@
     function updateOfferTooltips() {
         const offerlist = document.getElementById('offerlist');
         if (!offerlist) return;
+        const priceReference = getDiscountPriceReference();
 
         offerlist.querySelectorAll('span.price').forEach(priceSpan => {
             const offerLink = priceSpan.closest('a');
@@ -7930,7 +7957,6 @@
             const effectivePrice = Math.round(
                 (offerPrice * (1 - retailerRate) + Number.EPSILON) * 100
             ) / 100;
-            const uvp = getCurrentSetUvp();
             const parts = [];
 
             if (merchantName) parts.push(`Händler: ${merchantName}.`);
@@ -7956,9 +7982,13 @@
             if (retailerRate > 0) {
                 parts.push(`Gutscheinrabatt: ${formatPercentValue(retailerRate * 100, 2, 0)}%.`);
                 let effectiveText = `Effektiv: ${formatEuroValue(effectivePrice)} €`;
-                if (uvp !== null && uvp > 0) {
-                    const effectiveDiscount = Math.max(0, (1 - (effectivePrice / uvp)) * 100);
-                    effectiveText += ` (${formatPercentValue(effectiveDiscount)}% zur UVP)`;
+                if (priceReference) {
+                    const effectiveDiscount = Math.max(
+                        0,
+                        (1 - (effectivePrice / priceReference.value)) * 100
+                    );
+                    effectiveText +=
+                        ` (${formatPercentValue(effectiveDiscount)}% ${priceReference.relation})`;
                 }
                 parts.push(`${effectiveText}.`);
                 if (shippingCost === null) {
@@ -7966,9 +7996,15 @@
                 } else {
                     parts.push(`Effektiver Gesamtpreis: ${formatEuroValue(effectivePrice + shippingCost)} €.`);
                 }
-            } else if (uvp !== null && uvp > 0) {
-                const uvpDiscount = Math.max(0, (1 - (offerPrice / uvp)) * 100);
-                parts.push(`Rabatt zur UVP: ${formatPercentValue(uvpDiscount)}%.`);
+            } else if (priceReference) {
+                const referenceDiscount = Math.max(
+                    0,
+                    (1 - (offerPrice / priceReference.value)) * 100
+                );
+                parts.push(
+                    `Rabatt ${priceReference.relation}: ` +
+                    `${formatPercentValue(referenceDiscount)}%.`
+                );
             }
 
             const timestamp = originalTooltip.match(/Preisangabe vom\s+(.+?):\s*[\d.,]+\s*€/i)?.[1];
@@ -8066,7 +8102,7 @@
         const offerlist = document.getElementById('offerlist');
         if (!offerlist) return;
 
-        const uvp = getCurrentSetUvp();
+        const priceReference = getDiscountPriceReference();
         offerlist.querySelectorAll('span.price').forEach(priceSpan => {
             const priceRow = priceSpan.closest('.pricerow');
             const basePrice = getBaseOfferPrice(priceSpan);
@@ -8087,11 +8123,15 @@
             let discountPercent = null;
             let totalDiscountPercent = null;
 
-            if (comparedPrice !== null && uvp !== null && uvp > 0) {
-                discountPercent = (1 - (comparedPrice / uvp)) * 100;
+            if (comparedPrice !== null && priceReference) {
+                discountPercent =
+                    (1 - (comparedPrice / priceReference.value)) * 100;
                 if (shippingCost !== null && Number.isFinite(shippingCost)) {
                     totalDiscountPercent =
-                        (1 - ((comparedPrice + shippingCost) / uvp)) * 100;
+                        (1 - (
+                            (comparedPrice + shippingCost) /
+                            priceReference.value
+                        )) * 100;
                 }
             } else {
                 const title = getOriginalOfferTitle(priceSpan.closest('a'));
@@ -8125,10 +8165,12 @@
                 const label = `${Math.round(discountPercent)}%`;
                 if (bubble.textContent !== label) bubble.textContent = label;
                 bubble.title =
-                    `Rabatt zur UVP: ${formatPercentValue(discountPercent)}%`;
+                    `Rabatt ${priceReference?.relation || 'zum Referenzpreis'}: ` +
+                    `${formatPercentValue(discountPercent)}%`;
                 bubble.setAttribute(
                     'aria-label',
-                    `Rabatt zur UVP ${formatPercentValue(discountPercent)} Prozent`
+                    `Rabatt ${priceReference?.relation || 'zum Referenzpreis'} ` +
+                    `${formatPercentValue(discountPercent)} Prozent`
                 );
             }
 
@@ -8155,10 +8197,12 @@
                 totalBubble.textContent = totalLabel;
             }
             totalBubble.title =
-                `Rabatt zur UVP inklusive Versand: ${formatPercentValue(totalDiscountPercent)}%`;
+                `Rabatt ${priceReference?.relation || 'zum Referenzpreis'} inklusive Versand: ` +
+                `${formatPercentValue(totalDiscountPercent)}%`;
             totalBubble.setAttribute(
                 'aria-label',
-                `Rabatt zur UVP inklusive Versand ${formatPercentValue(totalDiscountPercent)} Prozent`
+                `Rabatt ${priceReference?.relation || 'zum Referenzpreis'} inklusive Versand ` +
+                `${formatPercentValue(totalDiscountPercent)} Prozent`
             );
         });
     }
