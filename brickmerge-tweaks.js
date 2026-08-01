@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.05
+// @version      4.06
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -47,6 +47,13 @@
     const cacheRequestsInFlight = new Map();
     const animatedMarketplaceOfferKeys = new Set();
     const gmApi = typeof GM !== 'undefined' ? GM : null;
+
+    function scheduleIdleTask(callback, timeout = 2000) {
+        if (typeof window.requestIdleCallback === 'function') {
+            return window.requestIdleCallback(callback, { timeout });
+        }
+        return window.setTimeout(callback, Math.min(timeout, 500));
+    }
 
     const readLocalFallback = (key, fallback = null) => {
         try {
@@ -1051,6 +1058,43 @@
         .bm-price-history-link:hover *,
         .bm-price-history-link:focus * {
             color: #fff !important;
+        }
+        .bm-minifig-value-load {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.45em;
+            height: 1.45em;
+            margin-left: .35em;
+            padding: 0;
+            border: 1px solid currentColor;
+            border-radius: 50%;
+            color: #c00;
+            background: transparent;
+            font: 700 .72em/1 Arial, sans-serif;
+            vertical-align: .12em;
+            cursor: pointer;
+        }
+        .bm-minifig-value-load:hover,
+        .bm-minifig-value-load:focus {
+            color: #fff;
+            background: #700;
+            border-color: #700;
+            outline: none;
+        }
+        .bm-minifig-value-load.is-loading {
+            color: transparent;
+            border-color: #ccc;
+            border-top-color: #c00;
+            animation: bm-minifig-value-spin .7s linear infinite;
+            pointer-events: none;
+        }
+        .bm-minifig-value-load.is-error {
+            color: #700;
+            border-color: #700;
+        }
+        @keyframes bm-minifig-value-spin {
+            to { transform: rotate(360deg); }
         }
         #wrap.bm-set-wrap {
             margin-bottom: -58px !important;
@@ -3286,43 +3330,6 @@
     if (setNum) {
         runSetDetailInitializers();
         window.addEventListener('load', runSetDetailInitializers, { once: true });
-
-        // Brickmerge ergänzt die Angebotszeilen teilweise erst nach dem load-Event.
-        // Die Rabattsteuerung wird deshalb unabhängig von den übrigen Layout-
-        // Funktionen nachgereicht, sobald eine native Angebotszeile vorhanden ist.
-        const offerFeatureObserver = new MutationObserver(() => {
-            if (document.getElementById('bm-discount-settings')) {
-                offerFeatureObserver.disconnect();
-                return;
-            }
-            try {
-                createDiscountSettingsUI();
-            } catch (error) {
-                console.error(
-                    'Brickmerge Tweaker: Rabattsteuerung konnte nicht nachgeladen werden.',
-                    error
-                );
-            }
-        });
-        offerFeatureObserver.observe(document.documentElement, {
-            childList: true,
-            subtree: true
-        });
-        [100, 500, 1500, 3000].forEach(delay => {
-            window.setTimeout(() => {
-                if (!document.getElementById('bm-discount-settings')) {
-                    try {
-                        createDiscountSettingsUI();
-                    } catch (error) {
-                        console.error(
-                            'Brickmerge Tweaker: Rabattsteuerung konnte nicht nachgeladen werden.',
-                            error
-                        );
-                    }
-                }
-            }, delay);
-        });
-        window.setTimeout(() => offerFeatureObserver.disconnect(), 10000);
     }
 
     // Brickmerge lädt die zuletzt ausverkauften Angebote verzögert nach. Sobald
@@ -3590,7 +3597,17 @@
             }
         };
 
-        const chartObserver = new MutationObserver(customizeNativeChart);
+        let chartCustomizeFrame = 0;
+        const scheduleNativeChartCustomization = () => {
+            if (chartCustomizeFrame) return;
+            chartCustomizeFrame = window.requestAnimationFrame(() => {
+                chartCustomizeFrame = 0;
+                customizeNativeChart();
+            });
+        };
+        const chartObserver = new MutationObserver(
+            scheduleNativeChartCustomization
+        );
         chartObserver.observe(bigChart, { childList: true, subtree: true });
 
         const normalizeNativeChartState = () => {
@@ -3669,13 +3686,11 @@
             }, 8000);
         };
 
-        if (document.readyState === 'complete') {
-            window.setTimeout(preloadNativeChart, 100);
-        } else {
-            window.addEventListener('load', () => {
-                window.setTimeout(preloadNativeChart, 100);
-            }, { once: true });
-        }
+        const scheduleChartPreload = () => {
+            scheduleIdleTask(preloadNativeChart, 1800);
+        };
+        if (document.readyState === 'complete') scheduleChartPreload();
+        else window.addEventListener('load', scheduleChartPreload, { once: true });
 
         closeButton.addEventListener('click', closeOverlay);
         overlay.addEventListener('click', event => {
@@ -4195,9 +4210,19 @@
                         50
                     );
                 };
-                const marketplaceOfferObserver = new MutationObserver(
-                    scheduleShortcutSync
-                );
+                const offerRowSelector =
+                    '.medium-4.small-9.columns.pricerow[data-mid]';
+                const containsOfferRow = node =>
+                    node.nodeType === Node.ELEMENT_NODE &&
+                    (node.matches?.(offerRowSelector) ||
+                        node.querySelector?.(offerRowSelector));
+                const marketplaceOfferObserver = new MutationObserver(records => {
+                    const hasOfferRowChange = records.some(record =>
+                        Array.from(record.addedNodes).some(containsOfferRow) ||
+                        Array.from(record.removedNodes).some(containsOfferRow)
+                    );
+                    if (hasOfferRowChange) scheduleShortcutSync();
+                });
                 marketplaceOfferObserver.observe(offerlist, {
                     childList: true,
                     subtree: true
@@ -4908,14 +4933,6 @@
     }
 
     if (setNum) {
-        // Unabhängiger Startpfad: funktioniert auch dann, wenn ein späteres,
-        // nicht zur Offerlist gehörendes Modul auf einer Sonderseite fehlschlägt.
-        [150, 600, 1600, 3500].forEach(delay => {
-            window.setTimeout(applyOfferPresentation, delay);
-        });
-    }
-
-    if (setNum) {
         try {
             (function titleCopyButton() {
                 const h1 = document.querySelector('h1');
@@ -5398,6 +5415,7 @@
                 `&nbsp;| <strong>${formatEuroValue(totalValue)} €</strong>`;
             valueLine.title =
                 'Summe der niedrigsten aktuellen Neupreise deutscher BrickLink-Händler, ohne Versand';
+            details.querySelector('.bm-minifig-value-load')?.remove();
             if (saveToCache) {
                 void writeStoredValue(
                     makeApiCacheKey(MINIFIG_TOTAL_CACHE_SCOPE, setNum),
@@ -5431,6 +5449,41 @@
         }
 
         let minifigureValuePreloadPromise = null;
+
+        function ensureMinifigureValueLoadButton() {
+            if (!hasPageMinifigures()) return;
+            const link = document.querySelector('.bm-minifig-count-link');
+            if (!link || link.querySelector('.bm-minifig-total-value')) return;
+            if (link.parentElement?.querySelector('.bm-minifig-value-load')) return;
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'bm-minifig-value-load';
+            button.textContent = '€';
+            button.title = 'Aktuelle BrickLink-Werte laden';
+            button.setAttribute('aria-label', 'Aktuelle BrickLink-Werte laden');
+            button.addEventListener('click', async event => {
+                event.preventDefault();
+                event.stopPropagation();
+                button.classList.remove('is-error');
+                button.classList.add('is-loading');
+                try {
+                    await preloadMinifigureValue();
+                    if (!document.querySelector('.bm-minifig-total-value')) {
+                        minifigureValuePreloadPromise = null;
+                        button.classList.remove('is-loading');
+                        button.classList.add('is-error');
+                        button.title = 'Wert nicht verfügbar – erneut versuchen';
+                    }
+                } catch (error) {
+                    minifigureValuePreloadPromise = null;
+                    button.classList.remove('is-loading');
+                    button.classList.add('is-error');
+                    button.title = 'Wert nicht verfügbar – erneut versuchen';
+                }
+            });
+            link.after(button);
+        }
 
         function preloadMinifigureValue() {
             if (!hasPageMinifigures()) return Promise.resolve();
@@ -5705,6 +5758,7 @@
                     link.replaceWith(document.createTextNode(link.textContent || 'Minifiguren'));
                 });
                 linkMinifigureCount(setNum);
+                ensureMinifigureValueLoadButton();
             };
             scan();
 
@@ -5743,7 +5797,10 @@
                     window.clearTimeout(scanTimer);
                     scanTimer = window.setTimeout(scan, 80);
                 });
-                observer.observe(document.body, { childList: true, subtree: true });
+                const observerRoot = document.querySelector('.content.setdetails') ||
+                    document.body;
+                observer.observe(observerRoot, { childList: true, subtree: true });
+                window.setTimeout(() => observer.disconnect(), 10000);
             }
             [0, 350, 1000, 2500].forEach(delay => {
                 window.setTimeout(scan, delay);
@@ -5780,6 +5837,7 @@
             );
             link.appendChild(line.range.extractContents());
             line.range.insertNode(link);
+            ensureMinifigureValueLoadButton();
         }
 
         function showMinifigOverlay(link, setNum) {
@@ -6755,9 +6813,7 @@
             replaceMinifigurenWithLink(setNum);
             linkMinifigureCount(setNum);
             showCachedMinifigureValue();
-            window.setTimeout(() => {
-                void preloadMinifigureValue();
-            }, 350);
+            ensureMinifigureValueLoadButton();
             window.addEventListener('load', () => {
                 try {
                     linkMinifigureCount(setNum);
@@ -7090,9 +7146,14 @@
                         : `Gutscheinrabatt: ${voucherDiscountLabel}%. Effektivpreis nach Händlerrabatt: ${effectivePriceLabel} € (${effectiveDiscountLabel}% Rabatt zur UVP von ${formatEuroValue(uvp)} €).`;
                     const combinedTooltip = [originalTooltip, effectiveTooltip].filter(Boolean).join(' ');
 
-                    offerLink.dataset.bmTooltip = combinedTooltip;
-                    offerLink.setAttribute('title', combinedTooltip);
-                    offerLink.dispatchEvent(new CustomEvent('bm-tooltip-updated', { bubbles: true }));
+                    if (offerLink.dataset.bmTooltip !== combinedTooltip) {
+                        offerLink.dataset.bmTooltip = combinedTooltip;
+                        offerLink.setAttribute('title', combinedTooltip);
+                        offerLink.dispatchEvent(new CustomEvent(
+                            'bm-tooltip-updated',
+                            { bubbles: true }
+                        ));
+                    }
                 }
 
                 discountRow.dataset.bmDiscountApplied = 'true';
@@ -7119,8 +7180,6 @@
             isModifying = true;
 
             try {
-                // Alte Elemente entfernen (falls Seite dynamisch neu lädt)
-                document.querySelectorAll('.black-discount-bubble').forEach(el => el.remove());
                 const existingRow = document.getElementById('all-time-bestpreis-discount');
                 if (existingRow) existingRow.remove();
 
@@ -7128,12 +7187,21 @@
                 const brickmergeOfferPrices = [];
 
                 // Aktuelle Preise sammeln
-                const priceElements = document.querySelectorAll('.theprice, .price, .offer-price, td.price, span.price, .topprice');
+                const priceElements = document.querySelectorAll(
+                    '.content.setdetails .topprice, ' +
+                    '#offerlist .theprice, #offerlist .price, ' +
+                    '#offerlist .offer-price, #offerlist td.price, ' +
+                    '#offerlist span.price'
+                );
                 priceElements.forEach(el => {
                     if (el.closest('[data-bm-sold-out="true"]')) {
                         return;
                     }
-                    if (el.closest('del') || el.closest('.strike') || el.closest('.uvp') || window.getComputedStyle(el).textDecoration.includes('line-through')) {
+                    const inlineDecoration = el.style?.textDecoration || '';
+                    if (
+                        el.closest('del, s, .strike, .stroke, .uvp') ||
+                        /line-through/i.test(inlineDecoration)
+                    ) {
                         return;
                     }
                     if (el.classList.contains('shipping') || el.closest('.shipping-costs')) {
@@ -7168,6 +7236,7 @@
                     ...new Set(brickmergeOfferPrices)
                 ].sort((a, b) => a - b);
 
+                let hasBrickmergeComparison = false;
                 if (uniqueSortedBrickmergeOfferPrices.length >= 2) {
                     const price1 = uniqueSortedBrickmergeOfferPrices[0]; // Günstigstes Brickmerge-Angebot
                     // uniqueSortedBrickmergeOfferPrices entsteht aus einem Set numerischer Werte, d.h. exakt
@@ -7182,7 +7251,12 @@
                     if (Number(discount) >= 0) {
                         ensureFeaturedBlackBubble(discount);
                         createBestPriceBlackBubble(discount);
+                        hasBrickmergeComparison = true;
                     }
+                }
+                if (!hasBrickmergeComparison) {
+                    document.querySelectorAll('.black-discount-bubble')
+                        .forEach(element => element.remove());
                 }
 
                 // All-Time-Bestpreis suchen und einfügen
@@ -7246,47 +7320,69 @@
         // Brickmerge-Bestpreis, unabhängig davon, ob dort ein UVP-Badge existiert.
     function createBestPriceBlackBubble(discountText) {
             document.querySelectorAll('.topprice').forEach(topprice => {
-                const badge = document.createElement('span');
-                badge.className = 'black-discount-bubble bm-bestprice-black-bubble';
+                let badge = topprice.querySelector(
+                    ':scope > .bm-bestprice-black-bubble'
+                );
+                topprice.querySelectorAll(':scope > .bm-bestprice-black-bubble')
+                    .forEach((candidate, index) => {
+                        if (index > 0) candidate.remove();
+                    });
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className =
+                        'black-discount-bubble bm-bestprice-black-bubble';
+                    topprice.appendChild(badge);
+                }
                 badge.textContent = `${discountText}%`;
                 badge.title = `${discountText}% günstiger als das nächstteurere Brickmerge-Angebot`;
                 const hasNativeDiscountBubble = Array.from(
-                    topprice.querySelectorAll('*')
+                    topprice.querySelectorAll(
+                        ':scope > .off, :scope > span[style*="position"], ' +
+                        ':scope > div[style*="position"]'
+                    )
                 ).some(element => {
                     if (element.classList.contains('black-discount-bubble')) return false;
                     if (!/%/.test(element.textContent || '')) return false;
                     const inlineStyle = element.getAttribute('style') || '';
-                    const computedPosition = window.getComputedStyle(element).position;
                     return element.classList.contains('off') ||
-                        /position\s*:\s*absolute/i.test(inlineStyle) ||
-                        computedPosition === 'absolute';
+                        /position\s*:\s*absolute/i.test(inlineStyle);
                 });
-                if (!hasNativeDiscountBubble) {
-                    badge.classList.add('bm-bestprice-black-bubble-single');
-                }
+                badge.classList.toggle(
+                    'bm-bestprice-black-bubble-single',
+                    !hasNativeDiscountBubble
+                );
                 topprice.style.setProperty('position', 'relative');
-                topprice.appendChild(badge);
             });
     }
 
         // Suche nach dem "bisherigen Bestpreis"
     function findAllTimeBestPrice() {
-            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-            let node;
+            const roots = [
+                document.querySelector('.content.setdetails .productprice'),
+                document.getElementById('ol2nd')
+            ].filter(Boolean);
+            if (roots.length === 0) {
+                const details = document.querySelector('.content.setdetails');
+                if (details) roots.push(details);
+            }
 
-            while (node = walker.nextNode()) {
-                if (/(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(node.nodeValue)) {
-                    let container = node.parentElement;
-                    const historicalInfo = parseHistoricalBestPriceText(
-                        container.textContent
-                    );
-                    if (historicalInfo) {
-                        // Hinweis: bewusst KEIN Hochklettern mehr zu LI/DIV/P/TR.
-                        // Auf Detailseiten steckt "bisheriger Bestpreis" in einem
-                        // einzigen großen <p> zusammen mit vielen anderen Infozeilen;
-                        // das alte Hochklettern hängte die Vergleichszeile dadurch
-                        // ans Ende des kompletten Absatzes statt direkt dahinter.
-                        return { element: container, ...historicalInfo };
+            for (const root of roots) {
+                const walker = document.createTreeWalker(
+                    root,
+                    NodeFilter.SHOW_TEXT
+                );
+                let node;
+                while (node = walker.nextNode()) {
+                    if (/(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(
+                        node.nodeValue
+                    )) {
+                        const container = node.parentElement;
+                        const historicalInfo = parseHistoricalBestPriceText(
+                            container.textContent
+                        );
+                        if (historicalInfo) {
+                            return { element: container, ...historicalInfo };
+                        }
                     }
                 }
             }
@@ -7321,35 +7417,6 @@
             updateSidebarHistoricalBestPriceDetail(matchedElement, detailSuffix);
             matchedElement.parentNode.insertBefore(newEl, matchedElement.nextSibling);
             decoratePriceHistoryLinks();
-    }
-
-    if (setNum) {
-        // MutationObserver für den Rabatt-Rechner (überwacht asynchrones Nachladen)
-        // Bewusst auf #offerlist statt document.body beschränkt: sonst feuert der
-        // Observer bei jedem AmCharts-Redraw (#chartdiv2) und beim asynchronen
-        // "#soldOut"-Nachladen unnötig oft.
-        let checkTimer;
-        const observer = new MutationObserver(() => {
-            clearTimeout(checkTimer);
-            checkTimer = setTimeout(() => {
-                calculateDiscount();
-            }, 300);
-        });
-        const observeTarget = document.getElementById('offerlist') || document.body;
-        observer.observe(observeTarget, { childList: true, subtree: true });
-
-        // Erstmaliger Start des Rabatt-Rechners
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                calculateDiscount();
-            }, 500);
-        });
-
-        // #offerlist ist serverseitig bereits vorhanden. Dieser Start deckt auch
-        // den seltenen Fall ab, dass das Userscript erst nach dem load-Event läuft.
-        setTimeout(() => {
-            calculateDiscount();
-        }, 100);
     }
 
     // ==========================================
@@ -7784,9 +7851,14 @@
             if (timestamp) parts.push(`Stand: ${timestamp}.`);
 
             const tooltip = parts.join(' ');
-            offerLink.dataset.bmTooltip = tooltip;
-            offerLink.setAttribute('title', tooltip);
-            offerLink.dispatchEvent(new CustomEvent('bm-tooltip-updated', { bubbles: true }));
+            if (offerLink.dataset.bmTooltip !== tooltip) {
+                offerLink.dataset.bmTooltip = tooltip;
+                offerLink.setAttribute('title', tooltip);
+                offerLink.dispatchEvent(new CustomEvent(
+                    'bm-tooltip-updated',
+                    { bubbles: true }
+                ));
+            }
         });
     }
 
@@ -8010,8 +8082,15 @@
 
             group.forEach((offer, index) => {
                 const stripeClass = index % 2 === 0 ? 'row-b' : 'row-a';
+                const otherStripeClass = stripeClass === 'row-a' ? 'row-b' : 'row-a';
                 offer.wrapper.querySelectorAll('.row-a, .row-b').forEach(element => {
-                    element.classList.remove('row-a', 'row-b');
+                    if (
+                        element.classList.contains(stripeClass) &&
+                        !element.classList.contains(otherStripeClass)
+                    ) {
+                        return;
+                    }
+                    element.classList.remove(otherStripeClass);
                     element.classList.add(stripeClass);
                 });
 
@@ -8040,6 +8119,18 @@
             characterData: true
         });
     };
+    const ensureOfferPresentationObserver = () => {
+        const target = document.getElementById('offerlist');
+        if (!target) return false;
+        if (!offerPresentationObserver) {
+            offerPresentationObserver = new MutationObserver(() => {
+                if (!offerPresentationRunning) scheduleOfferPresentation();
+            });
+        }
+        offerPresentationObserver.disconnect();
+        observeOfferPresentationMutations();
+        return true;
+    };
     function applyOfferPresentation() {
         if (offerPresentationRunning) return;
         offerPresentationRunning = true;
@@ -8057,21 +8148,21 @@
 
     let offerPresentationTimer;
     const scheduleOfferPresentation = () => {
-        createDiscountSettingsUI();
         clearTimeout(offerPresentationTimer);
         offerPresentationTimer = setTimeout(applyOfferPresentation, 80);
     };
 
-    const offerPresentationTarget = document.getElementById('offerlist');
-    if (offerPresentationTarget) {
-        offerPresentationObserver = new MutationObserver(() => {
-            if (!offerPresentationRunning) scheduleOfferPresentation();
+    if (!ensureOfferPresentationObserver()) {
+        const pendingOfferlistObserver = new MutationObserver(() => {
+            if (!ensureOfferPresentationObserver()) return;
+            pendingOfferlistObserver.disconnect();
+            scheduleOfferPresentation();
         });
-        offerPresentationObserver.observe(offerPresentationTarget, {
+        pendingOfferlistObserver.observe(document.documentElement, {
             childList: true,
-            subtree: true,
-            characterData: true
+            subtree: true
         });
+        window.setTimeout(() => pendingOfferlistObserver.disconnect(), 10000);
     }
 
     if (document.readyState === 'complete') {
