@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.01
+// @version      4.02
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -1033,6 +1033,13 @@
             color: #700;
             text-decoration-color: currentColor;
         }
+        .bm-detail-line-link,
+        .bm-detail-line-link:visited,
+        .bm-detail-line-link:hover,
+        .bm-detail-line-link:focus {
+            color: inherit;
+            text-decoration: none;
+        }
         #wrap.bm-set-wrap {
             margin-bottom: -58px !important;
         }
@@ -1933,10 +1940,6 @@
         const googleLuckyUrl =
             'https://www.google.com/search?btnI=1&hl=de&q=' +
             encodeURIComponent(googleQuery);
-        const googleResultsUrl =
-            'https://www.google.com/search?hl=de&q=' +
-            encodeURIComponent(googleQuery);
-        const redirectKey = `bm-google-lucky-${searchTerm.toLocaleLowerCase('de')}`;
 
         let applied = false;
         const apply = () => {
@@ -1945,18 +1948,7 @@
             if (messageNodes.length === 0) return false;
 
             applied = true;
-            let previousRedirect = 0;
-            try {
-                previousRedirect = Number(sessionStorage.getItem(redirectKey) || 0);
-                sessionStorage.setItem(redirectKey, String(Date.now()));
-            } catch (error) {
-                // Die Weiterleitung funktioniert auch ohne Session-Speicher.
-            }
-
-            const targetUrl = Date.now() - previousRedirect < 60000
-                ? googleResultsUrl
-                : googleLuckyUrl;
-            window.location.replace(targetUrl);
+            window.location.replace(googleLuckyUrl);
             return true;
         };
 
@@ -3008,39 +3000,68 @@
         link.appendChild(articleNumber);
     }
 
+    function findDetailsLineRange(details, linePattern) {
+        const lineBreaks = Array.from(details.querySelectorAll('br'));
+        const isFollowing = (first, second) => Boolean(
+            first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING
+        );
+        const walker = document.createTreeWalker(details, NodeFilter.SHOW_TEXT);
+        let node;
+        while (node = walker.nextNode()) {
+            if (node.parentElement?.closest('a')) continue;
+
+            const previousBreaks = lineBreaks.filter(lineBreak =>
+                isFollowing(lineBreak, node)
+            );
+            const previousBreak = previousBreaks[previousBreaks.length - 1] || null;
+            const followingBreak = lineBreaks.find(lineBreak =>
+                isFollowing(node, lineBreak)
+            ) || null;
+            const range = document.createRange();
+            if (previousBreak) range.setStartAfter(previousBreak);
+            else range.setStart(details, 0);
+            if (followingBreak) range.setEndBefore(followingBreak);
+            else range.setEnd(details, details.childNodes.length);
+
+            const lineText = range.toString().replace(/\s+/g, ' ').trim();
+            linePattern.lastIndex = 0;
+            if (linePattern.test(lineText)) {
+                return { range, text: lineText };
+            }
+            range.detach?.();
+        }
+        return null;
+    }
+
+    function createDetailsLineLink(className, href, title) {
+        const link = document.createElement('a');
+        link.className = `bm-detail-line-link ${className}`;
+        link.href = href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.title = title;
+        return link;
+    }
+
     function linkDesignerName() {
         const details = Array.from(
             document.querySelectorAll('.content.setdetails p')
         ).find(paragraph => /Designer\s*:/i.test(paragraph.textContent || ''));
         if (!details || details.querySelector('.bm-designer-link')) return;
 
-        const designerStrong = Array.from(details.querySelectorAll('strong'))
-            .find(strong => {
-                const previousText = [];
-                let node = strong.previousSibling;
-                while (node) {
-                    previousText.unshift(node.textContent || '');
-                    if (/Designer\s*:/i.test(previousText.join(' '))) return true;
-                    node = node.previousSibling;
+        const line = findDetailsLineRange(details, /Designer\s*:/i);
+        if (!line) return;
+
+        const designerNodes = Array.from(details.querySelectorAll('strong'))
+            .filter(strong => {
+                try {
+                    return line.range.intersectsNode(strong) &&
+                        !/Designer\s*:/i.test(strong.textContent || '');
+                } catch (error) {
+                    return false;
                 }
-                return false;
             });
-        const designerText = designerStrong?.textContent
-            ?.replace(/\s+/g, ' ')
-            .trim();
-        if (!designerText || designerStrong.closest('a')) return;
-
-        const designers = designerText
-            .split(/\s*\|\s*/)
-            .map(name => name.trim())
-            .filter(Boolean);
-        if (designers.length === 0) return;
-
-        const fragment = document.createDocumentFragment();
-        designers.forEach((designer, index) => {
-            if (index > 0) {
-                fragment.appendChild(document.createTextNode(' | '));
-            }
+        const createDesignerLink = designer => {
             const query = `site:brickmerge.de Designer: ${designer}`;
             const link = document.createElement('a');
             link.className = 'bm-lego-article-link bm-designer-link';
@@ -3052,9 +3073,45 @@
             const strong = document.createElement('strong');
             strong.textContent = designer;
             link.appendChild(strong);
-            fragment.appendChild(link);
+            return link;
+        };
+
+        if (designerNodes.length === 0) {
+            const labelMatch = line.text.match(/^(.*?Designer\s*:\s*)/i);
+            if (!labelMatch) return;
+            const designers = line.text.slice(labelMatch[1].length)
+                .split(/\s*\|\s*/)
+                .map(name => name.trim())
+                .filter(Boolean);
+            if (designers.length === 0) return;
+
+            const fragment = document.createDocumentFragment();
+            fragment.appendChild(document.createTextNode(labelMatch[1]));
+            designers.forEach((designer, index) => {
+                if (index > 0) fragment.appendChild(document.createTextNode(' | '));
+                fragment.appendChild(createDesignerLink(designer));
+            });
+            line.range.deleteContents();
+            line.range.insertNode(fragment);
+            return;
+        }
+
+        designerNodes.forEach(designerNode => {
+            const designers = designerNode.textContent
+                .replace(/\s+/g, ' ')
+                .trim()
+                .split(/\s*\|\s*/)
+                .map(name => name.trim())
+                .filter(Boolean);
+            if (designers.length === 0) return;
+
+            const fragment = document.createDocumentFragment();
+            designers.forEach((designer, index) => {
+                if (index > 0) fragment.appendChild(document.createTextNode(' | '));
+                fragment.appendChild(createDesignerLink(designer));
+            });
+            designerNode.replaceWith(fragment);
         });
-        designerStrong.replaceWith(fragment);
     }
 
     function linkPackageDimensionsCalculator() {
@@ -3127,45 +3184,17 @@
             'i'
         );
 
-        const dimensionStrong = Array.from(details.querySelectorAll('strong'))
-            .find(strong => dimensionTextPattern.test(strong.textContent || ''));
-        const createLink = () => {
-            const link = document.createElement('a');
-            link.className = 'bm-lego-article-link bm-package-dimensions-link';
-            link.href = url.href;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.title =
-                'Paketpreis mit mindestens 2 cm Luft je Seite, maximal 15 cm ' +
-                'je Seite und 10% Gewichtszuschlag berechnen';
-            return link;
-        };
+        const line = findDetailsLineRange(details, /OVP-Maße\s*:/i);
+        if (!line || !dimensionTextPattern.test(line.text)) return;
 
-        if (dimensionStrong && !dimensionStrong.closest('a')) {
-            const link = createLink();
-            dimensionStrong.replaceWith(link);
-            link.appendChild(dimensionStrong);
-            return;
-        }
-
-        const walker = document.createTreeWalker(details, NodeFilter.SHOW_TEXT);
-        let node;
-        while (node = walker.nextNode()) {
-            if (node.parentElement?.closest('a')) continue;
-            const match = node.nodeValue.match(dimensionTextPattern);
-            if (!match) continue;
-
-            const before = node.nodeValue.slice(0, match.index);
-            const after = node.nodeValue.slice(match.index + match[0].length);
-            const fragment = document.createDocumentFragment();
-            fragment.appendChild(document.createTextNode(before));
-            const link = createLink();
-            link.textContent = match[0];
-            fragment.appendChild(link);
-            fragment.appendChild(document.createTextNode(after));
-            node.parentNode.replaceChild(fragment, node);
-            return;
-        }
+        const link = createDetailsLineLink(
+            'bm-package-dimensions-link',
+            url.href,
+            'Paketpreis mit mindestens 2 cm Luft je Seite, maximal 15 cm ' +
+            'je Seite und 10% Gewichtszuschlag berechnen'
+        );
+        link.appendChild(line.range.extractContents());
+        line.range.insertNode(link);
     }
 
     function compactSetFooter() {
@@ -5683,76 +5712,20 @@
             );
             if (!details || details.querySelector('.bm-minifig-count-link')) return;
 
-            const walker = document.createTreeWalker(details, NodeFilter.SHOW_TEXT);
-            const labelLink = details.querySelector('.bm-minifig-link');
-            let labelSeen = false;
-            let valueNode = null;
-            let valueOffset = 0;
-            let textNode;
-            while (textNode = walker.nextNode()) {
-                const text = textNode.nodeValue || '';
+            const line = findDetailsLineRange(details, /Minifiguren\s*:/i);
+            if (!line) return;
 
-                if (labelLink?.contains(textNode)) {
-                    labelSeen = true;
-                    continue;
-                }
-
-                const sameNodeMatch = text.match(/Minifiguren\s*:\s*(\d+)/i);
-                if (sameNodeMatch) {
-                    valueNode = textNode;
-                    valueOffset =
-                        sameNodeMatch.index +
-                        sameNodeMatch[0].lastIndexOf(sameNodeMatch[1]);
-                    break;
-                }
-
-                if (labelSeen) {
-                    const numberMatch = text.match(/\d+/);
-                    if (numberMatch) {
-                        valueNode = textNode;
-                        valueOffset = numberMatch.index;
-                        break;
-                    }
-                } else if (/Minifiguren\s*:\s*$/i.test(
-                    text.replace(/\s+/g, ' ')
-                )) {
-                    labelSeen = true;
-                }
-            }
-            if (!valueNode || valueNode.parentElement?.closest('a')) return;
-
-            const followingBreak = Array.from(details.querySelectorAll('br'))
-                .find(lineBreak =>
-                    Boolean(
-                        valueNode.compareDocumentPosition(lineBreak) &
-                        Node.DOCUMENT_POSITION_FOLLOWING
-                    )
-                );
-            const range = document.createRange();
-            range.setStart(valueNode, valueOffset);
-            if (followingBreak) {
-                range.setEndBefore(followingBreak);
-            } else {
-                range.setEnd(details, details.childNodes.length);
-            }
-
-            const linkedText = range.toString().replace(/\s+/g, ' ').trim();
-            if (!linkedText) {
-                range.detach?.();
-                return;
-            }
-
+            const linkedText = line.text;
             const link = document.createElement('a');
             link.href = '#';
-            link.className = 'bm-lego-article-link bm-minifig-count-link';
+            link.className = 'bm-detail-line-link bm-minifig-count-link';
             link.title = 'Minifiguren anzeigen';
             link.setAttribute(
                 'aria-label',
                 `${linkedText} – Minifiguren anzeigen`
             );
-            link.appendChild(range.extractContents());
-            range.insertNode(link);
-            range.detach?.();
+            link.appendChild(line.range.extractContents());
+            line.range.insertNode(link);
         }
 
         function showMinifigOverlay(link, setNum) {
@@ -5947,6 +5920,14 @@
                 }
                 .bm-minifig-content tr:hover td {
                     background:#fff8f6 !important;
+                }
+                .bm-minifig-content tr.bm-minifig-row-link {
+                    cursor:pointer;
+                }
+                .bm-minifig-content tr.bm-minifig-row-link:focus td {
+                    background:#fff8f6 !important;
+                    outline:2px solid #b00;
+                    outline-offset:-2px;
                 }
                 .bm-minifig-content th,
                 .bm-minifig-content td {
@@ -6278,6 +6259,32 @@
                             anchor.target = '_blank';
                             anchor.rel = 'noopener noreferrer';
                         });
+                        row.classList.add('bm-minifig-row-link');
+                        row.dataset.bmBricklinkUrl = targetUrl;
+                        row.tabIndex = 0;
+                        row.setAttribute('role', 'link');
+                        if (row.dataset.bmRowLinkBound !== 'true') {
+                            row.dataset.bmRowLinkBound = 'true';
+                            const openBrickLink = () => {
+                                const opened = window.open(
+                                    row.dataset.bmBricklinkUrl,
+                                    '_blank',
+                                    'noopener,noreferrer'
+                                );
+                                if (!opened) {
+                                    window.location.assign(row.dataset.bmBricklinkUrl);
+                                }
+                            };
+                            row.addEventListener('click', event => {
+                                if (event.target.closest?.('a')) return;
+                                openBrickLink();
+                            });
+                            row.addEventListener('keydown', event => {
+                                if (event.key !== 'Enter' && event.key !== ' ') return;
+                                event.preventDefault();
+                                openBrickLink();
+                            });
+                        }
                         const itemLink = row.querySelector('.bm-minifig-item-link');
                         if (itemLink && brickLinkItemNo) {
                             itemLink.textContent = brickLinkItemNo;
