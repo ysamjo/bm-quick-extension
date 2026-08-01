@@ -1,30 +1,75 @@
-# bm-quick-extension
+# Brickmerge Tweaker
 
-Erweiterung für den LEGO-Preisvergleich von Brickmerge.de
+Userscript-Erweiterung für den LEGO-Preisvergleich auf [Brickmerge.de](https://www.brickmerge.de/). Das Skript ergänzt Preis-, Markt- und Produktinformationen und optimiert die Detailseiten für Desktop und Mobilgeräte.
 
-🧹 1. Cleaner:
-Das Skript entfernt störende, werbliche oder überflüssige Elemente.
+## Funktionen
 
-💶 2. Persönliche Rabatte: Hier lassen sich dauerhafte Prozentrabatte für bestimmte Händler (z. B. Mitarbeiterrabatte oder Gutscheine für LEGO, Müller, Thalia) hinterlegen. Das Skript berechnet automatisch den finalen Preis abzüglich des eigenen Rabatts und inklusive der Versandkosten.
-Die Preisliste wird live neu sortiert – basierend auf dem echten Effektivpreis.
+### Persönliche Rabatte und Offerlist
 
-📊 3. Erweiterte Rabatt- und Bestpreis-Analyse: Das Skript vergleicht das aktuell günstigste Angebot mit dem zweitgünstigsten (bzw. dem nächsten abweichenden Händler) und zeigt den konkreten prozentualen Preisvorteil in einer schwarzen Blase neben dem Preis an.
+- Dauerhafte Händlerrabatte, etwa für LEGO, Müller oder Thalia, zentral konfigurieren und ein- oder ausschalten.
+- Effektivpreise direkt in der Offerlist anzeigen und bei aktivierter Funktion automatisch danach sortieren.
+- Versandkosten aus den vorhandenen Angebotsdaten übernehmen und getrennt darstellen.
+- Prozent-Bubbles anhand der UVP berechnen. Fehlt die UVP, dient der höchste verfügbare Angebotspreis als Referenz.
+- Kürzlich ausverkaufte Angebote preislich einsortieren und eindeutig als **Sold out** kennzeichnen.
+- Händler-Zwischenseiten nach Möglichkeit automatisch über den vorhandenen Weiterleitungsbutton überspringen.
 
-All-Time-Bestpreis-Tracking (ATB): Sucht den historischen Bestpreis aus den Seitendaten und fügt direkt unter dem Top-Angebot eine farbige Differenzanzeige ein (Grün = aktuell günstiger/gleich, Rot = aktuell teurer als der ATB).
+### Zusätzliche Preise
 
-Verbesserte Chart-Integration: Text-Links, die auf historische Preise verweisen, öffnen nun interaktiv das Preisverlaufs-Diagramm der Seite.
+Weitere Angebote werden passend zum Preis in die Offerlist eingefügt und farblich markiert:
 
-🔗 4. Umfangreiche Quick-Link-Box:
-Fügt unter der Preisliste einen scrollbaren Bereich mit Direktlinks für das jeweilige LEGO-Set ein, unterteilt in Kategorien.
+- BrickLink: niedrigster aktueller Neupreis bei deutschen Händlern
+- BrickOwl
+- Keepa/Amazon, sofern kein reguläres Amazon-Angebot vorhanden ist
+- MyBrickDepot-eBay, sofern kein anderes eBay-Angebot vorhanden ist
+- Smyths Toys und Müller, wenn Brickbank einen aktuellen Preis liefert
 
-🛠️ 5. Zusätzliche Marktplatz-Preise: Das Skript fragt im Hintergrund weitere Marktpreise von Amazon, Smyths Toys, Brickowl und Bricklink ab und fügt diese nahtlos als neue Zeilen in die Brickmerge-Preisliste ein.
+Die zusätzlichen Abfragen werden zwischengespeichert, damit Seitenaufrufe schneller bleiben und externe Dienste nicht unnötig oft angesprochen werden.
 
-🧍 6. Minifiguren-Overlay: Macht das Wort „Minifiguren“ in den Texten anklickbar. Ein Klick öffnet ein Popup, das in Echtzeit die genaue Liste der im Set enthaltenen Minifiguren (inklusive Bildern und Preisen) direkt von der Plattform Bricklink lädt.
+### Preisentwicklung und Bestpreise
 
-🤖 7. Meta-GPT Anbindung:
-KI-Preisvergleich: Ein Klick auf den "Meta-GPT"-Link generiert einen Such-Prompt für das Set, kopiert diesen in die Zwischenablage und öffnet einen speziellen ChatGPT-Bot, der auf Preisvergleiche spezialisiert ist.
+- Brickmerge-Bestpreis und Preisvorteile übersichtlicher darstellen.
+- All-Time-Bestpreis aus den Seitendaten übernehmen und die Differenz zum aktuellen Preis anzeigen.
+- Historische Preisangaben direkt mit der Preisentwicklung verlinken.
+- Großes Preisverlaufsdiagramm als Vollbild-Overlay öffnen; standardmäßig werden die letzten 30 Tage angezeigt.
+- Preisdiagramm, Zeitraumwahl und Detailtexte kompakter aufbereiten.
 
-📋 8. 1-Klick-Kopieren: Fügt neben der großen Set-Überschrift ein Copy-Icon ein, um den sauberen Namen des LEGO-Sets mit einem Klick in die Zwischenablage zu kopieren.
+### Minifiguren
 
+- Die Minifiguren-Zeile öffnet ein einheitliches, mobilfähiges Overlay.
+- Figuren, Mengen und Bilder werden bevorzugt über Rebrickable geladen; BrickLink dient als Ergänzung und Fallback.
+- Jede Figurenzeile führt direkt zur passenden BrickLink-Seite.
+- Aktuelle BrickLink-Preise deutscher Händler werden je Figur angezeigt und zum Gesamtwert der enthaltenen Minifiguren addiert.
+- Preisabfragen starten erst nach einem bewussten Klick auf das `€`-Symbol oder beim Öffnen des Overlays. Ergebnisse werden lokal zwischengespeichert.
 
-👉 [**Hier klicken, um das Userscript zu installieren**](https://github.com/ysamjo/bm-quick-extension/raw/main/brickmerge-tweaks.js)
+### Quick Links und Suche
+
+- Direkte Links zu Marktplätzen, Preisvergleichen, Ressourcen, Reviews und Verkaufshistorien.
+- Meta-Preisvergleich und Meta-GPT gemeinsam in der Meta-Schaltfläche.
+- Meta-GPT mit einem auf das aktuelle Set zugeschnittenen Suchauftrag öffnen und automatisch absenden.
+- Fehlgeschlagene Brickmerge-Suchen über den besten extern gefundenen Brickmerge-Treffer weiterleiten.
+- Setname mit einem Klick in die Zwischenablage kopieren.
+
+### Produktseite und Layout
+
+- Weitere Produktbilder direkt unter dem Hauptbild anzeigen und im vorhandenen Bildbetrachter öffnen.
+- Einheitliche Hover-Effekte für Hauptbild und Galerie.
+- Videos unterhalb der Bilder platzieren.
+- Bauanleitungen, EAN-Barcode und Einzelteillisten sinnvoll in das Desktop-Raster einordnen.
+- Offizielle LEGO-Produktbeschreibung über die volle Seitenbreite darstellen und den Zeilenabstand normalisieren.
+- Artikelnummer mit LEGO, Designer einzeln mit passenden Suchergebnissen und OVP-Maße mit einem Paketpreisrechner verlinken.
+- Störende Werbe-, Alarm-, Social-Media- und Doppelelemente entfernen.
+
+## Installation
+
+1. Eine Userscript-Erweiterung wie Tampermonkey oder Violentmonkey installieren.
+2. [Brickmerge Tweaker installieren](https://github.com/ysamjo/bm-quick-extension/raw/main/brickmerge-tweaks.js).
+3. Die angeforderten Verbindungsberechtigungen bestätigen. Sie werden für die zusätzlichen Preis- und Produktabfragen benötigt.
+
+Aktualisierungen werden anschließend über die im Userscript hinterlegte GitHub-Adresse angeboten.
+
+## Hinweise
+
+- Preise und Verfügbarkeiten können sich zwischen Abfrage und Händlerseite ändern.
+- Persönliche Rabatte werden ausschließlich lokal im Browser gespeichert.
+- Externe Preis- und Produktdaten stammen unter anderem von BrickLink, BrickOwl, Rebrickable, Brickbank, Keepa und MyBrickDepot.
+- Das Projekt ist eine private Erweiterung und steht in keiner Verbindung zu Brickmerge oder der LEGO Gruppe.
