@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.11
+// @version      4.12
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -6164,9 +6164,11 @@
                 }
                 .bm-minifig-price-icon {
                     display:block;
-                    flex:0 0 16px;
-                    width:16px !important;
-                    height:16px !important;
+                    flex:0 0 auto;
+                    width:auto !important;
+                    height:13px !important;
+                    max-width:64px !important;
+                    max-height:13px !important;
                     margin:0 !important;
                     object-fit:contain;
                 }
@@ -6430,7 +6432,7 @@
                 const icon = document.createElement('img');
                 icon.className = 'bm-minifig-price-icon';
                 icon.src =
-                    'https://www.google.com/s2/favicons?sz=32&domain=bricklink.com';
+                    'https://static2.bricklink.com/img/bricklink_2026.svg';
                 icon.alt = '';
                 icon.loading = 'lazy';
                 icon.referrerPolicy = 'no-referrer';
