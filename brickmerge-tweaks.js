@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.10
+// @version      4.11
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -6170,6 +6170,21 @@
                     margin:0 !important;
                     object-fit:contain;
                 }
+                .bm-minifig-country-badge {
+                    display:inline-flex;
+                    align-items:center;
+                    justify-content:center;
+                    min-width:20px;
+                    height:15px;
+                    padding:0 3px;
+                    border-radius:2px;
+                    background:#333;
+                    color:#fff;
+                    font-size:0.62rem;
+                    font-weight:700;
+                    line-height:1;
+                    letter-spacing:0;
+                }
                 .bm-minifig-price.is-loading {
                     font-weight:400;
                 }
@@ -6419,6 +6434,10 @@
                 icon.alt = '';
                 icon.loading = 'lazy';
                 icon.referrerPolicy = 'no-referrer';
+                const countryBadge = document.createElement('span');
+                countryBadge.className = 'bm-minifig-country-badge';
+                countryBadge.textContent = 'DE';
+                countryBadge.title = 'Nur deutsche BrickLink-Händler';
 
                 let visibleText = 'wird geladen …';
                 let accessibleText =
@@ -6433,7 +6452,11 @@
                     accessibleText =
                         'Aktueller deutscher BrickLink-Preis nicht verfügbar';
                 }
-                label.replaceChildren(icon, document.createTextNode(visibleText));
+                label.replaceChildren(
+                    icon,
+                    countryBadge,
+                    document.createTextNode(visibleText)
+                );
                 label.setAttribute('aria-label', accessibleText);
                 label.title = state === 'available'
                     ? 'Niedrigster aktueller Neupreis bei deutschen BrickLink-Händlern, ohne Versand'
