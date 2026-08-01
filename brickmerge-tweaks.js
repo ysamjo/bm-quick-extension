@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.00
+// @version      4.01
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -3181,6 +3181,23 @@
         wrap.classList.add('bm-set-wrap');
     }
 
+    function removeCorrectionReportButtons() {
+        const root = document.querySelector('.content.setdetails');
+        if (!root) return;
+
+        root.querySelectorAll(
+            'a, button, input[type="button"], input[type="submit"], ' +
+            '[role="button"], .button'
+        ).forEach(element => {
+            const label = element.matches('input')
+                ? element.value
+                : element.textContent;
+            if (/^Korrektur melden$/i.test(String(label || '').replace(/\s+/g, ' ').trim())) {
+                element.remove();
+            }
+        });
+    }
+
     function runSetDetailInitializers() {
         [
             setupDesktopDetailGrid,
@@ -3195,6 +3212,7 @@
             linkDesignerName,
             linkPackageDimensionsCalculator,
             createDiscountSettingsUI,
+            removeCorrectionReportButtons,
             compactSetFooter
         ].forEach(initializer => {
             try {
@@ -4805,6 +4823,7 @@
     // ==========================================
     function runOfferPresentationSteps() {
         [
+            removeCorrectionReportButtons,
             removeOfferListPriceDecorations,
             injectShippingCostsFromOfferTitles,
             applyRetailerDiscounts,
