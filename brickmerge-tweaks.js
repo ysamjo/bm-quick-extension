@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.02
+// @version      4.03
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -1034,10 +1034,14 @@
             text-decoration-color: currentColor;
         }
         .bm-detail-line-link,
-        .bm-detail-line-link:visited,
+        .bm-detail-line-link:visited {
+            color: inherit;
+            text-decoration: none;
+        }
         .bm-detail-line-link:hover,
         .bm-detail-line-link:focus {
-            color: inherit;
+            color: #fff !important;
+            background-color: #700;
             text-decoration: none;
         }
         #wrap.bm-set-wrap {
@@ -1937,9 +1941,10 @@
         });
 
         const googleQuery = `site:brickmerge.de ${searchTerm}`;
-        const googleLuckyUrl =
-            'https://www.google.com/search?btnI=1&hl=de&q=' +
-            encodeURIComponent(googleQuery);
+        const googleLuckyUrl = new URL('https://www.google.com/search');
+        googleLuckyUrl.searchParams.set('hl', 'de');
+        googleLuckyUrl.searchParams.set('q', googleQuery);
+        googleLuckyUrl.searchParams.set('btnI', '1');
 
         let applied = false;
         const apply = () => {
@@ -1948,7 +1953,7 @@
             if (messageNodes.length === 0) return false;
 
             applied = true;
-            window.location.replace(googleLuckyUrl);
+            window.location.replace(googleLuckyUrl.href);
             return true;
         };
 
@@ -3026,6 +3031,23 @@
             const lineText = range.toString().replace(/\s+/g, ' ').trim();
             linePattern.lastIndex = 0;
             if (linePattern.test(lineText)) {
+                const lineStartWalker = document.createTreeWalker(
+                    details,
+                    NodeFilter.SHOW_TEXT
+                );
+                let lineStartNode;
+                while (lineStartNode = lineStartWalker.nextNode()) {
+                    if (!range.intersectsNode(lineStartNode)) continue;
+                    const pipeMatch = String(lineStartNode.nodeValue || '')
+                        .match(/^\s*\|\s*/);
+                    if (pipeMatch) {
+                        range.setStart(
+                            lineStartNode,
+                            pipeMatch[0].length
+                        );
+                    }
+                    break;
+                }
                 return { range, text: lineText };
             }
             range.detach?.();
@@ -6265,24 +6287,26 @@
                         row.setAttribute('role', 'link');
                         if (row.dataset.bmRowLinkBound !== 'true') {
                             row.dataset.bmRowLinkBound = 'true';
-                            const openBrickLink = () => {
-                                const opened = window.open(
+                            const openBrickLink = event => {
+                                event?.preventDefault();
+                                event?.stopPropagation();
+                                window.open(
                                     row.dataset.bmBricklinkUrl,
                                     '_blank',
                                     'noopener,noreferrer'
                                 );
-                                if (!opened) {
-                                    window.location.assign(row.dataset.bmBricklinkUrl);
-                                }
                             };
                             row.addEventListener('click', event => {
-                                if (event.target.closest?.('a')) return;
-                                openBrickLink();
+                                if (event.target.closest?.('a[href]')) {
+                                    event.stopPropagation();
+                                    return;
+                                }
+                                openBrickLink(event);
                             });
                             row.addEventListener('keydown', event => {
                                 if (event.key !== 'Enter' && event.key !== ' ') return;
                                 event.preventDefault();
-                                openBrickLink();
+                                openBrickLink(event);
                             });
                         }
                         const itemLink = row.querySelector('.bm-minifig-item-link');
