@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.04
+// @version      4.05
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -41,7 +41,7 @@
     const OFFER_CACHE_TTL = 2 * 60 * 60 * 1000;
     const MINIFIG_INVENTORY_CACHE_TTL = 6 * 60 * 60 * 1000;
     const MINIFIG_PRICE_CACHE_TTL = 24 * 60 * 60 * 1000;
-    const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-v4';
+    const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-v5';
     const REBRICKABLE_API_KEY_STORAGE_KEY = 'brickmerge-rebrickable-api-key-v1';
     const REBRICKABLE_MINIFIG_CACHE_TTL = 24 * 60 * 60 * 1000;
     const cacheRequestsInFlight = new Map();
@@ -4981,11 +4981,17 @@
             return rebrickableApiKeyPromise;
         }
 
-        function hasPageMinifigures() {
+        function getPageMinifigureCount() {
             const detailsText = Array.from(document.querySelectorAll(
                 '.content.setdetails .productprice, #ol2nd'
             )).map(element => element.textContent || '').join(' ');
-            return Number(detailsText.match(/Minifiguren\s*:\s*(\d+)/i)?.[1] || 0) > 0;
+            return Number(
+                detailsText.match(/Minifiguren\s*:\s*(\d+)/i)?.[1] || 0
+            );
+        }
+
+        function hasPageMinifigures() {
+            return getPageMinifigureCount() > 0;
         }
 
         async function fetchRebrickableMinifigs() {
@@ -5573,14 +5579,16 @@
                 };
 
                 let figures = [];
+                let rebrickableFigures = [];
                 let brickLinkFigures = [];
                 try {
                     const rebrickableEntries = await fetchRebrickableMinifigs();
                     if (Array.isArray(rebrickableEntries)) {
-                        figures = rebrickableEntries.map(entry => ({
+                        rebrickableFigures = rebrickableEntries.map(entry => ({
                             itemNo: String(entry?.set_num || '').trim(),
                             quantity: Number.parseInt(entry?.quantity, 10) || 1
                         })).filter(figure => figure.itemNo);
+                        figures = rebrickableFigures;
                     }
                 } catch (error) {
                     // BrickLink remains the fallback when Rebrickable is unavailable.
@@ -5660,6 +5668,21 @@
                     totalValue += price * figure.quantity;
                 }
                 if (totalValue <= 0) return;
+
+                // Das Overlay verwendet bevorzugt Rebrickable-IDs (fig-*), die
+                // Summenberechnung dagegen die vollständigere BrickLink-Liste.
+                // Beide IDs werden deshalb im selben Snapshot hinterlegt.
+                for (let index = 0; index < rebrickableFigures.length; index += 3) {
+                    const batch = rebrickableFigures.slice(index, index + 3);
+                    await Promise.all(batch.map(async figure => {
+                        const brickLinkItemNo = await resolveBrickLinkMinifigId(
+                            figure.itemNo
+                        );
+                        if (!brickLinkItemNo) return;
+                        const price = await getSharedMinifigPrice(brickLinkItemNo);
+                        rememberMinifigPrice(figure.itemNo, price);
+                    }));
+                }
 
                 updateMinifigureValueInDataBox(
                     Math.round((totalValue + Number.EPSILON) * 100) / 100,
@@ -6124,7 +6147,7 @@
             const content = overlay.querySelector('.bm-minifig-content');
             const subtitle = overlay.querySelector('.bm-minifig-subtitle');
             const priceSpinner = overlay.querySelector('.bm-minifig-price-spinner');
-            const cacheKey = `bm-minifigures-v5-${setNum}`;
+            const cacheKey = `bm-minifigures-v6-${setNum}`;
             const cacheMaxAge = 6 * 60 * 60 * 1000;
             let loadSequence = 0;
 
@@ -6264,6 +6287,36 @@
                     setPriceSpinnerActive(false);
                     return;
                 }
+
+                // Ein aus der Gesamtsumme wiederhergestellter Snapshot enthält
+                // bereits die Einzelpreise. Diese werden vor jeder ID-Auflösung
+                // sofort angezeigt, damit Summe und Overlay synchron wirken.
+                figures.forEach(({ row, itemNo, quantity }) => {
+                    const descriptionCell = row.cells[row.cells.length - 1];
+                    if (!descriptionCell) return;
+                    let priceLabel = descriptionCell.querySelector(
+                        '.bm-minifig-price'
+                    );
+                    if (!priceLabel) {
+                        priceLabel = document.createElement('span');
+                        priceLabel.className = 'bm-minifig-price is-loading';
+                        descriptionCell.appendChild(priceLabel);
+                    }
+                    const cachedPrice = getSnapshotMinifigPrice(itemNo);
+                    if (Number.isFinite(Number(cachedPrice)) && Number(cachedPrice) > 0) {
+                        priceLabel.classList.remove('is-loading');
+                        priceLabel.textContent =
+                            `Aktueller dt. BrickLink-Preis: ${formatEuroValue(cachedPrice)} €` +
+                            `${quantity > 1 ? ' je Figur' : ''}`;
+                    } else if (cachedPrice === null) {
+                        priceLabel.classList.remove('is-loading');
+                        priceLabel.textContent =
+                            'Aktueller dt. BrickLink-Preis nicht verfügbar';
+                    } else {
+                        priceLabel.textContent =
+                            'Aktueller dt. BrickLink-Preis wird geladen …';
+                    }
+                });
 
                 setPriceSpinnerActive(true);
                 try {
@@ -6481,6 +6534,13 @@
                     if (!table || !Number.isInteger(figureCount) || figureCount < 1) {
                         return null;
                     }
+                    const expectedFigureCount = getPageMinifigureCount();
+                    if (
+                        expectedFigureCount > 0 &&
+                        figureCount !== expectedFigureCount
+                    ) {
+                        return null;
+                    }
                     return {
                         kind: 'found',
                         table: document.importNode(table, true),
@@ -6642,7 +6702,12 @@
                     const entries = await fetchRebrickableMinifigs();
                     if (sequence !== loadSequence || !overlay.isConnected) return;
                     const result = buildRebrickableFigureTable(entries);
-                    if (result) {
+                    const expectedFigureCount = getPageMinifigureCount();
+                    if (
+                        result &&
+                        (expectedFigureCount < 1 ||
+                            result.figureCount === expectedFigureCount)
+                    ) {
                         renderResult(result, sequence);
                         return;
                     }
