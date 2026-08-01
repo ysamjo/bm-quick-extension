@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.96
+// @version      3.97
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -2044,6 +2044,7 @@
         }
         return null;
     })();
+    let resolvedSetUvp = initialSetUvp;
 
     function parseHistoricalBestPriceText(rawText) {
         const text = String(rawText || '').replace(/\s+/g, ' ').trim();
@@ -3640,7 +3641,7 @@
             const mergeLoadedSoldOutOffers = () => {
                 if (!mergeSoldOutOffersIntoOfferList()) return;
                 soldOutObserver.disconnect();
-                window.setTimeout(runOfferPresentationSteps, 0);
+                window.setTimeout(applyOfferPresentation, 0);
             };
             const soldOutObserver = new MutationObserver(mergeLoadedSoldOutOffers);
             soldOutObserver.observe(soldOutContainer, { childList: true, subtree: true });
@@ -4095,8 +4096,16 @@
             syncMarketplaceShortcutLinks();
             const offerlist = document.getElementById('offerlist');
             if (offerlist) {
+                let shortcutSyncTimer = 0;
+                const scheduleShortcutSync = () => {
+                    window.clearTimeout(shortcutSyncTimer);
+                    shortcutSyncTimer = window.setTimeout(
+                        syncMarketplaceShortcutLinks,
+                        50
+                    );
+                };
                 const marketplaceOfferObserver = new MutationObserver(
-                    syncMarketplaceShortcutLinks
+                    scheduleShortcutSync
                 );
                 marketplaceOfferObserver.observe(offerlist, {
                     childList: true,
@@ -4119,15 +4128,13 @@
                 .replace(/ü/g, 'u')
                 .replace(/\s+/g, ' ')
                 .trim();
-            const hasNativeMerchant = aliases => {
-                const normalizedAliases = aliases.map(normalizeMerchantText);
-                return Array.from(document.querySelectorAll(
+            const getNativeMerchantHaystacks = () => Array.from(document.querySelectorAll(
                     '#offerlist .medium-4.small-9.columns.pricerow[data-mid]' +
                     ':not([data-bm-marketplace="true"])'
                 )).filter(priceRow =>
                     !priceRow.closest('#soldOut') &&
                     priceRow.dataset.bmSoldOut !== 'true'
-                ).some(priceRow => {
+                ).map(priceRow => {
                     const mid = priceRow.dataset.mid;
                     const merchant = priceRow.querySelector('.merchant')?.textContent || '';
                     const logo = mid
@@ -4140,14 +4147,23 @@
                     const haystack = normalizeMerchantText(
                         `${merchant} ${logo} ${tooltip}`
                     );
-                    return normalizedAliases.some(alias =>
-                        haystack === alias ||
-                        haystack.startsWith(`${alias} `) ||
-                        haystack.includes(`link zu ${alias} `)
-                    );
+                    return haystack;
                 });
-            };
             const syncOffers = () => {
+                // Alle nativen Händler werden pro Synchronisierung nur einmal
+                // gelesen. Zuvor wurde die komplette Offerlist für jeden
+                // einzelnen Zusatzanbieter erneut durchsucht.
+                const nativeMerchantHaystacks = getNativeMerchantHaystacks();
+                const hasNativeMerchant = aliases => {
+                    const normalizedAliases = aliases.map(normalizeMerchantText);
+                    return nativeMerchantHaystacks.some(haystack =>
+                        normalizedAliases.some(alias =>
+                            haystack === alias ||
+                            haystack.startsWith(`${alias} `) ||
+                            haystack.includes(`link zu ${alias} `)
+                        )
+                    );
+                };
                 const offers = Array.from(offersByKey.values()).filter(offer => {
                     if (offer.key === 'amz') {
                         return !hasNativeMerchant(['amazon']);
@@ -4803,7 +4819,7 @@
         // Unabhängiger Startpfad: funktioniert auch dann, wenn ein späteres,
         // nicht zur Offerlist gehörendes Modul auf einer Sonderseite fehlschlägt.
         [150, 600, 1600, 3500].forEach(delay => {
-            window.setTimeout(runOfferPresentationSteps, delay);
+            window.setTimeout(applyOfferPresentation, delay);
         });
     }
 
@@ -4875,9 +4891,8 @@
 
         function hasPageMinifigures() {
             const detailsText = Array.from(document.querySelectorAll(
-                '.content.setdetails .productprice p, ' +
-                '.content.setdetails p, #ol2nd p'
-            )).map(paragraph => paragraph.textContent || '').join(' ');
+                '.content.setdetails .productprice, #ol2nd'
+            )).map(element => element.textContent || '').join(' ');
             return Number(detailsText.match(/Minifiguren\s*:\s*(\d+)/i)?.[1] || 0) > 0;
         }
 
@@ -5518,7 +5533,24 @@
             if (!document.body.dataset.bmMinifigObserver) {
                 document.body.dataset.bmMinifigObserver = 'true';
                 let scanTimer = 0;
-                const observer = new MutationObserver(() => {
+                const relevantSelector =
+                    '.content.setdetails .productprice, #ol2nd, .bm-minifig-link';
+                const isRelevantMutation = record => {
+                    const isRelevantNode = node => {
+                        return node.nodeType !== Node.ELEMENT_NODE
+                            ? node.parentElement?.closest(relevantSelector)
+                            : node.matches(relevantSelector) ||
+                                node.closest?.(relevantSelector) ||
+                                node.querySelector?.(relevantSelector);
+                    };
+                    if (record.type === 'characterData') {
+                        return isRelevantNode(record.target);
+                    }
+                    return Array.from(record.addedNodes).some(isRelevantNode) ||
+                        Array.from(record.removedNodes).some(isRelevantNode);
+                };
+                const observer = new MutationObserver(records => {
+                    if (!records.some(isRelevantMutation)) return;
                     window.clearTimeout(scanTimer);
                     scanTimer = window.setTimeout(scan, 80);
                 });
@@ -5530,12 +5562,13 @@
         }
 
         function linkMinifigureCount(setNum) {
-            const candidates = Array.from(new Set([
-                ...document.querySelectorAll('.content.setdetails .productprice p'),
-                ...document.querySelectorAll('.content.setdetails p'),
-                ...document.querySelectorAll('#ol2nd p'),
-                ...document.querySelectorAll('p')
-            ]));
+            let candidates = Array.from(document.querySelectorAll(
+                '.content.setdetails .productprice p, ' +
+                '.content.setdetails p, #ol2nd p'
+            ));
+            if (candidates.length === 0) {
+                candidates = Array.from(document.querySelectorAll('p'));
+            }
             const details = candidates.find(paragraph =>
                 /Minifiguren\s*:/i.test(paragraph.textContent || '') &&
                 /Artikel-Nr\s*:|Setgewicht|EAN\s*:/i.test(paragraph.textContent || '')
@@ -6522,14 +6555,17 @@
     // 5. GUTSCHEIN-RABATTRECHNER (effektive Preise)
     // ==========================================
     function getCurrentSetUvp() {
-        if (initialSetUvp !== null) return initialSetUvp;
+        if (resolvedSetUvp !== null) return resolvedSetUvp;
 
         const candidates = document.querySelectorAll(
             '.stroke[title*="unverbindliche Preisempfehlung"], [title="unverbindliche Preisempfehlung"]'
         );
         for (const candidate of candidates) {
             const value = parseEuroValue(candidate.textContent);
-            if (value !== null && value > 0) return value;
+            if (value !== null && value > 0) {
+                resolvedSetUvp = value;
+                return value;
+            }
         }
         return null;
     }
@@ -6632,6 +6668,14 @@
         ensureTooltipBridge();
 
         offerlist.querySelectorAll('a').forEach(anchor => {
+            if (
+                anchor.dataset.bmTooltipDisabled === 'true' &&
+                !anchor.classList.contains('tooltipster') &&
+                !anchor.classList.contains('tooltipstered') &&
+                !anchor.hasAttribute('title')
+            ) {
+                return;
+            }
             const hasTooltip = anchor.classList.contains('tooltipster') ||
                 anchor.classList.contains('tooltipstered') ||
                 anchor.hasAttribute('title') ||
@@ -6670,6 +6714,28 @@
                 .trim();
         }
 
+        const configuredEntries = Array.from(entries)
+            .filter(([, discount]) =>
+                discount && typeof discount.rate === 'number'
+            )
+            .map(([domain, discount]) => ({
+                domain,
+                rate: discount.rate,
+                mid: discount.mid === undefined || discount.mid === null
+                    ? null
+                    : String(discount.mid),
+                aliases: new Set(
+                    (Array.isArray(discount.aliases) ? discount.aliases : [])
+                        .map(normalizeRetailerString)
+                )
+            }));
+        const configuredEntriesByMid = new Map();
+        configuredEntries.forEach(entry => {
+            if (entry.mid !== null && !configuredEntriesByMid.has(entry.mid)) {
+                configuredEntriesByMid.set(entry.mid, entry);
+            }
+        });
+
         // Die Händler-ID ist eindeutig. Nur wenn sie fehlt, werden Händlernamen
         // exakt mit den konfigurierten Aliasen verglichen.
         function matchRetailerDiscount(priceSpan, candidates) {
@@ -6677,21 +6743,20 @@
             const mid = row ? row.getAttribute('data-mid') : null;
 
             if (mid) {
-                for (const [domain, discount] of entries) {
-                    if (!discount || typeof discount.rate !== 'number') continue;
-                    if (String(discount.mid) === String(mid)) {
-                        return { domain, rate: discount.rate };
-                    }
+                const match = configuredEntriesByMid.get(String(mid));
+                if (match) {
+                    return { domain: match.domain, rate: match.rate };
                 }
             }
 
-            const normalizedCandidates = candidates.map(normalizeRetailerString);
-            for (const [domain, discount] of entries) {
-                if (!discount || typeof discount.rate !== 'number') continue;
-                const aliases = Array.isArray(discount.aliases) ? discount.aliases : [];
-                const normalizedAliases = aliases.map(normalizeRetailerString);
-                if (normalizedAliases.some(alias => normalizedCandidates.includes(alias))) {
-                    return { domain, rate: discount.rate };
+            const normalizedCandidates = new Set(
+                candidates.map(normalizeRetailerString)
+            );
+            for (const entry of configuredEntries) {
+                if (Array.from(entry.aliases).some(alias =>
+                    normalizedCandidates.has(alias)
+                )) {
+                    return { domain: entry.domain, rate: entry.rate };
                 }
             }
 
@@ -6916,31 +6981,6 @@
             }
     }
 
-    // Funktion für die schwarze Bubble (klont vorhandene rote .off-Badges)
-    function createBlackBubble(discountText, redBubbles) {
-            redBubbles.forEach(redBubble => {
-                const blackBubble = redBubble.cloneNode(true);
-                blackBubble.classList.add('black-discount-bubble');
-
-                // Text auf ganze Prozent setzen
-                blackBubble.textContent = `${discountText}%`;
-                blackBubble.title =
-                    `${discountText}% günstiger als das nächstteurere Brickmerge-Angebot`;
-
-                // Styling: Schwarz statt rot/orange
-                blackBubble.style.setProperty('background-color', '#222222', 'important');
-                blackBubble.style.setProperty('background', '#222222', 'important');
-                blackBubble.style.setProperty('border-color', '#000000', 'important');
-                blackBubble.style.setProperty('color', '#ffffff', 'important');
-                blackBubble.style.setProperty('z-index', '99', 'important');
-
-                // Behebt die Überlappung: Schiebt die Bubble exakt um ihre eigene Höhe + 8px Abstand nach unten
-                blackBubble.style.setProperty('transform', 'translateY(calc(100% + 8px))', 'important');
-
-                redBubble.parentNode.insertBefore(blackBubble, redBubble.nextSibling);
-            });
-    }
-
         // Wenn es auf dem Produktbild keine rote UVP-Bubble gibt, fehlt sonst die
         // Vorlage zum Klonen. In dem Fall zeigen wir die schwarze Bubble einzeln.
     function ensureFeaturedBlackBubble(discountText) {
@@ -7026,24 +7066,6 @@
                 }
             }
             return null;
-    }
-
-    function findSidebarHistoricalBestPriceRow(seedElement) {
-            if (!seedElement) return null;
-
-            const directMatch = seedElement.closest?.('p, div, li, span');
-            if (
-                directMatch &&
-                /(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(directMatch.textContent || '')
-            ) {
-                return directMatch;
-            }
-
-            return Array.from(document.querySelectorAll('p, div, li, span')).find(
-                element =>
-                    /(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(element.textContent || '') &&
-                    /€/.test(element.textContent || '')
-            ) || null;
     }
 
     function updateSidebarHistoricalBestPriceDetail(matchedElement, detailSuffix) {
@@ -7269,7 +7291,7 @@
         });
 
         mergeSoldOutOffersIntoOfferList();
-        window.setTimeout(runOfferPresentationSteps, 0);
+        window.setTimeout(applyOfferPresentation, 0);
     }
 
     // Fehlt bei Brickmerge eine Versandangabe, gilt das Angebot als versandkostenfrei.
@@ -7783,13 +7805,28 @@
     }
 
     let offerPresentationRunning = false;
+    let offerPresentationObserver = null;
+    const observeOfferPresentationMutations = () => {
+        const target = document.getElementById('offerlist');
+        if (!offerPresentationObserver || !target) return;
+        offerPresentationObserver.observe(target, {
+            childList: true,
+            subtree: true,
+            characterData: true
+        });
+    };
     function applyOfferPresentation() {
         if (offerPresentationRunning) return;
         offerPresentationRunning = true;
+        // Die folgenden Schritte verändern die Offerlist selbst. Während ihrer
+        // synchronen Ausführung muss der Observer diese eigenen Änderungen nicht
+        // erneut als neue Brickmerge-Daten verarbeiten.
+        offerPresentationObserver?.disconnect();
         try {
             runOfferPresentationSteps();
         } finally {
             offerPresentationRunning = false;
+            observeOfferPresentationMutations();
         }
     }
 
@@ -7802,7 +7839,9 @@
 
     const offerPresentationTarget = document.getElementById('offerlist');
     if (offerPresentationTarget) {
-        const offerPresentationObserver = new MutationObserver(scheduleOfferPresentation);
+        offerPresentationObserver = new MutationObserver(() => {
+            if (!offerPresentationRunning) scheduleOfferPresentation();
+        });
         offerPresentationObserver.observe(offerPresentationTarget, {
             childList: true,
             subtree: true,
