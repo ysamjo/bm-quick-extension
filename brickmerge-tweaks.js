@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      3.97
+// @version      3.98
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -3087,6 +3087,17 @@
         const formatParam = (value, decimals = 2) =>
             Number(value).toFixed(decimals).replace(/\.?0+$/, '');
         const formatDimensionCm = value => String(Math.ceil(value));
+        // 10 % auf das Gesamtmaß entsprechen 5 % Luft je Seite. Bei kleinen
+        // LEGO-Kartons reicht das oft nicht für einen brauchbaren Umkarton,
+        // deshalb gelten mindestens 2 cm je Seite; 15 cm je Seite bleiben die
+        // Obergrenze für sehr große Sets.
+        const formatPackedDimensionCm = dimension => {
+            const clearancePerSide = Math.min(
+                15,
+                Math.max(2, dimension * 0.05)
+            );
+            return formatDimensionCm(dimension + clearancePerSide * 2);
+        };
 
         const width = parseDecimalValue(dimensionsMatch[1]);
         const length = parseDecimalValue(dimensionsMatch[2]);
@@ -3100,9 +3111,9 @@
 
         const url = new URL('https://www.paketda.de/paket-preis-rechner.php');
         url.searchParams.set('action', 'submit');
-        url.searchParams.set('breite', formatDimensionCm(width * 1.1));
-        url.searchParams.set('laenge', formatDimensionCm(length * 1.1));
-        url.searchParams.set('hoehe', formatDimensionCm(height * 1.1));
+        url.searchParams.set('breite', formatPackedDimensionCm(width));
+        url.searchParams.set('laenge', formatPackedDimensionCm(length));
+        url.searchParams.set('hoehe', formatPackedDimensionCm(height));
         url.searchParams.set('gewicht', formatParam(weightKg * 1.1));
         url.hash = 'ergebnis';
 
@@ -3121,7 +3132,9 @@
             link.href = url.href;
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
-            link.title = 'Paketpreis mit 10% Aufschlag auf Maße und Gewicht berechnen';
+            link.title =
+                'Paketpreis mit mindestens 2 cm Luft je Seite, maximal 15 cm ' +
+                'je Seite und 10% Gewichtszuschlag berechnen';
             return link;
         };
 
