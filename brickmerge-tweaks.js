@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.18
+// @version      4.19
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -5366,11 +5366,11 @@
                 copyBtn.className = 'bm-copy-btn';
                 copyBtn.title = 'Setnamen kopieren';
                 copyBtn.setAttribute('aria-label', 'Setnamen kopieren');
-                copyBtn.style.cssText = 'cursor:pointer;margin-left:0.5em;padding:0;border:0;background:none;user-select:none;display:inline-flex;vertical-align:middle;';
+                copyBtn.style.cssText = 'cursor:pointer;margin-left:0.3em;padding:0;width:14px;height:14px;border:0;background:none;color:inherit;user-select:none;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;transform:translateY(-1px);opacity:0.82;';
                 copyBtn.innerHTML = `
-            <svg viewBox="0 0 16 16" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="#333" fill="none" stroke-width="1"/>
-            <rect x="6.5" y="0.5" width="6" height="9" rx="2" stroke="#d1d5da" fill="none" stroke-width="1"/>
+            <svg viewBox="0 0 16 16" width="13" height="13" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="currentColor" fill="none" stroke-width="0.9"/>
+            <rect x="6.5" y="0.5" width="6" height="9" rx="2" stroke="currentColor" fill="none" stroke-width="0.9" opacity="0.55"/>
             </svg>`;
                 copyBtn.addEventListener('click', event => {
                     event.preventDefault();
@@ -5386,9 +5386,9 @@
                     } else if (navigator.clipboard) {
                         navigator.clipboard.writeText(cleaned);
                     }
-                    copyBtn.innerHTML = `<svg viewBox="0 0 16 16" width="18" height="18" fill="#2eb866" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="#2eb866" fill="none" stroke-width="2"/><path d="M5 10 l2 2 4-4" stroke="#2eb866" stroke-width="2" fill="none"/></svg>`;
+                    copyBtn.innerHTML = `<svg viewBox="0 0 16 16" width="13" height="13" fill="#2eb866" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="#2eb866" fill="none" stroke-width="1.5"/><path d="M5 10 l2 2 4-4" stroke="#2eb866" stroke-width="1.5" fill="none"/></svg>`;
                     setTimeout(() => {
-                        copyBtn.innerHTML = `<svg viewBox="0 0 16 16" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="#333" fill="none" stroke-width="1"/><rect x="6.5" y="0.5" width="6" height="9" rx="2" stroke="#d1d5da" fill="none" stroke-width="1"/></svg>`;
+                        copyBtn.innerHTML = `<svg viewBox="0 0 16 16" width="13" height="13" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="currentColor" fill="none" stroke-width="0.9"/><rect x="6.5" y="0.5" width="6" height="9" rx="2" stroke="currentColor" fill="none" stroke-width="0.9" opacity="0.55"/></svg>`;
                     }, 900);
                 });
                 nameElement.appendChild(copyBtn);
