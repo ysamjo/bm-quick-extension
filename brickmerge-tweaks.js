@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.16
+// @version      4.17
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -5339,20 +5339,48 @@
 
     if (setNum) {
         try {
-            (function titleCopyButton() {
-                const h1 = document.querySelector('h1');
-                if (!h1 || h1.querySelector('.bm-copy-btn')) return;
-                const copyBtn = document.createElement('span');
+            (function detailsNameCopyButton() {
+                document.querySelectorAll('h1 .bm-copy-btn').forEach(button => button.remove());
+
+                const details = document.querySelector('.content.setdetails .productprice');
+                const pageTitle = document.querySelector('h1')?.textContent
+                    .replace(/[\u00AE\u2122]/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim() || '';
+                const nameElement = Array.from(
+                    details?.querySelectorAll('strong, b') || []
+                ).find(element => {
+                    const text = element.textContent
+                        .replace(/[\u00AE\u2122]/g, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    return text.includes(setNum) &&
+                        text.length > String(setNum).length + 4 &&
+                        !/Artikel-Nr\s*:|€/.test(text) &&
+                        (!pageTitle || pageTitle.includes(text) || text.includes(pageTitle));
+                });
+                if (!nameElement || nameElement.querySelector('.bm-copy-btn')) return;
+
+                const copyBtn = document.createElement('button');
+                copyBtn.type = 'button';
                 copyBtn.className = 'bm-copy-btn';
-                copyBtn.title = 'Titel kopieren';
-                copyBtn.style.cssText = 'cursor:pointer;margin-left:0.5em;user-select:none;display:inline-flex;vertical-align:middle;';
+                copyBtn.title = 'Setnamen kopieren';
+                copyBtn.setAttribute('aria-label', 'Setnamen kopieren');
+                copyBtn.style.cssText = 'cursor:pointer;margin-left:0.5em;padding:0;border:0;background:none;user-select:none;display:inline-flex;vertical-align:middle;';
                 copyBtn.innerHTML = `
             <svg viewBox="0 0 16 16" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="#333" fill="none" stroke-width="1"/>
             <rect x="6.5" y="0.5" width="6" height="9" rx="2" stroke="#d1d5da" fill="none" stroke-width="1"/>
             </svg>`;
-                copyBtn.addEventListener('click', () => {
-                    const cleaned = h1.textContent.replace(/[\u00AE\u2122]/g, '').replace(/\s+/g, ' ').trim();
+                copyBtn.addEventListener('click', event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const nameClone = nameElement.cloneNode(true);
+                    nameClone.querySelector('.bm-copy-btn')?.remove();
+                    const cleaned = nameClone.textContent
+                        .replace(/[\u00AE\u2122]/g, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
                     if (typeof GM_setClipboard !== "undefined") {
                         GM_setClipboard(cleaned);
                     } else if (navigator.clipboard) {
@@ -5363,11 +5391,11 @@
                         copyBtn.innerHTML = `<svg viewBox="0 0 16 16" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="#333" fill="none" stroke-width="1"/><rect x="6.5" y="0.5" width="6" height="9" rx="2" stroke="#d1d5da" fill="none" stroke-width="1"/></svg>`;
                     }, 900);
                 });
-                h1.appendChild(copyBtn);
+                nameElement.appendChild(copyBtn);
             })();
         } catch (error) {
             console.error(
-                'Brickmerge Tweaker: Titel-Kopierfunktion konnte nicht initialisiert werden.',
+                'Brickmerge Tweaker: Setnamen-Kopierfunktion konnte nicht initialisiert werden.',
                 error
             );
         }
