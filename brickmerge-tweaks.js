@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.17
+// @version      4.18
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -8705,22 +8705,23 @@
         offerPresentationTimer = setTimeout(applyOfferPresentation, 80);
     };
 
-    if (!ensureOfferPresentationObserver()) {
+    const offerlistIsReady = ensureOfferPresentationObserver();
+    if (!offerlistIsReady) {
         const pendingOfferlistObserver = new MutationObserver(() => {
             if (!ensureOfferPresentationObserver()) return;
             pendingOfferlistObserver.disconnect();
-            scheduleOfferPresentation();
+            applyOfferPresentation();
         });
         pendingOfferlistObserver.observe(document.documentElement, {
             childList: true,
             subtree: true
         });
         window.setTimeout(() => pendingOfferlistObserver.disconnect(), 10000);
+    } else {
+        applyOfferPresentation();
     }
 
-    if (document.readyState === 'complete') {
-        scheduleOfferPresentation();
-    } else {
+    if (document.readyState !== 'complete') {
         window.addEventListener('load', scheduleOfferPresentation, { once: true });
     }
 
