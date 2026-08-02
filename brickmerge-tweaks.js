@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.19
+// @version      4.20
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -5361,12 +5361,13 @@
                 });
                 if (!nameElement || nameElement.querySelector('.bm-copy-btn')) return;
 
-                const copyBtn = document.createElement('button');
-                copyBtn.type = 'button';
+                const copyBtn = document.createElement('span');
                 copyBtn.className = 'bm-copy-btn';
                 copyBtn.title = 'Setnamen kopieren';
+                copyBtn.setAttribute('role', 'button');
+                copyBtn.tabIndex = 0;
                 copyBtn.setAttribute('aria-label', 'Setnamen kopieren');
-                copyBtn.style.cssText = 'cursor:pointer;margin-left:0.3em;padding:0;width:14px;height:14px;border:0;background:none;color:inherit;user-select:none;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;transform:translateY(-1px);opacity:0.82;';
+                copyBtn.style.cssText = 'cursor:pointer;margin-left:0.18em;padding:0;width:13px;height:13px;border:0;background:none;color:inherit;user-select:none;display:inline-flex;align-items:center;justify-content:center;line-height:0;vertical-align:middle;position:static;transform:none;opacity:0.82;';
                 copyBtn.innerHTML = `
             <svg viewBox="0 0 16 16" width="13" height="13" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="currentColor" fill="none" stroke-width="0.9"/>
@@ -5390,6 +5391,11 @@
                     setTimeout(() => {
                         copyBtn.innerHTML = `<svg viewBox="0 0 16 16" width="13" height="13" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="currentColor" fill="none" stroke-width="0.9"/><rect x="6.5" y="0.5" width="6" height="9" rx="2" stroke="currentColor" fill="none" stroke-width="0.9" opacity="0.55"/></svg>`;
                     }, 900);
+                });
+                copyBtn.addEventListener('keydown', event => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    copyBtn.click();
                 });
                 nameElement.appendChild(copyBtn);
             })();
