@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.15
+// @version      4.16
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -1060,6 +1060,125 @@
         .bm-price-history-link:focus * {
             color: #fff !important;
         }
+        .bm-ean-source-block {
+            display: none !important;
+        }
+        body.bm-ean-overlay-open {
+            overflow: hidden !important;
+        }
+        .bm-ean-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            background: rgba(0, 0, 0, 0.64);
+            box-sizing: border-box;
+            animation: bm-ean-fade-in 0.16s ease-out;
+        }
+        .bm-ean-dialog {
+            display: flex;
+            width: min(760px, calc(100vw - 2.5rem));
+            max-height: min(84vh, 760px);
+            flex-direction: column;
+            overflow: hidden;
+            border-top: 5px solid #b00;
+            border-radius: 4px;
+            background: #fff;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+            animation: bm-ean-zoom-in 0.16s ease-out;
+        }
+        .bm-ean-header {
+            display: flex;
+            min-height: 64px;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.8rem 0.8rem 0.8rem 1.25rem;
+            border-bottom: 1px solid #ddd;
+            background: #fff !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+        .bm-ean-heading {
+            min-width: 0;
+        }
+        .bm-ean-title {
+            margin: 0;
+            padding: 0;
+            color: #333 !important;
+            background: none !important;
+            font-size: 1.25rem;
+            font-weight: 700;
+            line-height: 1.25;
+            text-shadow: none !important;
+        }
+        .bm-ean-subtitle {
+            margin-top: 3px;
+            color: #777;
+            font-size: 0.75rem;
+            line-height: 1.2;
+        }
+        .bm-ean-close {
+            display: flex;
+            width: 40px;
+            min-width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            border-radius: 4px;
+            background: #f7eaea;
+            color: #800;
+            cursor: pointer;
+            font: bold 1.8rem/1 Arial, sans-serif;
+            text-shadow: none !important;
+        }
+        .bm-ean-close:hover,
+        .bm-ean-close:focus {
+            background: #b00;
+            color: #fff;
+            outline: none;
+        }
+        .bm-ean-content {
+            display: flex;
+            min-height: 280px;
+            flex: 1 1 auto;
+            align-items: center;
+            justify-content: center;
+            padding: clamp(1.25rem, 5vw, 3rem);
+            overflow: auto;
+            background: #fff;
+            box-sizing: border-box;
+        }
+        .bm-ean-barcode {
+            display: block;
+            width: 100%;
+            max-width: 680px;
+            height: auto;
+            max-height: 360px;
+            margin: auto;
+            object-fit: contain;
+            background: #fff;
+        }
+        .bm-ean-fallback {
+            color: #222;
+            font: 700 clamp(1.5rem, 7vw, 3rem)/1.2 monospace;
+            letter-spacing: 0;
+            text-align: center;
+        }
+        @keyframes bm-ean-fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes bm-ean-zoom-in {
+            from { transform: translateY(8px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
         .bm-minifig-value-load {
             display: inline-flex;
             align-items: center;
@@ -1670,6 +1789,35 @@
             margin-top: 0 !important;
         }
         @media screen and (max-width: 640px) {
+            .bm-ean-overlay {
+                align-items: stretch;
+                padding: 0;
+            }
+            .bm-ean-dialog {
+                width: 100vw;
+                height: 100vh;
+                height: 100dvh;
+                max-height: none;
+                border-radius: 0;
+            }
+            .bm-ean-header {
+                min-height: 64px;
+                padding: max(11px, env(safe-area-inset-top)) 10px 10px 15px;
+            }
+            .bm-ean-title {
+                font-size: 1.08rem;
+            }
+            .bm-ean-content {
+                min-height: 0;
+                padding: 16px max(12px, env(safe-area-inset-right))
+                    max(16px, env(safe-area-inset-bottom))
+                    max(12px, env(safe-area-inset-left));
+            }
+            .bm-ean-barcode {
+                width: 100%;
+                max-width: none;
+                max-height: calc(100dvh - 110px);
+            }
             #chartdiv2 {
                 margin-bottom: 0.4rem !important;
             }
@@ -2910,13 +3058,209 @@
         });
     }
 
-    function setupDesktopSidebarBarcode() {
-        const sideColumn = document.getElementById('ol2nd');
-        const barcodeBlock = sideColumn?.querySelector('#barcode')?.closest('div');
-        barcodeBlock?.classList.add('bm-sidebar-barcode');
+    function buildEan13Barcode(ean) {
+        if (!/^\d{13}$/.test(ean)) return null;
+
+        const leftOdd = [
+            '0001101', '0011001', '0010011', '0111101', '0100011',
+            '0110001', '0101111', '0111011', '0110111', '0001011'
+        ];
+        const leftEven = [
+            '0100111', '0110011', '0011011', '0100001', '0011101',
+            '0111001', '0000101', '0010001', '0001001', '0010111'
+        ];
+        const right = [
+            '1110010', '1100110', '1101100', '1000010', '1011100',
+            '1001110', '1010000', '1000100', '1001000', '1110100'
+        ];
+        const parity = [
+            'LLLLLL', 'LLGLGG', 'LLGGLG', 'LLGGGL', 'LGLLGG',
+            'LGGLLG', 'LGGGLL', 'LGLGLG', 'LGLGGL', 'LGGLGL'
+        ];
+        const digits = Array.from(ean, Number);
+        let bars = '101';
+        for (let index = 1; index <= 6; index += 1) {
+            bars += parity[digits[0]][index - 1] === 'L'
+                ? leftOdd[digits[index]]
+                : leftEven[digits[index]];
+        }
+        bars += '01010';
+        for (let index = 7; index <= 12; index += 1) {
+            bars += right[digits[index]];
+        }
+        bars += '101';
+
+        const namespace = 'http://www.w3.org/2000/svg';
+        const quietZone = 12;
+        const svg = document.createElementNS(namespace, 'svg');
+        svg.classList.add('bm-ean-barcode');
+        svg.setAttribute('viewBox', '0 0 119 94');
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        svg.setAttribute('role', 'img');
+        svg.setAttribute('aria-label', `EAN ${ean}`);
+        svg.style.shapeRendering = 'crispEdges';
+
+        const background = document.createElementNS(namespace, 'rect');
+        background.setAttribute('width', '119');
+        background.setAttribute('height', '94');
+        background.setAttribute('fill', '#fff');
+        svg.appendChild(background);
+
+        Array.from(bars).forEach((bar, index) => {
+            if (bar !== '1') return;
+            const isGuard = index < 3 ||
+                (index >= 45 && index < 50) || index >= 92;
+            const rect = document.createElementNS(namespace, 'rect');
+            rect.setAttribute('x', String(quietZone + index));
+            rect.setAttribute('y', '4');
+            rect.setAttribute('width', '1');
+            rect.setAttribute('height', isGuard ? '70' : '64');
+            rect.setAttribute('fill', '#000');
+            svg.appendChild(rect);
+        });
+
+        const label = document.createElementNS(namespace, 'text');
+        label.setAttribute('x', '59.5');
+        label.setAttribute('y', '89');
+        label.setAttribute('fill', '#111');
+        label.setAttribute('font-family', 'Arial, sans-serif');
+        label.setAttribute('font-size', '10');
+        label.setAttribute('letter-spacing', '1.1');
+        label.setAttribute('text-anchor', 'middle');
+        label.textContent = ean;
+        svg.appendChild(label);
+        return svg;
     }
 
-    // Die Anleitungen stehen auf Desktop zwischen Barcode und Einzelteilelisten.
+    function cloneBarcodeGraphic(ean) {
+        const sourceRoot = document.getElementById('barcode');
+        const source = sourceRoot?.matches?.('canvas, svg, img')
+            ? sourceRoot
+            : sourceRoot?.querySelector?.('canvas, svg, img');
+
+        if (source instanceof HTMLCanvasElement && source.width > 0) {
+            try {
+                const image = document.createElement('img');
+                image.className = 'bm-ean-barcode';
+                image.src = source.toDataURL('image/png');
+                image.alt = `EAN ${ean}`;
+                return image;
+            } catch (error) {
+                // The SVG fallback below is independent of canvas permissions.
+            }
+        }
+        if (source instanceof SVGElement && source.childElementCount > 0) {
+            const clone = source.cloneNode(true);
+            clone.removeAttribute('id');
+            clone.removeAttribute('width');
+            clone.removeAttribute('height');
+            clone.classList.add('bm-ean-barcode');
+            clone.setAttribute('role', 'img');
+            clone.setAttribute('aria-label', `EAN ${ean}`);
+            return clone;
+        }
+        if (source instanceof HTMLImageElement && (source.currentSrc || source.src)) {
+            const clone = source.cloneNode(true);
+            clone.removeAttribute('id');
+            clone.classList.add('bm-ean-barcode');
+            clone.alt = `EAN ${ean}`;
+            return clone;
+        }
+        return buildEan13Barcode(ean);
+    }
+
+    function showEanOverlay(ean, trigger) {
+        document.querySelector('.bm-ean-overlay')?.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'bm-ean-overlay';
+        overlay.className = 'bm-ean-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-labelledby', 'bm-ean-title');
+        overlay.innerHTML = `
+            <div class="bm-ean-dialog">
+                <header class="bm-ean-header">
+                    <div class="bm-ean-heading">
+                        <h2 id="bm-ean-title" class="bm-ean-title">EAN Barcode</h2>
+                        <div class="bm-ean-subtitle">${ean}</div>
+                    </div>
+                    <button type="button" class="bm-ean-close"
+                        title="Schließen" aria-label="Schließen">×</button>
+                </header>
+                <div class="bm-ean-content"></div>
+            </div>
+        `;
+
+        const content = overlay.querySelector('.bm-ean-content');
+        const graphic = cloneBarcodeGraphic(ean);
+        if (graphic) {
+            content.appendChild(graphic);
+        } else {
+            const fallback = document.createElement('div');
+            fallback.className = 'bm-ean-fallback';
+            fallback.textContent = ean;
+            content.appendChild(fallback);
+        }
+
+        const close = () => {
+            document.removeEventListener('keydown', onKeydown);
+            document.body.classList.remove('bm-ean-overlay-open');
+            overlay.remove();
+            trigger?.focus?.();
+        };
+        const onKeydown = event => {
+            if (event.key === 'Escape') close();
+        };
+        overlay.querySelector('.bm-ean-close').addEventListener('click', close);
+        overlay.addEventListener('click', event => {
+            if (event.target === overlay) close();
+        });
+        document.addEventListener('keydown', onKeydown);
+        document.body.classList.add('bm-ean-overlay-open');
+        document.body.appendChild(overlay);
+        overlay.querySelector('.bm-ean-close').focus();
+    }
+
+    function setupEanBarcode() {
+        const barcode = document.getElementById('barcode');
+        const barcodeBlock = barcode?.closest('div');
+        if (barcodeBlock) {
+            barcodeBlock.classList.add('bm-ean-source-block');
+            barcodeBlock.setAttribute('aria-hidden', 'true');
+        }
+
+        const details = Array.from(
+            document.querySelectorAll('.content.setdetails p')
+        ).find(paragraph => /EAN\s*:/i.test(paragraph.textContent || ''));
+        if (!details) return;
+
+        let link = details.querySelector('.bm-ean-line-link');
+        if (!link) {
+            const line = findDetailsLineRange(details, /EAN\s*:/i);
+            if (!line) return;
+            const ean = line.text.replace(/\D/g, '');
+            if (!/^\d{8,14}$/.test(ean)) return;
+
+            link = document.createElement('a');
+            link.className = 'bm-detail-line-link bm-ean-line-link';
+            link.href = '#bm-ean-overlay';
+            link.title = `EAN ${ean} anzeigen`;
+            link.dataset.ean = ean;
+            link.appendChild(line.range.extractContents());
+            line.range.insertNode(link);
+        }
+
+        if (link.dataset.bmEanBound !== 'true') {
+            link.dataset.bmEanBound = 'true';
+            link.addEventListener('click', event => {
+                event.preventDefault();
+                showEanOverlay(link.dataset.ean, link);
+            });
+        }
+    }
+
+    // Die Anleitungen stehen auf Desktop oberhalb der Einzelteilelisten.
     // Die Originale bleiben für die Mobilansicht erhalten.
     function setupDesktopSidebarInstructions() {
         const offerColumn = document.getElementById('ol1st');
@@ -3366,7 +3710,7 @@
             removeSidebarHistoryLinks,
             removeRelativeDayLabelsFromBestPriceLines,
             setupDesktopOfferGallery,
-            setupDesktopSidebarBarcode,
+            setupEanBarcode,
             setupDesktopSidebarInstructions,
             setupDesktopSidebarParts,
             expandProductDescription,
