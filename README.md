@@ -34,12 +34,12 @@ KI-Preisvergleich: Ein Klick auf den "Meta-GPT"-Link generiert einen Such-Prompt
 * Die angeforderten Verbindungsberechtigungen bestätigen. Sie werden für die zusätzlichen Preis- und Produktabfragen benötigt.
 Aktualisierungen werden anschließend über die im Userscript hinterlegte GitHub-Adresse angeboten.
 
-## Kleinanzeigen-Agent API
-* Im Kleinanzeigen-Agent-Dashboard einen API-Key erzeugen.
-* In Tampermonkey beim „Brickmerge Tweaker“ den Menüpunkt „Kleinanzeigen API-Key einrichten“ öffnen.
-* Den `klaz_live_…`-Key dort einmal einfügen und die Brickmerge-Seite neu laden.
+## Kleinanzeigen über den Preis-Worker
+* Der Kleinanzeigen-Agent API-Key liegt ausschließlich als Cloudflare-Secret im Preis-Worker.
+* In Tampermonkey beim „Brickmerge Tweaker“ den Menüpunkt „Brickmerge Worker-Zugriffstoken einrichten“ öffnen.
+* Dasselbe Token eingeben, das im Worker als `BM_WORKER_TOKEN` gespeichert ist, und die Brickmerge-Seite neu laden.
 
-Der Key wird nur lokal im Userscript-Speicher abgelegt und nicht in dieses Repository geschrieben. Jede noch nicht zwischengespeicherte Set-Suche verbraucht einen API-Credit; Ergebnisse werden zwei Stunden gespeichert.
+Das Zugriffstoken wird nur lokal im Userscript-Speicher abgelegt und nicht in dieses Repository geschrieben. Der Tweaker speichert Worker-Antworten 45 Minuten lokal; der Worker hält erfolgreiche Kleinanzeigen-Ergebnisse zwei Stunden und leere Ergebnisse 20 Minuten im Cache.
 
 # Hinweise
 Preise und Verfügbarkeiten können sich zwischen Abfrage und Händlerseite ändern.

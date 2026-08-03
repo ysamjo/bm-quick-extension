@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.22
+// @version      4.23
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -18,7 +18,7 @@
 // @grant        GM.deleteValue
 // @grant        GM.registerMenuCommand
 // @grant        GM.xmlHttpRequest
-// @connect      api.kleinanzeigen-agent.de
+// @connect      ebay-price-api.andreas-9b7.workers.dev
 // @connect      www.bricklink.com
 // @connect      bricklink.com
 // @connect      www.brickowl.com
@@ -42,11 +42,13 @@
     const META_GPT_LAST_SUBMITTED_KEY = 'brickmerge-meta-gpt-last-submitted-v1';
     const META_GPT_MAX_PENDING_AGE = 10 * 60 * 1000;
     const OFFER_CACHE_TTL = 2 * 60 * 60 * 1000;
+    const KLAZ_CLIENT_CACHE_TTL = 45 * 60 * 1000;
     const MINIFIG_INVENTORY_CACHE_TTL = 6 * 60 * 60 * 1000;
     const MINIFIG_PRICE_CACHE_TTL = 24 * 60 * 60 * 1000;
     const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-v5';
     const REBRICKABLE_API_KEY_STORAGE_KEY = 'brickmerge-rebrickable-api-key-v1';
-    const KLAZ_API_KEY_STORAGE_KEY = 'brickmerge-klaz-api-key-v1';
+    const BM_WORKER_TOKEN_STORAGE_KEY = 'brickmerge-worker-token-v1';
+    const BM_WORKER_URL = 'https://ebay-price-api.andreas-9b7.workers.dev';
     const REBRICKABLE_MINIFIG_CACHE_TTL = 24 * 60 * 60 * 1000;
     const cacheRequestsInFlight = new Map();
     const animatedMarketplaceOfferKeys = new Set();
@@ -96,7 +98,7 @@
                 ? Promise.resolve(gmApi.deleteValue(key))
                 : Promise.resolve(removeLocalFallback(key));
 
-    function registerKlazApiKeyMenu() {
+    function registerWorkerTokenMenu() {
         const registerMenuCommand = typeof GM_registerMenuCommand === 'function'
             ? GM_registerMenuCommand
             : typeof gmApi?.registerMenuCommand === 'function'
@@ -104,32 +106,32 @@
                 : null;
         if (!registerMenuCommand) return;
 
-        registerMenuCommand('Kleinanzeigen API-Key einrichten', async () => {
-            const currentKey = await readStoredValue(KLAZ_API_KEY_STORAGE_KEY, '');
+        registerMenuCommand('Brickmerge Worker-Zugriffstoken einrichten', async () => {
+            const currentKey = await readStoredValue(BM_WORKER_TOKEN_STORAGE_KEY, '');
             const input = window.prompt(
                 currentKey
-                    ? 'Neuen klaz_live_… API-Key eingeben. "LÖSCHEN" entfernt den gespeicherten Key.'
-                    : 'Kleinanzeigen-Agent API-Key (klaz_live_…) eingeben:',
+                    ? 'Neues Worker-Zugriffstoken eingeben. "LÖSCHEN" entfernt das gespeicherte Token.'
+                    : 'Dasselbe Zugriffstoken eingeben, das in Cloudflare als BM_WORKER_TOKEN gespeichert ist:',
                 ''
             );
             if (input === null) return;
 
             const key = input.trim();
             if (key.toLocaleUpperCase('de') === 'LÖSCHEN') {
-                await deleteStoredValue(KLAZ_API_KEY_STORAGE_KEY);
-                window.alert('Der Kleinanzeigen API-Key wurde lokal gelöscht.');
+                await deleteStoredValue(BM_WORKER_TOKEN_STORAGE_KEY);
+                window.alert('Das Worker-Zugriffstoken wurde lokal gelöscht.');
                 return;
             }
-            if (!/^klaz_live_[A-Za-z0-9_-]+$/.test(key)) {
-                window.alert('Der API-Key ist ungültig. Erwartet wird ein Key mit klaz_live_.');
+            if (key.length < 24) {
+                window.alert('Das Zugriffstoken ist zu kurz. Verwende mindestens 24 Zeichen.');
                 return;
             }
 
-            await writeStoredValue(KLAZ_API_KEY_STORAGE_KEY, key);
-            window.alert('Der API-Key wurde nur lokal in Tampermonkey gespeichert. Seite neu laden.');
+            await writeStoredValue(BM_WORKER_TOKEN_STORAGE_KEY, key);
+            window.alert('Das Worker-Zugriffstoken wurde nur lokal in Tampermonkey gespeichert. Seite neu laden.');
         });
     }
-    registerKlazApiKeyMenu();
+    registerWorkerTokenMenu();
 
     function requestWithGm(details) {
         if (typeof GM_xmlhttpRequest === 'function') {
@@ -4946,111 +4948,60 @@
                 };
             };
 
-            function parseKleinanzeigenOffers(jsonText, expectedSetNumber) {
-                let payload;
-                try {
-                    payload = JSON.parse(jsonText);
-                } catch (error) {
-                    return null;
-                }
-
-                const escapedSetNumber = String(expectedSetNumber)
-                    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const setNumberPattern = new RegExp(
-                    `(?:^|[^0-9])${escapedSetNumber}(?:[^0-9]|$)`
-                );
-                const sealedPattern = /\b(?:ovp|originalverpackt|originalverpackung|ungeöffnet|unopened|versiegelt|verschweißt|sealed)\b/i;
-                const ads = Array.isArray(payload?.data?.ads)
-                    ? payload.data.ads
-                    : [];
-                const matchingAds = ads.map(ad => {
-                    const title = String(ad?.title || '');
-                    const description = String(ad?.description || '');
-                    const searchText = `${title} ${description}`;
-                    const price = Number(ad?.price?.amount);
-                    const url = String(ad?.ad_url || '').trim();
-                    if (
-                        !setNumberPattern.test(searchText) ||
-                        !sealedPattern.test(searchText) ||
-                        !Number.isFinite(price) ||
-                        price <= 0 ||
-                        !url ||
-                        ad?.status === 'DELETED' ||
-                        ad?.deleted === true
-                    ) {
-                        return null;
-                    }
-
-                    return {
-                        title,
-                        price,
-                        url,
-                        city: String(ad?.location?.city || ad?.location?.name || '').trim(),
-                        negotiable: ad?.price?.negotiable === true,
-                        shippingAvailable: ad?.shipping_available === true
-                    };
-                }).filter(Boolean).sort((a, b) => a.price - b.price);
-
-                if (matchingAds.length === 0) return null;
-                return {
-                    ...matchingAds[0],
-                    totalMatches: matchingAds.length
-                };
-            }
-
-            void readStoredValue(KLAZ_API_KEY_STORAGE_KEY, '').then(apiKey => {
-                if (!/^klaz_live_[A-Za-z0-9_-]+$/.test(String(apiKey))) return;
-
-                const searchUrl = new URL(
-                    'https://api.kleinanzeigen-agent.de/api/v2/kleinanzeigen/search'
-                );
-                searchUrl.searchParams.set('q', `LEGO ${setNumber}`);
-                searchUrl.searchParams.set('size', '100');
-                searchUrl.searchParams.set('category_id', '23');
-                searchUrl.searchParams.set('picture_required', 'true');
-                searchUrl.searchParams.set('attr[condition]', 'new');
-
+            void readStoredValue(BM_WORKER_TOKEN_STORAGE_KEY, '').then(workerToken => {
+                if (String(workerToken).length < 24) return;
                 cachedGmRequest(
-                    makeApiCacheKey('kleinanzeigen-agent-neu-ovp', setNumber),
-                    OFFER_CACHE_TTL,
+                    makeApiCacheKey('kleinanzeigen-worker-neu-ovp', setNumber),
+                    KLAZ_CLIENT_CACHE_TTL,
                     {
                         method: 'GET',
-                        url: searchUrl.href,
+                        url:
+                            `${BM_WORKER_URL}/kleinanzeigen?set=` +
+                            encodeURIComponent(setNumber),
                         headers: {
                             'Accept': 'application/json',
-                            'klaz_key': apiKey
+                            'Authorization': `Bearer ${workerToken}`
                         },
                         timeout: 15000,
                         onload: response => {
-                            const result = parseKleinanzeigenOffers(
-                                response.responseText,
-                                setNumber
-                            );
-                            if (!result) {
+                            let result;
+                            try {
+                                result = JSON.parse(response.responseText);
+                            } catch (error) {
+                                console.warn(
+                                    'Brickmerge Tweaker: Ungültige Antwort des Preis-Workers.'
+                                );
+                                return;
+                            }
+                            if (!result?.found || !result.cheapest) {
                                 console.info(
                                     'Brickmerge Tweaker: Keine deutschlandweiten Kleinanzeigen-Angebote für dieses Set in neu & OVP gefunden.'
                                 );
                                 return;
                             }
 
+                            const cheapest = result.cheapest;
                             const details = [
-                                `Kleinanzeigen Agent: günstigstes von ${result.totalMatches} passenden deutschlandweiten Angeboten in neu & OVP`,
-                                result.city ? `Ort: ${result.city}` : '',
-                                result.negotiable ? 'Verhandlungsbasis' : '',
-                                result.shippingAvailable
+                                `Kleinanzeigen: günstigstes von ${result.comparedOffers} passenden deutschlandweiten Angeboten in neu & OVP`,
+                                cheapest.city ? `Ort: ${cheapest.city}` : '',
+                                cheapest.negotiable ? 'Verhandlungsbasis' : '',
+                                cheapest.shippingAvailable
                                     ? 'Versand möglich; Versandkosten unbekannt'
                                     : 'Versand nicht bestätigt',
-                                `Titel: ${result.title}`
+                                result.updatedAt
+                                    ? `Stand: ${new Date(result.updatedAt).toLocaleString('de-DE')}`
+                                    : '',
+                                `Titel: ${cheapest.title}`
                             ].filter(Boolean).join('; ');
                             const offer = createOffer(
                                 'btn-kleinanzeigen',
                                 'Kleinanzeigen',
-                                `${formatEuroValue(result.price)} €`,
+                                `${formatEuroValue(Number(cheapest.price))} €`,
                                 'https://www.google.com/s2/favicons?sz=128&domain_url=kleinanzeigen.de',
-                                'kleinanzeigen-agent',
+                                'kleinanzeigen-worker',
                                 details,
                                 {
-                                    url: result.url,
+                                    url: cheapest.url,
                                     shippingStatus: 'unknown',
                                     shippingCost: null
                                 }
@@ -5059,12 +5010,12 @@
                         },
                         onerror: () => {
                             console.warn(
-                                'Brickmerge Tweaker: Kleinanzeigen-Agent-Abfrage fehlgeschlagen. API-Key, Credits und Rate-Limit prüfen.'
+                                'Brickmerge Tweaker: Kleinanzeigen-Abfrage beim Preis-Worker fehlgeschlagen. Worker-Version und Zugriffstoken prüfen.'
                             );
                         },
                         ontimeout: () => {
                             console.warn(
-                                'Brickmerge Tweaker: Kleinanzeigen-Agent-Abfrage - Timeout.'
+                                'Brickmerge Tweaker: Kleinanzeigen-Abfrage beim Preis-Worker - Timeout.'
                             );
                         }
                     }
