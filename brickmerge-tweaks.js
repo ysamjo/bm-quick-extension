@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.25
+// @version      4.26
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -4963,11 +4963,16 @@
 
                 if (/^\d{8}$|^\d{12,14}$/.test(ean)) {
                     cachedGmRequest(
-                        makeApiCacheKey('ebay-worker-new-ovp', ean),
+                        makeApiCacheKey(
+                            'ebay-worker-complete-set-v2',
+                            `${ean}:${setNumber}`
+                        ),
                         KLAZ_CLIENT_CACHE_TTL,
                         {
                             method: 'GET',
-                            url: `${BM_WORKER_URL}/price?ean=${encodeURIComponent(ean)}`,
+                            url:
+                                `${BM_WORKER_URL}/price?ean=${encodeURIComponent(ean)}` +
+                                `&set=${encodeURIComponent(setNumber)}`,
                             headers: {
                                 'Accept': 'application/json',
                                 'Authorization': `Bearer ${workerToken}`
