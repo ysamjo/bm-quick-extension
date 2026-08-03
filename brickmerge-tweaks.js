@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.27
+// @version      4.28
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -744,14 +744,6 @@
             max-height: 23px;
             object-fit: contain;
             vertical-align: middle;
-        }
-        #offerlist .bm-marketplace-logo.bm-keepa-logo {
-            max-width: 62px;
-            max-height: 18px;
-            padding: 2px 4px;
-            background: #303944;
-            border-radius: 2px;
-            box-sizing: content-box;
         }
         #offerlist .bm-marketplace-logo.bm-brickowl-logo {
             max-width: 74px;
@@ -4683,7 +4675,7 @@
                 .replace(/ü/g, 'u')
                 .replace(/\s+/g, ' ')
                 .trim();
-            const getNativeMerchantHaystacks = () => Array.from(document.querySelectorAll(
+            const getNativeMerchantEntries = () => Array.from(document.querySelectorAll(
                     '#offerlist .medium-4.small-9.columns.pricerow[data-mid]' +
                     ':not([data-bm-marketplace="true"])'
                 )).filter(priceRow =>
@@ -4702,30 +4694,35 @@
                     const haystack = normalizeMerchantText(
                         `${merchant} ${logo} ${tooltip}`
                     );
-                    return haystack;
+                    return { priceRow, haystack };
                 });
             const syncOffers = () => {
                 // Alle nativen Händler werden pro Synchronisierung nur einmal
                 // gelesen. Zuvor wurde die komplette Offerlist für jeden
                 // einzelnen Zusatzanbieter erneut durchsucht.
-                const nativeMerchantHaystacks = getNativeMerchantHaystacks();
+                const nativeMerchantEntries = getNativeMerchantEntries();
+                const matchesNativeMerchant = (entry, normalizedAliases) =>
+                    normalizedAliases.some(alias =>
+                        entry.haystack === alias ||
+                        entry.haystack.startsWith(`${alias} `) ||
+                        entry.haystack.includes(`link zu ${alias} `)
+                    );
                 const hasNativeMerchant = aliases => {
                     const normalizedAliases = aliases.map(normalizeMerchantText);
-                    return nativeMerchantHaystacks.some(haystack =>
-                        normalizedAliases.some(alias =>
-                            haystack === alias ||
-                            haystack.startsWith(`${alias} `) ||
-                            haystack.includes(`link zu ${alias} `)
-                        )
+                    return nativeMerchantEntries.some(entry =>
+                        matchesNativeMerchant(entry, normalizedAliases)
                     );
                 };
+                const ebayWorkerOffer = offersByKey.get('ebay');
+                if (ebayWorkerOffer?.source === 'ebay-worker') {
+                    const ebayAliases = ['ebay', 'ebay.de'].map(normalizeMerchantText);
+                    nativeMerchantEntries
+                        .filter(entry => matchesNativeMerchant(entry, ebayAliases))
+                        .forEach(entry => {
+                            entry.priceRow.closest('.row.collapse')?.remove();
+                        });
+                }
                 const offers = Array.from(offersByKey.values()).filter(offer => {
-                    if (offer.key === 'amz') {
-                        return !hasNativeMerchant(['amazon']);
-                    }
-                    if (offer.key === 'ebay' && offer.source === 'ebay-worker') {
-                        return !hasNativeMerchant(['ebay', 'ebay.de']);
-                    }
                     if (offer.key === 'mueller-search') {
                         return !hasNativeMerchant(['müller', 'mueller']);
                     }
@@ -4740,20 +4737,29 @@
                 });
                 syncOffers();
             };
-            const directSearchOffers = [
-                {
-                    key: 'amz',
-                    label: 'Keepa',
-                    priceText: '',
-                    url: `https://keepa.com/#!search/3-lego%20${setNumber}`,
-                    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/79/Keepa-logo.svg',
-                    source: 'direct-search',
-                    allowUnknownPrice: true,
-                    shippingStatus: 'unknown',
-                    shippingCost: null
-                },
-            ];
-            storeOffers(directSearchOffers);
+            const offerlist = document.getElementById('offerlist');
+            if (offerlist) {
+                const nativePriceRowSelector =
+                    '.medium-4.small-9.columns.pricerow[data-mid]' +
+                    ':not([data-bm-marketplace="true"])';
+                const containsAddedNativeOffer = node =>
+                    node.nodeType === Node.ELEMENT_NODE &&
+                    (node.matches?.(nativePriceRowSelector) ||
+                        node.querySelector?.(nativePriceRowSelector));
+                const nativeOfferObserver = new MutationObserver(records => {
+                    const nativeOfferWasAdded = records.some(record =>
+                        Array.from(record.addedNodes).some(containsAddedNativeOffer)
+                    );
+                    if (nativeOfferWasAdded &&
+                        offersByKey.get('ebay')?.source === 'ebay-worker') {
+                        syncOffers();
+                    }
+                });
+                nativeOfferObserver.observe(offerlist, {
+                    childList: true,
+                    subtree: true
+                });
+            }
             function parseBrickbankVendorOffer(jsonText, vendorPattern) {
                 let payload;
                 try {
@@ -8152,7 +8158,6 @@
                 image.src = offer.logoUrl;
                 image.alt = offer.label;
                 image.className = 'bm-marketplace-logo';
-                if (offer.key === 'amz') image.classList.add('bm-keepa-logo');
                 if (offer.key === 'bo') image.classList.add('bm-brickowl-logo');
                 if (offer.key === 'kleinanzeigen') {
                     image.classList.add('bm-kleinanzeigen-logo');
