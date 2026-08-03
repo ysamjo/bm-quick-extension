@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.28
+// @version      4.29
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -4701,27 +4701,16 @@
                 // gelesen. Zuvor wurde die komplette Offerlist für jeden
                 // einzelnen Zusatzanbieter erneut durchsucht.
                 const nativeMerchantEntries = getNativeMerchantEntries();
-                const matchesNativeMerchant = (entry, normalizedAliases) =>
-                    normalizedAliases.some(alias =>
-                        entry.haystack === alias ||
-                        entry.haystack.startsWith(`${alias} `) ||
-                        entry.haystack.includes(`link zu ${alias} `)
-                    );
                 const hasNativeMerchant = aliases => {
                     const normalizedAliases = aliases.map(normalizeMerchantText);
                     return nativeMerchantEntries.some(entry =>
-                        matchesNativeMerchant(entry, normalizedAliases)
+                        normalizedAliases.some(alias =>
+                            entry.haystack === alias ||
+                            entry.haystack.startsWith(`${alias} `) ||
+                            entry.haystack.includes(`link zu ${alias} `)
+                        )
                     );
                 };
-                const ebayWorkerOffer = offersByKey.get('ebay');
-                if (ebayWorkerOffer?.source === 'ebay-worker') {
-                    const ebayAliases = ['ebay', 'ebay.de'].map(normalizeMerchantText);
-                    nativeMerchantEntries
-                        .filter(entry => matchesNativeMerchant(entry, ebayAliases))
-                        .forEach(entry => {
-                            entry.priceRow.closest('.row.collapse')?.remove();
-                        });
-                }
                 const offers = Array.from(offersByKey.values()).filter(offer => {
                     if (offer.key === 'mueller-search') {
                         return !hasNativeMerchant(['müller', 'mueller']);
@@ -4737,29 +4726,6 @@
                 });
                 syncOffers();
             };
-            const offerlist = document.getElementById('offerlist');
-            if (offerlist) {
-                const nativePriceRowSelector =
-                    '.medium-4.small-9.columns.pricerow[data-mid]' +
-                    ':not([data-bm-marketplace="true"])';
-                const containsAddedNativeOffer = node =>
-                    node.nodeType === Node.ELEMENT_NODE &&
-                    (node.matches?.(nativePriceRowSelector) ||
-                        node.querySelector?.(nativePriceRowSelector));
-                const nativeOfferObserver = new MutationObserver(records => {
-                    const nativeOfferWasAdded = records.some(record =>
-                        Array.from(record.addedNodes).some(containsAddedNativeOffer)
-                    );
-                    if (nativeOfferWasAdded &&
-                        offersByKey.get('ebay')?.source === 'ebay-worker') {
-                        syncOffers();
-                    }
-                });
-                nativeOfferObserver.observe(offerlist, {
-                    childList: true,
-                    subtree: true
-                });
-            }
             function parseBrickbankVendorOffer(jsonText, vendorPattern) {
                 let payload;
                 try {
