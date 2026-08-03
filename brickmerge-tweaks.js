@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.23
+// @version      4.24
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -760,6 +760,10 @@
             background: #4a3527;
             border-radius: 2px;
             box-sizing: content-box;
+        }
+        #offerlist .bm-marketplace-logo.bm-kleinanzeigen-logo {
+            max-width: 82px;
+            max-height: 22px;
         }
         #offerlist .bm-shipping-info {
             display: inline !important;
@@ -4701,6 +4705,9 @@
                     if (offer.key === 'amz') {
                         return !hasNativeMerchant(['amazon']);
                     }
+                    if (offer.key === 'ebay' && offer.source === 'ebay-worker') {
+                        return !hasNativeMerchant(['ebay', 'ebay.de']);
+                    }
                     if (offer.key === 'mueller-search') {
                         return !hasNativeMerchant(['müller', 'mueller']);
                     }
@@ -4950,8 +4957,77 @@
 
             void readStoredValue(BM_WORKER_TOKEN_STORAGE_KEY, '').then(workerToken => {
                 if (String(workerToken).length < 24) return;
+
+                const ean = document.querySelector(
+                    '.bm-ean-line-link[data-ean]'
+                )?.dataset.ean || Array.from(
+                    document.querySelectorAll('.content.setdetails p')
+                ).find(paragraph => /EAN\s*:/i.test(paragraph.textContent || ''))
+                    ?.textContent.match(/EAN\s*:\s*(\d{8}|\d{12,14})/i)?.[1] || '';
+
+                if (/^\d{8}$|^\d{12,14}$/.test(ean)) {
+                    cachedGmRequest(
+                        makeApiCacheKey('ebay-worker-new-ovp', ean),
+                        KLAZ_CLIENT_CACHE_TTL,
+                        {
+                            method: 'GET',
+                            url: `${BM_WORKER_URL}/price?ean=${encodeURIComponent(ean)}`,
+                            headers: {
+                                'Accept': 'application/json',
+                                'Authorization': `Bearer ${workerToken}`
+                            },
+                            timeout: 15000,
+                            onload: response => {
+                                let result;
+                                try {
+                                    result = JSON.parse(response.responseText);
+                                } catch (error) {
+                                    console.warn(
+                                        'Brickmerge Tweaker: Ungültige eBay-Antwort des Preis-Workers.'
+                                    );
+                                    return;
+                                }
+                                if (!result?.found || !result.cheapest) return;
+
+                                const cheapest = result.cheapest;
+                                const shipping = Number(cheapest.shipping);
+                                const itemPrice = Number(cheapest.itemPrice);
+                                if (!Number.isFinite(itemPrice) ||
+                                    !Number.isFinite(shipping)) return;
+                                const offer = createOffer(
+                                    'btn-ebay',
+                                    'eBay',
+                                    `${formatEuroValue(itemPrice)} €`,
+                                    new URL(
+                                        '/img/merchants/ebay.de_ico.gif',
+                                        window.location.origin
+                                    ).href,
+                                    'ebay-worker',
+                                    `eBay: günstigstes von ${result.comparedOffers} neuen Angeboten; ${cheapest.title}`,
+                                    {
+                                        url: cheapest.url,
+                                        shippingStatus: shipping <= 0.004 ? 'free' : 'paid',
+                                        shippingCost: shipping
+                                    }
+                                );
+                                if (offer) storeOffers([offer]);
+                            },
+                            onerror: () => {
+                                console.warn(
+                                    'Brickmerge Tweaker: eBay-Abfrage beim Preis-Worker fehlgeschlagen.'
+                                );
+                            },
+                            ontimeout: () => {
+                                console.warn(
+                                    'Brickmerge Tweaker: eBay-Abfrage beim Preis-Worker - Timeout.'
+                                );
+                            }
+                        }
+                    );
+                }
+
                 cachedGmRequest(
-                    makeApiCacheKey('kleinanzeigen-worker-neu-ovp', setNumber),
+                    makeApiCacheKey('kleinanzeigen-worker-neu-ovp-v2', setNumber),
                     KLAZ_CLIENT_CACHE_TTL,
                     {
                         method: 'GET',
@@ -4997,7 +5073,7 @@
                                 'btn-kleinanzeigen',
                                 'Kleinanzeigen',
                                 `${formatEuroValue(Number(cheapest.price))} €`,
-                                'https://www.google.com/s2/favicons?sz=128&domain_url=kleinanzeigen.de',
+                                'https://themen.kleinanzeigen.de/media/files/d6/3e/d63e6861-498c-4123-a08d-6f8033055581/ka_horizontal_lightgreen_rgb.png',
                                 'kleinanzeigen-worker',
                                 details,
                                 {
@@ -8050,6 +8126,9 @@
                 image.className = 'bm-marketplace-logo';
                 if (offer.key === 'amz') image.classList.add('bm-keepa-logo');
                 if (offer.key === 'bo') image.classList.add('bm-brickowl-logo');
+                if (offer.key === 'kleinanzeigen') {
+                    image.classList.add('bm-kleinanzeigen-logo');
+                }
                 image.loading = 'lazy';
                 image.decoding = 'async';
                 image.referrerPolicy = 'no-referrer';
