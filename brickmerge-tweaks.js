@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.20
+// @version      4.21
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -11,11 +11,14 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
+// @grant        GM_registerMenuCommand
 // @grant        GM_xmlhttpRequest
 // @grant        GM.getValue
 // @grant        GM.setValue
 // @grant        GM.deleteValue
+// @grant        GM.registerMenuCommand
 // @grant        GM.xmlHttpRequest
+// @connect      api.kleinanzeigen-agent.de
 // @connect      www.bricklink.com
 // @connect      bricklink.com
 // @connect      www.brickowl.com
@@ -44,6 +47,7 @@
     const MINIFIG_PRICE_CACHE_TTL = 24 * 60 * 60 * 1000;
     const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-v5';
     const REBRICKABLE_API_KEY_STORAGE_KEY = 'brickmerge-rebrickable-api-key-v1';
+    const KLAZ_API_KEY_STORAGE_KEY = 'brickmerge-klaz-api-key-v1';
     const REBRICKABLE_MINIFIG_CACHE_TTL = 24 * 60 * 60 * 1000;
     const cacheRequestsInFlight = new Map();
     const animatedMarketplaceOfferKeys = new Set();
@@ -92,6 +96,41 @@
             : typeof gmApi?.deleteValue === 'function'
                 ? Promise.resolve(gmApi.deleteValue(key))
                 : Promise.resolve(removeLocalFallback(key));
+
+    function registerKlazApiKeyMenu() {
+        const registerMenuCommand = typeof GM_registerMenuCommand === 'function'
+            ? GM_registerMenuCommand
+            : typeof gmApi?.registerMenuCommand === 'function'
+                ? gmApi.registerMenuCommand.bind(gmApi)
+                : null;
+        if (!registerMenuCommand) return;
+
+        registerMenuCommand('Kleinanzeigen API-Key einrichten', async () => {
+            const currentKey = await readStoredValue(KLAZ_API_KEY_STORAGE_KEY, '');
+            const input = window.prompt(
+                currentKey
+                    ? 'Neuen klaz_live_… API-Key eingeben. "LÖSCHEN" entfernt den gespeicherten Key.'
+                    : 'Kleinanzeigen-Agent API-Key (klaz_live_…) eingeben:',
+                ''
+            );
+            if (input === null) return;
+
+            const key = input.trim();
+            if (key.toLocaleUpperCase('de') === 'LÖSCHEN') {
+                await deleteStoredValue(KLAZ_API_KEY_STORAGE_KEY);
+                window.alert('Der Kleinanzeigen API-Key wurde lokal gelöscht.');
+                return;
+            }
+            if (!/^klaz_live_[A-Za-z0-9_-]+$/.test(key)) {
+                window.alert('Der API-Key ist ungültig. Erwartet wird ein Key mit klaz_live_.');
+                return;
+            }
+
+            await writeStoredValue(KLAZ_API_KEY_STORAGE_KEY, key);
+            window.alert('Der API-Key wurde nur lokal in Tampermonkey gespeichert. Seite neu laden.');
+        });
+    }
+    registerKlazApiKeyMenu();
 
     function requestWithGm(details) {
         if (typeof GM_xmlhttpRequest === 'function') {
@@ -4176,7 +4215,7 @@
                 title: "Marktplätze",
                 links: [
                     { id: "btn-ebay", name: "eBay", url: `https://www.ebay.de/sch/i.html?_dcat=19006&_fsrp=1&_from=R40&_nkw=lego+${setNum}&_sacat=0&LH_BIN=1&LH_PrefLoc=1&LH_ItemCondition=1000&_sop=15`, icon: icon("ebay.de") },
-                    { name: "Kleinanzeigen", url: `https://www.kleinanzeigen.de/s-spielzeug/sortierung:preis/lego-${setNum}/k0c23+spielzeug.condition_s:new`, icon: icon("kleinanzeigen.de") },
+                    { id: "btn-kleinanzeigen", name: "Kleinanzeigen", url: `https://www.kleinanzeigen.de/s-spielzeug/sortierung:preis/lego-${setNum}/k0c23+spielzeug.condition_s:new`, icon: icon("kleinanzeigen.de") },
                     { name: "Vinted", url: `https://www.vinted.de/catalog?search_text=lego+${setNum}`, icon: icon("vinted.de") },
                     { name: "StockX", url: `https://www.google.com/search?q=site%3Astockx.com/de+lego+${setNum}&btnI=1`, icon: icon("stockx.com") },
                     { id: "btn-bo", name: "BrickOwl", url: brickOwlSearchUrl(setNum), icon: icon("brickowl.com") },
@@ -4948,6 +4987,131 @@
                     ...extra
                 };
             };
+
+            function parseKleinanzeigenOffers(jsonText, expectedSetNumber) {
+                let payload;
+                try {
+                    payload = JSON.parse(jsonText);
+                } catch (error) {
+                    return null;
+                }
+
+                const escapedSetNumber = String(expectedSetNumber)
+                    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const setNumberPattern = new RegExp(
+                    `(?:^|[^0-9])${escapedSetNumber}(?:[^0-9]|$)`
+                );
+                const sealedPattern = /\b(?:ovp|originalverpackt|originalverpackung|ungeöffnet|unopened|versiegelt|verschweißt|sealed)\b/i;
+                const ads = Array.isArray(payload?.data?.ads)
+                    ? payload.data.ads
+                    : [];
+                const matchingAds = ads.map(ad => {
+                    const title = String(ad?.title || '');
+                    const description = String(ad?.description || '');
+                    const searchText = `${title} ${description}`;
+                    const price = Number(ad?.price?.amount);
+                    const url = String(ad?.ad_url || '').trim();
+                    if (
+                        !setNumberPattern.test(searchText) ||
+                        !sealedPattern.test(searchText) ||
+                        !Number.isFinite(price) ||
+                        price <= 0 ||
+                        !url ||
+                        ad?.status === 'DELETED' ||
+                        ad?.deleted === true
+                    ) {
+                        return null;
+                    }
+
+                    return {
+                        title,
+                        price,
+                        url,
+                        city: String(ad?.location?.city || ad?.location?.name || '').trim(),
+                        negotiable: ad?.price?.negotiable === true,
+                        shippingAvailable: ad?.shipping_available === true
+                    };
+                }).filter(Boolean).sort((a, b) => a.price - b.price);
+
+                if (matchingAds.length === 0) return null;
+                return {
+                    ...matchingAds[0],
+                    totalMatches: matchingAds.length
+                };
+            }
+
+            void readStoredValue(KLAZ_API_KEY_STORAGE_KEY, '').then(apiKey => {
+                if (!/^klaz_live_[A-Za-z0-9_-]+$/.test(String(apiKey))) return;
+
+                const searchUrl = new URL(
+                    'https://api.kleinanzeigen-agent.de/api/v2/kleinanzeigen/search'
+                );
+                searchUrl.searchParams.set('q', `LEGO ${setNumber}`);
+                searchUrl.searchParams.set('size', '100');
+                searchUrl.searchParams.set('category_id', '23');
+                searchUrl.searchParams.set('picture_required', 'true');
+                searchUrl.searchParams.set('attr[condition]', 'new');
+
+                cachedGmRequest(
+                    makeApiCacheKey('kleinanzeigen-agent-neu-ovp', setNumber),
+                    OFFER_CACHE_TTL,
+                    {
+                        method: 'GET',
+                        url: searchUrl.href,
+                        headers: {
+                            'Accept': 'application/json',
+                            'klaz_key': apiKey
+                        },
+                        timeout: 15000,
+                        onload: response => {
+                            const result = parseKleinanzeigenOffers(
+                                response.responseText,
+                                setNumber
+                            );
+                            if (!result) {
+                                console.info(
+                                    'Brickmerge Tweaker: Keine deutschlandweiten Kleinanzeigen-Angebote für dieses Set in neu & OVP gefunden.'
+                                );
+                                return;
+                            }
+
+                            const details = [
+                                `Kleinanzeigen Agent: günstigstes von ${result.totalMatches} passenden deutschlandweiten Angeboten in neu & OVP`,
+                                result.city ? `Ort: ${result.city}` : '',
+                                result.negotiable ? 'Verhandlungsbasis' : '',
+                                result.shippingAvailable
+                                    ? 'Versand möglich; Versandkosten unbekannt'
+                                    : 'Versand nicht bestätigt',
+                                `Titel: ${result.title}`
+                            ].filter(Boolean).join('; ');
+                            const offer = createOffer(
+                                'btn-kleinanzeigen',
+                                'Kleinanzeigen',
+                                `${formatEuroValue(result.price)} €`,
+                                'https://www.google.com/s2/favicons?sz=128&domain_url=kleinanzeigen.de',
+                                'kleinanzeigen-agent',
+                                details,
+                                {
+                                    url: result.url,
+                                    shippingStatus: 'unknown',
+                                    shippingCost: null
+                                }
+                            );
+                            if (offer) storeOffers([offer]);
+                        },
+                        onerror: () => {
+                            console.warn(
+                                'Brickmerge Tweaker: Kleinanzeigen-Agent-Abfrage fehlgeschlagen. API-Key, Credits und Rate-Limit prüfen.'
+                            );
+                        },
+                        ontimeout: () => {
+                            console.warn(
+                                'Brickmerge Tweaker: Kleinanzeigen-Agent-Abfrage - Timeout.'
+                            );
+                        }
+                    }
+                );
+            });
 
             cachedGmRequest(
                 makeApiCacheKey('mybrickdepot', setNumber),

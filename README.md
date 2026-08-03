@@ -15,7 +15,7 @@ All-Time-Bestpreis-Tracking (ATB): Sucht den historischen Bestpreis aus den Seit
 🔗 4. Quick-Links:
 Fügt unter der Preisliste einen scrollbaren Bereich mit Direktlinks für das jeweilige LEGO-Set ein, unterteilt in Kategorien.
 
-🛠️ 5. Zusätzliche Marktplatz-Preise: Das Skript fragt im Hintergrund weitere Marktpreise von Amazon, Smyths Toys, Brickowl und Bricklink ab und fügt diese nahtlos als neue Zeilen in die Brickmerge-Preisliste ein.
+🛠️ 5. Zusätzliche Marktplatz-Preise: Das Skript fragt im Hintergrund weitere Marktpreise von Amazon, Smyths Toys, Kleinanzeigen, Brickowl und Bricklink ab und fügt diese nahtlos als neue Zeilen in die Brickmerge-Preisliste ein. Bei Kleinanzeigen wird deutschlandweit nach dem günstigsten passenden LEGO-Set in neuem und originalverpacktem Zustand gesucht.
 
 🧍 6. Minifiguren-Overlay: Macht das Wort „Minifiguren“ in den Texten anklickbar. Ein Klick öffnet ein Overlay, das in Echtzeit die genaue Liste der im Set enthaltenen Minifiguren (inklusive Bildern und Preisen) direkt von Rebrickable und Bricklink lädt.
 
@@ -34,8 +34,15 @@ KI-Preisvergleich: Ein Klick auf den "Meta-GPT"-Link generiert einen Such-Prompt
 * Die angeforderten Verbindungsberechtigungen bestätigen. Sie werden für die zusätzlichen Preis- und Produktabfragen benötigt.
 Aktualisierungen werden anschließend über die im Userscript hinterlegte GitHub-Adresse angeboten.
 
+## Kleinanzeigen-Agent API
+* Im Kleinanzeigen-Agent-Dashboard einen API-Key erzeugen.
+* In Tampermonkey beim „Brickmerge Tweaker“ den Menüpunkt „Kleinanzeigen API-Key einrichten“ öffnen.
+* Den `klaz_live_…`-Key dort einmal einfügen und die Brickmerge-Seite neu laden.
+
+Der Key wird nur lokal im Userscript-Speicher abgelegt und nicht in dieses Repository geschrieben. Jede noch nicht zwischengespeicherte Set-Suche verbraucht einen API-Credit; Ergebnisse werden zwei Stunden gespeichert.
+
 # Hinweise
 Preise und Verfügbarkeiten können sich zwischen Abfrage und Händlerseite ändern.
 Persönliche Rabatte werden ausschließlich lokal im Browser gespeichert.
-Externe Preis- und Produktdaten stammen unter anderem von BrickLink, BrickOwl, Rebrickable, Brickbank, Keepa und MyBrickDepot.
+Externe Preis- und Produktdaten stammen unter anderem von BrickLink, BrickOwl, Rebrickable, Brickbank, Keepa, Kleinanzeigen Agent und MyBrickDepot.
 Das Projekt ist eine private Erweiterung und steht in keiner Verbindung zu Brickmerge oder der LEGO Gruppe.
