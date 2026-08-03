@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.30
+// @version      4.31
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -685,6 +685,31 @@
             > .medium-4.small-9.columns.pricerow {
             background-color: #fff3bf !important;
         }
+        #offerlist .row.collapse.bm-marketplace-offer:hover
+            > .goto.small-3.columns,
+        #offerlist .row.collapse.bm-marketplace-offer:hover
+            > .goto.small-3.columns > .pricerow,
+        #offerlist .row.collapse.bm-marketplace-offer:hover
+            > .medium-4.small-9.columns.pricerow {
+            background-color: #800 !important;
+        }
+        #offerlist .row.collapse.bm-marketplace-offer:hover
+            > .medium-4.small-9.columns.pricerow > a,
+        #offerlist .row.collapse.bm-marketplace-offer:hover
+            > .medium-4.small-9.columns.pricerow span.price,
+        #offerlist .row.collapse.bm-marketplace-offer:hover
+            > .medium-4.small-9.columns.pricerow span.price
+                > :not(.bm-total-discount-bubble),
+        #offerlist .row.collapse.bm-marketplace-offer:hover
+            .bm-original-price,
+        #offerlist .row.collapse.bm-marketplace-offer:hover
+            .bm-effective-info,
+        #offerlist .row.collapse.bm-marketplace-offer:hover
+            .bm-shipping-info,
+        #offerlist .row.collapse.bm-marketplace-offer:hover
+            .bm-shipping-unknown {
+            color: #fff !important;
+        }
         #offerlist .row.collapse.bm-sold-out-offer {
             position: relative;
             box-shadow: inset 3px 0 0 #777;
@@ -750,8 +775,10 @@
             max-height: 18px;
         }
         #offerlist .bm-marketplace-logo.bm-kleinanzeigen-logo {
-            max-width: 82px;
-            max-height: 22px;
+            width: calc(100% - 8px);
+            max-width: 70px;
+            max-height: 20px;
+            box-sizing: border-box;
         }
         #offerlist .bm-marketplace-logo-link {
             display: inline-flex !important;
@@ -5395,10 +5422,42 @@
     // ==========================================
     // 3. COPY-ICON & MINIFIGUREN-OVERLAY
     // ==========================================
+    function labelNativeEbayOffer() {
+        const nativePriceRows = document.querySelectorAll(
+            '#offerlist .medium-4.small-9.columns.pricerow[data-mid]' +
+            ':not([data-bm-marketplace="true"])'
+        );
+        nativePriceRows.forEach(priceRow => {
+            if (priceRow.closest('#soldOut') ||
+                priceRow.dataset.bmSoldOut === 'true') return;
+
+            const wrapper = priceRow.closest('.row.collapse');
+            const merchant = priceRow.querySelector('.merchant')?.textContent || '';
+            const logo = wrapper?.querySelector('.goto img[alt]')?.alt || '';
+            const tooltip = priceRow.querySelector(':scope > a')?.getAttribute('title') || '';
+            if (!/(?:^|\s|zu\s)ebay(?:\.de)?(?:\s|$)/i.test(
+                `${merchant} ${logo} ${tooltip}`
+            )) return;
+
+            const logoLink = wrapper?.querySelector('.goto a');
+            const logoImage = logoLink?.querySelector('img');
+            if (!logoLink || !logoImage ||
+                logoLink.querySelector('.bm-marketplace-logo-caption')) return;
+
+            logoLink.classList.add('bm-marketplace-logo-link');
+            const caption = document.createElement('span');
+            caption.className = 'bm-marketplace-logo-caption';
+            caption.textContent = 'gewerblich';
+            caption.title = 'gewerbliches eBay-Angebot';
+            logoImage.after(caption);
+        });
+    }
+
     function runOfferPresentationSteps() {
         [
             removeCorrectionReportButtons,
             removeOfferListPriceDecorations,
+            labelNativeEbayOffer,
             injectShippingCostsFromOfferTitles,
             applyRetailerDiscounts,
             sortOffersByConfiguredPrice,
