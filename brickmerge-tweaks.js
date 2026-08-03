@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.26
+// @version      4.27
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -760,6 +760,28 @@
         #offerlist .bm-marketplace-logo.bm-kleinanzeigen-logo {
             max-width: 82px;
             max-height: 22px;
+        }
+        #offerlist .bm-marketplace-logo-link {
+            display: inline-flex !important;
+            max-width: 100%;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            text-decoration: none !important;
+        }
+        #offerlist .bm-marketplace-logo-caption {
+            display: block;
+            max-width: 76px;
+            overflow: hidden;
+            color: #666;
+            font-size: 0.52rem;
+            font-weight: 600;
+            line-height: 1.1;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #offerlist .row.collapse:hover .bm-marketplace-logo-caption {
+            color: #fff;
         }
         #offerlist .bm-shipping-info {
             display: inline !important;
@@ -5008,7 +5030,8 @@
                                     {
                                         url: cheapest.url,
                                         shippingStatus: shipping <= 0.004 ? 'free' : 'paid',
-                                        shippingCost: shipping
+                                        shippingCost: shipping,
+                                        logoCaption: String(cheapest.seller || '').trim()
                                     }
                                 );
                                 if (offer) storeOffers([offer]);
@@ -8120,6 +8143,10 @@
             iconLink.target = '_blank';
             iconLink.rel = 'noopener noreferrer';
             iconLink.title = `${offer.label} öffnen`;
+            if (offer.logoCaption) {
+                iconLink.classList.add('bm-marketplace-logo-link');
+                iconLink.title = `${offer.label} bei ${offer.logoCaption} öffnen`;
+            }
             if (offer.logoUrl) {
                 const image = document.createElement('img');
                 image.src = offer.logoUrl;
@@ -8141,6 +8168,13 @@
                     }, { once: true });
                 }
                 iconLink.appendChild(image);
+                if (offer.logoCaption) {
+                    const caption = document.createElement('span');
+                    caption.className = 'bm-marketplace-logo-caption';
+                    caption.textContent = offer.logoCaption;
+                    caption.title = offer.logoCaption;
+                    iconLink.appendChild(caption);
+                }
             } else {
                 iconLink.textContent = offer.label.slice(0, 1);
             }
