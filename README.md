@@ -44,5 +44,5 @@ Der Key wird nur lokal im Userscript-Speicher abgelegt und nicht in dieses Repos
 # Hinweise
 Preise und Verfügbarkeiten können sich zwischen Abfrage und Händlerseite ändern.
 Persönliche Rabatte werden ausschließlich lokal im Browser gespeichert.
-Externe Preis- und Produktdaten stammen unter anderem von BrickLink, BrickOwl, Rebrickable, Brickbank, Keepa, Kleinanzeigen Agent und MyBrickDepot.
+Externe Preis- und Produktdaten stammen unter anderem von BrickLink, BrickOwl, Rebrickable, Brickbank, Keepa und Kleinanzeigen Agent.
 Das Projekt ist eine private Erweiterung und steht in keiner Verbindung zu Brickmerge oder der LEGO Gruppe.

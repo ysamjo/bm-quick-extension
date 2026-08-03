@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.21
+// @version      4.22
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -26,7 +26,6 @@
 // @connect      *.brickowl.com
 // @connect      www.rebrickable.com
 // @connect      rebrickable.com
-// @connect      mybrickdepot.de
 // @connect      brickbank.app
 // @connect      duckduckgo.com
 // @run-at       document-end
@@ -545,14 +544,9 @@
                 .find(([, discount]) => String(discount.mid) === String(mid));
             const key = knownEntry?.[0] || `mid:${mid}`;
             const knownDiscount = knownEntry?.[1];
-            const isMyBrickDepotEbay =
-                priceRow.dataset.bmSource === 'mybrickdepot' &&
-                String(mid) === 'mbd-ebay';
-            const label = isMyBrickDepotEbay
-                ? 'eBay (MyBrickDepot)'
-                : getOfferMerchantName(priceSpan) ||
-                    knownDiscount?.label ||
-                    `Händler ${mid}`;
+            const label = getOfferMerchantName(priceSpan) ||
+                knownDiscount?.label ||
+                `Händler ${mid}`;
 
             catalog.set(key, {
                 key,
@@ -764,29 +758,6 @@
             background: #4a3527;
             border-radius: 2px;
             box-sizing: content-box;
-        }
-        #offerlist .bm-mbd-logo-stack {
-            display: flex !important;
-            height: 100%;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            line-height: 1 !important;
-        }
-        #offerlist .bm-mbd-source-label {
-            display: block;
-            margin-bottom: 1px;
-            color: #666;
-            font-size: 0.46rem;
-            font-weight: 600;
-            line-height: 0.52rem;
-            white-space: nowrap;
-        }
-        #offerlist .bm-mbd-logo-stack .bm-marketplace-logo {
-            max-height: 15px;
-        }
-        #offerlist .pricerow:hover .bm-mbd-source-label {
-            color: #fff;
         }
         #offerlist .bm-shipping-info {
             display: inline !important;
@@ -4728,9 +4699,6 @@
                     if (offer.key === 'amz') {
                         return !hasNativeMerchant(['amazon']);
                     }
-                    if (offer.key === 'ebay' && offer.source === 'mybrickdepot') {
-                        return !hasNativeMerchant(['ebay', 'ebay.de']);
-                    }
                     if (offer.key === 'mueller-search') {
                         return !hasNativeMerchant(['müller', 'mueller']);
                     }
@@ -4759,16 +4727,6 @@
                 },
             ];
             storeOffers(directSearchOffers);
-            function extractPrice(html, regex) {
-                const match = html.match(regex);
-                return match ? match[1] + ' €' : '';
-            }
-            function parseMyBrickHtml(html) {
-                return {
-                    ebay: extractPrice(html, /eBay Preis(?:[^0-9]+)?(\d+(?:,\d+)?)/i),
-                    amazon: extractPrice(html, /Amazon Preis(?:[^0-9]+)?(\d+(?:,\d+)?)/i)
-                };
-            }
             function parseBrickbankVendorOffer(jsonText, vendorPattern) {
                 let payload;
                 try {
@@ -5111,64 +5069,6 @@
                         }
                     }
                 );
-            });
-
-            cachedGmRequest(
-                makeApiCacheKey('mybrickdepot', setNumber),
-                OFFER_CACHE_TTL,
-                {
-                method: "GET",
-                url: "https://mybrickdepot.de/product/" + setNumber,
-                headers: { "User-Agent": "Mozilla/5.0" },
-                onload: function(response) {
-                    if (response.status === 200) {
-                        const html = response.responseText;
-                        const prices = parseMyBrickHtml(html);
-                        const findMerchantLogo = (aliases, fallbackPath) => {
-                            const normalizedAliases = aliases.map(alias =>
-                                alias.trim().toLocaleLowerCase('de')
-                            );
-                            const image = Array.from(
-                                document.querySelectorAll('#offerlist .goto img[alt]')
-                            ).find(candidate =>
-                                normalizedAliases.includes(
-                                    candidate.alt.trim().toLocaleLowerCase('de')
-                                )
-                            );
-                            return image?.src || new URL(fallbackPath, window.location.origin).href;
-                        };
-                        const logos = {
-                            ebay: findMerchantLogo(
-                                ['eBay.de', 'eBay'],
-                                '/img/merchants/ebay.de_ico.gif'
-                            ),
-                            keepa: 'https://upload.wikimedia.org/wikipedia/commons/7/79/Keepa-logo.svg'
-                        };
-                        const offers = [
-                            createOffer(
-                                'btn-ebay',
-                                'eBay',
-                                prices.ebay,
-                                logos.ebay,
-                                'mybrickdepot'
-                            ),
-                            createOffer(
-                                'btn-amz',
-                                'Keepa',
-                                prices.amazon,
-                                logos.keepa,
-                                'mybrickdepot'
-                            )
-                        ].filter(Boolean);
-                        storeOffers(offers);
-                    }
-                },
-                onerror: function() {
-                    console.warn("Brickmerge Toolkit: Preisabfrage bei MyBrickDepot fehlgeschlagen.");
-                },
-                ontimeout: function() {
-                    console.warn("Brickmerge Toolkit: Preisabfrage bei MyBrickDepot - Timeout.");
-                }
             });
 
             cachedGmRequest(
@@ -8174,9 +8074,7 @@
             const animateEntry = !animatedMarketplaceOfferKeys.has(animationKey);
             animatedMarketplaceOfferKeys.add(animationKey);
 
-            const mid = offer.source === 'mybrickdepot'
-                ? `mbd-${offer.key}`
-                : `market-${offer.key}`;
+            const mid = `market-${offer.key}`;
             const wrapper = document.createElement('div');
             wrapper.className = 'row collapse bm-marketplace-offer';
             if (animateEntry) wrapper.classList.add('bm-offer-entering');
@@ -8194,13 +8092,6 @@
             iconLink.target = '_blank';
             iconLink.rel = 'noopener noreferrer';
             iconLink.title = `${offer.label} öffnen`;
-            if (offer.key === 'ebay' && offer.source === 'mybrickdepot') {
-                iconLink.classList.add('bm-mbd-logo-stack');
-                const sourceLabel = document.createElement('span');
-                sourceLabel.className = 'bm-mbd-source-label';
-                sourceLabel.textContent = 'MyBrickDepot';
-                iconLink.appendChild(sourceLabel);
-            }
             if (offer.logoUrl) {
                 const image = document.createElement('img');
                 image.src = offer.logoUrl;
