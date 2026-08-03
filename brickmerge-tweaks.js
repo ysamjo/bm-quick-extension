@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.24
+// @version      4.25
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -754,12 +754,8 @@
             box-sizing: content-box;
         }
         #offerlist .bm-marketplace-logo.bm-brickowl-logo {
-            max-width: 54px;
-            max-height: 16px;
-            padding: 1px 3px;
-            background: #4a3527;
-            border-radius: 2px;
-            box-sizing: content-box;
+            max-width: 74px;
+            max-height: 18px;
         }
         #offerlist .bm-marketplace-logo.bm-kleinanzeigen-logo {
             max-width: 82px;
@@ -5369,7 +5365,7 @@
                             'btn-bo',
                             'BrickOwl',
                             `${formatEuroValue(brickOwlOffer.price)} €`,
-                            'https://img.brickowl.com/sites/default/themes/bs_ss/images/logo-svg-v3-shifted.svg',
+                            'https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickowl-offerlist.png',
                             'brickowl-de',
                             `BrickOwl: günstigstes aktuelles Neupreis-Angebot bei deutschen Händlern aus ${brickOwlOffer.totalLots} Angeboten${sellerDescription}${shippingDescription}`,
                             {
