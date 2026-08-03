@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.29
+// @version      4.30
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -5023,7 +5023,7 @@
                 }
 
                 cachedGmRequest(
-                    makeApiCacheKey('kleinanzeigen-worker-neu-ovp-v2', setNumber),
+                    makeApiCacheKey('kleinanzeigen-worker-condition-new-v3', setNumber),
                     KLAZ_CLIENT_CACHE_TTL,
                     {
                         method: 'GET',
@@ -5047,14 +5047,14 @@
                             }
                             if (!result?.found || !result.cheapest) {
                                 console.info(
-                                    'Brickmerge Tweaker: Keine deutschlandweiten Kleinanzeigen-Angebote für dieses Set in neu & OVP gefunden.'
+                                    'Brickmerge Tweaker: Keine deutschlandweiten Kleinanzeigen-Angebote für dieses Set mit Zustand Neu gefunden.'
                                 );
                                 return;
                             }
 
                             const cheapest = result.cheapest;
                             const details = [
-                                `Kleinanzeigen: günstigstes von ${result.comparedOffers} passenden deutschlandweiten Angeboten in neu & OVP`,
+                                `Kleinanzeigen: günstigstes von ${result.comparedOffers} passenden deutschlandweiten Angeboten mit Zustand Neu`,
                                 cheapest.city ? `Ort: ${cheapest.city}` : '',
                                 cheapest.negotiable ? 'Verhandlungsbasis' : '',
                                 cheapest.shippingAvailable
