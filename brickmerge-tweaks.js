@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.33
+// @version      4.34
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -5074,7 +5074,7 @@
 
                 cachedGmRequest(
                     makeApiCacheKey(
-                        'kleinanzeigen-worker-condition-new-v4',
+                        'kleinanzeigen-worker-condition-new-v5',
                         `${setNumber}:${kleinanzeigenReference}`
                     ),
                     KLAZ_CLIENT_CACHE_TTL,
@@ -5107,7 +5107,7 @@
                             const details = [
                                 `Kleinanzeigen: günstigstes von ${result.comparedOffers} passenden deutschlandweiten Angeboten mit Zustand Neu`,
                                 Number.isFinite(Number(result.minimumReferencePrice))
-                                    ? `Mindestpreisfilter: ${formatEuroValue(Number(result.minimumReferencePrice))} € (30% des Brickmerge-Bestpreises)`
+                                    ? `Mindestpreisfilter: ${formatEuroValue(Number(result.minimumReferencePrice))} € (50% des Brickmerge-Bestpreises)`
                                     : '',
                                 cheapest.city ? `Ort: ${cheapest.city}` : '',
                                 cheapest.negotiable ? 'Verhandlungsbasis' : '',
