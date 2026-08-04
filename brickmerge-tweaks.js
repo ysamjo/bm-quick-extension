@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.34
+// @version      4.35
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -46,6 +46,7 @@
     const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-v5';
     const REBRICKABLE_API_KEY_STORAGE_KEY = 'brickmerge-rebrickable-api-key-v1';
     const BM_WORKER_CLIENT_ID_STORAGE_KEY = 'brickmerge-worker-client-id-v1';
+    const KLAZ_MANUAL_LOAD_STORAGE_KEY = 'brickmerge-kleinanzeigen-manual-load-v1';
     const BM_WORKER_URL = 'https://ebay-price-api.andreas-9b7.workers.dev';
     const REBRICKABLE_MINIFIG_CACHE_TTL = 24 * 60 * 60 * 1000;
     const cacheRequestsInFlight = new Map();
@@ -524,6 +525,33 @@
     };
     const LEGACY_RETAILER_SETTINGS_KEY = 'brickmerge-toolkit-retailer-discounts-v1';
     const PERSONAL_DISCOUNT_SETTINGS_KEY = 'brickmerge-toolkit-personal-discounts-v2';
+
+    function isKleinanzeigenManualLoadEnabled() {
+        try {
+            const stored = localStorage.getItem(KLAZ_MANUAL_LOAD_STORAGE_KEY);
+            return stored === null ? true : JSON.parse(stored) !== false;
+        } catch (error) {
+            return true;
+        }
+    }
+
+    function saveKleinanzeigenManualLoadEnabled(enabled) {
+        try {
+            localStorage.setItem(
+                KLAZ_MANUAL_LOAD_STORAGE_KEY,
+                JSON.stringify(enabled !== false)
+            );
+        } catch (error) {
+            console.warn(
+                'Brickmerge Tweaker: Kleinanzeigen-Abrufmodus konnte nicht gespeichert werden.'
+            );
+        }
+    }
+
+    function syncKleinanzeigenManualLoadUi() {
+        const button = document.querySelector('.bm-kleinanzeigen-price-load');
+        if (button) button.hidden = !isKleinanzeigenManualLoadEnabled();
+    }
 
     function getRetailerCatalog() {
         const catalog = new Map();
@@ -2075,6 +2103,31 @@
             overflow: auto;
             padding: 0 1rem;
         }
+        .bm-settings-option {
+            display: grid;
+            grid-template-columns: minmax(10rem, 1fr) auto;
+            align-items: center;
+            gap: 0.75rem;
+            min-height: 3.5rem;
+            border-bottom: 1px solid #ddd;
+        }
+        .bm-settings-option > label:first-child {
+            margin: 0;
+            color: #333;
+            font-size: 0.86rem;
+            font-weight: 600;
+        }
+        .bm-settings-option .switch {
+            margin: 0;
+        }
+        .bm-settings-subtitle {
+            margin: 0.9rem 0 0.25rem;
+            color: #555;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
         .bm-settings-row {
             display: grid;
             grid-template-columns: minmax(7rem, 1fr) auto 6.5rem;
@@ -2532,8 +2585,8 @@
                 <span class="bm-discount-toolbar-label">Persönlicher Rabatt</span>
                 <button type="button" class="bm-discount-settings-trigger"
                         aria-haspopup="dialog" aria-controls="bm-discount-settings"
-                        title="Persönlichen Rabatt einstellen"
-                        aria-label="Persönlichen Rabatt einstellen">
+                        title="Tweaker-Einstellungen"
+                        aria-label="Tweaker-Einstellungen öffnen">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <line x1="21" x2="14" y1="4" y2="4"></line>
                         <line x1="10" x2="3" y1="4" y2="4"></line>
@@ -2555,9 +2608,9 @@
         overlay.className = 'bm-settings-overlay';
         overlay.innerHTML = `
             <div class="bm-settings-dialog" role="dialog" aria-modal="true"
-                 aria-labelledby="bm-settings-title">
+                aria-labelledby="bm-settings-title">
                 <div class="bm-settings-header">
-                    <h3 id="bm-settings-title">Persönlicher Rabatt</h3>
+                    <h3 id="bm-settings-title">Tweaker-Einstellungen</h3>
                     <button type="button" class="bm-settings-close"
                             title="Schließen" aria-label="Schließen">×</button>
                 </div>
@@ -2582,8 +2635,31 @@
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
 
-        const populate = settings => {
+        const populate = (
+            settings,
+            manualKleinanzeigen = isKleinanzeigenManualLoadEnabled()
+        ) => {
             body.innerHTML = '';
+            const option = document.createElement('div');
+            option.className = 'bm-settings-option';
+            option.innerHTML = `
+                <label for="bm-kleinanzeigen-manual-load">
+                    Kleinanzeigen nur über €-Symbol abfragen
+                </label>
+                <label class="switch" title="Spart Kleinanzeigen-Credits">
+                    <input id="bm-kleinanzeigen-manual-load" type="checkbox"
+                           aria-label="Kleinanzeigen nur manuell abfragen">
+                    <div class="slider round"></div>
+                </label>
+            `;
+            option.querySelector('input').checked = manualKleinanzeigen !== false;
+            body.appendChild(option);
+
+            const subtitle = document.createElement('div');
+            subtitle.className = 'bm-settings-subtitle';
+            subtitle.textContent = 'Persönliche Händlerrabatte';
+            body.appendChild(subtitle);
+
             getRetailerCatalog().forEach(([key, discount], index) => {
                 const row = document.createElement('div');
                 const checkboxId = `bm-retailer-enabled-${index}`;
@@ -2625,7 +2701,10 @@
         };
 
         const open = () => {
-            populate(loadPersonalDiscountSettings());
+            populate(
+                loadPersonalDiscountSettings(),
+                isKleinanzeigenManualLoadEnabled()
+            );
             overlay.classList.add('is-open');
             document.body.style.setProperty('overflow', 'hidden');
             overlay.querySelector('.bm-settings-close')?.focus();
@@ -2653,7 +2732,7 @@
             if (event.key === 'Escape') close();
         });
         overlay.querySelector('.bm-settings-reset').addEventListener('click', () => {
-            populate(getDefaultPersonalDiscountSettings());
+            populate(getDefaultPersonalDiscountSettings(), true);
         });
         overlay.querySelector('.bm-settings-save').addEventListener('click', () => {
             const previousSettings = loadPersonalDiscountSettings();
@@ -2671,6 +2750,16 @@
                 };
             });
             savePersonalDiscountSettings(settings);
+            const manualKleinanzeigen = overlay.querySelector(
+                '#bm-kleinanzeigen-manual-load'
+            )?.checked !== false;
+            saveKleinanzeigenManualLoadEnabled(manualKleinanzeigen);
+            syncKleinanzeigenManualLoadUi();
+            if (!manualKleinanzeigen) {
+                document.dispatchEvent(new CustomEvent(
+                    'bm-kleinanzeigen-price-load-request'
+                ));
+            }
             document.querySelectorAll('#offerlist .pricerow[data-bm-discount-applied]')
                 .forEach(row => {
                     delete row.dataset.bmDiscountApplied;
@@ -4343,6 +4432,61 @@
         .bm-meta-gpt-trigger {
             border-left: 1px solid #d5d5d5;
         }
+        .bm-kleinanzeigen-dual-link {
+            gap: 0.45rem;
+        }
+        .bm-kleinanzeigen-site-link {
+            display: inline-flex;
+            align-items: center;
+            color: #222 !important;
+            text-decoration: none;
+        }
+        .bm-kleinanzeigen-site-link > img {
+            width: 20px;
+            height: 20px;
+            margin-right: 6px;
+            border-radius: 3px;
+            object-fit: contain;
+        }
+        .bm-kleinanzeigen-price-load {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 1.45em !important;
+            min-width: 1.45em !important;
+            height: 1.45em !important;
+            min-height: 1.45em !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 1px solid currentColor !important;
+            border-radius: 50% !important;
+            color: #c00 !important;
+            background: transparent !important;
+            font: 700 0.78em/1 Arial, sans-serif !important;
+            box-sizing: border-box;
+            cursor: pointer;
+        }
+        .bm-kleinanzeigen-price-load[hidden] {
+            display: none !important;
+        }
+        .bm-kleinanzeigen-price-load:hover,
+        .bm-kleinanzeigen-price-load:focus {
+            color: #fff !important;
+            background: #700 !important;
+            border-color: #700 !important;
+            outline: none;
+        }
+        .bm-kleinanzeigen-price-load.is-loading {
+            color: transparent !important;
+            border-color: #ccc !important;
+            border-top-color: #c00 !important;
+            animation: bm-minifig-value-spin .7s linear infinite;
+            pointer-events: none;
+        }
+        .bm-kleinanzeigen-price-load.is-error {
+            color: #700 !important;
+            border-color: #700 !important;
+        }
         .bm-meta-dual-link:hover span {
             text-decoration: none;
         }
@@ -4558,6 +4702,49 @@
                         continue;
                     }
 
+                    if (id === 'btn-kleinanzeigen') {
+                        const dualLink = document.createElement('span');
+                        dualLink.className =
+                            'bm-link bm-kleinanzeigen-dual-link';
+
+                        const siteLink = document.createElement('a');
+                        siteLink.className = 'bm-kleinanzeigen-site-link';
+                        siteLink.href = url;
+                        siteLink.target = '_blank';
+                        siteLink.rel = 'noopener noreferrer';
+                        siteLink.dataset.bmid = id;
+                        siteLink.dataset.bmDefaultLabel = name;
+                        const image = document.createElement('img');
+                        image.src = icon;
+                        image.alt = '';
+                        const label = document.createElement('span');
+                        label.className = 'bm-link-label';
+                        label.textContent = name;
+                        siteLink.append(image, label);
+
+                        const priceButton = document.createElement('button');
+                        priceButton.type = 'button';
+                        priceButton.className = 'bm-kleinanzeigen-price-load';
+                        priceButton.textContent = '€';
+                        priceButton.title = 'Kleinanzeigen-Preis jetzt abrufen';
+                        priceButton.setAttribute(
+                            'aria-label',
+                            'Kleinanzeigen-Preis jetzt abrufen'
+                        );
+                        priceButton.hidden = !isKleinanzeigenManualLoadEnabled();
+                        priceButton.addEventListener('click', event => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            document.dispatchEvent(new CustomEvent(
+                                'bm-kleinanzeigen-price-load-request'
+                            ));
+                        });
+
+                        dualLink.append(siteLink, priceButton);
+                        row.appendChild(dualLink);
+                        continue;
+                    }
+
                     const a = document.createElement("a");
                     a.href = url; a.target = "_blank"; a.className = "bm-link";
                     if (id) a.dataset.bmid = id;
@@ -4653,6 +4840,7 @@
             }
             setupLinkSliders(box);
             setupMetaGptLink(box);
+            syncKleinanzeigenManualLoadUi();
             syncMarketplaceShortcutLinks();
             const offerlist = document.getElementById('offerlist');
             if (offerlist) {
@@ -5072,13 +5260,36 @@
                     );
                 }
 
-                cachedGmRequest(
-                    makeApiCacheKey(
-                        'kleinanzeigen-worker-condition-new-v5',
-                        `${setNumber}:${kleinanzeigenReference}`
-                    ),
-                    KLAZ_CLIENT_CACHE_TTL,
-                    {
+                let kleinanzeigenRequestStarted = false;
+                const setKleinanzeigenButtonState = (state, title) => {
+                    const button = document.querySelector(
+                        '.bm-kleinanzeigen-price-load'
+                    );
+                    if (!button) return;
+                    button.classList.toggle('is-loading', state === 'loading');
+                    button.classList.toggle('is-error', state === 'error');
+                    button.disabled = state === 'loading' ||
+                        state === 'done' || state === 'empty';
+                    button.textContent = state === 'done'
+                        ? '✓'
+                        : state === 'empty' ? '–' : '€';
+                    button.title = title;
+                    button.setAttribute('aria-label', title);
+                };
+                const requestKleinanzeigenPrice = () => {
+                    if (kleinanzeigenRequestStarted) return;
+                    kleinanzeigenRequestStarted = true;
+                    setKleinanzeigenButtonState(
+                        'loading',
+                        'Kleinanzeigen-Preis wird geladen'
+                    );
+                    cachedGmRequest(
+                        makeApiCacheKey(
+                            'kleinanzeigen-worker-condition-new-v5',
+                            `${setNumber}:${kleinanzeigenReference}`
+                        ),
+                        KLAZ_CLIENT_CACHE_TTL,
+                        {
                         method: 'GET',
                         url: kleinanzeigenUrl.href,
                         headers: {
@@ -5091,12 +5302,21 @@
                             try {
                                 result = JSON.parse(response.responseText);
                             } catch (error) {
+                                kleinanzeigenRequestStarted = false;
+                                setKleinanzeigenButtonState(
+                                    'error',
+                                    'Fehler beim Laden – erneut versuchen'
+                                );
                                 console.warn(
                                     'Brickmerge Tweaker: Ungültige Antwort des Preis-Workers.'
                                 );
                                 return;
                             }
                             if (!result?.found || !result.cheapest) {
+                                setKleinanzeigenButtonState(
+                                    'empty',
+                                    'Kein passendes Kleinanzeigen-Angebot gefunden'
+                                );
                                 console.info(
                                     'Brickmerge Tweaker: Keine deutschlandweiten Kleinanzeigen-Angebote für dieses Set mit Zustand Neu gefunden.'
                                 );
@@ -5132,20 +5352,50 @@
                                     shippingCost: null
                                 }
                             );
-                            if (offer) storeOffers([offer]);
+                            if (offer) {
+                                storeOffers([offer]);
+                                setKleinanzeigenButtonState(
+                                    'done',
+                                    'Kleinanzeigen-Preis geladen'
+                                );
+                            }
                         },
                         onerror: () => {
+                            kleinanzeigenRequestStarted = false;
+                            setKleinanzeigenButtonState(
+                                'error',
+                                'Fehler beim Laden – erneut versuchen'
+                            );
                             console.warn(
                                 'Brickmerge Tweaker: Kleinanzeigen-Abfrage beim Preis-Worker fehlgeschlagen.'
                             );
                         },
                         ontimeout: () => {
+                            kleinanzeigenRequestStarted = false;
+                            setKleinanzeigenButtonState(
+                                'error',
+                                'Zeitüberschreitung – erneut versuchen'
+                            );
                             console.warn(
                                 'Brickmerge Tweaker: Kleinanzeigen-Abfrage beim Preis-Worker - Timeout.'
                             );
                         }
-                    }
+                        }
+                    );
+                };
+
+                document.addEventListener(
+                    'bm-kleinanzeigen-price-load-request',
+                    requestKleinanzeigenPrice
                 );
+                if (isKleinanzeigenManualLoadEnabled()) {
+                    setKleinanzeigenButtonState(
+                        'ready',
+                        'Kleinanzeigen-Preis jetzt abrufen'
+                    );
+                } else {
+                    requestKleinanzeigenPrice();
+                }
             });
 
             cachedGmRequest(
