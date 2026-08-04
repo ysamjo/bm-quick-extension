@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.31
+// @version      4.32
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -11,12 +11,10 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
-// @grant        GM_registerMenuCommand
 // @grant        GM_xmlhttpRequest
 // @grant        GM.getValue
 // @grant        GM.setValue
 // @grant        GM.deleteValue
-// @grant        GM.registerMenuCommand
 // @grant        GM.xmlHttpRequest
 // @connect      ebay-price-api.andreas-9b7.workers.dev
 // @connect      www.bricklink.com
@@ -47,7 +45,7 @@
     const MINIFIG_PRICE_CACHE_TTL = 24 * 60 * 60 * 1000;
     const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-v5';
     const REBRICKABLE_API_KEY_STORAGE_KEY = 'brickmerge-rebrickable-api-key-v1';
-    const BM_WORKER_TOKEN_STORAGE_KEY = 'brickmerge-worker-token-v1';
+    const BM_WORKER_CLIENT_ID_STORAGE_KEY = 'brickmerge-worker-client-id-v1';
     const BM_WORKER_URL = 'https://ebay-price-api.andreas-9b7.workers.dev';
     const REBRICKABLE_MINIFIG_CACHE_TTL = 24 * 60 * 60 * 1000;
     const cacheRequestsInFlight = new Map();
@@ -98,40 +96,38 @@
                 ? Promise.resolve(gmApi.deleteValue(key))
                 : Promise.resolve(removeLocalFallback(key));
 
-    function registerWorkerTokenMenu() {
-        const registerMenuCommand = typeof GM_registerMenuCommand === 'function'
-            ? GM_registerMenuCommand
-            : typeof gmApi?.registerMenuCommand === 'function'
-                ? gmApi.registerMenuCommand.bind(gmApi)
-                : null;
-        if (!registerMenuCommand) return;
-
-        registerMenuCommand('Brickmerge Worker-Zugriffstoken einrichten', async () => {
-            const currentKey = await readStoredValue(BM_WORKER_TOKEN_STORAGE_KEY, '');
-            const input = window.prompt(
-                currentKey
-                    ? 'Neues Worker-Zugriffstoken eingeben. "LÖSCHEN" entfernt das gespeicherte Token.'
-                    : 'Dasselbe Zugriffstoken eingeben, das in Cloudflare als BM_WORKER_TOKEN gespeichert ist:',
-                ''
-            );
-            if (input === null) return;
-
-            const key = input.trim();
-            if (key.toLocaleUpperCase('de') === 'LÖSCHEN') {
-                await deleteStoredValue(BM_WORKER_TOKEN_STORAGE_KEY);
-                window.alert('Das Worker-Zugriffstoken wurde lokal gelöscht.');
-                return;
+    function createWorkerClientId() {
+        if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+        const bytes = new Uint8Array(16);
+        if (window.crypto?.getRandomValues) {
+            window.crypto.getRandomValues(bytes);
+        } else {
+            for (let i = 0; i < bytes.length; i += 1) {
+                bytes[i] = Math.floor(Math.random() * 256);
             }
-            if (key.length < 24) {
-                window.alert('Das Zugriffstoken ist zu kurz. Verwende mindestens 24 Zeichen.');
-                return;
-            }
-
-            await writeStoredValue(BM_WORKER_TOKEN_STORAGE_KEY, key);
-            window.alert('Das Worker-Zugriffstoken wurde nur lokal in Tampermonkey gespeichert. Seite neu laden.');
-        });
+        }
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+        const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0'));
+        return [
+            hex.slice(0, 4).join(''),
+            hex.slice(4, 6).join(''),
+            hex.slice(6, 8).join(''),
+            hex.slice(8, 10).join(''),
+            hex.slice(10, 16).join('')
+        ].join('-');
     }
-    registerWorkerTokenMenu();
+
+    async function getWorkerClientId() {
+        const existing = String(
+            await readStoredValue(BM_WORKER_CLIENT_ID_STORAGE_KEY, '')
+        ).trim();
+        if (/^[a-f0-9-]{36}$/i.test(existing)) return existing;
+
+        const clientId = createWorkerClientId();
+        await writeStoredValue(BM_WORKER_CLIENT_ID_STORAGE_KEY, clientId);
+        return clientId;
+    }
 
     function requestWithGm(details) {
         if (typeof GM_xmlhttpRequest === 'function') {
@@ -4972,9 +4968,7 @@
                 };
             };
 
-            void readStoredValue(BM_WORKER_TOKEN_STORAGE_KEY, '').then(workerToken => {
-                if (String(workerToken).length < 24) return;
-
+            void getWorkerClientId().then(workerClientId => {
                 const ean = document.querySelector(
                     '.bm-ean-line-link[data-ean]'
                 )?.dataset.ean || Array.from(
@@ -4996,7 +4990,7 @@
                                 `&set=${encodeURIComponent(setNumber)}`,
                             headers: {
                                 'Accept': 'application/json',
-                                'Authorization': `Bearer ${workerToken}`
+                                'X-BM-Client-ID': workerClientId
                             },
                             timeout: 15000,
                             onload: response => {
@@ -5059,7 +5053,7 @@
                             encodeURIComponent(setNumber),
                         headers: {
                             'Accept': 'application/json',
-                            'Authorization': `Bearer ${workerToken}`
+                            'X-BM-Client-ID': workerClientId
                         },
                         timeout: 15000,
                         onload: response => {
@@ -5109,7 +5103,7 @@
                         },
                         onerror: () => {
                             console.warn(
-                                'Brickmerge Tweaker: Kleinanzeigen-Abfrage beim Preis-Worker fehlgeschlagen. Worker-Version und Zugriffstoken prüfen.'
+                                'Brickmerge Tweaker: Kleinanzeigen-Abfrage beim Preis-Worker fehlgeschlagen.'
                             );
                         },
                         ontimeout: () => {
