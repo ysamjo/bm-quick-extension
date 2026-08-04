@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      4.32
+// @version      4.33
 // @description  Optimiert Brickmerge mit Preisvergleich, persönlichen Rabatten, Marktplatzlinks und Zusatzinformationen.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -4968,6 +4968,20 @@
                 };
             };
 
+            const getBrickmergeBestPrice = () => {
+                const prices = Array.from(document.querySelectorAll(
+                    '#offerlist .medium-4.small-9.columns.pricerow' +
+                    ':not([data-bm-marketplace="true"])'
+                )).filter(priceRow =>
+                    !priceRow.closest('#soldOut') &&
+                    priceRow.dataset.bmSoldOut !== 'true'
+                ).map(priceRow => {
+                    const priceSpan = priceRow.querySelector('span.price');
+                    return priceSpan ? getBaseOfferPrice(priceSpan) : null;
+                }).filter(price => Number.isFinite(price) && price > 0);
+                return prices.length > 0 ? Math.min(...prices) : null;
+            };
+
             void getWorkerClientId().then(workerClientId => {
                 const ean = document.querySelector(
                     '.bm-ean-line-link[data-ean]'
@@ -5043,14 +5057,30 @@
                     );
                 }
 
+                const brickmergeBestPrice = getBrickmergeBestPrice();
+                const kleinanzeigenReference = brickmergeBestPrice === null
+                    ? 'none'
+                    : brickmergeBestPrice.toFixed(2);
+                const kleinanzeigenUrl = new URL(
+                    `${BM_WORKER_URL}/kleinanzeigen`
+                );
+                kleinanzeigenUrl.searchParams.set('set', setNumber);
+                if (brickmergeBestPrice !== null) {
+                    kleinanzeigenUrl.searchParams.set(
+                        'best',
+                        brickmergeBestPrice.toFixed(2)
+                    );
+                }
+
                 cachedGmRequest(
-                    makeApiCacheKey('kleinanzeigen-worker-condition-new-v3', setNumber),
+                    makeApiCacheKey(
+                        'kleinanzeigen-worker-condition-new-v4',
+                        `${setNumber}:${kleinanzeigenReference}`
+                    ),
                     KLAZ_CLIENT_CACHE_TTL,
                     {
                         method: 'GET',
-                        url:
-                            `${BM_WORKER_URL}/kleinanzeigen?set=` +
-                            encodeURIComponent(setNumber),
+                        url: kleinanzeigenUrl.href,
                         headers: {
                             'Accept': 'application/json',
                             'X-BM-Client-ID': workerClientId
@@ -5076,6 +5106,9 @@
                             const cheapest = result.cheapest;
                             const details = [
                                 `Kleinanzeigen: günstigstes von ${result.comparedOffers} passenden deutschlandweiten Angeboten mit Zustand Neu`,
+                                Number.isFinite(Number(result.minimumReferencePrice))
+                                    ? `Mindestpreisfilter: ${formatEuroValue(Number(result.minimumReferencePrice))} € (30% des Brickmerge-Bestpreises)`
+                                    : '',
                                 cheapest.city ? `Ort: ${cheapest.city}` : '',
                                 cheapest.negotiable ? 'Verhandlungsbasis' : '',
                                 cheapest.shippingAvailable
