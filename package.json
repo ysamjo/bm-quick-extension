@@ -1,0 +1,12 @@
+{
+  "name": "brickmerge-tools-userscript",
+  "version": "5.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync": "node build-userscript.mjs --sync",
+    "build": "node build-userscript.mjs",
+    "check": "node --check brickmerge-tweaks.js && node --test test/*.test.mjs",
+    "test": "npm run build && npm run check"
+  }
+}

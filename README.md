@@ -1,48 +1,37 @@
-# bm-quick-extension
+# Brickmerge Tweaker
 
-Erweiterung für den LEGO-Preisvergleich von Brickmerge.de
+Mobile Userscript-Ausgabe von **Brickmerge Tools**. Sie bringt die Funktionen
+der Chrome-Extension auf Browser mit Tampermonkey- oder Violentmonkey-Unterstützung.
 
-🧹 1. Cleaner:
-Das Skript entfernt störende, werbliche oder überflüssige Elemente.
+## Enthalten
 
-💶 2. Persönliche Rabatte: Hier lassen sich dauerhafte Prozentrabatte für bestimmte Händler (z. B. Mitarbeiterrabatte oder Gutscheine für LEGO, Müller, Thalia) hinterlegen. Das Skript berechnet automatisch den finalen Preis abzüglich des eigenen Rabatts und inklusive der Versandkosten.
-Die Preisliste wird live neu sortiert – basierend auf dem echten Effektivpreis.
+- bereinigte Detail- und Übersichtsseiten ohne sichtbares Nachladen
+- persönliche Händlerrabatte, Versandkosten, Sortierung und Rabatt-Bubbles
+- gemeinsame Marktplatzpreise über den Cloudflare-Worker `getdata`
+- eBay DE/FR, Kleinanzeigen, Vinted, Leboncoin, StockX, Idealo, BrickLink und BrickOwl
+- manueller Abruf weiterer Marktplätze und gemeinsamer Preis-Cache
+- Minifiguren-Overlay mit BrickLink-Preisen für Deutschland und EU
+- Copy-Buttons, Preisverlauf, Quick-Links und Meta-GPT-Übergabe
 
-📊 3. Erweiterte Rabatt- und Bestpreis-Analyse: Das Skript vergleicht das aktuell günstigste Angebot mit dem zweitgünstigsten und zeigt den konkreten prozentualen Preisvorteil in einer schwarzen Blase neben dem Preis an.
+API-Schlüssel und Tokens sind nicht im Userscript enthalten. Sie liegen
+ausschließlich als Secrets in den Cloudflare-Workern.
 
-All-Time-Bestpreis-Tracking (ATB): Sucht den historischen Bestpreis aus den Seitendaten und fügt direkt unter dem Top-Angebot eine farbige Differenzanzeige ein.
+## Installation auf Mobilgeräten
 
-🔗 4. Quick-Links:
-Fügt unter der Preisliste einen scrollbaren Bereich mit Direktlinks für das jeweilige LEGO-Set ein, unterteilt in Kategorien.
+1. Einen mobilen Browser mit Userscript-Unterstützung verwenden.
+2. Tampermonkey oder Violentmonkey installieren.
+3. `brickmerge-tweaks.js` über die Raw-Ansicht auf GitHub öffnen und installieren.
+4. Die angeforderten Verbindungen zum Preis-Worker erlauben.
 
-🛠️ 5. Zusätzliche Marktplatz-Preise: Das Skript fragt im Hintergrund weitere Marktpreise von Amazon, Smyths Toys, Kleinanzeigen, Brickowl und Bricklink ab und fügt diese nahtlos als neue Zeilen in die Brickmerge-Preisliste ein. Bei Kleinanzeigen wird deutschlandweit nach dem günstigsten passenden LEGO-Set in neuem und originalverpacktem Zustand gesucht.
+Vorhandene Installationen werden über `@updateURL` automatisch aktualisiert.
+Die Frankreich-Angebote sind standardmäßig ausgeschaltet und können im
+Userscript-Menü über **Frankreich-Angebote umschalten** aktiviert werden.
 
-🧍 6. Minifiguren-Overlay: Macht das Wort „Minifiguren“ in den Texten anklickbar. Ein Klick öffnet ein Overlay, das in Echtzeit die genaue Liste der im Set enthaltenen Minifiguren (inklusive Bildern und Preisen) direkt von Rebrickable und Bricklink lädt.
+## Entwicklung
 
-🤖 7. Meta-GPT Anbindung:
-KI-Preisvergleich: Ein Klick auf den "Meta-GPT"-Link generiert einen Such-Prompt für das Set, kopiert diesen in die Zwischenablage und öffnet einen speziellen ChatGPT-Bot, der auf Preisvergleiche spezialisiert ist.
+`npm run sync` übernimmt die aktuellen geprüften Module und Logo-Assets aus dem
+benachbarten Ordner `brickmerge-extension-db` und erzeugt anschließend mit
+`npm run build` die einzelne installierbare Userscript-Datei.
 
-📋 8. 1-Klick-Kopieren: Fügt neben der großen Set-Überschrift ein Copy-Icon ein, um den sauberen Namen des LEGO-Sets mit einem Klick in die Zwischenablage zu kopieren.
-
-📦 9. Ein Klick auf die Maße öffnet den Paketpreisvergleich von Paketda.de.
-
-ᯓ➤ 10. Brickmerge-Suchen ohne Ergebnis werden per DuckDuckGo-Lucky direkt zum bestmöglichsten Treffer weitergeleitet.
-
-# Installation
-* Eine Userscript-Erweiterung wie Tampermonkey oder Violentmonkey installieren.
-* Brickmerge Tweaker installieren.
-* Die angeforderten Verbindungsberechtigungen bestätigen. Sie werden für die zusätzlichen Preis- und Produktabfragen benötigt.
-Aktualisierungen werden anschließend über die im Userscript hinterlegte GitHub-Adresse angeboten.
-
-## Kleinanzeigen über den Preis-Worker
-* Der Kleinanzeigen-Agent API-Key liegt ausschließlich als Cloudflare-Secret im Preis-Worker.
-* In Tampermonkey beim „Brickmerge Tweaker“ den Menüpunkt „Brickmerge Worker-Zugriffstoken einrichten“ öffnen.
-* Dasselbe Token eingeben, das im Worker als `BM_WORKER_TOKEN` gespeichert ist, und die Brickmerge-Seite neu laden.
-
-Das Zugriffstoken wird nur lokal im Userscript-Speicher abgelegt und nicht in dieses Repository geschrieben. Der Tweaker speichert Worker-Antworten 45 Minuten lokal; der Worker hält erfolgreiche Kleinanzeigen-Ergebnisse zwei Stunden und leere Ergebnisse 20 Minuten im Cache.
-
-# Hinweise
-Preise und Verfügbarkeiten können sich zwischen Abfrage und Händlerseite ändern.
-Persönliche Rabatte werden ausschließlich lokal im Browser gespeichert.
-Externe Preis- und Produktdaten stammen unter anderem von BrickLink, BrickOwl, Rebrickable, Brickbank, Keepa und Kleinanzeigen Agent.
-Das Projekt ist eine private Erweiterung und steht in keiner Verbindung zu Brickmerge oder der LEGO Gruppe.
+`npm test` baut die Datei neu, prüft ihre Syntax und kontrolliert die mobilen
+Brücken sowie die wichtigsten aktuellen Funktionen.
