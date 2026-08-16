@@ -9,11 +9,24 @@ const source = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(source, /@version\s+5\.5\.5/);
+    assert.match(source, /@version\s+5\.5\.6/);
     assert.match(source, /@run-at\s+document-start/);
     assert.match(source, /@updateURL\s+https:\/\/raw\.githubusercontent\.com/);
     assert.match(source, /@connect\s+getdata\.andreas-9b7\.workers\.dev/);
     assert.match(source, /@grant\s+unsafeWindow/);
+});
+
+test('overview cards read marketplace prices without starting refresh jobs', () => {
+    const overviewSource = fs.readFileSync(
+        new URL('../src/overview-price-badges.js', import.meta.url),
+        'utf8'
+    );
+    const loadCard = overviewSource.match(
+        /const loadCard = card => limit\(async \(\) => \{[\s\S]*?\n\s*\}\);\n\n\s*const observer/
+    )?.[0] || '';
+
+    assert.match(loadCard, /\/offers\/cache/);
+    assert.doesNotMatch(loadCard, /refreshBundle|\/offers\/refresh/);
 });
 
 test('extension APIs are adapted to the mobile userscript bridge', () => {

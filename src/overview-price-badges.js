@@ -297,10 +297,8 @@
         });
     };
 
-    // Kleinanzeigen wird im Hintergrund aktualisiert. Die übrigen zusätzlichen
-    // Quellen bleiben hinter dem gemeinsamen Abrufknopf.
-    const automaticSources = settings => enabledSources(settings)
-        .filter(source => source === 'kleinanzeigen');
+    // Auf Übersichtsseiten werden ausschließlich vorhandene Worker-Cachewerte
+    // gelesen. Neue Kleinanzeigen-Abfragen starten nur auf Set-Detailseiten.
     const buttonSources = settings => enabledSources(settings)
         .filter(source => source !== 'kleinanzeigen');
 
@@ -321,7 +319,6 @@
         applyDiscountDom,
         createLimiter,
         enabledSources,
-        automaticSources,
         buttonSources
     });
     globalThis.BM_OVERVIEW_PRICE_CORE = core;
@@ -977,7 +974,6 @@
         if (settings.overviewPriceBadges === false) return;
         ensureStyles();
         const sources = enabledSources(settings);
-        const autoSources = automaticSources(settings);
 
         const productRow = document.getElementById('productrow');
         if (!productRow) return;
@@ -1008,31 +1004,6 @@
                     buildBundleUrl(workerBaseUrl, '/offers/cache', data, sources)
                 )).payload;
                 renderCardBundle(card, data, bundle, sources);
-                const automaticIncomplete = autoSources.some(source =>
-                    bundle?.sources?.[source]?.state !== 'ready'
-                );
-                if (automaticIncomplete) {
-                    void refreshBundle(workerBaseUrl, data, autoSources).then(async () => {
-                        const refreshed = (await requestJson(
-                            buildBundleUrl(
-                                workerBaseUrl,
-                                '/offers/cache',
-                                data,
-                                sources
-                            )
-                        )).payload;
-                        renderCardBundle(card, data, refreshed, sources);
-                        sortOverviewCards(
-                            Array.from(document.querySelectorAll(CARD_SELECTOR)),
-                            overviewSortMode
-                        );
-                    }).catch(error => {
-                        console.debug(
-                            'Brickmerge Tools DB: Automatische Kleinanzeigen-Abfrage fehlgeschlagen.',
-                            error
-                        );
-                    });
-                }
             } catch (error) {
                 debug.errors += 1;
                 card.dataset.bmPriceLookupState = 'error';
