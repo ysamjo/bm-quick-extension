@@ -2830,11 +2830,29 @@ globalThis.BM_isFranceEnabled = settings =>
                         > .medium-4.small-9.columns.pricerow,
                     #offerlist .row.collapse.bm-marketplace-offer
                         > .medium-4.small-9.columns.pricerow {
+                        display: flex !important;
                         width: 75% !important;
                         height: auto !important;
                         min-height: 54px !important;
                         flex: 0 0 75%;
+                        align-items: stretch;
                         float: none !important;
+                    }
+                    #offerlist .row.collapse.bm-effective-row
+                        > .medium-4.small-9.columns.pricerow > a,
+                    #offerlist .row.collapse.bm-marketplace-offer
+                        > .medium-4.small-9.columns.pricerow > a {
+                        display: flex !important;
+                        min-width: 0;
+                        min-height: 54px;
+                        flex: 1 1 auto;
+                        align-items: center;
+                    }
+                    #offerlist .row.collapse.bm-effective-row
+                        > .medium-4.small-9.columns.pricerow > a > span.price,
+                    #offerlist .row.collapse.bm-marketplace-offer
+                        > .medium-4.small-9.columns.pricerow > a > span.price {
+                        align-self: center;
                     }
                     #offerlist .row.collapse.bm-effective-row
                         > .goto.small-3.columns > .pricerow,
