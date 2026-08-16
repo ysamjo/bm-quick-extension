@@ -61,6 +61,8 @@ globalThis.BM_buildMetaGptTransferUrl = (
 };
 globalThis.BM_MARKETPLACE_MIN_REFERENCE_RATIO = 0.5;
 globalThis.BM_MARKETPLACE_REFERENCE_FILTER_SOURCES = Object.freeze([
+    'ebay',
+    'ebay-fr',
     'kleinanzeigen',
     'vinted',
     'leboncoin',

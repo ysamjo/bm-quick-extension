@@ -183,6 +183,8 @@ globalThis.BM_buildMetaGptTransferUrl = (
 };
 globalThis.BM_MARKETPLACE_MIN_REFERENCE_RATIO = 0.5;
 globalThis.BM_MARKETPLACE_REFERENCE_FILTER_SOURCES = Object.freeze([
+    'ebay',
+    'ebay-fr',
     'kleinanzeigen',
     'vinted',
     'leboncoin',
@@ -2796,8 +2798,8 @@ globalThis.BM_isFranceEnabled = settings =>
                     #offerlist .goto.bm-marketplace-logo-column,
                     #offerlist .goto.bm-marketplace-logo-column > .pricerow,
                     #offerlist .bm-marketplace-logo-cell {
-                        height: 64px !important;
-                        min-height: 64px !important;
+                        height: 54px !important;
+                        min-height: 54px !important;
                     }
                     #offerlist .bm-marketplace-logo-link {
                         width: 100% !important;
@@ -2855,36 +2857,36 @@ globalThis.BM_isFranceEnabled = settings =>
                         display: none !important;
                     }
                     #offerlist .row.collapse.bm-effective-row {
-                        min-height: 64px;
+                        min-height: 54px;
                     }
                     #offerlist .row.collapse.bm-effective-row > .goto.small-3.columns,
                     #offerlist .row.collapse.bm-effective-row > .goto.small-3.columns > .pricerow,
                     #offerlist .row.collapse.bm-effective-row > .medium-4.small-9.columns.pricerow {
-                        height: 64px !important;
-                        min-height: 64px !important;
+                        height: 54px !important;
+                        min-height: 54px !important;
                     }
                     #offerlist .row.collapse.bm-marketplace-offer,
                     #offerlist .row.collapse.bm-marketplace-offer > .goto.small-3.columns,
                     #offerlist .row.collapse.bm-marketplace-offer > .goto.small-3.columns > .pricerow,
                     #offerlist .row.collapse.bm-marketplace-offer > .medium-4.small-9.columns.pricerow {
-                        height: 64px !important;
-                        min-height: 64px !important;
+                        height: 54px !important;
+                        min-height: 54px !important;
                     }
                     #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row,
                     #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .goto.small-3.columns,
                     #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .goto.small-3.columns > .pricerow,
                     #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .medium-4.small-9.columns.pricerow {
-                        height: 64px !important;
-                        min-height: 64px !important;
+                        height: 54px !important;
+                        min-height: 54px !important;
                     }
                     #offerlist .bm-marketplace-logo-stage > img,
                     #offerlist .bm-marketplace-logo-stage > .bm-marketplace-logo {
                         max-width: 84% !important;
-                        max-height: 30px !important;
+                        max-height: 26px !important;
                     }
                     #offerlist .bm-lego-logo-link .bm-marketplace-logo-stage > img {
                         max-width: 78% !important;
-                        max-height: 28px !important;
+                        max-height: 26px !important;
                     }
                 }
                 .bm-offer-gallery {
@@ -7427,6 +7429,45 @@ globalThis.BM_isFranceEnabled = settings =>
                         return prices.length > 0 ? Math.min(...prices) : null;
                     };
 
+                    const selectPlausibleMarketplaceOffer = (
+                        source,
+                        result,
+                        referencePrice,
+                        getPrice = offer => Number(offer?.total ?? offer?.price)
+                    ) => {
+                        const candidates = [
+                            result?.cheapest,
+                            ...(Array.isArray(result?.offers) ? result.offers : [])
+                        ].filter(Boolean);
+                        const seen = new Set();
+                        return candidates
+                            .filter(candidate => {
+                                const price = getPrice(candidate);
+                                const identity = `${candidate?.url || ''}:${price}`;
+                                if (seen.has(identity)) return false;
+                                seen.add(identity);
+                                return BM_isMarketplacePricePlausible(
+                                    source,
+                                    price,
+                                    referencePrice
+                                );
+                            })
+                            .sort((left, right) => getPrice(left) - getPrice(right))[0] || null;
+                    };
+                    const getEbayOfferTotal = offer => {
+                        const explicitTotal = Number(offer?.total);
+                        if (Number.isFinite(explicitTotal) && explicitTotal > 0) {
+                            return explicitTotal;
+                        }
+                        const itemPrice = Number(offer?.itemPrice ?? offer?.price);
+                        const shipping = Number(
+                            offer?.shipping ?? offer?.shippingCost ?? 0
+                        );
+                        if (!Number.isFinite(itemPrice) || itemPrice <= 0 ||
+                            !Number.isFinite(shipping)) return Number.NaN;
+                        return itemPrice + Math.max(0, shipping);
+                    };
+
                     void getWorkerClientId().then(workerClientId => {
                         const ean = document.querySelector(
                             '.bm-ean-line-link[data-ean]'
@@ -7465,9 +7506,24 @@ globalThis.BM_isFranceEnabled = settings =>
                                         }
                                         if (!result?.found || !result.cheapest) return;
 
-                                        const cheapest = result.cheapest;
-                                        const shipping = Number(cheapest.shipping);
-                                        const itemPrice = Number(cheapest.itemPrice);
+                                        const cheapest = selectPlausibleMarketplaceOffer(
+                                            'ebay',
+                                            result,
+                                            getBrickmergeBestPrice(),
+                                            getEbayOfferTotal
+                                        );
+                                        if (!cheapest) {
+                                            console.info(
+                                                'Brickmerge Tweaker: eBay-Angebote unterhalb der 50%-Plausibilitätsgrenze verworfen.'
+                                            );
+                                            return;
+                                        }
+                                        const shipping = Number(
+                                            cheapest.shipping ?? cheapest.shippingCost ?? 0
+                                        );
+                                        const itemPrice = Number(
+                                            cheapest.itemPrice ?? cheapest.price
+                                        );
                                         if (!Number.isFinite(itemPrice) ||
                                             !Number.isFinite(shipping)) return;
                                         const sellerAccountType =
@@ -7553,9 +7609,24 @@ globalThis.BM_isFranceEnabled = settings =>
                                         }
                                         if (!result?.found || !result.cheapest) return;
 
-                                        const cheapest = result.cheapest;
-                                        const shipping = Number(cheapest.shipping);
-                                        const itemPrice = Number(cheapest.itemPrice);
+                                        const cheapest = selectPlausibleMarketplaceOffer(
+                                            'ebay-fr',
+                                            result,
+                                            getBrickmergeBestPrice(),
+                                            getEbayOfferTotal
+                                        );
+                                        if (!cheapest) {
+                                            console.info(
+                                                'Brickmerge Tweaker: eBay.fr-Angebote unterhalb der 50%-Plausibilitätsgrenze verworfen.'
+                                            );
+                                            return;
+                                        }
+                                        const shipping = Number(
+                                            cheapest.shipping ?? cheapest.shippingCost ?? 0
+                                        );
+                                        const itemPrice = Number(
+                                            cheapest.itemPrice ?? cheapest.price
+                                        );
                                         if (!Number.isFinite(itemPrice) ||
                                             !Number.isFinite(shipping)) return;
                                         const sellerAccountType =
@@ -7724,31 +7795,6 @@ globalThis.BM_isFranceEnabled = settings =>
                             ['leboncoin', { label: 'Leboncoin', logoDomain: 'leboncoin.fr' }],
                             ['stockx', { label: 'StockX', logoDomain: 'stockx.com' }]
                         ]);
-                        const selectPlausibleMarketplaceOffer = (
-                            source,
-                            result,
-                            referencePrice,
-                            getPrice = offer => Number(offer?.total ?? offer?.price)
-                        ) => {
-                            const candidates = [
-                                result?.cheapest,
-                                ...(Array.isArray(result?.offers) ? result.offers : [])
-                            ].filter(Boolean);
-                            const seen = new Set();
-                            return candidates
-                                .filter(candidate => {
-                                    const price = getPrice(candidate);
-                                    const identity = `${candidate?.url || ''}:${price}`;
-                                    if (seen.has(identity)) return false;
-                                    seen.add(identity);
-                                    return BM_isMarketplacePricePlausible(
-                                        source,
-                                        price,
-                                        referencePrice
-                                    );
-                                })
-                                .sort((left, right) => getPrice(left) - getPrice(right))[0] || null;
-                        };
                         const applyApifyMarketplaceResult = (
                             source,
                             label,
