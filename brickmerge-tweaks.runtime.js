@@ -2798,8 +2798,52 @@ globalThis.BM_isFranceEnabled = settings =>
                     #offerlist .goto.bm-marketplace-logo-column,
                     #offerlist .goto.bm-marketplace-logo-column > .pricerow,
                     #offerlist .bm-marketplace-logo-cell {
-                        height: 54px !important;
+                        height: auto !important;
                         min-height: 54px !important;
+                    }
+                    #offerlist .row.collapse.bm-effective-row,
+                    #offerlist .row.collapse.bm-marketplace-offer {
+                        display: flex !important;
+                        min-height: 54px;
+                        height: auto !important;
+                        flex-wrap: nowrap;
+                        align-items: stretch;
+                    }
+                    #offerlist .row.collapse.bm-effective-row::after,
+                    #offerlist .row.collapse.bm-marketplace-offer::after {
+                        display: none !important;
+                        content: none !important;
+                    }
+                    #offerlist .row.collapse.bm-effective-row
+                        > .goto.small-3.columns,
+                    #offerlist .row.collapse.bm-marketplace-offer
+                        > .goto.small-3.columns {
+                        display: flex !important;
+                        width: 25% !important;
+                        height: auto !important;
+                        min-height: 54px !important;
+                        flex: 0 0 25%;
+                        align-items: stretch;
+                        float: none !important;
+                    }
+                    #offerlist .row.collapse.bm-effective-row
+                        > .medium-4.small-9.columns.pricerow,
+                    #offerlist .row.collapse.bm-marketplace-offer
+                        > .medium-4.small-9.columns.pricerow {
+                        width: 75% !important;
+                        height: auto !important;
+                        min-height: 54px !important;
+                        flex: 0 0 75%;
+                        float: none !important;
+                    }
+                    #offerlist .row.collapse.bm-effective-row
+                        > .goto.small-3.columns > .pricerow,
+                    #offerlist .row.collapse.bm-marketplace-offer
+                        > .goto.small-3.columns > .pricerow {
+                        width: 100% !important;
+                        height: auto !important;
+                        min-height: 54px !important;
+                        flex: 1 1 auto;
                     }
                     #offerlist .bm-marketplace-logo-link {
                         width: 100% !important;
@@ -2862,21 +2906,21 @@ globalThis.BM_isFranceEnabled = settings =>
                     #offerlist .row.collapse.bm-effective-row > .goto.small-3.columns,
                     #offerlist .row.collapse.bm-effective-row > .goto.small-3.columns > .pricerow,
                     #offerlist .row.collapse.bm-effective-row > .medium-4.small-9.columns.pricerow {
-                        height: 54px !important;
+                        height: auto !important;
                         min-height: 54px !important;
                     }
                     #offerlist .row.collapse.bm-marketplace-offer,
                     #offerlist .row.collapse.bm-marketplace-offer > .goto.small-3.columns,
                     #offerlist .row.collapse.bm-marketplace-offer > .goto.small-3.columns > .pricerow,
                     #offerlist .row.collapse.bm-marketplace-offer > .medium-4.small-9.columns.pricerow {
-                        height: 54px !important;
+                        height: auto !important;
                         min-height: 54px !important;
                     }
                     #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row,
                     #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .goto.small-3.columns,
                     #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .goto.small-3.columns > .pricerow,
                     #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .medium-4.small-9.columns.pricerow {
-                        height: 54px !important;
+                        height: auto !important;
                         min-height: 54px !important;
                     }
                     #offerlist .bm-marketplace-logo-stage > img,

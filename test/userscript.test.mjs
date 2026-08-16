@@ -21,7 +21,7 @@ const metaGptSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.9/);
+    assert.match(loaderSource, /@version\s+5\.5\.10/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -60,7 +60,7 @@ test('loader executes its cached runtime without downloading it again', async ()
     const context = vm.createContext({
         URL,
         GM_getValue: async () => ({
-            version: '5.5.9',
+            version: '5.5.10',
             source: cachedRuntime
         }),
         GM_setValue: async () => assert.fail('cache rewrite not expected'),
@@ -68,7 +68,7 @@ test('loader executes its cached runtime without downloading it again', async ()
             requests.push(new URL(details.url).pathname);
             details.onload({
                 status: 200,
-                responseText: JSON.stringify({ version: '5.5.9' })
+                responseText: JSON.stringify({ version: '5.5.10' })
             });
         },
         console: { error() {}, warn() {} }
@@ -94,7 +94,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.9/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.10/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -277,7 +277,7 @@ test('eBay offers below half the Brickmerge price are rejected', () => {
     );
 });
 
-test('mobile offer rows use compact spacing', () => {
+test('mobile offer rows grow when price details wrap', () => {
     const tweakerSource = fs.readFileSync(
         new URL('../src/brickmerge-tweaker.js', import.meta.url),
         'utf8'
@@ -286,8 +286,13 @@ test('mobile offer rows use compact spacing', () => {
         /@media screen and \(max-width: 640px\) \{[\s\S]*?#offerlist \.row\.collapse\.bm-marketplace-offer\.bm-effective-row[\s\S]*?\n\s*\}/
     )?.[0] || '';
 
-    assert.match(mobileOfferStyles, /height:\s*54px !important/);
-    assert.doesNotMatch(mobileOfferStyles, /height:\s*64px !important/);
+    assert.match(mobileOfferStyles, /height:\s*auto !important/);
+    assert.match(mobileOfferStyles, /min-height:\s*54px(?: !important)?/);
+    assert.match(mobileOfferStyles, /display:\s*flex !important/);
+    assert.doesNotMatch(
+        mobileOfferStyles,
+        /^\s*height:\s*(?:54|64)px !important/m
+    );
 });
 
 test('France is enabled by default and can be toggled from the script menu', () => {
