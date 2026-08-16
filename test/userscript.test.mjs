@@ -9,7 +9,7 @@ const source = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(source, /@version\s+5\.5\.6/);
+    assert.match(source, /@version\s+5\.5\.7/);
     assert.match(source, /@run-at\s+document-start/);
     assert.match(source, /@updateURL\s+https:\/\/raw\.githubusercontent\.com/);
     assert.match(source, /@connect\s+getdata\.andreas-9b7\.workers\.dev/);
@@ -27,6 +27,32 @@ test('overview cards read marketplace prices without starting refresh jobs', () 
 
     assert.match(loadCard, /\/offers\/cache/);
     assert.doesNotMatch(loadCard, /refreshBundle|\/offers\/refresh/);
+});
+
+test('search result pages skip the marketplace overview module', () => {
+    const overviewSource = fs.readFileSync(
+        new URL('../src/overview-price-badges.js', import.meta.url),
+        'utf8'
+    );
+    const context = vm.createContext({ URL });
+    vm.runInContext(overviewSource, context);
+
+    assert.equal(
+        context.BM_OVERVIEW_PRICE_CORE.isSearchPage(
+            'https://www.brickmerge.de/?find=75313'
+        ),
+        true
+    );
+    assert.equal(
+        context.BM_OVERVIEW_PRICE_CORE.isSearchPage(
+            'https://www.brickmerge.de/LEGO-Star-Wars/'
+        ),
+        false
+    );
+    assert.match(
+        overviewSource,
+        /if \(isSearchPage\(location\.href\)\) return;/
+    );
 });
 
 test('extension APIs are adapted to the mobile userscript bridge', () => {

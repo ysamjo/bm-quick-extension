@@ -230,6 +230,11 @@
         return '';
     };
 
+    const isSearchPage = value => new URL(
+        value,
+        'https://www.brickmerge.de/'
+    ).searchParams.has('find');
+
     const sortOverviewEntries = (entries, mode) => {
         const metric = mode === 'saving-desc'
             ? 'savings'
@@ -319,7 +324,8 @@
         applyDiscountDom,
         createLimiter,
         enabledSources,
-        buttonSources
+        buttonSources,
+        isSearchPage
     });
     globalThis.BM_OVERVIEW_PRICE_CORE = core;
     if (typeof module !== 'undefined' && module.exports) module.exports = core;
@@ -971,6 +977,7 @@
             return;
         }
 
+        if (isSearchPage(location.href)) return;
         if (settings.overviewPriceBadges === false) return;
         ensureStyles();
         const sources = enabledSources(settings);

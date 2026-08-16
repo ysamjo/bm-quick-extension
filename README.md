@@ -10,6 +10,7 @@ der Chrome-Extension auf Browser mit Tampermonkey- oder Violentmonkey-Unterstüt
 - gemeinsame Marktplatzpreise über den Cloudflare-Worker `getdata`
 - eBay DE/FR, Kleinanzeigen, Vinted, Leboncoin, StockX, Idealo, BrickLink und BrickOwl
 - Kleinanzeigen auf Übersichtsseiten ausschließlich aus dem gemeinsamen Worker-Cache
+- keine Marktplatzabfragen oder Preisübernahme auf `?find=…`-Suchseiten
 - manueller Abruf weiterer Marktplätze und gemeinsamer Preis-Cache
 - Minifiguren-Overlay mit BrickLink-Preisen für Deutschland und EU
 - Copy-Buttons, Preisverlauf, Quick-Links und Meta-GPT-Übergabe
