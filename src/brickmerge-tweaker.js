@@ -29,9 +29,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
     const META_GPT_PATH = '/g/g-LZvgtoTB9-meta-preisvergleich-gpt';
     const META_GPT_URL = `https://chatgpt.com${META_GPT_PATH}`;
-    const META_GPT_PENDING_KEY = 'brickmerge-meta-gpt-pending-v1';
-    const META_GPT_LAST_SUBMITTED_KEY = 'brickmerge-meta-gpt-last-submitted-v1';
-    const META_GPT_MAX_PENDING_AGE = 10 * 60 * 1000;
     const OFFER_CACHE_TTL = 2 * 60 * 60 * 1000;
     const KLAZ_CLIENT_CACHE_TTL = 45 * 60 * 1000;
     const MINIFIG_INVENTORY_CACHE_TTL = 6 * 60 * 60 * 1000;
@@ -163,10 +160,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         });
         return { abort: () => controller.abort() };
     }
-
-    const setMetaGptValue = (key, value) => writeStoredValue(key, value);
-    const getMetaGptValue = (key, fallback = null) => readStoredValue(key, fallback);
-    const deleteMetaGptValue = key => deleteStoredValue(key);
 
     function makeApiCacheKey(scope, value) {
         const input = String(value || '');
@@ -320,140 +313,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             return { abort() {} };
         }
         return cachedGmRequest(cacheKey, ttlMs, details);
-    }
-
-    function waitForMetaGptElement(getElement, timeout = 60000) {
-        return new Promise(resolve => {
-            const immediate = getElement();
-            if (immediate) {
-                resolve(immediate);
-                return;
-            }
-
-            const observer = new MutationObserver(() => {
-                const element = getElement();
-                if (!element) return;
-                observer.disconnect();
-                clearTimeout(timer);
-                resolve(element);
-            });
-            observer.observe(document.documentElement, {
-                childList: true,
-                subtree: true,
-                attributes: true
-            });
-            const timer = window.setTimeout(() => {
-                observer.disconnect();
-                resolve(null);
-            }, timeout);
-        });
-    }
-
-    function waitForPendingMetaGptTransfer(timeout = 10000) {
-        return new Promise(resolve => {
-            const startedAt = Date.now();
-            const check = async () => {
-                const transfer = await getMetaGptValue(META_GPT_PENDING_KEY);
-                if (transfer?.id && transfer.prompt && transfer.createdAt) {
-                    resolve(transfer);
-                    return;
-                }
-                if (Date.now() - startedAt >= timeout) {
-                    resolve(null);
-                    return;
-                }
-                window.setTimeout(check, 100);
-            };
-            void check();
-        });
-    }
-
-    function findMetaGptPromptEditor() {
-        return document.querySelector(
-            '#prompt-textarea[contenteditable="true"], ' +
-            'textarea#prompt-textarea, ' +
-            'form textarea, ' +
-            '[contenteditable="true"][data-lexical-editor="true"]'
-        );
-    }
-
-    function fillMetaGptPromptEditor(editor, prompt) {
-        editor.focus();
-
-        if (editor instanceof HTMLTextAreaElement) {
-            const valueSetter = Object.getOwnPropertyDescriptor(
-                HTMLTextAreaElement.prototype,
-                'value'
-            )?.set;
-            valueSetter?.call(editor, prompt);
-        } else {
-            document.execCommand('selectAll', false, null);
-            const inserted = document.execCommand('insertText', false, prompt);
-            if (!inserted || editor.textContent.trim() !== prompt) {
-                const paragraph = document.createElement('p');
-                paragraph.textContent = prompt;
-                editor.replaceChildren(paragraph);
-            }
-        }
-
-        editor.dispatchEvent(new InputEvent('input', {
-            bubbles: true,
-            inputType: 'insertText',
-            data: prompt
-        }));
-        editor.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-
-    function findMetaGptSendButton() {
-        const directButton = document.querySelector(
-            'button[data-testid="send-button"], ' +
-            'button[data-testid="fruitjuice-send-button"]'
-        );
-        if (directButton) return directButton;
-
-        return Array.from(document.querySelectorAll('form button')).find(button => {
-            const label = [
-                button.getAttribute('aria-label'),
-                button.getAttribute('title')
-            ].filter(Boolean).join(' ');
-            return /send|senden|absenden/i.test(label);
-        }) || null;
-    }
-
-    async function runMetaGptTransfer() {
-        const transfer = await waitForPendingMetaGptTransfer();
-        if (!transfer) return;
-        if (Date.now() - transfer.createdAt > META_GPT_MAX_PENDING_AGE) {
-            await deleteMetaGptValue(META_GPT_PENDING_KEY);
-            return;
-        }
-
-        const lastSubmittedId = await getMetaGptValue(
-            META_GPT_LAST_SUBMITTED_KEY
-        );
-        if (lastSubmittedId === transfer.id) {
-            await deleteMetaGptValue(META_GPT_PENDING_KEY);
-            return;
-        }
-
-        const editor = await waitForMetaGptElement(findMetaGptPromptEditor);
-        if (!editor) return;
-        fillMetaGptPromptEditor(editor, transfer.prompt);
-
-        const sendButton = await waitForMetaGptElement(() => {
-            const button = findMetaGptSendButton();
-            return button && !button.disabled ? button : null;
-        }, 15000);
-        if (!sendButton) return;
-
-        await setMetaGptValue(META_GPT_LAST_SUBMITTED_KEY, transfer.id);
-        await deleteMetaGptValue(META_GPT_PENDING_KEY);
-        sendButton.click();
-    }
-
-    if (location.pathname.startsWith(META_GPT_PATH)) {
-        if (BM_SETTINGS.metaGptBridge) void runMetaGptTransfer();
-        return;
     }
 
     // Die originalen Brickmerge-Angebotslinks bleiben unverändert. Auf einer
@@ -2766,7 +2625,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             } catch (error) {
                 navigator.clipboard?.writeText(prompt).catch(() => {});
             }
-            void setMetaGptValue(META_GPT_PENDING_KEY, transfer);
+            const transferUrl = BM_buildMetaGptTransferUrl(
+                transfer,
+                META_GPT_URL
+            );
 
             const label = link.closest('.bm-meta-dual-link')
                 ?.querySelector('.bm-link-label');
@@ -2774,7 +2636,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 label?.textContent ||
                 'Meta';
             if (label) label.textContent = 'Wird geöffnet';
-            window.open(META_GPT_URL, '_blank', 'noopener,noreferrer');
+            window.open(transferUrl, '_blank', 'noopener,noreferrer');
             window.setTimeout(() => {
                 if (label) label.textContent = defaultLabel;
             }, 1400);

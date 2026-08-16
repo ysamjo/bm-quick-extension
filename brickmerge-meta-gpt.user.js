@@ -1,49 +1,30 @@
 // ==UserScript==
-// @name         Brickmerge Tweaker
+// @name         Brickmerge Meta-GPT Bridge
 // @namespace    https://brickmerge.de/
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=chatgpt.com
 // @version      5.5.8
-// @description  Brickmerge Tools für Desktop und Mobilgeräte mit gemeinsamem Marktplatz-Cache.
-// @match        https://www.brickmerge.de/*
-// @match        https://brickmerge.de/*
-// @grant        GM_setClipboard
+// @description  Übergibt Brickmerge-Setdaten automatisch an den Meta Preisvergleich GPT.
+// @match        https://chatgpt.com/g/g-LZvgtoTB9-meta-preisvergleich-gpt*
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
-// @grant        GM_registerMenuCommand
 // @grant        GM.getValue
 // @grant        GM.setValue
-// @grant        GM.deleteValue
 // @grant        GM.xmlHttpRequest
-// @grant        GM.registerMenuCommand
-// @grant        unsafeWindow
 // @connect      raw.githubusercontent.com
-// @connect      getdata.andreas-9b7.workers.dev
-// @connect      ebay-price-api.andreas-9b7.workers.dev
-// @connect      brickmerge-toolkit-api.andreas-9b7.workers.dev
-// @connect      www.bricklink.com
-// @connect      bricklink.com
-// @connect      www.brickowl.com
-// @connect      brickowl.com
-// @connect      *.brickowl.com
-// @connect      www.rebrickable.com
-// @connect      rebrickable.com
-// @connect      brickbank.app
-// @connect      duckduckgo.com
 // @run-at       document-start
 // @noframes
-// @updateURL    https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-tweaks.js
-// @downloadURL  https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-tweaks.js
+// @updateURL    https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-meta-gpt.user.js
+// @downloadURL  https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-meta-gpt.user.js
 // ==/UserScript==
 
 (() => {
     'use strict';
 
-    const CACHE_KEY = "brickmerge-loader-runtime-v1";
+    const CACHE_KEY = "brickmerge-meta-gpt-loader-runtime-v1";
     const MANIFEST_URL = "https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/package.json";
-    const RUNTIME_URL = "https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-tweaks.runtime.js";
-    const LABEL = "Brickmerge Loader";
+    const RUNTIME_URL = "https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-meta-gpt.runtime.js";
+    const LABEL = "Brickmerge Meta-GPT Loader";
 
     const readValue = async (key, fallback) => {
         if (typeof GM_getValue === 'function') {

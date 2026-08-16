@@ -39,6 +39,26 @@ globalThis.BM_WORKER_PREVIOUS_BASE_URL =
     'https://brickmerge-toolkit-api.andreas-9b7.workers.dev';
 globalThis.BM_WORKER_LEGACY_BASE_URL =
     'https://ebay-price-api.andreas-9b7.workers.dev';
+globalThis.BM_META_GPT_TRANSFER_HASH_KEY = 'bm-meta-transfer';
+globalThis.BM_buildMetaGptTransferUrl = (
+    transfer,
+    baseUrl = 'https://chatgpt.com/g/g-LZvgtoTB9-meta-preisvergleich-gpt'
+) => {
+    const id = String(transfer?.id || '').trim();
+    const prompt = String(transfer?.prompt || '').trim();
+    const createdAt = Number(transfer?.createdAt);
+    if (!id || !prompt || !Number.isFinite(createdAt)) {
+        throw new TypeError('Ungültiger Meta-GPT-Transfer.');
+    }
+    const url = new URL(baseUrl);
+    const fragment = new URLSearchParams(url.hash.replace(/^#/, ''));
+    fragment.set(
+        globalThis.BM_META_GPT_TRANSFER_HASH_KEY,
+        JSON.stringify({ id, prompt, createdAt })
+    );
+    url.hash = fragment.toString();
+    return url.href;
+};
 globalThis.BM_MARKETPLACE_MIN_REFERENCE_RATIO = 0.5;
 globalThis.BM_MARKETPLACE_REFERENCE_FILTER_SOURCES = Object.freeze([
     'kleinanzeigen',

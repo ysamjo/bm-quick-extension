@@ -13,7 +13,8 @@ der Chrome-Extension auf Browser mit Tampermonkey- oder Violentmonkey-Unterstüt
 - keine Marktplatzabfragen oder Preisübernahme auf `?find=…`-Suchseiten
 - manueller Abruf weiterer Marktplätze und gemeinsamer Preis-Cache
 - Minifiguren-Overlay mit BrickLink-Preisen für Deutschland und EU
-- Copy-Buttons, Preisverlauf, Quick-Links und Meta-GPT-Übergabe
+- Copy-Buttons, Preisverlauf und Quick-Links
+- separate Meta-GPT-Bridge mit kurzlebiger URL-Fragmentübergabe
 
 API-Schlüssel und Tokens sind nicht im Userscript enthalten. Sie liegen
 ausschließlich als Secrets in den Cloudflare-Workern.
@@ -22,10 +23,18 @@ ausschließlich als Secrets in den Cloudflare-Workern.
 
 1. Einen mobilen Browser mit Userscript-Unterstützung verwenden.
 2. Tampermonkey oder Violentmonkey installieren.
-3. `brickmerge-tweaks.js` über die Raw-Ansicht auf GitHub öffnen und installieren.
-4. Die angeforderten Verbindungen zum Preis-Worker erlauben.
+3. `brickmerge-tweaks.js` über die Raw-Ansicht auf GitHub einmalig installieren.
+4. Für die Meta-GPT-Übergabe `brickmerge-meta-gpt.user.js` einmalig installieren.
+5. Die angeforderten Verbindungen zum Preis-Worker erlauben.
 
-Vorhandene Installationen werden über `@updateURL` automatisch aktualisiert.
+Beide installierten Dateien sind kleine Loader. Sie starten die zuletzt geprüfte
+Runtime sofort aus dem lokalen Tampermonkey-Cache, vergleichen im Hintergrund die
+Version mit GitHub und laden nur bei einer neuen Version die aktuelle Runtime.
+Damit greifen Updates spätestens beim nächsten Seitenaufruf, auch wenn
+Tampermonkeys eigene `@updateURL`-Prüfung ausbleibt. Bei einem GitHub-Ausfall läuft
+die letzte funktionierende Version weiter. `@updateURL` bleibt als zusätzlicher
+Fallback für Änderungen an Berechtigungen oder Seitenregeln erhalten.
+
 Die Frankreich-Angebote sind standardmäßig eingeschaltet und können im
 Userscript-Menü über **Frankreich-Angebote umschalten** deaktiviert werden.
 
@@ -33,7 +42,7 @@ Userscript-Menü über **Frankreich-Angebote umschalten** deaktiviert werden.
 
 `npm run sync` übernimmt die aktuellen geprüften Module und Logo-Assets aus dem
 benachbarten Ordner `brickmerge-extension-db` und erzeugt anschließend mit
-`npm run build` die einzelne installierbare Userscript-Datei.
+`npm run build` zwei installierbare Loader sowie deren GitHub-Runtimes.
 
 `npm test` baut die Datei neu, prüft ihre Syntax und kontrolliert die mobilen
 Brücken sowie die wichtigsten aktuellen Funktionen.

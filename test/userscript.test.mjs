@@ -3,17 +3,185 @@ import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const source = fs.readFileSync(
+const loaderSource = fs.readFileSync(
     new URL('../brickmerge-tweaks.js', import.meta.url),
+    'utf8'
+);
+const source = fs.readFileSync(
+    new URL('../brickmerge-tweaks.runtime.js', import.meta.url),
+    'utf8'
+);
+const metaGptLoaderSource = fs.readFileSync(
+    new URL('../brickmerge-meta-gpt.user.js', import.meta.url),
+    'utf8'
+);
+const metaGptSource = fs.readFileSync(
+    new URL('../brickmerge-meta-gpt.runtime.js', import.meta.url),
     'utf8'
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(source, /@version\s+5\.5\.7/);
-    assert.match(source, /@run-at\s+document-start/);
-    assert.match(source, /@updateURL\s+https:\/\/raw\.githubusercontent\.com/);
-    assert.match(source, /@connect\s+getdata\.andreas-9b7\.workers\.dev/);
-    assert.match(source, /@grant\s+unsafeWindow/);
+    assert.match(loaderSource, /@version\s+5\.5\.8/);
+    assert.match(loaderSource, /@run-at\s+document-start/);
+    assert.match(
+        loaderSource,
+        /@updateURL\s+https:\/\/raw\.githubusercontent\.com/
+    );
+    assert.match(
+        loaderSource,
+        /@connect\s+getdata\.andreas-9b7\.workers\.dev/
+    );
+    assert.match(loaderSource, /@connect\s+raw\.githubusercontent\.com/);
+    assert.match(loaderSource, /@grant\s+unsafeWindow/);
+});
+
+test('loaders use a validated GitHub runtime with a local fallback', () => {
+    for (const loader of [loaderSource, metaGptLoaderSource]) {
+        assert.match(loader, /\/package\.json/);
+        assert.match(loader, /GM_xmlhttpRequest/);
+        assert.match(loader, /new Function/);
+        assert.match(loader, /Cache-Control': 'no-cache/);
+        assert.match(loader, /await writeValue\(CACHE_KEY/);
+        assert.match(loader, /if \(hasCache\)/);
+    }
+    assert.match(loaderSource, /brickmerge-tweaks\.runtime\.js/);
+    assert.match(
+        metaGptLoaderSource,
+        /brickmerge-meta-gpt\.runtime\.js/
+    );
+    assert.doesNotMatch(source, /==UserScript==/);
+    assert.doesNotMatch(metaGptSource, /==UserScript==/);
+});
+
+test('loader executes its cached runtime without downloading it again', async () => {
+    const requests = [];
+    const cachedRuntime = `globalThis.BM_LOADER_TEST =
+        (globalThis.BM_LOADER_TEST || 0) + 1;${' '.repeat(120)}`;
+    const context = vm.createContext({
+        URL,
+        GM_getValue: async () => ({
+            version: '5.5.8',
+            source: cachedRuntime
+        }),
+        GM_setValue: async () => assert.fail('cache rewrite not expected'),
+        GM_xmlhttpRequest(details) {
+            requests.push(new URL(details.url).pathname);
+            details.onload({
+                status: 200,
+                responseText: JSON.stringify({ version: '5.5.8' })
+            });
+        },
+        console: { error() {}, warn() {} }
+    });
+
+    vm.runInContext(loaderSource, context);
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.equal(context.BM_LOADER_TEST, 1);
+    assert.deepEqual(requests, [
+        '/ysamjo/bm-quick-extension/refs/heads/main/package.json'
+    ]);
+});
+
+test('main userscript runs only on Brickmerge', () => {
+    assert.doesNotMatch(loaderSource, /@match\s+https:\/\/chatgpt\.com/);
+    assert.doesNotMatch(source, /runMetaGptTransfer/);
+    assert.doesNotMatch(source, /brickmerge-meta-gpt-pending/);
+});
+
+test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
+    assert.match(
+        metaGptLoaderSource,
+        /@name\s+Brickmerge Meta-GPT Bridge/
+    );
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.8/);
+    assert.match(
+        metaGptLoaderSource,
+        /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
+    );
+    assert.match(
+        metaGptLoaderSource,
+        /@updateURL\s+https:\/\/raw\.githubusercontent\.com\/ysamjo\/bm-quick-extension\/refs\/heads\/main\/brickmerge-meta-gpt\.user\.js/
+    );
+    assert.doesNotMatch(
+        metaGptLoaderSource,
+        /@match\s+https:\/\/(?:www\.)?brickmerge\.de/
+    );
+    assert.doesNotMatch(
+        metaGptSource,
+        /GM_(?:get|set|delete)Value|chrome\.storage/
+    );
+});
+
+test('Brickmerge builds a self-contained Meta-GPT transfer URL', () => {
+    const sharedSource = fs.readFileSync(
+        new URL('../src/shared.js', import.meta.url),
+        'utf8'
+    );
+    const context = vm.createContext({ URL, URLSearchParams });
+    vm.runInContext(sharedSource, context);
+    const transfer = {
+        id: 'transfer-123',
+        prompt: 'Prüfe Set 75313.',
+        createdAt: 123456789
+    };
+    const transferUrl = new URL(
+        context.BM_buildMetaGptTransferUrl(transfer)
+    );
+    const serialized = new URLSearchParams(
+        transferUrl.hash.replace(/^#/, '')
+    ).get('bm-meta-transfer');
+
+    assert.equal(transferUrl.origin, 'https://chatgpt.com');
+    assert.equal(
+        transferUrl.pathname,
+        '/g/g-LZvgtoTB9-meta-preisvergleich-gpt'
+    );
+    assert.deepEqual(JSON.parse(serialized), transfer);
+});
+
+test('Meta-GPT bridge accepts only fresh, bounded transfers', () => {
+    const bridgeSource = fs.readFileSync(
+        new URL('../src/meta-gpt-bridge.js', import.meta.url),
+        'utf8'
+    );
+    const context = vm.createContext({ URLSearchParams });
+    vm.runInContext(bridgeSource, context);
+    const now = 1_800_000;
+    const toHash = transfer => `#bm-meta-transfer=${encodeURIComponent(
+        JSON.stringify(transfer)
+    )}`;
+    const valid = {
+        id: 'abc',
+        prompt: 'Set 75313 prüfen',
+        createdAt: now - 1000
+    };
+
+    assert.deepEqual(
+        { ...context.BM_META_GPT_BRIDGE_CORE.parseTransfer(toHash(valid), now) },
+        valid
+    );
+    assert.equal(
+        context.BM_META_GPT_BRIDGE_CORE.parseTransfer(toHash({
+            ...valid,
+            createdAt: now - (11 * 60 * 1000)
+        }), now),
+        null
+    );
+    assert.equal(
+        context.BM_META_GPT_BRIDGE_CORE.parseTransfer(toHash({
+            ...valid,
+            prompt: 'x'.repeat(5001)
+        }), now),
+        null
+    );
+    assert.equal(
+        context.BM_META_GPT_BRIDGE_CORE.parseTransfer(
+            '#bm-meta-transfer=not-json',
+            now
+        ),
+        null
+    );
 });
 
 test('overview cards read marketplace prices without starting refresh jobs', () => {
