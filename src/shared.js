@@ -1,5 +1,5 @@
 globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
-    settingsSchemaVersion: 2,
+    settingsSchemaVersion: 3,
     cleaner: true,
     detailLayout: true,
     linkPanel: true,
@@ -27,7 +27,7 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
     },
     linkRows: {
         marketplaces: true,
-        france: false,
+        france: true,
         resources: true,
         history: true
     }
@@ -39,6 +39,36 @@ globalThis.BM_WORKER_PREVIOUS_BASE_URL =
     'https://brickmerge-toolkit-api.andreas-9b7.workers.dev';
 globalThis.BM_WORKER_LEGACY_BASE_URL =
     'https://ebay-price-api.andreas-9b7.workers.dev';
+globalThis.BM_MARKETPLACE_MIN_REFERENCE_RATIO = 0.5;
+globalThis.BM_MARKETPLACE_REFERENCE_FILTER_SOURCES = Object.freeze([
+    'kleinanzeigen',
+    'vinted',
+    'leboncoin',
+    'stockx',
+    'idealo'
+]);
+globalThis.BM_getMarketplaceMinimumPrice = referencePrice => {
+    const reference = Number(referencePrice);
+    if (!Number.isFinite(reference) || reference <= 0) return null;
+    const referenceCents = Math.round(reference * 100);
+    return Math.ceil(
+        referenceCents * globalThis.BM_MARKETPLACE_MIN_REFERENCE_RATIO
+    ) / 100;
+};
+globalThis.BM_isMarketplacePricePlausible = (
+    source,
+    price,
+    referencePrice
+) => {
+    if (!globalThis.BM_MARKETPLACE_REFERENCE_FILTER_SOURCES.includes(source)) {
+        return true;
+    }
+    const candidate = Number(price);
+    if (!Number.isFinite(candidate) || candidate <= 0) return false;
+    const minimum = globalThis.BM_getMarketplaceMinimumPrice(referencePrice);
+    if (minimum === null) return true;
+    return candidate + Number.EPSILON >= minimum;
+};
 globalThis.BM_EXTENSION_STORAGE_KEYS = Object.freeze({
     workerBaseUrl: 'bm:worker-base-url-v1',
     workerClientId: 'gm:brickmerge-worker-client-id-v1'
@@ -61,6 +91,16 @@ globalThis.BM_normalizeWorkerBaseUrl = value => {
     } catch {
         return globalThis.BM_WORKER_DEFAULT_BASE_URL;
     }
+};
+
+globalThis.BM_resolveWorkerUrl = (value, baseUrl) => {
+    const normalizedBase = globalThis.BM_normalizeWorkerBaseUrl(baseUrl);
+    const base = new URL(`${normalizedBase}/`);
+    const resolved = new URL(String(value || ''), base);
+    if (resolved.origin !== base.origin) {
+        throw new TypeError('Worker-Status-URL hat einen fremden Origin.');
+    }
+    return resolved.href;
 };
 
 globalThis.BM_getBrickmergeSetNumber = value => {

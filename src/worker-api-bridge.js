@@ -168,7 +168,12 @@
             if (aborted) return;
             const rewritten = rewriteTarget(details.url, config);
             const headers = { ...(details.headers || {}) };
-            headers['X-BM-Client-ID'] = config.clientId;
+            Object.keys(headers).forEach(name => {
+                if (name.toLowerCase() === 'x-bm-client-id') delete headers[name];
+            });
+            if (new URL(rewritten.url).origin === new URL(config.baseUrl).origin) {
+                headers['X-BM-Client-ID'] = config.clientId;
+            }
 
             if (rewritten.provider === 'rebrickable') {
                 delete headers.Authorization;

@@ -10,8 +10,10 @@
         if (typeof GM_getValue === 'function') {
             return Promise.resolve(GM_getValue(`${STORAGE_PREFIX}${key}`, fallback));
         }
-        if (typeof GM?.getValue === 'function') {
-            return Promise.resolve(GM.getValue(`${STORAGE_PREFIX}${key}`, fallback));
+        if (typeof globalThis.GM?.getValue === 'function') {
+            return Promise.resolve(
+                globalThis.GM.getValue(`${STORAGE_PREFIX}${key}`, fallback)
+            );
         }
         return fallback;
     };
@@ -19,16 +21,20 @@
     const writeValue = async (key, value) => {
         if (typeof GM_setValue === 'function') {
             await Promise.resolve(GM_setValue(`${STORAGE_PREFIX}${key}`, value));
-        } else if (typeof GM?.setValue === 'function') {
-            await Promise.resolve(GM.setValue(`${STORAGE_PREFIX}${key}`, value));
+        } else if (typeof globalThis.GM?.setValue === 'function') {
+            await Promise.resolve(
+                globalThis.GM.setValue(`${STORAGE_PREFIX}${key}`, value)
+            );
         }
     };
 
     const deleteValue = async key => {
         if (typeof GM_deleteValue === 'function') {
             await Promise.resolve(GM_deleteValue(`${STORAGE_PREFIX}${key}`));
-        } else if (typeof GM?.deleteValue === 'function') {
-            await Promise.resolve(GM.deleteValue(`${STORAGE_PREFIX}${key}`));
+        } else if (typeof globalThis.GM?.deleteValue === 'function') {
+            await Promise.resolve(
+                globalThis.GM.deleteValue(`${STORAGE_PREFIX}${key}`)
+            );
         }
     };
 
@@ -97,7 +103,9 @@
         registerMenu('Frankreich-Angebote umschalten', async () => {
             const { settings } = await local.get('settings');
             const current = settings || {};
-            const enabled = current.linkRows?.france === true;
+            const enabled = globalThis.BM_mergeSettings
+                ? globalThis.BM_mergeSettings(current).linkRows.france === true
+                : current.linkRows?.france !== false;
             await local.set({
                 settings: {
                     ...current,

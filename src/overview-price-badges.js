@@ -49,6 +49,17 @@
         return Number.isFinite(number) && number > 0 ? number : null;
     };
 
+    const normalizeEbaySellerAccountType = value => {
+        const normalized = String(value || '').trim().toUpperCase();
+        if (normalized === 'BUSINESS' || normalized === 'COMMERCIAL') {
+            return 'BUSINESS';
+        }
+        if (normalized === 'INDIVIDUAL' || normalized === 'PRIVATE') {
+            return 'INDIVIDUAL';
+        }
+        return '';
+    };
+
     const extractCardData = card => {
         if (!card?.querySelector) return null;
         const idSet = String(card.id || '').match(/^set(\d{3,7})-\d+$/)?.[1] || '';
@@ -116,28 +127,64 @@
         if (!Number.isFinite(total) || total <= 0) return null;
         const url = String(payload.cheapest.url || '').trim();
         if (!/^https:\/\//i.test(url)) return null;
+        const sellerData = payload.cheapest.seller;
+        const seller = typeof sellerData === 'string'
+            ? sellerData.trim()
+            : String(sellerData?.username || sellerData?.name || '').trim();
+        const sellerAccountType = normalizeEbaySellerAccountType(
+            payload.cheapest.sellerAccountType ||
+            payload.cheapest.sellerType ||
+            sellerData?.sellerAccountType
+        );
         return {
             total: Math.round((total + Number.EPSILON) * 100) / 100,
             itemPrice: Number.isFinite(itemPrice) ? itemPrice : null,
             shipping: Number.isFinite(shipping) ? shipping : null,
             url,
             title: String(payload.cheapest.title || '').trim(),
-            seller: String(payload.cheapest.seller || '').trim(),
+            seller,
+            sellerAccountType,
+            shopName: String(
+                payload.cheapest.shopName || payload.cheapest.merchantName || ''
+            ).trim(),
             comparedOffers: Number(payload.comparedOffers) || 0
         };
     };
 
-    const selectBundleOffers = bundle => SOURCE_ORDER.flatMap(source => {
+    const selectBundleOffers = (bundle, data) => SOURCE_ORDER.flatMap(source => {
         const entry = bundle?.sources?.[source];
         if (entry?.state !== 'ready') return [];
-        const sourcePayload = source === 'idealo' && Array.isArray(entry.data?.offers)
-            ? { ...entry.data, cheapest: entry.data.offers[0] }
-            : entry.data;
-        const offer = selectDisplayOffer(sourcePayload);
+        const sourceData = entry.data?.result || entry.data?.data || entry.data;
+        const candidates = [
+            sourceData?.cheapest,
+            ...(Array.isArray(sourceData?.offers) ? sourceData.offers : [])
+        ].filter(Boolean);
+        const seen = new Set();
+        const offer = candidates
+            .map(candidate => selectDisplayOffer({
+                ...sourceData,
+                found: true,
+                cheapest: candidate
+            }))
+            .filter(candidate => {
+                if (!candidate) return false;
+                const identity = `${candidate.url}:${candidate.total}`;
+                if (seen.has(identity)) return false;
+                seen.add(identity);
+                return BM_isMarketplacePricePlausible(
+                    source,
+                    candidate.total,
+                    data?.bestPrice
+                );
+            })
+            .sort((left, right) => left.total - right.total)[0] || null;
         const savedAt = Number(entry.savedAt);
+        const label = source === 'idealo' && offer?.shopName
+            ? offer.shopName
+            : SOURCE_LABELS[source];
         return offer ? [{
             source,
-            label: SOURCE_LABELS[source],
+            label,
             ...offer,
             cacheState: String(entry.cacheState || ''),
             savedAt: Number.isFinite(savedAt) && savedAt > 0 ? savedAt : null
@@ -250,6 +297,13 @@
         });
     };
 
+    // Kleinanzeigen wird im Hintergrund aktualisiert. Die übrigen zusätzlichen
+    // Quellen bleiben hinter dem gemeinsamen Abrufknopf.
+    const automaticSources = settings => enabledSources(settings)
+        .filter(source => source === 'kleinanzeigen');
+    const buttonSources = settings => enabledSources(settings)
+        .filter(source => source !== 'kleinanzeigen');
+
     const core = Object.freeze({
         CARD_SELECTOR,
         SOURCE_ORDER,
@@ -266,12 +320,14 @@
         sortOverviewEntries,
         applyDiscountDom,
         createLimiter,
-        enabledSources
+        enabledSources,
+        automaticSources,
+        buttonSources
     });
     globalThis.BM_OVERVIEW_PRICE_CORE = core;
     if (typeof module !== 'undefined' && module.exports) module.exports = core;
 
-    if (typeof document === 'undefined' || typeof chrome === 'undefined' ||
+    if (typeof document === 'undefined' || typeof BM_MOBILE_CHROME === 'undefined' ||
         !chrome.storage?.local) return;
 
     globalThis.BM_DB_UNIFIED_REFRESH = true;
@@ -347,110 +403,153 @@
                 text-decoration: underline !important;
                 outline: none;
             }
-            .bm-all-prices-refresh {
-                display: inline-flex !important;
-                align-items: center;
-                justify-content: center;
-                gap: 0.32rem;
-                cursor: pointer;
-                box-sizing: border-box;
-            }
-            .bm-card-prices-refresh {
-                position: absolute !important;
-                top: 141px;
-                right: -3px;
-                z-index: 801;
-                width: 34px !important;
-                min-width: 34px !important;
-                height: 34px !important;
-                min-height: 34px !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                border: 0 !important;
-                border-radius: 1000px !important;
-                background: transparent !important;
-                color: #b00 !important;
-                line-height: 1 !important;
-                appearance: none;
-                -webkit-appearance: none;
-                transition: background-color 300ms ease-out, color 300ms ease-out;
-            }
-            .bm-card-prices-refresh:hover,
-            .bm-card-prices-refresh:focus-visible {
-                background: #600 !important;
-                color: #fff !important;
-                outline: none;
-            }
-            .bm-plus-icon {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 1.1em;
-                height: 1.1em;
-                font-family: Arial, sans-serif;
-                font-size: 1.15em;
-                font-weight: 700;
-                line-height: 1;
-            }
-            .bm-all-prices-refresh.is-loading {
+            .bm-detail-all-prices-refresh.is-loading {
                 pointer-events: none;
                 opacity: 0.78;
             }
-            .bm-card-prices-refresh.is-loading .bm-plus-icon {
+            .bm-detail-all-prices-refresh.is-loading .bm-detail-refresh-icon {
                 animation: bm-all-prices-spin 700ms linear infinite;
-            }
-            .bm-detail-all-prices-refresh.is-loading::before {
-                width: 12px;
-                height: 12px;
-                border: 2px solid #ddd;
-                border-top-color: currentColor;
-                border-radius: 50%;
-                content: '';
-                animation: bm-all-prices-spin 700ms linear infinite;
-                box-sizing: border-box;
-            }
-            .bm-detail-all-prices-refresh.is-loading .bm-plus-icon {
-                display: none;
             }
             .bm-detail-all-prices-refresh {
-                flex: 0 0 auto;
                 display: inline-flex !important;
                 align-items: center;
                 justify-content: center;
+                align-self: stretch;
                 gap: 0.35rem;
-                width: auto !important;
+                width: 100% !important;
                 min-width: 0 !important;
-                min-height: 22px;
-                margin: 0 !important;
-                padding: 0.25rem 0.45rem !important;
-                border: 0 !important;
-                border-radius: 4px;
-                background: transparent !important;
-                color: #666 !important;
+                max-width: none !important;
+                min-height: 0;
+                margin: 0 0 0.35rem !important;
                 font-family: inherit !important;
-                font-size: 0.72rem;
-                font-weight: 600;
-                line-height: 1;
+                line-height: 1.2;
+                white-space: nowrap;
                 text-decoration: none;
                 transition: background-color 150ms ease, color 150ms ease;
+                box-sizing: border-box;
             }
             .bm-detail-all-prices-refresh:hover,
             .bm-detail-all-prices-refresh:focus-visible {
-                background: #f0f0f0 !important;
-                color: #444 !important;
                 text-decoration: none;
+            }
+            .bm-detail-refresh-icon {
+                display: inline-flex;
+                width: 1.2rem;
+                height: 1.2rem;
+                flex: 0 0 1.2rem;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
+            }
+            .bm-detail-refresh-icon svg {
+                display: block;
+                width: 1.15rem;
+                height: 1.15rem;
+                fill: none;
+                stroke: currentColor;
+                stroke-width: 1.8;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+            .bm-chart-controls.bm-has-price-refresh {
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                align-items: stretch !important;
+                column-gap: 0.4rem !important;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .bm-chart-controls.bm-has-price-refresh.bmd-has-depot-button {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            }
+            .bm-chart-controls.bm-has-price-refresh > #chartTrigger,
+            .bm-chart-controls.bm-has-price-refresh > .bmd-open-button,
+            .bm-chart-controls.bm-has-price-refresh > .bm-detail-all-prices-refresh {
+                display: flex !important;
+                height: 44px !important;
+                min-height: 44px !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: none !important;
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+                margin-right: 0 !important;
+                margin-left: 0 !important;
+                line-height: 1 !important;
+                text-align: center !important;
+                vertical-align: middle !important;
+                box-sizing: border-box;
+            }
+            .bm-chart-controls.bm-has-price-refresh > #chartTrigger .chartbutton,
+            .bm-chart-controls.bm-has-price-refresh > .bmd-open-button .bmd-button-content {
+                display: inline-flex !important;
+                width: 100% !important;
+                height: 1.2rem !important;
+                min-height: 1.2rem !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 0.35rem !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                line-height: 1 !important;
+                text-align: center !important;
+                vertical-align: middle !important;
+            }
+            .bm-chart-controls.bm-has-price-refresh .bm-chart-label-full,
+            .bm-chart-controls.bm-has-price-refresh .bmd-button-label-full,
+            .bm-chart-controls.bm-has-price-refresh .bm-refresh-label {
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
+                height: 1.2rem;
+                margin: 0 !important;
+                padding: 0 !important;
+                line-height: 1.2rem !important;
+                text-align: center !important;
+                vertical-align: middle !important;
+            }
+            .bm-chart-controls.bm-has-price-refresh .bm-chart-label-mobile,
+            .bm-chart-controls.bm-has-price-refresh .bmd-button-label-mobile {
+                display: none !important;
+            }
+            .bm-chart-controls.bm-has-price-refresh > .bm-chart-best-price {
+                grid-column: 1 / -1;
             }
             .bm-detail-all-prices-refresh:focus-visible {
                 outline: 2px solid #aaa;
                 outline-offset: 2px;
             }
             @media only screen and (max-width: 40em) {
-                .bm-card-prices-refresh { right: calc(12% - 42px); }
+                .bm-detail-all-prices-refresh {
+                    padding-right: 0.3rem !important;
+                    padding-left: 0.3rem !important;
+                    font-size: 0.7rem !important;
+                }
+                .bm-chart-controls.bm-has-price-refresh .bm-chart-label-full,
+                .bm-chart-controls.bm-has-price-refresh .bmd-button-label-full {
+                    display: none !important;
+                }
+                .bm-chart-controls.bm-has-price-refresh .bm-chart-label-mobile,
+                .bm-chart-controls.bm-has-price-refresh .bmd-button-label-mobile {
+                    display: inline-flex !important;
+                    align-items: center;
+                    justify-content: center;
+                    height: 1.2rem;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    line-height: 1.2rem !important;
+                    text-align: center !important;
+                    vertical-align: middle !important;
+                }
             }
             @keyframes bm-all-prices-spin { to { transform: rotate(360deg); } }
             @media (prefers-reduced-motion: reduce) {
                 .bm-overview-marketplace-offer { transition: none; }
-                .bm-card-prices-refresh.is-loading .bm-plus-icon { animation: none; }
+                .bm-detail-all-prices-refresh.is-loading .bm-detail-refresh-icon {
+                    animation: none;
+                }
             }
         `;
         document.documentElement.appendChild(style);
@@ -499,26 +598,74 @@
     });
 
     const pollJob = async (workerBaseUrl, sourceState) => {
-        let statusUrl = new URL(sourceState.statusUrl, workerBaseUrl).href;
+        let statusUrl = BM_resolveWorkerUrl(sourceState.statusUrl, workerBaseUrl);
         for (let attempt = 0; attempt < 60; attempt += 1) {
             const { status, payload } = await requestJson(statusUrl, [200, 202]);
             if (status === 200 && !payload.pending) return payload;
-            statusUrl = new URL(payload.statusUrl || statusUrl, workerBaseUrl).href;
+            statusUrl = BM_resolveWorkerUrl(
+                payload.statusUrl || statusUrl,
+                workerBaseUrl
+            );
             await delay(Number(payload.pollAfterMs) || sourceState.pollAfterMs || 1800);
         }
         throw new Error('Preisaktualisierung dauert zu lange');
     };
 
-    const refreshBundle = async (workerBaseUrl, data, sources) => {
+    const refreshBundle = async (workerBaseUrl, data, sources, onSourceUpdate) => {
         const refresh = await requestJson(
             buildBundleUrl(workerBaseUrl, '/offers/refresh', data, sources)
         );
-        const pending = Object.values(refresh.payload.sources || {})
-            .filter(entry => entry?.state === 'pending' && entry.statusUrl);
-        await Promise.allSettled(pending.map(entry => pollJob(workerBaseUrl, entry)));
-        return (await requestJson(
+        const sourceEntries = Object.entries(refresh.payload.sources || {});
+        const reportedSources = new Set();
+        const reportSource = (source, state, payload = null, error = '') => {
+            if (reportedSources.has(source)) return;
+            if (!['ready', 'empty', 'error'].includes(state)) return;
+            reportedSources.add(source);
+            onSourceUpdate?.({ source, state, payload, error });
+        };
+
+        sourceEntries.forEach(([source, entry]) => {
+            if (entry?.state === 'ready') {
+                reportSource(source, 'ready', entry.data || entry.result || entry);
+            } else if (entry?.state === 'empty') {
+                reportSource(source, 'empty');
+            } else if (entry?.state === 'error') {
+                reportSource(source, 'error', null, entry.error || entry.message || '');
+            }
+        });
+
+        const pending = sourceEntries
+            .filter(([, entry]) => entry?.state === 'pending' && entry.statusUrl);
+        await Promise.allSettled(pending.map(([source, entry]) =>
+            pollJob(workerBaseUrl, entry).then(payload => {
+                reportSource(source, payload?.found === false ? 'empty' : 'ready', payload);
+                return payload;
+            }).catch(error => {
+                reportSource(source, 'error', null, String(error?.message || error));
+                throw error;
+            })
+        ));
+
+        const bundle = (await requestJson(
             buildBundleUrl(workerBaseUrl, '/offers/cache', data, sources)
         )).payload;
+        sources.forEach(source => {
+            if (reportedSources.has(source)) return;
+            const entry = bundle?.sources?.[source];
+            if (entry?.state === 'ready') {
+                reportSource(source, 'ready', entry.data || entry.result || entry);
+            } else if (entry?.state === 'empty') {
+                reportSource(source, 'empty');
+            } else {
+                reportSource(
+                    source,
+                    'error',
+                    null,
+                    entry?.error || entry?.message || 'Kein Ergebnis empfangen'
+                );
+            }
+        });
+        return bundle;
     };
 
     const cacheDetail = offer => {
@@ -530,46 +677,43 @@
         return parts.join(' · ');
     };
 
-    const createRefreshButton = ({ detail = false } = {}) => {
+    const createDetailRefreshButton = () => {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'bm-all-prices-refresh';
-        if (detail) {
-            button.classList.add('bm-detail-all-prices-refresh');
-            button.innerHTML = '<span class="bm-plus-icon" aria-hidden="true">➕</span>' +
-                '<span class="bm-refresh-label">Weitere Marktplätze abrufen</span>';
-        } else {
-            button.classList.add('bm-card-prices-refresh');
-            button.innerHTML = '<span class="bm-plus-icon" aria-hidden="true">➕</span>';
-        }
-        button.title = 'Weitere Marktplätze abrufen; kann Apify-Guthaben verbrauchen.';
+        button.className =
+            'button small smallGreyButton bm-detail-all-prices-refresh ' +
+            'bm-detail-action-button';
+        button.innerHTML =
+            '<span class="bm-detail-refresh-icon" aria-hidden="true">' +
+            '<svg viewBox="0 0 24 24" focusable="false">' +
+            '<path d="M20 6v5h-5"/><path d="M4 18v-5h5"/>' +
+            '<path d="M18.5 9A7 7 0 0 0 6.2 6.2L4 9"/>' +
+            '<path d="M5.5 15A7 7 0 0 0 17.8 17.8L20 15"/>' +
+            '</svg></span>' +
+            '<span class="bm-refresh-label">Preise</span>';
+        button.title = 'Weitere Marktplätze gemeinsam abrufen.';
         button.setAttribute('aria-label', 'Weitere Marktplätze abrufen');
         return button;
     };
 
     const setRefreshButtonState = (button, state, error = '') => {
-        const detail = button.classList.contains('bm-detail-all-prices-refresh');
         button.classList.toggle('is-loading', state === 'loading');
         button.disabled = state === 'loading';
-        if (detail) {
-            const label = state === 'loading'
-                ? 'Weitere Marktplätze werden abgerufen …'
-                : state === 'done'
-                    ? '✓ Weitere Marktplätze geladen'
-                    : state === 'error'
-                        ? '! Erneut abrufen'
-                        : 'Weitere Marktplätze abrufen';
-            const labelNode = button.querySelector('.bm-refresh-label');
-            if (labelNode) labelNode.textContent = label;
-            else button.textContent = label;
-        }
+        const label = state === 'loading'
+            ? 'Lädt …'
+            : state === 'done'
+                ? 'Geladen'
+                : state === 'error'
+                    ? 'Erneut'
+                    : 'Preise';
+        button.querySelector('.bm-refresh-label').textContent = label;
         button.title = state === 'loading'
             ? 'Weitere Marktplätze werden abgerufen'
             : state === 'done'
                 ? 'Weitere Marktplätze wurden abgerufen'
                 : state === 'error'
                     ? String(error || 'Preisaktualisierung fehlgeschlagen')
-                    : 'Weitere Marktplätze abrufen; kann Apify-Guthaben verbrauchen.';
+                    : 'Weitere Marktplätze gemeinsam abrufen.';
         button.setAttribute('aria-label', button.title);
     };
 
@@ -664,7 +808,7 @@
         });
     };
 
-    const renderCardBundle = (card, data, bundle, sources, onRefresh) => {
+    const renderCardBundle = (card, data, bundle, sources) => {
         const priceArea = card.querySelector('.productprice.productpricelist');
         if (!priceArea) return;
         const offerBox = priceArea.querySelector('.offerbox') || priceArea;
@@ -675,7 +819,7 @@
             offerBox.appendChild(container);
         }
         container.replaceChildren();
-        const offers = selectBundleOffers(bundle)
+        const offers = selectBundleOffers(bundle, data)
             .filter(offer => sources.includes(offer.source));
         applyEffectiveCardPrice(card, data, offers);
         offers
@@ -699,21 +843,7 @@
                 container.appendChild(link);
             });
 
-        const incomplete = sources.some(source =>
-            bundle?.sources?.[source]?.state !== 'ready'
-        );
-        let button = card.querySelector(':scope > .bm-card-prices-refresh');
-        if (incomplete) {
-            if (!button) {
-                button = createRefreshButton();
-                button.addEventListener('click', () => onRefresh(button));
-                card.appendChild(button);
-            }
-            setRefreshButtonState(button, 'idle');
-        } else {
-            button?.remove();
-        }
-        card.dataset.bmPriceLookupState = incomplete ? 'partial' : 'complete';
+        card.dataset.bmPriceLookupState = 'complete';
     };
 
     const extractDetailData = () => {
@@ -742,75 +872,112 @@
         };
     };
 
-    const mountDetailRefresh = async (settings, workerBaseUrl) => {
-        const data = extractDetailData();
+    const mountDetailRefresh = (settings, workerBaseUrl) => {
         const offerlist = document.getElementById('offerlist');
-        if (!data || !offerlist) return false;
-        if (document.documentElement.dataset.bmDetailRefreshChecked === 'true' ||
-            document.querySelector('.bm-detail-all-prices-refresh')) return true;
-        if (document.documentElement.dataset.bmDetailRefreshChecked === 'pending') return false;
-        document.documentElement.dataset.bmDetailRefreshChecked = 'pending';
-        const sources = enabledSources(settings);
-        let bundle = null;
-        try {
-            bundle = (await requestJson(
-                buildBundleUrl(workerBaseUrl, '/offers/cache', data, sources)
-            )).payload;
-        } catch (error) {
-            console.debug('Brickmerge Tools DB: Detail-Cache konnte nicht gelesen werden.', error);
+        const chartTrigger = document.getElementById('chartTrigger');
+        const host = chartTrigger?.parentElement;
+        if (!offerlist || !chartTrigger || !host) return false;
+        const sources = buttonSources(settings);
+        let button = document.querySelector('.bm-detail-all-prices-refresh');
+        if (!button) {
+            button = createDetailRefreshButton();
         }
-        document.documentElement.dataset.bmDetailRefreshChecked = 'true';
-        const incomplete = !bundle || sources.some(source =>
-            bundle?.sources?.[source]?.state !== 'ready'
-        );
-        if (!incomplete) return true;
-        const button = createRefreshButton({ detail: true });
-        const toolbar = document.querySelector('.bm-offer-toolbar');
-        const loadingIndicator = document.getElementById('bm-offerlist-loading');
-        if (toolbar && loadingIndicator?.parentElement === toolbar) {
-            loadingIndicator.insertAdjacentElement('afterend', button);
-        } else if (toolbar) toolbar.prepend(button);
-        else offerlist.parentElement?.insertBefore(button, offerlist);
-        button.addEventListener('click', async () => {
-            setRefreshButtonState(button, 'loading');
-            try {
-                await refreshBundle(workerBaseUrl, data, sources);
-                setRefreshButtonState(button, 'done');
-                window.setTimeout(() => window.location.reload(), 350);
-            } catch (error) {
-                setRefreshButtonState(
-                    button,
-                    'error',
-                    String(error?.message || error)
-                );
-            }
-        });
+        host.classList.add('bm-chart-controls', 'bm-has-price-refresh');
+        const depotButton = host.querySelector(':scope > .bmd-open-button');
+        const insertAfter = depotButton || chartTrigger;
+        if (insertAfter.nextElementSibling !== button) {
+            insertAfter.insertAdjacentElement('afterend', button);
+        }
+        if (button.dataset.bmRefreshBound !== 'true') {
+            button.dataset.bmRefreshBound = 'true';
+            button.addEventListener('click', async () => {
+                const data = extractDetailData();
+                if (!data) {
+                    setRefreshButtonState(
+                        button,
+                        'error',
+                        'Setnummer oder EAN konnte noch nicht gelesen werden.'
+                    );
+                    return;
+                }
+                if (sources.length === 0) {
+                    setRefreshButtonState(
+                        button,
+                        'error',
+                        'In den Einstellungen ist kein weiterer Marktplatz aktiviert.'
+                    );
+                    return;
+                }
+                setRefreshButtonState(button, 'loading');
+                const completedSources = new Set();
+                const handleSourceUpdate = update => {
+                    if (!update?.source || completedSources.has(update.source)) return;
+                    completedSources.add(update.source);
+                    const label = button.querySelector('.bm-refresh-label');
+                    if (label) {
+                        label.textContent = `${completedSources.size}/${sources.length}`;
+                    }
+                    if (update.state === 'ready') {
+                        document.dispatchEvent(new CustomEvent(
+                            'bm-marketplace-source-update',
+                            {
+                                detail: {
+                                    setNumber: data.setNumber,
+                                    source: update.source,
+                                    state: update.state,
+                                    payload: update.payload
+                                }
+                            }
+                        ));
+                    }
+                };
+                try {
+                    await refreshBundle(
+                        workerBaseUrl,
+                        data,
+                        sources,
+                        handleSourceUpdate
+                    );
+                    setRefreshButtonState(button, 'done');
+                } catch (error) {
+                    setRefreshButtonState(
+                        button,
+                        'error',
+                        String(error?.message || error)
+                    );
+                }
+            });
+        }
         return true;
     };
 
     const start = settings => {
-        if (settings.overviewPriceBadges === false) return;
-        ensureStyles();
         const workerBaseUrl = globalThis.BM_WORKER_DEFAULT_BASE_URL;
-        const sources = enabledSources(settings);
         const detailSet = globalThis.BM_getBrickmergeSetNumber?.(location.href);
         if (detailSet) {
+            ensureStyles();
             let observer = null;
-            const tryMount = async () => {
-                if (await mountDetailRefresh(settings, workerBaseUrl)) {
-                    observer?.disconnect();
+            const tryMount = () => {
+                if (mountDetailRefresh(settings, workerBaseUrl)) {
                     return true;
                 }
                 return false;
             };
-            void tryMount().then(mounted => {
-                if (mounted) return;
-                observer = new MutationObserver(() => void tryMount());
-                observer.observe(document.documentElement, { childList: true, subtree: true });
-                window.setTimeout(() => observer?.disconnect(), 15000);
+            tryMount();
+            observer = new MutationObserver(() => tryMount());
+            observer.observe(document.documentElement, {
+                childList: true,
+                subtree: true
             });
+            [250, 750, 1800].forEach(delay => window.setTimeout(tryMount, delay));
+            window.setTimeout(() => observer?.disconnect(), 15000);
             return;
         }
+
+        if (settings.overviewPriceBadges === false) return;
+        ensureStyles();
+        const sources = enabledSources(settings);
+        const autoSources = automaticSources(settings);
 
         const productRow = document.getElementById('productrow');
         if (!productRow) return;
@@ -820,7 +987,6 @@
             observed: 0,
             valid: 0,
             cacheRequests: 0,
-            refreshes: 0,
             errors: 0
         };
 
@@ -841,25 +1007,32 @@
                 const bundle = (await requestJson(
                     buildBundleUrl(workerBaseUrl, '/offers/cache', data, sources)
                 )).payload;
-                const refreshCard = async button => {
-                    debug.refreshes += 1;
-                    setRefreshButtonState(button, 'loading');
-                    try {
-                        const refreshed = await refreshBundle(workerBaseUrl, data, sources);
-                        renderCardBundle(card, data, refreshed, sources, refreshCard);
+                renderCardBundle(card, data, bundle, sources);
+                const automaticIncomplete = autoSources.some(source =>
+                    bundle?.sources?.[source]?.state !== 'ready'
+                );
+                if (automaticIncomplete) {
+                    void refreshBundle(workerBaseUrl, data, autoSources).then(async () => {
+                        const refreshed = (await requestJson(
+                            buildBundleUrl(
+                                workerBaseUrl,
+                                '/offers/cache',
+                                data,
+                                sources
+                            )
+                        )).payload;
+                        renderCardBundle(card, data, refreshed, sources);
                         sortOverviewCards(
                             Array.from(document.querySelectorAll(CARD_SELECTOR)),
                             overviewSortMode
                         );
-                    } catch (error) {
-                        setRefreshButtonState(
-                            button,
-                            'error',
-                            String(error?.message || error)
+                    }).catch(error => {
+                        console.debug(
+                            'Brickmerge Tools DB: Automatische Kleinanzeigen-Abfrage fehlgeschlagen.',
+                            error
                         );
-                    }
-                };
-                renderCardBundle(card, data, bundle, sources, refreshCard);
+                    });
+                }
             } catch (error) {
                 debug.errors += 1;
                 card.dataset.bmPriceLookupState = 'error';

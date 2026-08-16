@@ -24,8 +24,8 @@ ausschließlich als Secrets in den Cloudflare-Workern.
 4. Die angeforderten Verbindungen zum Preis-Worker erlauben.
 
 Vorhandene Installationen werden über `@updateURL` automatisch aktualisiert.
-Die Frankreich-Angebote sind standardmäßig ausgeschaltet und können im
-Userscript-Menü über **Frankreich-Angebote umschalten** aktiviert werden.
+Die Frankreich-Angebote sind standardmäßig eingeschaltet und können im
+Userscript-Menü über **Frankreich-Angebote umschalten** deaktiviert werden.
 
 ## Entwicklung
 

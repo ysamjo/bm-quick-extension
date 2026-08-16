@@ -55,6 +55,7 @@ const metadata = `// ==UserScript==
 // @grant        GM.deleteValue
 // @grant        GM.xmlHttpRequest
 // @grant        GM.registerMenuCommand
+// @grant        unsafeWindow
 // @connect      getdata.andreas-9b7.workers.dev
 // @connect      ebay-price-api.andreas-9b7.workers.dev
 // @connect      brickmerge-toolkit-api.andreas-9b7.workers.dev

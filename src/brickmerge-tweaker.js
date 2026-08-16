@@ -2,6 +2,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     const BM_SETTINGS = BM_mergeSettings(settings);
     const BM_OFFER_SHOP_KEY_MAP = {
         ebay: 'ebay',
+        'ebay-minifig': 'ebay',
         'ebay-fr': 'ebayFr',
         kleinanzeigen: 'kleinanzeigen',
         'smyths-search': 'smyths',
@@ -577,6 +578,35 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         return /(?:^|\s|[.(])eBay(?:\.de)?(?:\s|$|[.)])/i.test(String(value || ''));
     }
 
+    function normalizeEbaySellerAccountType(value) {
+        const normalized = String(value || '').trim().toUpperCase();
+        if (normalized === 'BUSINESS' || normalized === 'COMMERCIAL') {
+            return 'BUSINESS';
+        }
+        if (normalized === 'INDIVIDUAL' || normalized === 'PRIVATE') {
+            return 'INDIVIDUAL';
+        }
+        return '';
+    }
+
+    function getEbaySellerAccountType(offer) {
+        const seller = offer?.seller;
+        return normalizeEbaySellerAccountType(
+            offer?.sellerAccountType ||
+            offer?.sellerType ||
+            (seller && typeof seller === 'object'
+                ? seller.sellerAccountType || seller.accountType
+                : '')
+        );
+    }
+
+    function getEbaySellerTypeLabel(value) {
+        const accountType = normalizeEbaySellerAccountType(value);
+        if (accountType === 'BUSINESS') return 'gewerblich';
+        if (accountType === 'INDIVIDUAL') return 'privat';
+        return '';
+    }
+
     function getRetailerCatalog() {
         const catalog = new Map();
         Object.entries(CONFIG.retailerDiscounts).forEach(([key, discount]) => {
@@ -859,12 +889,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             display: grid !important;
             grid-template-rows: minmax(0, 1fr);
             width: 100%;
-            height: 36px;
+            height: 100%;
             max-width: 100%;
             align-items: stretch;
             justify-items: stretch;
             text-decoration: none !important;
-            min-height: 36px;
+            min-height: 0;
             padding: 3px 7px;
             border: 0;
             border-radius: 0;
@@ -877,14 +907,15 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             transition: background-color 150ms ease, box-shadow 150ms ease;
         }
         #offerlist .bm-marketplace-logo-link.bm-has-meta {
-            grid-template-rows: minmax(0, 1fr) 9px;
-            padding: 2px 7px 0;
+            grid-template-rows: minmax(0, 1fr) 12px;
+            padding: 2px 7px 1px;
         }
         #offerlist .bm-ebay-logo-link.bm-has-meta {
-            grid-template-rows: minmax(0, 1fr) 11px;
-            padding: 1px 6px 0;
+            grid-template-rows: minmax(0, 1fr) 13px;
+            padding: 2px 7px 1px;
         }
         #offerlist .bm-marketplace-logo-stage {
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -892,6 +923,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             height: 100%;
             min-width: 0;
             min-height: 0;
+            gap: 2px;
             overflow: hidden;
             background: #fff !important;
             transform: scale(1);
@@ -901,10 +933,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         #offerlist .bm-marketplace-logo-stage > img,
         #offerlist .bm-marketplace-logo-stage > .bm-marketplace-logo {
             display: block !important;
-            width: 100% !important;
-            height: 100% !important;
-            max-width: 100% !important;
-            max-height: 100% !important;
+            width: auto !important;
+            height: auto !important;
+            max-width: 92% !important;
+            max-height: 84% !important;
             margin: 0 !important;
             object-fit: contain !important;
             object-position: center !important;
@@ -918,41 +950,58 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             gap: 2px;
             width: 100%;
             min-width: 0;
-            height: 9px;
+            height: 12px;
             overflow: hidden;
             background: #fff !important;
         }
-        #offerlist .bm-marketplace-country-badge {
-            position: static;
+        #offerlist .bm-ebay-logo-link .bm-marketplace-logo-meta {
+            height: 13px;
+            gap: 0;
+            border-top: 2px solid var(--bm-ebay-accent, #777);
+        }
+        #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage > img {
+            max-width: 70% !important;
+            max-height: 78% !important;
+        }
+        #offerlist .bm-ebay-domain-suffix {
             display: inline-flex;
             flex: 0 0 auto;
+            align-items: flex-end;
+            color: var(--bm-ebay-accent, #444) !important;
+            font-size: 0.67rem;
+            font-weight: 700;
+            line-height: 1;
+            transform: translateY(-1px);
+        }
+        #offerlist .bm-ebay-de-source { --bm-ebay-accent: #c40000; }
+        #offerlist .bm-ebay-fr-source { --bm-ebay-accent: #0057a8; }
+        #offerlist .bm-ebay-native-source { --bm-ebay-accent: #555; }
+        #offerlist .bm-ebay-commercial { --bm-ebay-accent: #0064d2; }
+        #offerlist .bm-ebay-private { --bm-ebay-accent: #7b2e83; }
+        #offerlist .bm-ebay-logo-link .bm-marketplace-logo-caption {
+            color: var(--bm-ebay-accent, #555) !important;
+            font-size: 0.58rem;
+            font-weight: 700;
+        }
+        #offerlist .bm-marketplace-country-badge {
+            display: none !important;
+        }
+        #offerlist .bm-marketplace-country-flag {
+            position: absolute;
+            top: 0;
+            right: 1px;
+            z-index: 2;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 0;
-            height: 9px;
+            width: 18px;
+            height: 14px;
             padding: 0;
-            border: 0;
-            border-radius: 0;
-            background: transparent;
-            box-shadow: none;
-            font-size: 0.5rem;
-            line-height: 9px;
-            box-sizing: border-box;
-        }
-        #offerlist .bm-ebay-logo-link .bm-marketplace-logo-meta {
-            height: 11px;
-            gap: 3px;
-        }
-        #offerlist .bm-ebay-logo-link .bm-marketplace-country-badge {
-            min-width: 15px;
-            height: 10px;
-            padding: 0 2px;
             border-radius: 2px;
-            background: #e8e8e8;
-            color: #333 !important;
-            font-size: 0.47rem;
-            font-weight: 700;
-            line-height: 10px;
+            background: rgba(255,255,255,0.94) !important;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.14);
+            font-size: 12px;
+            line-height: 1;
         }
         #offerlist .bm-marketplace-logo-cell {
             display: flex !important;
@@ -1004,7 +1053,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             margin: 0;
             font-size: 0.5rem;
             font-weight: 600;
-            line-height: 9px;
+            line-height: 12px;
             text-overflow: ellipsis;
             white-space: nowrap;
             opacity: 1 !important;
@@ -1012,11 +1061,15 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             text-shadow: none !important;
         }
         #offerlist .bm-ebay-logo-link .bm-marketplace-logo-caption {
-            font-size: 0.56rem;
+            font-size: 0.52rem;
             line-height: 11px;
         }
         #offerlist .bm-lego-logo-link .bm-marketplace-logo-stage {
-            background: #d40000 !important;
+            background: #fff !important;
+        }
+        #offerlist .bm-lego-logo-link .bm-marketplace-logo-stage > img {
+            max-width: 82% !important;
+            max-height: 30px !important;
         }
         #offerlist .bm-lego-logo-link .bm-marketplace-logo-meta {
             background: #fff !important;
@@ -1053,6 +1106,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         #offerlist .bm-marketplace-logo-link:hover .bm-marketplace-logo-caption,
         #offerlist .bm-marketplace-logo-link:focus-visible .bm-marketplace-logo-caption {
             color: #555 !important;
+        }
+        #offerlist .row.collapse:hover .bm-ebay-logo-link .bm-marketplace-logo-caption,
+        #offerlist .bm-ebay-logo-link:hover .bm-marketplace-logo-caption,
+        #offerlist .bm-ebay-logo-link:focus-visible .bm-marketplace-logo-caption {
+            color: var(--bm-ebay-accent, #555) !important;
         }
         #offerlist .bm-shipping-info {
             display: inline !important;
@@ -1151,14 +1209,25 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             box-sizing: border-box;
         }
         @media screen and (max-width: 640px) {
+            #offerlist .goto.bm-marketplace-logo-column,
+            #offerlist .goto.bm-marketplace-logo-column > .pricerow,
+            #offerlist .bm-marketplace-logo-cell {
+                height: 64px !important;
+                min-height: 64px !important;
+            }
+            #offerlist .bm-marketplace-logo-link {
+                width: 100% !important;
+                height: 100% !important;
+                min-height: 100% !important;
+            }
             #offerlist .bm-effective-row span.price {
                 display: inline-flex;
                 flex-wrap: wrap;
                 align-content: center;
                 align-items: baseline;
-                line-height: 1.2;
-                padding-top: 0.25rem;
-                padding-bottom: 0.25rem;
+                line-height: 1.15;
+                padding-top: 0.15rem;
+                padding-bottom: 0.15rem;
             }
             #offerlist .bm-effective-row span.price > .merchant {
                 flex: 0 0 100%;
@@ -1174,8 +1243,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 display: inline !important;
                 margin-left: 0.35rem;
                 margin-top: 0;
-                font-size: 0.72rem;
-                line-height: 1.2;
+                font-size: 0.68rem;
+                line-height: 1.15;
                 white-space: normal;
             }
             #offerlist .bm-offer-discount-bubble {
@@ -1202,13 +1271,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 display: none !important;
             }
             #offerlist .row.collapse.bm-effective-row {
-                min-height: 72px;
+                min-height: 64px;
             }
             #offerlist .row.collapse.bm-effective-row > .goto.small-3.columns,
             #offerlist .row.collapse.bm-effective-row > .goto.small-3.columns > .pricerow,
             #offerlist .row.collapse.bm-effective-row > .medium-4.small-9.columns.pricerow {
-                height: 72px !important;
-                min-height: 72px !important;
+                height: 64px !important;
+                min-height: 64px !important;
             }
             #offerlist .row.collapse.bm-marketplace-offer,
             #offerlist .row.collapse.bm-marketplace-offer > .goto.small-3.columns,
@@ -1221,12 +1290,17 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .goto.small-3.columns,
             #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .goto.small-3.columns > .pricerow,
             #offerlist .row.collapse.bm-marketplace-offer.bm-effective-row > .medium-4.small-9.columns.pricerow {
-                height: 72px !important;
-                min-height: 72px !important;
+                height: 64px !important;
+                min-height: 64px !important;
             }
-            #offerlist .bm-marketplace-logo {
-                max-width: 72px;
-                max-height: 31px;
+            #offerlist .bm-marketplace-logo-stage > img,
+            #offerlist .bm-marketplace-logo-stage > .bm-marketplace-logo {
+                max-width: 84% !important;
+                max-height: 30px !important;
+            }
+            #offerlist .bm-lego-logo-link .bm-marketplace-logo-stage > img {
+                max-width: 78% !important;
+                max-height: 28px !important;
             }
         }
         .bm-offer-gallery {
@@ -1797,6 +1871,35 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         .bm-chart-label-mobile {
             display: none;
         }
+        #chartTrigger .chartbutton {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+        }
+        #chartTrigger .chartbutton::before {
+            display: none !important;
+            content: none !important;
+        }
+        .bm-chart-action-icon {
+            display: inline-flex;
+            width: 1.2rem;
+            height: 1.2rem;
+            flex: 0 0 1.2rem;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .bm-chart-action-icon svg {
+            display: block;
+            width: 1.15rem;
+            height: 1.15rem;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
         @media screen and (min-width: 1025px) {
             .content.setdetails .bm-detail-layout {
                 display: grid;
@@ -2118,7 +2221,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             align-items: center;
             justify-content: space-between;
             gap: 0.75rem;
-            margin: 0 0 0.15rem;
+            margin: 0 0 0.15rem !important;
+            padding: 0;
         }
         #offerlist .bm-marketplace-offer.bm-offer-entering {
             overflow: hidden;
@@ -2234,7 +2338,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 font-size: 0.65rem;
             }
             .bm-offer-toolbar {
-                margin: 0.1rem 0 0.25rem !important;
+                margin: 0 0 0.15rem !important;
             }
             #wrap.bm-set-wrap {
                 margin-bottom: -104px !important;
@@ -2877,11 +2981,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         document.getElementById('bm-discount-settings')?.remove();
         document.body.style.removeProperty('overflow');
 
-        const firstOffer = offerlist
-            ?.querySelector(
-                '.medium-4.small-9.columns.pricerow:not([data-bm-marketplace="true"])'
-            )
-            ?.closest('.row.collapse');
+        const firstOffer = offerlist?.querySelector('.row.collapse');
         if (!offerlist || !firstOffer?.parentElement) return;
 
         const toolbar = document.createElement('div');
@@ -4334,6 +4434,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (document.getElementById('bm-price-chart-overlay')) return;
 
         chartTrigger.parentElement?.classList.add('bm-chart-controls');
+        chartTrigger.classList.add(
+            'button',
+            'small',
+            'smallGreyButton',
+            'bm-detail-action-button'
+        );
         chartTrigger.setAttribute('aria-haspopup', 'dialog');
         chartTrigger.setAttribute('aria-controls', 'bm-price-chart-overlay');
 
@@ -4343,13 +4449,21 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 return;
             }
             buttonLabel.textContent = '';
+            const icon = document.createElement('span');
+            icon.className = 'bm-chart-action-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            icon.innerHTML =
+                '<svg viewBox="0 0 24 24" focusable="false">' +
+                '<path d="M3 3v18h18"/>' +
+                '<path d="m6 16 4-5 4 3 5-7"/>' +
+                '</svg>';
             const fullLabel = document.createElement('span');
             fullLabel.className = 'bm-chart-label-full';
-            fullLabel.textContent = 'Preisentwicklung Details anzeigen';
+            fullLabel.textContent = 'Details';
             const mobileLabel = document.createElement('span');
             mobileLabel.className = 'bm-chart-label-mobile';
-            mobileLabel.textContent = 'Details anzeigen';
-            buttonLabel.append(fullLabel, mobileLabel);
+            mobileLabel.textContent = 'Details';
+            buttonLabel.append(icon, fullLabel, mobileLabel);
         };
         normalizeChartTriggerLabel();
 
@@ -5206,58 +5320,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     secondaryUrl,
                     secondaryIcon
                 } of group.links) {
-                    if (globalThis.BM_DB_UNIFIED_REFRESH !== true &&
-                        id === 'btn-idealo' && BM_isOfferShopEnabled('idealo')) {
-                        const dualLink = document.createElement('span');
-                        dualLink.className = 'bm-link bm-kleinanzeigen-dual-link';
-                        const siteLink = document.createElement('a');
-                        siteLink.className = 'bm-kleinanzeigen-site-link';
-                        siteLink.href = url;
-                        siteLink.target = '_blank';
-                        siteLink.rel = 'noopener noreferrer';
-                        siteLink.dataset.bmid = id;
-                        siteLink.dataset.bmDefaultLabel = name;
-                        const siteIcon = document.createElement('img');
-                        siteIcon.src = icon;
-                        siteIcon.alt = '';
-                        const siteLabel = document.createElement('span');
-                        siteLabel.className = 'bm-link-label';
-                        siteLabel.textContent = name;
-                        siteLink.append(siteIcon, siteLabel);
-                        const loadButton = document.createElement('button');
-                        loadButton.type = 'button';
-                        loadButton.className = 'bm-kleinanzeigen-load';
-                        loadButton.textContent = '€';
-                        loadButton.title = 'Idealo-Preis jetzt abrufen';
-                        loadButton.setAttribute('aria-label', 'Idealo-Preis jetzt abrufen');
-                        loadButton.addEventListener('click', event => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            triggerIdealoRequest();
-                        });
-                        document.addEventListener('bm-idealo-request-state', event => {
-                            const state = event.detail?.state || 'idle';
-                            loadButton.textContent = state === 'done'
-                                ? '✓'
-                                : state === 'empty'
-                                    ? '–'
-                                    : state === 'error' ? '!' : '€';
-                            loadButton.classList.toggle('is-loading', state === 'loading');
-                            loadButton.classList.toggle('is-done', state === 'done');
-                            loadButton.classList.toggle('is-error', state === 'error');
-                            loadButton.classList.toggle('is-empty', state === 'empty');
-                            loadButton.title = state === 'loading'
-                                ? 'Idealo-Preise werden geladen'
-                                : state === 'empty'
-                                    ? 'Keine Idealo-Angebote gefunden'
-                                    : state === 'error'
-                                        ? 'Idealo-Abfrage fehlgeschlagen'
-                                        : 'Idealo-Preis jetzt abrufen';
-                        });
-                        dualLink.append(siteLink, loadButton);
-                        row.appendChild(dualLink);
-                        continue;
-                    }
                     if (secondaryUrl && secondaryIcon) {
                         const dualLink = document.createElement('span');
                         dualLink.className = 'bm-link bm-meta-dual-link';
@@ -5821,24 +5883,44 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                 const itemPrice = Number(cheapest.itemPrice);
                                 if (!Number.isFinite(itemPrice) ||
                                     !Number.isFinite(shipping)) return;
+                                const sellerAccountType =
+                                    getEbaySellerAccountType(cheapest);
+                                const sellerTypeLabel = getEbaySellerTypeLabel(
+                                    sellerAccountType
+                                );
+                                const sellerName = typeof cheapest.seller === 'string'
+                                    ? cheapest.seller.trim()
+                                    : String(
+                                        cheapest.seller?.username ||
+                                        cheapest.seller?.name ||
+                                        cheapest.sellerName ||
+                                        cheapest.merchantName ||
+                                        ''
+                                    ).trim();
+                                const sellerDetails = [
+                                    sellerTypeLabel
+                                        ? `Verkäuferart: ${sellerTypeLabel}`
+                                        : '',
+                                    sellerName ? `Verkäufer: ${sellerName}` : ''
+                                ].filter(Boolean).join('; ');
                                 const offer = createOffer(
                                     'btn-ebay',
                                     'eBay',
                                     `${formatEuroValue(itemPrice)} €`,
-                                    new URL(
-                                        '/img/merchants/ebay.de_ico.gif',
-                                        window.location.origin
-                                    ).href,
+                                    chrome.runtime.getURL(
+                                        'icons/logo-ebay-minifig.png'
+                                    ),
                                     'ebay-worker',
-                                    `eBay: günstigstes von ${result.comparedOffers} neuen Angeboten; ${cheapest.title}`,
+                                    `eBay: günstigstes von ${result.comparedOffers} neuen Angeboten${sellerDetails ? `; ${sellerDetails}` : ''}; ${cheapest.title}`,
                                     {
                                         url: cheapest.url,
                                         searchUrl: document.querySelector('a[data-bmid="btn-ebay"]')?.href || '',
                                         shippingStatus: shipping <= 0.004 ? 'free' : 'paid',
                                         shippingCost: shipping,
-                                        logoBadge: 'DE',
-                                        logoBadgeLabel: 'Deutschland',
-                                        logoCaption: String(cheapest.seller || '').trim()
+                                        logoDomainSuffix: '.de',
+                                        logoCaption: sellerName || sellerTypeLabel,
+                                        sellerAccountType,
+                                        sellerName
                                     }
                                 );
                                 if (offer) storeOffers([offer]);
@@ -5889,24 +5971,46 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                 const itemPrice = Number(cheapest.itemPrice);
                                 if (!Number.isFinite(itemPrice) ||
                                     !Number.isFinite(shipping)) return;
+                                const sellerAccountType =
+                                    getEbaySellerAccountType(cheapest);
+                                const sellerTypeLabel = getEbaySellerTypeLabel(
+                                    sellerAccountType
+                                );
+                                const sellerName = typeof cheapest.seller === 'string'
+                                    ? cheapest.seller.trim()
+                                    : String(
+                                        cheapest.seller?.username ||
+                                        cheapest.seller?.name ||
+                                        cheapest.sellerName ||
+                                        cheapest.merchantName ||
+                                        ''
+                                    ).trim();
+                                const sellerDetails = [
+                                    sellerTypeLabel
+                                        ? `Verkäuferart: ${sellerTypeLabel}`
+                                        : '',
+                                    sellerName ? `Verkäufer: ${sellerName}` : ''
+                                ].filter(Boolean).join('; ');
                                 const offer = createOffer(
                                     'btn-ebay-fr',
                                     'eBay.fr',
                                     `${formatEuroValue(itemPrice)} €`,
-                                    new URL(
-                                        '/img/merchants/ebay.de_ico.gif',
-                                        window.location.origin
-                                    ).href,
+                                    chrome.runtime.getURL(
+                                        'icons/logo-ebay-minifig.png'
+                                    ),
                                     'ebay-fr-worker',
-                                    `eBay.fr: günstigstes von ${result.comparedOffers} neuen Angeboten mit Lieferung nach Frankreich; ${cheapest.title}`,
+                                    `eBay.fr: günstigstes von ${result.comparedOffers} neuen Angeboten mit Lieferung nach Frankreich${sellerDetails ? `; ${sellerDetails}` : ''}; ${cheapest.title}`,
                                     {
                                         url: cheapest.url,
                                         searchUrl: document.querySelector('a[data-bmid="btn-ebay-fr"]')?.href || '',
                                         shippingStatus: shipping <= 0.004 ? 'free' : 'paid',
                                         shippingCost: shipping,
-                                        logoBadge: 'FR',
-                                        logoBadgeLabel: 'Frankreich',
-                                        logoCaption: String(cheapest.seller || '').trim()
+                                        logoDomainSuffix: '.fr',
+                                        logoCaption: sellerName || sellerTypeLabel,
+                                        logoCountryFlag: '🇫🇷',
+                                        logoCountryLabel: 'Frankreich',
+                                        sellerAccountType,
+                                        sellerName
                                     }
                                 );
                                 if (offer) storeOffers([offer]);
@@ -5932,14 +6036,17 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     onResult,
                     onError,
                     extraHeaders = {},
-                    maxAttempts = 45
+                    maxAttempts = 45,
+                    showGlobalLoading = false
                 ) => {
                     let attempts = 0;
                     let settled = false;
                     const finish = () => {
                         if (settled) return false;
                         settled = true;
-                        setBackgroundLookupPending(source, false);
+                        if (showGlobalLoading) {
+                            setBackgroundLookupPending(source, false);
+                        }
                         return true;
                     };
                     const succeed = payload => {
@@ -5948,7 +6055,17 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     const fail = error => {
                         if (finish()) onError?.(error);
                     };
-                    setBackgroundLookupPending(source, true);
+                    if (showGlobalLoading) {
+                        setBackgroundLookupPending(source, true);
+                    }
+                    const resolveStatusUrl = value => {
+                        try {
+                            return BM_resolveWorkerUrl(value, BM_WORKER_URL);
+                        } catch (error) {
+                            fail({ code: 'invalid-status-url', cause: error });
+                            return '';
+                        }
+                    };
                     const poll = statusUrl => {
                         attempts += 1;
                         if (attempts > maxAttempts) {
@@ -5968,9 +6085,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                     let payload = null;
                                     try { payload = JSON.parse(response.responseText); } catch (error) {}
                                     if (response.status === 202 || payload?.pending) {
-                                        window.setTimeout(() => poll(
-                                            new URL(payload?.statusUrl || statusUrl, BM_WORKER_URL).href
-                                        ), Number(payload?.pollAfterMs) || 2000);
+                                        const nextStatusUrl = resolveStatusUrl(
+                                            payload?.statusUrl || statusUrl
+                                        );
+                                        if (!nextStatusUrl) return;
+                                        window.setTimeout(
+                                            () => poll(nextStatusUrl),
+                                            Number(payload?.pollAfterMs) || 2000
+                                        );
                                         return;
                                     }
                                     if (response.status >= 400 || payload?.error) {
@@ -6002,13 +6124,106 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                 fail(payload || { status: response.status });
                                 return;
                             }
-                            poll(new URL(payload.statusUrl, BM_WORKER_URL).href);
+                            const statusUrl = resolveStatusUrl(payload.statusUrl);
+                            if (statusUrl) poll(statusUrl);
                         },
                         onerror: fail,
                         ontimeout: () => fail({ code: 'timeout' })
                     });
                 };
 
+                const apifyMarketplaceConfigs = new Map([
+                    ['vinted', { label: 'Vinted', logoDomain: 'vinted.de' }],
+                    ['leboncoin', { label: 'Leboncoin', logoDomain: 'leboncoin.fr' }],
+                    ['stockx', { label: 'StockX', logoDomain: 'stockx.com' }]
+                ]);
+                const selectPlausibleMarketplaceOffer = (
+                    source,
+                    result,
+                    referencePrice,
+                    getPrice = offer => Number(offer?.total ?? offer?.price)
+                ) => {
+                    const candidates = [
+                        result?.cheapest,
+                        ...(Array.isArray(result?.offers) ? result.offers : [])
+                    ].filter(Boolean);
+                    const seen = new Set();
+                    return candidates
+                        .filter(candidate => {
+                            const price = getPrice(candidate);
+                            const identity = `${candidate?.url || ''}:${price}`;
+                            if (seen.has(identity)) return false;
+                            seen.add(identity);
+                            return BM_isMarketplacePricePlausible(
+                                source,
+                                price,
+                                referencePrice
+                            );
+                        })
+                        .sort((left, right) => getPrice(left) - getPrice(right))[0] || null;
+                };
+                const applyApifyMarketplaceResult = (
+                    source,
+                    label,
+                    logoDomain,
+                    rawResult
+                ) => {
+                    const result = rawResult?.result || rawResult?.data || rawResult;
+                    if (!result?.found || !result.cheapest) return false;
+                    const brickmergeBestPrice = getBrickmergeBestPrice();
+                    const cheapest = selectPlausibleMarketplaceOffer(
+                        source,
+                        result,
+                        brickmergeBestPrice
+                    );
+                    if (!cheapest) {
+                        console.info(
+                            `Brickmerge Tweaker: ${label}-Angebot unterhalb der 50%-Plausibilitätsgrenze verworfen.`
+                        );
+                        return false;
+                    }
+                    const total = Number(cheapest.total ?? cheapest.price);
+                    if (!Number.isFinite(total) || total <= 0) return false;
+                    const shippingCost = Number(cheapest.shippingCost);
+                    const transactionFee = Number(cheapest.transactionFee);
+                    const shippingStatus = Number.isFinite(shippingCost)
+                        ? (shippingCost <= 0.004 ? 'free' : 'paid')
+                        : 'unknown';
+                    const stockxCurrencyNote = source === 'stockx'
+                        ? 'StockX-DE Lowest Ask in EUR; Versand und StockX-Gebühren kommen gegebenenfalls hinzu; '
+                        : '';
+                    const offer = createOffer(
+                        `btn-${source}`,
+                        label,
+                        `${formatEuroValue(total)} €`,
+                        source === 'vinted'
+                            ? chrome.runtime.getURL('icons/logo-vinted.png')
+                            : source === 'leboncoin'
+                                ? chrome.runtime.getURL('icons/logo-leboncoin.png')
+                                : source === 'stockx'
+                                    ? chrome.runtime.getURL('icons/logo-stockx.svg')
+                                    : icon(logoDomain),
+                        `${source}-apify`,
+                        `${label}: günstigstes von ${result.comparedOffers} passenden Angeboten; ${stockxCurrencyNote}Gesamtpreis${Number.isFinite(transactionFee) ? ` inklusive geschätzter Transaktionsgebühr ${formatEuroValue(transactionFee)} €` : ''}; ${cheapest.title}`,
+                        {
+                            url: cheapest.url,
+                            searchUrl: document.querySelector(
+                                `a[data-bmid="btn-${source}"]`
+                            )?.href || '',
+                            logoText: '',
+                            logoClass: source === 'stockx'
+                                ? 'bm-stockx-logo'
+                                : '',
+                            shippingStatus,
+                            shippingCost: Number.isFinite(shippingCost)
+                                ? shippingCost
+                                : null
+                        }
+                    );
+                    if (!offer) return false;
+                    storeOffers([offer]);
+                    return true;
+                };
                 const fetchApifyMarketplaceOffer = (source, label, logoDomain) => {
                     if (!BM_isOfferShopEnabled(source)) return;
                     const brickmergeBestPrice = getBrickmergeBestPrice();
@@ -6025,68 +6240,63 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                             `${source}-apify-${source === 'stockx' ? 'v4' : 'v2'}`,
                             `${setNumber}:${brickmergeBestPrice ?? 'none'}`
                         ),
-                        result => {
-                                if (!result?.found || !result.cheapest) return;
-                                const cheapest = result.cheapest;
-                                const total = Number(cheapest.total ?? cheapest.price);
-                                if (!Number.isFinite(total) || total <= 0) return;
-                                const shippingCost = Number(cheapest.shippingCost);
-                                const transactionFee = Number(cheapest.transactionFee);
-                                const shippingStatus = Number.isFinite(shippingCost)
-                                    ? (shippingCost <= 0.004 ? 'free' : 'paid')
-                                    : 'unknown';
-                                const stockxCurrencyNote = source === 'stockx'
-                                    ? 'StockX-DE Lowest Ask in EUR; Versand und StockX-Gebühren kommen gegebenenfalls hinzu; '
-                                    : '';
-                                const offer = createOffer(
-                                    `btn-${source}`,
-                                    label,
-                                    `${formatEuroValue(total)} €`,
-                                    source === 'vinted'
-                                        ? chrome.runtime.getURL('icons/logo-vinted.png')
-                                        : source === 'leboncoin'
-                                            ? chrome.runtime.getURL('icons/logo-leboncoin.png')
-                                            : source === 'stockx'
-                                                ? chrome.runtime.getURL('icons/logo-stockx.svg')
-                                                : icon(logoDomain),
-                                    `${source}-apify`,
-                                    `${label}: günstigstes von ${result.comparedOffers} passenden Angeboten; ${stockxCurrencyNote}Gesamtpreis${Number.isFinite(transactionFee) ? ` inklusive geschätzter Transaktionsgebühr ${formatEuroValue(transactionFee)} €` : ''}; ${cheapest.title}`,
-                                    {
-                                        url: cheapest.url,
-                                        searchUrl: document.querySelector(`a[data-bmid="btn-${source}"]`)?.href || '',
-                                        logoText: '',
-                                        logoClass: source === 'stockx'
-                                            ? 'bm-stockx-logo'
-                                            : '',
-                                        shippingStatus,
-                                        shippingCost: Number.isFinite(shippingCost) ? shippingCost : null
-                                    }
-                                );
-                                if (offer) storeOffers([offer]);
-                        },
-                        error => console.warn(`Brickmerge Tweaker: ${label}-Abfrage fehlgeschlagen.`, error)
+                        result => applyApifyMarketplaceResult(
+                            source,
+                            label,
+                            logoDomain,
+                            result
+                        ),
+                        error => console.warn(
+                            `Brickmerge Tweaker: ${label}-Abfrage fehlgeschlagen.`,
+                            error
+                        )
                     );
                 };
-                fetchApifyMarketplaceOffer('vinted', 'Vinted', 'vinted.de');
-                fetchApifyMarketplaceOffer('leboncoin', 'Leboncoin', 'leboncoin.fr');
-                fetchApifyMarketplaceOffer('stockx', 'StockX', 'stockx.com');
+                apifyMarketplaceConfigs.forEach((config, source) => {
+                    fetchApifyMarketplaceOffer(
+                        source,
+                        config.label,
+                        config.logoDomain
+                    );
+                });
 
                 const fetchIdealoOffers = () => {
                     if (!/^\d{8}$|^\d{12,14}$/.test(ean) || !BM_isOfferShopEnabled('idealo')) return;
+                    const brickmergeBestPrice = getBrickmergeBestPrice();
                     const requestUrl = new URL(`${BM_WORKER_URL}/idealo`);
                     requestUrl.searchParams.set('ean', ean);
                     requestUrl.searchParams.set('cache', 'only');
+                    if (brickmergeBestPrice !== null) {
+                        requestUrl.searchParams.set('best', brickmergeBestPrice.toFixed(2));
+                    }
                     fetchAsyncApify(
                         'idealo',
                         requestUrl.href,
-                        makeApiCacheKey('idealo-apify-v2', ean),
+                        makeApiCacheKey(
+                            'idealo-apify-v3',
+                            `${ean}:${brickmergeBestPrice ?? 'none'}`
+                        ),
                         result => {
                                 if (!result?.found || !Array.isArray(result.offers)) {
                                     publishIdealoRequestState('empty');
                                     return;
                                 }
+                                const plausibleOffers = result.offers.filter(entry =>
+                                    BM_isMarketplacePricePlausible(
+                                        'idealo',
+                                        Number(entry?.price ?? entry?.total),
+                                        brickmergeBestPrice
+                                    )
+                                );
+                                if (plausibleOffers.length === 0) {
+                                    console.info(
+                                        'Brickmerge Tweaker: Idealo-Angebote unterhalb der 50%-Plausibilitätsgrenze verworfen.'
+                                    );
+                                    publishIdealoRequestState('empty');
+                                    return;
+                                }
                                 const idealoFallbackLogo = chrome.runtime.getURL('icons/logo-idealo.jpg');
-                                result.offers.slice(0, 3).forEach((entry, index) => {
+                                plausibleOffers.slice(0, 3).forEach((entry, index) => {
                                     const itemPrice = Number(entry.price ?? entry.total);
                                     const total = Number(entry.total ?? itemPrice);
                                     if (!Number.isFinite(itemPrice) || itemPrice <= 0 ||
@@ -6104,7 +6314,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                         `https://www.idealo.fr/rslt.html?q=${encodeURIComponent(ean)}`;
                                     const offer = createOffer(
                                         `btn-idealo-${index + 1}`,
-                                        'Idealo FR',
+                                        shopName || 'Idealo FR',
                                         `${formatEuroValue(itemPrice)} €`,
                                         merchantLogo || entry.logoUrl || idealoFallbackLogo,
                                         'idealo-apify',
@@ -6121,7 +6331,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                                 : entry.logoUrl
                                                     ? ''
                                                     : 'bm-idealo-logo',
-                                            logoCaption: shopName,
+                                            logoCaption: shopName
+                                                ? 'via Idealo FR'
+                                                : 'Idealo FR',
                                             logoFallbackUrl: idealoFallbackLogo,
                                             shippingStatus: Number.isFinite(shippingCost)
                                                 ? (shippingCost <= 0.004 ? 'free' : 'paid')
@@ -6148,6 +6360,31 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     idealoRequestPending = false;
                     fetchIdealoOffers();
                 }
+
+                // Der gemeinsame Preisabruf meldet jede fertige Quelle sofort.
+                // Apify-Ergebnisse koennen ohne Seitenreload direkt in dieselbe
+                // Offer-Map uebernommen werden; Idealo liest den soeben gefuellten
+                // Worker-Cache erneut ein.
+                document.addEventListener(
+                    'bm-marketplace-source-update',
+                    event => {
+                        const detail = event.detail || {};
+                        if (String(detail.setNumber || '') !== String(setNumber) ||
+                            detail.state !== 'ready') return;
+                        const config = apifyMarketplaceConfigs.get(detail.source);
+                        if (config && BM_isOfferShopEnabled(detail.source)) {
+                            applyApifyMarketplaceResult(
+                                detail.source,
+                                config.label,
+                                config.logoDomain,
+                                detail.payload
+                            );
+                        } else if (detail.source === 'idealo' &&
+                            BM_isOfferShopEnabled('idealo')) {
+                            fetchIdealoOffers();
+                        }
+                    }
+                );
 
                 const kleinanzeigenCreditsMessage =
                     'Kleinanzeigen konnte nicht abgefragt werden: Die API-Credits ' +
@@ -6237,7 +6474,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         `${BM_WORKER_URL}/kleinanzeigen`
                     );
                     kleinanzeigenUrl.searchParams.set('set', setNumber);
-                    kleinanzeigenUrl.searchParams.set('cache', 'only');
                     if (brickmergeBestPrice !== null) {
                         kleinanzeigenUrl.searchParams.set(
                             'best',
@@ -6263,11 +6499,23 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                     return;
                                 }
 
-                                const cheapest = result.cheapest;
+                                const cheapest = selectPlausibleMarketplaceOffer(
+                                    'kleinanzeigen',
+                                    result,
+                                    brickmergeBestPrice,
+                                    offer => Number(offer?.price ?? offer?.total)
+                                );
+                                if (!cheapest) {
+                                    console.info(
+                                        'Brickmerge Tweaker: Kleinanzeigen-Angebote unterhalb der 50%-Plausibilitätsgrenze verworfen.'
+                                    );
+                                    publishKleinanzeigenRequestState('done');
+                                    return;
+                                }
                                 const details = [
                                     `Kleinanzeigen: günstigstes von ${result.comparedOffers} passenden deutschlandweiten Angeboten`,
-                                    Number.isFinite(Number(result.minimumReferencePrice))
-                                        ? `Mindestpreisfilter: ${formatEuroValue(Number(result.minimumReferencePrice))} € (50% des Brickmerge-Bestpreises)`
+                                    BM_getMarketplaceMinimumPrice(brickmergeBestPrice) !== null
+                                        ? `Mindestpreisfilter: ${formatEuroValue(BM_getMarketplaceMinimumPrice(brickmergeBestPrice))} € (50% des Brickmerge-Bestpreises)`
                                         : '',
                                     cheapest.city ? `Ort: ${cheapest.city}` : '',
                                     cheapest.negotiable ? 'Verhandlungsbasis' : '',
@@ -6623,6 +6871,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (/\bebay(?:\.de|\.fr)?\b/i.test(logoIdentity)) {
             link.classList.add('bm-ebay-logo-link');
         }
+        const isEbayLink = link.classList.contains('bm-ebay-logo-link');
         if (logo instanceof HTMLImageElement) {
             logo.removeAttribute('width');
             logo.removeAttribute('height');
@@ -6662,13 +6911,18 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
         residualNodes.forEach(node => node.remove());
 
-        if (caption || badge) {
+        if (isEbayLink && badge && badge.parentElement !== stage) {
+            stage.appendChild(badge);
+        }
+        if (caption || (badge && !isEbayLink)) {
             if (!meta) {
                 meta = document.createElement('span');
                 meta.className = 'bm-marketplace-logo-meta';
                 stage.after(meta);
             }
-            if (badge && badge.parentElement !== meta) meta.appendChild(badge);
+            if (badge && !isEbayLink && badge.parentElement !== meta) {
+                meta.appendChild(badge);
+            }
             if (caption && caption.parentElement !== meta) meta.appendChild(caption);
             link.classList.add('bm-has-meta');
         } else {
@@ -6687,7 +6941,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 priceRow.dataset.bmSoldOut === 'true') return;
 
             const wrapper = priceRow.closest('.row.collapse');
-            const merchant = priceRow.querySelector('.merchant')?.textContent || '';
+            const merchantElement = priceRow.querySelector('.merchant');
+            const merchant = merchantElement?.textContent || '';
             const logo = wrapper?.querySelector('.goto img[alt]')?.alt || '';
             const tooltip = priceRow.querySelector(':scope > a')?.getAttribute('title') || '';
             const ebayIdentity = `${merchant} ${logo} ${tooltip}`;
@@ -6699,9 +6954,30 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             const logoImage = logoLink?.querySelector('img');
             if (!logoLink || !logoImage) return;
 
+            const originalLogo = logoImage.currentSrc || logoImage.src || '';
+            if (!logoImage.dataset.bmOriginalSrc) {
+                logoImage.dataset.bmOriginalSrc = originalLogo;
+            }
+            // Brickmerge liefert für die drei nativen eBay-Varianten eigene
+            // Händlerlogos. Diese bleiben erhalten. Nur wenn eine frühere
+            // Dekoration fälschlich das LEGO-Logo eingesetzt hat, verwenden
+            // wir das neutrale eBay-Fallback.
+            if (/\blego\b|logo-lego/i.test(
+                `${logoImage.alt || ''} ${originalLogo}`
+            )) {
+                logoImage.src = chrome.runtime.getURL(
+                    'icons/logo-ebay-minifig.png'
+                );
+            }
+            logoImage.alt = 'eBay';
+            logoImage.removeAttribute('srcset');
+            logoImage.classList.remove('bm-lego-wide-logo');
+            logoLink.classList.remove('bm-lego-logo-link');
+
             logoLink.classList.add(
                 'bm-marketplace-logo-link',
-                'bm-ebay-logo-link'
+                'bm-ebay-logo-link',
+                'bm-ebay-native-source'
             );
             logoLink.classList.add('bm-has-caption');
             let caption = logoLink.querySelector('.bm-marketplace-logo-caption');
@@ -6710,23 +6986,27 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 caption.className = 'bm-marketplace-logo-caption';
                 logoImage.after(caption);
             }
-            const offerType = /\bprivat(?:person|anbieter|verkauf)?\b/i.test(
-                ebayIdentity
-            ) ? 'privat' : /\bgewerblich|\bhändler|\bshop\b/i.test(
-                ebayIdentity
-            ) ? 'gewerblich' : 'Brickmerge';
-            caption.textContent = offerType;
-            caption.title = `eBay-DE-Angebot: ${offerType}`;
-
-            let badge = logoLink.querySelector('.bm-marketplace-country-badge');
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'bm-marketplace-country-badge';
-                badge.textContent = 'DE';
-                badge.title = 'Deutschland';
-                badge.setAttribute('aria-label', 'Deutschland');
-                logoImage.after(badge);
+            // Brickmerge liefert für das eigene eBay-Angebot keinen Verkäufer.
+            // Laut Brickmerge handelt es sich bei dieser Quelle um ein
+            // gewerbliches Händlerangebot.
+            const offerType = 'commercial';
+            const offerTypeLabel = 'gewerblich';
+            logoLink.classList.remove(
+                'bm-ebay-standard',
+                'bm-ebay-commercial',
+                'bm-ebay-private'
+            );
+            logoLink.classList.add(`bm-ebay-${offerType}`);
+            caption.textContent = offerTypeLabel;
+            caption.title = `eBay-DE-Angebot: ${offerTypeLabel}`;
+            if (merchantElement) {
+                merchantElement.replaceChildren(
+                    document.createTextNode('eBay'),
+                    document.createElement('br')
+                );
             }
+            logoLink.querySelectorAll('.bm-marketplace-country-badge')
+                .forEach(badge => badge.remove());
             normalizeMarketplaceLogoLink(logoLink);
         });
     }
@@ -6744,7 +7024,55 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     link.getAttribute('title'),
                     link.textContent
                 ].filter(Boolean).join(' ');
-                if (/\blego(?:\.com|\.fr)?\b/i.test(brandText)) {
+                const originalSource = logo instanceof HTMLImageElement
+                    ? logo.dataset.bmOriginalSrc || logo.currentSrc || logo.src || ''
+                    : '';
+                const merchantName = link.closest('.row.collapse')
+                    ?.querySelector(
+                        '.medium-4.small-9.columns.pricerow .merchant'
+                    )?.textContent?.replace(/\s+/g, ' ').trim() || '';
+                const logoAlt = logo.getAttribute('alt')?.replace(/\s+/g, ' ').trim() || '';
+                const sourcePath = (() => {
+                    try {
+                        return new URL(originalSource, location.href).pathname;
+                    } catch {
+                        return originalSource;
+                    }
+                })();
+                const isEbay = link.classList.contains('bm-ebay-logo-link') ||
+                    /\bebay(?:\.de|\.fr)?\b/i.test(brandText);
+                if (isEbay) {
+                    link.classList.add('bm-ebay-logo-link');
+                    link.classList.remove('bm-lego-logo-link');
+                    if (logo instanceof HTMLImageElement) {
+                        if (!logo.dataset.bmOriginalSrc) {
+                            logo.dataset.bmOriginalSrc =
+                                logo.currentSrc || logo.src || '';
+                        }
+                        const currentSource = logo.currentSrc || logo.src || '';
+                        const originalSource = logo.dataset.bmOriginalSrc || '';
+                        const currentLooksLikeLego = /\blego\b|logo-lego/i.test(
+                            `${logo.alt || ''} ${currentSource}`
+                        );
+                        const originalLooksLikeLego = /\blego\b|logo-lego/i.test(
+                            originalSource
+                        );
+                        if (currentLooksLikeLego) {
+                            logo.src = originalSource && !originalLooksLikeLego
+                                ? originalSource
+                                : chrome.runtime.getURL(
+                                    'icons/logo-ebay-minifig.png'
+                                );
+                        }
+                        logo.alt = 'eBay';
+                        logo.removeAttribute('srcset');
+                        logo.classList.remove('bm-lego-wide-logo');
+                    }
+                } else if (
+                    /^(?:lego|lego shop|lego\.com|lego\.fr)$/i.test(merchantName) ||
+                    /^(?:lego|lego shop|lego\.com|lego\.fr)$/i.test(logoAlt) ||
+                    /(?:^|[\/_-])(?:m_)?lego(?:[_.-]|$)/i.test(sourcePath)
+                ) {
                     link.classList.add('bm-lego-logo-link');
                     if (logo instanceof HTMLImageElement) {
                         if (!logo.dataset.bmOriginalSrc) {
@@ -6754,6 +7082,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         logo.removeAttribute('srcset');
                         logo.classList.add('bm-lego-wide-logo');
                     }
+                } else if (logo instanceof HTMLImageElement) {
+                    const savedSource = logo.dataset.bmOriginalSrc || '';
+                    if (link.classList.contains('bm-lego-logo-link') && savedSource &&
+                        !/logo-lego-wide\.png/i.test(savedSource)) {
+                        logo.src = savedSource;
+                    }
+                    link.classList.remove('bm-lego-logo-link');
+                    logo.classList.remove('bm-lego-wide-logo');
                 }
                 normalizeMarketplaceLogoLink(link);
             }
@@ -8525,41 +8861,100 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 }
             };
 
-            const loadEbayMinifigPrice = async (actions, itemNo) => {
-                const label = actions?.querySelector('.bm-minifig-ebay-price');
-                if (!label || label.dataset.bmLoaded === itemNo) return;
-                label.dataset.bmLoaded = itemNo;
+            // eBay drosselt Serienabfragen deutlich früher als BrickLink. Die
+            // Warteschlange verhindert, dass eine große Minifigurenliste alle
+            // Requests gleichzeitig zum Worker schickt.
+            const ebayMinifigQueue = [];
+            let ebayMinifigRequestsActive = 0;
+            const runNextEbayMinifigRequest = () => {
+                while (ebayMinifigRequestsActive < 3 && ebayMinifigQueue.length) {
+                    const entry = ebayMinifigQueue.shift();
+                    ebayMinifigRequestsActive += 1;
+                    Promise.resolve().then(entry.task).then(
+                        entry.resolve,
+                        entry.reject
+                    ).finally(() => {
+                        ebayMinifigRequestsActive -= 1;
+                        runNextEbayMinifigRequest();
+                    });
+                }
+            };
+            const queueEbayMinifigRequest = task => new Promise((resolve, reject) => {
+                ebayMinifigQueue.push({ task, resolve, reject });
+                runNextEbayMinifigRequest();
+            });
+
+            const fetchEbayMinifigPrice = async itemNo => {
                 const clientId = await getWorkerClientId();
-                cachedShopRequest(
-                    'ebay-minifig',
-                    makeApiCacheKey('ebay-minifig-v6', itemNo),
+                return queueEbayMinifigRequest(() => fetchWithCache(
+                    makeApiCacheKey('ebay-minifig-v7', itemNo),
                     OFFER_CACHE_TTL,
-                    {
-                        method: 'GET',
-                        url: `${BM_WORKER_URL}/ebay-minifig?itemNo=${encodeURIComponent(itemNo)}`,
-                        headers: { Accept: 'application/json', 'X-BM-Client-ID': clientId },
-                        timeout: 15000,
-                        onload: response => {
-                            let result = null;
-                            try { result = JSON.parse(response.responseText); } catch (error) {}
-                            const itemPrice = Number(result?.cheapest?.itemPrice);
-                            label.textContent = result?.found && Number.isFinite(itemPrice)
-                                ? `${formatEuroValue(itemPrice)} €`
-                                : 'nicht verfügbar';
-                            if (result?.cheapest?.url) {
-                                label.closest('a').href = result.cheapest.url;
-                                const shipping = Number(result.cheapest.shipping);
-                                const shippingText = Number.isFinite(shipping)
-                                    ? `; Versand ${formatEuroValue(shipping)} €`
-                                    : '';
-                                label.closest('a').title =
-                                    `Artikelpreis${shippingText}: ${result.cheapest.title}`;
-                            }
-                        },
-                        onerror: () => { label.textContent = 'nicht verfügbar'; },
-                        ontimeout: () => { label.textContent = 'nicht verfügbar'; }
+                    () => new Promise((resolve, reject) => {
+                        requestWithGm({
+                            method: 'GET',
+                            url: `${BM_WORKER_URL}/ebay-minifig?itemNo=` +
+                                encodeURIComponent(itemNo),
+                            headers: {
+                                Accept: 'application/json',
+                                'X-BM-Client-ID': clientId
+                            },
+                            timeout: 20000,
+                            onload: response => {
+                                if (response.status < 200 || response.status >= 400) {
+                                    reject(new Error(`HTTP ${response.status}`));
+                                    return;
+                                }
+                                try {
+                                    resolve(JSON.parse(response.responseText || '{}'));
+                                } catch (error) {
+                                    reject(error);
+                                }
+                            },
+                            onerror: () => reject(new Error('Netzwerkfehler')),
+                            ontimeout: () => reject(new Error('Zeitüberschreitung'))
+                        });
+                    }),
+                    result => result?.found === true &&
+                        Number.isFinite(Number(result?.cheapest?.itemPrice)),
+                    false
+                ));
+            };
+
+            const loadEbayMinifigPrice = async (actions, rawItemNo) => {
+                const label = actions?.querySelector('.bm-minifig-ebay-price');
+                const itemNo = String(rawItemNo || '').trim();
+                if (!label || !itemNo || label.dataset.bmLoaded === itemNo ||
+                    !BM_isOfferShopEnabled('ebay-minifig')) return;
+                label.dataset.bmLoaded = itemNo;
+
+                try {
+                    const result = await fetchEbayMinifigPrice(itemNo);
+                    if (!label.isConnected || label.dataset.bmLoaded !== itemNo) return;
+                    const itemPrice = Number(result?.cheapest?.itemPrice);
+                    label.textContent = result?.found && Number.isFinite(itemPrice)
+                        ? `${formatEuroValue(itemPrice)} €`
+                        : 'nicht verfügbar';
+                    if (result?.cheapest?.url) {
+                        const link = label.closest('a');
+                        link.href = result.cheapest.url;
+                        const shipping = Number(result.cheapest.shipping);
+                        const shippingText = Number.isFinite(shipping)
+                            ? `; Versand ${formatEuroValue(shipping)} €`
+                            : '';
+                        link.title =
+                            `Artikelpreis${shippingText}: ${result.cheapest.title}`;
                     }
-                );
+                } catch (error) {
+                    if (!label.isConnected || label.dataset.bmLoaded !== itemNo) return;
+                    delete label.dataset.bmLoaded;
+                    label.textContent = 'nicht verfügbar';
+                    label.closest('a').title =
+                        'eBay-Preisabfrage fehlgeschlagen; beim nächsten Öffnen erneut versuchen';
+                    console.warn(
+                        `Brickmerge Tweaker: eBay-Minifigurenpreis für ${itemNo} fehlgeschlagen.`,
+                        error
+                    );
+                }
             };
 
             const ensureMinifigActions = (
@@ -9939,6 +10334,21 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             if (offer.logoUrl || offer.logoText) {
                 iconLink.classList.add('bm-marketplace-logo-link');
             }
+            if (offer.key === 'ebay') {
+                iconLink.classList.add('bm-ebay-logo-link', 'bm-ebay-de-source');
+            } else if (offer.key === 'ebay-fr') {
+                iconLink.classList.add('bm-ebay-logo-link', 'bm-ebay-fr-source');
+            }
+            if (offer.key === 'ebay' || offer.key === 'ebay-fr') {
+                const sellerAccountType = normalizeEbaySellerAccountType(
+                    offer.sellerAccountType
+                );
+                iconLink.classList.add(sellerAccountType === 'BUSINESS'
+                    ? 'bm-ebay-commercial'
+                    : sellerAccountType === 'INDIVIDUAL'
+                        ? 'bm-ebay-private'
+                        : 'bm-ebay-standard');
+            }
             if (offer.logoText) {
                 const wordLogo = document.createElement('span');
                 wordLogo.className = `bm-marketplace-logo ${offer.key === 'leboncoin'
@@ -10000,6 +10410,27 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 iconLink.appendChild(badge);
             }
             normalizeMarketplaceLogoLink(iconLink);
+            if (offer.logoCountryFlag) {
+                const stage = iconLink.querySelector('.bm-marketplace-logo-stage');
+                if (stage && !stage.querySelector('.bm-marketplace-country-flag')) {
+                    const flag = document.createElement('span');
+                    flag.className = 'bm-marketplace-country-flag';
+                    flag.textContent = offer.logoCountryFlag;
+                    flag.title = offer.logoCountryLabel || offer.label;
+                    flag.setAttribute('aria-label', flag.title);
+                    stage.appendChild(flag);
+                }
+            }
+            if (offer.logoDomainSuffix) {
+                const stage = iconLink.querySelector('.bm-marketplace-logo-stage');
+                if (stage && !stage.querySelector('.bm-ebay-domain-suffix')) {
+                    const suffix = document.createElement('span');
+                    suffix.className = 'bm-ebay-domain-suffix';
+                    suffix.textContent = offer.logoDomainSuffix;
+                    suffix.setAttribute('aria-hidden', 'true');
+                    stage.appendChild(suffix);
+                }
+            }
             iconRow.appendChild(iconLink);
             iconColumn.appendChild(iconRow);
 
@@ -10159,6 +10590,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             return { status: 'unknown', cost: null };
         }
 
+        // Alza berechnet fuer diese Angebote pauschal 0,98 Euro Versand. Die
+        // Haendlerregel steht vor den von Brickmerge gelieferten Angaben, damit
+        // ein dort noch hinterlegter alter Versandwert sicher ersetzt wird.
+        const merchantName = getOfferMerchantName(priceSpan);
+        if (/\balza(?:\.de)?\b/i.test(merchantName)) {
+            return { status: 'paid', cost: 0.98 };
+        }
+
         const title = getOriginalOfferTitle(priceSpan.closest('a'));
         const titleCostMatch = title.match(
             /\+\s*(?:Versand(?:skosten)?)\s*(\d+[\d\s.,]*)\s*€/i
@@ -10181,7 +10620,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             if (nativeCost !== null) return { status: 'paid', cost: nativeCost };
         }
 
-        const merchantName = getOfferMerchantName(priceSpan);
         if (/\bsmyths\b/i.test(merchantName)) {
             const offerPrice = getBaseOfferPrice(priceSpan);
             if (offerPrice !== null) {
@@ -10717,3 +11155,2014 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     document.documentElement.classList.remove('bm-extension-preclean');
     console.error('Brickmerge Tools konnte nicht gestartet werden.', error);
 });
+
+
+(() => {
+    'use strict';
+
+    const STYLE_ID = 'bm-depot-quick-add-style';
+    const SALE_SETTINGS_KEY = 'brickmerge-depot-sale-thresholds-v1';
+    function installStyles() {
+        if (document.getElementById(STYLE_ID)) return;
+        const style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.textContent = `
+            .bmd-open-button {
+                display:inline-flex!important;align-items:center!important;
+                justify-content:center!important;gap:.5rem;width:auto;
+                min-width:0;margin:0 0 .35rem!important;
+                font-family:inherit!important;line-height:1.2!important;
+                white-space:nowrap;box-sizing:border-box;cursor:pointer
+            }
+            .bmd-open-button:hover,.bmd-open-button:focus {
+                outline:none
+            }
+            .bmd-open-button .bmd-button-content {
+                display:inline-flex!important;align-items:center;gap:.35rem
+            }
+            .bmd-open-button .bmd-button-icon {
+                display:inline-flex;align-items:center;justify-content:center;
+                width:1.2rem;height:1.2rem;flex:0 0 1.2rem;
+                line-height:1
+            }
+            .bmd-open-button .bmd-button-icon svg {
+                display:block;width:1.15rem;height:1.15rem;fill:none;
+                stroke:currentColor;stroke-width:1.8;stroke-linecap:round;
+                stroke-linejoin:round
+            }
+            .bmd-button-label-mobile { display:none }
+            .bm-chart-controls .bmd-open-button {
+                flex:0 0 auto
+            }
+            .bm-chart-controls.bmd-has-depot-button {
+                display:grid!important;
+                grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+                align-items:stretch!important;column-gap:.4rem!important;
+                width:100%;box-sizing:border-box
+            }
+            .bm-chart-controls.bmd-has-depot-button.bm-has-price-refresh {
+                grid-template-columns:repeat(3,minmax(0,1fr))!important
+            }
+            .bm-chart-controls.bmd-has-depot-button > #chartTrigger,
+            .bm-chart-controls.bmd-has-depot-button > .bmd-open-button,
+            .bm-chart-controls.bmd-has-depot-button > .bm-detail-all-prices-refresh {
+                width:100%!important;min-width:0!important;max-width:none!important;
+                margin-right:0!important;margin-left:0!important;
+                box-sizing:border-box
+            }
+            .bm-chart-controls.bmd-has-depot-button > .bm-chart-best-price {
+                grid-column:1/-1
+            }
+            body.bmd-overlay-open { overflow:hidden!important }
+            .bmd-overlay {
+                position:fixed;inset:0;z-index:2147483000;display:flex;
+                align-items:center;justify-content:center;padding:1rem;
+                background:rgba(0,0,0,.64);box-sizing:border-box;
+                animation:bm-ean-fade-in .18s ease-out
+            }
+            .bmd-dialog {
+                display:flex;width:min(40rem,100%);
+                max-height:calc(100vh - 2rem);max-height:calc(100dvh - 2rem);
+                flex-direction:column;overflow:hidden;border:0;
+                border-top:5px solid #b00;border-radius:4px;background:#fff;
+                color:#333;text-align:left;box-shadow:0 18px 48px rgba(0,0,0,.32);
+                animation:bm-ean-zoom-in .18s ease-out
+            }
+            .bmd-dialog-header {
+                display:flex;min-height:64px;flex:0 0 auto;align-items:center;
+                justify-content:space-between;gap:.6rem;
+                padding:.8rem .8rem .8rem 1.25rem;border-bottom:1px solid #ddd;
+                background:#fff!important;box-shadow:none!important;
+                box-sizing:border-box
+            }
+            .bmd-dialog-header h3 {
+                min-width:0;margin:0!important;padding:0!important;
+                overflow:visible;color:#333!important;
+                -webkit-text-fill-color:#333!important;
+                background:none!important;font-size:1.25rem!important;
+                font-weight:700!important;line-height:1.2!important;
+                text-shadow:none!important;white-space:normal
+            }
+            .bmd-close {
+                display:inline-flex!important;width:40px;min-width:40px;height:40px;
+                flex:0 0 40px;align-items:center;justify-content:center;
+                margin:0!important;padding:0!important;border:0!important;
+                border-radius:4px!important;background:#f7eaea!important;
+                color:#800!important;font:bold 1.8rem/1 Arial,sans-serif!important;
+                text-shadow:none!important;cursor:pointer
+            }
+            .bmd-close:hover,.bmd-close:focus {
+                background:#b00!important;color:#fff!important;outline:none
+            }
+            .bmd-dialog-body {
+                min-height:0;overflow:auto;padding:.85rem 1rem 1rem;
+                background:#fff
+            }
+            .bmd-loading,.bmd-login,.bmd-status {
+                display:block;margin:0;font-size:.8rem;line-height:1.4
+            }
+            .bmd-fields {
+                display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+                gap:.55rem .75rem
+            }
+            .bmd-field { display:block;min-width:0;margin:0 }
+            .bmd-field-wide { grid-column:1/-1 }
+            .bmd-field>span {
+                display:block;margin-bottom:.15rem;color:#777;font-size:.64rem;
+                font-weight:400;line-height:1.25;text-transform:uppercase
+            }
+            .bmd-field input,.bmd-field select {
+                display:block;width:100%;height:2.15rem;margin:0;
+                padding:.3rem .45rem;border:1px solid #ccc;background:#fff;
+                color:#333;font-size:.82rem;box-sizing:border-box
+            }
+            .bmd-field input[readonly] { background:#eee;font-weight:700 }
+            .bmd-new-storage { margin-top:.35rem!important }
+            .bmd-submit { width:100%;margin:.75rem 0 0!important }
+            .bmd-status { min-height:1.1rem;padding-top:.45rem;color:#666 }
+            .bmd-status-ok { color:#476600;font-weight:700 }
+            .bmd-status-error { color:#b00;font-weight:700 }
+            #dpWrap .bmd-growth {
+                display:block;margin-top:.18rem;font-size:.68rem;font-weight:700;
+                line-height:1.25;white-space:nowrap
+            }
+            #dpWrap .bmd-positive,.bmd-dashboard-dialog .bmd-positive { color:#2e7d32!important }
+            #dpWrap .bmd-negative,.bmd-dashboard-dialog .bmd-negative { color:#b00020!important }
+            #dpWrap .bmd-neutral,.bmd-dashboard-dialog .bmd-neutral { color:#666!important }
+            #dpWrap .bmd-performance-percent,
+            .bmd-dashboard-dialog .bmd-performance-percent { font-weight:800 }
+            #dpWrap .bmd-growth-total { font-size:1rem;font-weight:700 }
+            #dpWrap .bmd-parts-link {
+                display:inline-block;margin-left:.15rem;padding:0 .2rem;
+                color:#555;font-size:.68rem;font-weight:600;line-height:1.25;
+                text-decoration:underline;white-space:nowrap
+            }
+            #dpWrap .bmd-parts-link:hover,#dpWrap .bmd-parts-link:focus {
+                background:#600;color:#fff;text-decoration:none;outline:none
+            }
+            #dpWrap .bmd-sale-threshold {
+                display:block;width:100%;margin:.18rem 0 0;padding:0;border:0;
+                background:none!important;color:#555!important;font:600 .66rem/1.25 inherit;
+                text-align:right;text-decoration:underline;cursor:pointer
+            }
+            #dpWrap .bmd-sale-threshold:hover,#dpWrap .bmd-sale-threshold:focus {
+                color:#900!important;background:none!important;outline:none
+            }
+            #dpWrap .bmd-dashboard-button { margin:0!important }
+            .bmd-dashboard-dialog { width:min(74rem,100%) }
+            .bmd-dashboard-summary {
+                display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem;
+                margin:0 0 .9rem
+            }
+            .bmd-dashboard-kpi {
+                min-width:0;padding:.75rem .85rem;border-left:3px solid #b00;
+                background:#f4f4f4
+            }
+            .bmd-dashboard-kpi span { display:block;color:#777;font-size:.68rem }
+            .bmd-dashboard-kpi strong { display:block;margin-top:.15rem;color:#222;font-size:1.05rem }
+            .bmd-dashboard-kpi small {
+                display:block;margin-top:.18rem;color:#777;font-size:.65rem;line-height:1.25
+            }
+            .bmd-dashboard-kpi.bmd-kpi-positive { border-left-color:#2e7d32 }
+            .bmd-dashboard-kpi.bmd-kpi-negative { border-left-color:#b00020 }
+            .bmd-dashboard-kpi.bmd-kpi-neutral { border-left-color:#777 }
+            .bmd-sale-settings {
+                margin:0 0 .9rem;padding:.75rem .85rem;background:#fff8ee;
+                border-left:3px solid #ff771a
+            }
+            .bmd-sale-settings h4,.bmd-dashboard-section h4 {
+                margin:0 0 .55rem!important;color:#333!important;font-size:.95rem!important
+            }
+            .bmd-sale-settings-grid {
+                display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;
+                align-items:end;gap:.55rem
+            }
+            .bmd-sale-settings-grid .bmd-field input { background:#fff }
+            .bmd-sale-formula { margin:.5rem 0 0;color:#666;font-size:.7rem;line-height:1.35 }
+            .bmd-dashboard-tabs { display:flex;flex-wrap:wrap;gap:.35rem;margin:0 0 .6rem }
+            .bmd-dashboard-tab {
+                margin:0!important;padding:.48rem .7rem!important;border:1px solid #ccc!important;
+                border-radius:2px!important;background:#eee!important;color:#444!important;
+                font:.75rem/1.1 inherit!important;cursor:pointer
+            }
+            .bmd-dashboard-tab[aria-selected="true"] {
+                border-color:#900!important;background:#900!important;color:#fff!important
+            }
+            .bmd-dashboard-table-wrap { overflow:auto;border:1px solid #ddd }
+            .bmd-dashboard-table { width:100%;margin:0;border-collapse:collapse;font-size:.76rem }
+            .bmd-dashboard-table th,.bmd-dashboard-table td {
+                padding:.48rem .55rem;border-bottom:1px solid #e5e5e5;text-align:right;
+                white-space:nowrap
+            }
+            .bmd-dashboard-table th { background:#eee;color:#555;font-size:.67rem;text-transform:uppercase }
+            .bmd-dashboard-table th:first-child,.bmd-dashboard-table td:first-child {
+                min-width:10rem;text-align:left;white-space:normal
+            }
+            .bmd-dashboard-table tbody tr:last-child td { border-bottom:0 }
+            .bmd-dashboard-table tbody tr:hover td { background:#faf5f5 }
+            .bmd-dashboard-setlink { color:#900;font-weight:700;text-decoration:none }
+            .bmd-dashboard-setlink:hover,.bmd-dashboard-setlink:focus {
+                text-decoration:underline;outline:none
+            }
+            .bmd-dashboard-bar {
+                display:inline-block;height:.45rem;margin-left:.35rem;border-radius:1rem;
+                background:#b00;vertical-align:middle
+            }
+            .bmd-dashboard-note { margin:.55rem 0 0;color:#777;font-size:.68rem }
+            .bmd-dashboard-rankings {
+                display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;
+                margin-top:.9rem
+            }
+            .bmd-dashboard-ranking { min-width:0 }
+            .bmd-dashboard-ranking h4 { margin-bottom:.4rem!important }
+            .bmd-dashboard-ranking .bmd-dashboard-table th:first-child,
+            .bmd-dashboard-ranking .bmd-dashboard-table td:first-child {
+                min-width:7rem
+            }
+            .bmd-dashboard-coverage {
+                display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.55rem;
+                margin-top:.9rem
+            }
+            .bmd-dashboard-coverage-item { padding:.65rem .75rem;background:#f4f4f4 }
+            .bmd-dashboard-coverage-item span { display:block;color:#777;font-size:.65rem }
+            .bmd-dashboard-coverage-item strong { display:block;margin-top:.1rem;font-size:.9rem }
+            .bmd-threshold-result {
+                margin:.75rem 0 0;padding:.75rem;background:#f4f4f4;text-align:center
+            }
+            .bmd-threshold-result strong { display:block;color:#900;font-size:1.35rem }
+            .bmd-threshold-actions { display:flex;gap:.5rem;margin-top:.7rem }
+            .bmd-threshold-actions .button { flex:1;margin:0!important }
+            @media screen and (max-width:640px) {
+                .bmd-overlay { padding:0 }
+                .bmd-dialog {
+                    width:100vw;height:100vh;height:100dvh;
+                    max-height:none;border-radius:0
+                }
+                .bmd-dialog-header {
+                    min-height:64px;padding:max(11px,env(safe-area-inset-top))
+                        max(10px,env(safe-area-inset-right)) 10px
+                        max(15px,env(safe-area-inset-left))
+                }
+                .bmd-dialog-header h3 { font-size:1.08rem!important }
+                .bmd-open-button { min-width:0;flex:0 0 auto;font-size:.7rem!important }
+                .bmd-button-label-full { display:none }
+                .bmd-button-label-mobile { display:inline }
+                .bmd-fields { grid-template-columns:1fr }
+                .bmd-field-wide { grid-column:auto }
+                .bmd-dashboard-summary { grid-template-columns:repeat(2,minmax(0,1fr)) }
+                .bmd-dashboard-rankings,.bmd-dashboard-coverage { grid-template-columns:1fr }
+                .bmd-sale-settings-grid { grid-template-columns:1fr }
+                .bmd-dashboard-table th,.bmd-dashboard-table td { padding:.42rem }
+                #dpWrap .bmd-sale-threshold { text-align:left }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function getSetNumber() {
+        return globalThis.BM_getBrickmergeSetNumber?.(window.location.href) ||
+            window.location.pathname.match(/\/(\d{4,7})-\d+_[^/]+\/?$/)?.[1] ||
+            null;
+    }
+
+    function today() {
+        const date = new Date();
+        return [
+            date.getFullYear(),
+            String(date.getMonth() + 1).padStart(2, '0'),
+            String(date.getDate()).padStart(2, '0')
+        ].join('-');
+    }
+
+    function parseEuro(text) {
+        const match = String(text || '').replace(/\u00a0/g, ' ')
+            .match(/(\d[\d\s.,]*)\s*€/);
+        if (!match) return null;
+        const raw = match[1].replace(/\s/g, '');
+        const decimalSeparator = raw.lastIndexOf(',') > raw.lastIndexOf('.')
+            ? ','
+            : '.';
+        const normalized = decimalSeparator === ','
+            ? raw.replace(/\./g, '').replace(',', '.')
+            : raw.replace(/,/g, '');
+        const value = Number(normalized);
+        return Number.isFinite(value) && value > 0 ? value : null;
+    }
+
+    function currentBestPrice() {
+        for (const element of document.querySelectorAll(
+            '.content.setdetails .topprice, .content.setdetails .pa-bestprice'
+        )) {
+            const price = parseEuro(element.textContent);
+            if (price !== null) return price;
+        }
+        return null;
+    }
+
+    function formatPrice(value) {
+        return Number.isFinite(value)
+            ? value.toLocaleString('de-DE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+                useGrouping: false
+            })
+            : '';
+    }
+
+    function defaultSaleSettings() {
+        return {
+            defaults: { feePercent: 0, fixedFee: 0, shipping: 6.99 },
+            sets: {}
+        };
+    }
+
+    function normalizeSaleValues(value, fallback = defaultSaleSettings().defaults) {
+        const number = (candidate, defaultValue, maximum) => {
+            const parsed = Number(candidate);
+            return Number.isFinite(parsed) && parsed >= 0 && parsed <= maximum
+                ? parsed
+                : defaultValue;
+        };
+        return {
+            feePercent: number(value?.feePercent, fallback.feePercent, 99.99),
+            fixedFee: number(value?.fixedFee, fallback.fixedFee, 10000),
+            shipping: number(value?.shipping, fallback.shipping, 10000)
+        };
+    }
+
+    function readSaleSettings() {
+        const defaults = defaultSaleSettings();
+        try {
+            const stored = JSON.parse(localStorage.getItem(SALE_SETTINGS_KEY) || '{}');
+            const normalizedDefaults = normalizeSaleValues(
+                stored?.defaults,
+                defaults.defaults
+            );
+            const sets = {};
+            Object.entries(stored?.sets || {}).forEach(([setNumber, values]) => {
+                if (/^\d{3,7}$/.test(setNumber)) {
+                    sets[setNumber] = normalizeSaleValues(values, normalizedDefaults);
+                }
+            });
+            return { defaults: normalizedDefaults, sets };
+        } catch (error) {
+            return defaults;
+        }
+    }
+
+    function writeSaleSettings(settings) {
+        localStorage.setItem(SALE_SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    function saleValuesForSet(setNumber) {
+        const settings = readSaleSettings();
+        return settings.sets[setNumber] || settings.defaults;
+    }
+
+    function calculateSaleThreshold(purchasePrice, values) {
+        const price = Number(purchasePrice);
+        const feePercent = Number(values?.feePercent);
+        const fixedFee = Number(values?.fixedFee);
+        const shipping = Number(values?.shipping);
+        const retainedShare = 1 - feePercent / 100;
+        if (!Number.isFinite(price) || price < 0 ||
+            !Number.isFinite(feePercent) || feePercent < 0 ||
+            !Number.isFinite(fixedFee) || fixedFee < 0 ||
+            !Number.isFinite(shipping) || shipping < 0 ||
+            retainedShare <= 0) return null;
+        return (price + fixedFee + shipping) / retainedShare;
+    }
+
+    function formatCurrency(value) {
+        return Number.isFinite(value)
+            ? `${value.toLocaleString('de-DE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })} €`
+            : '–';
+    }
+
+    function performanceClass(value) {
+        if (!Number.isFinite(value) || Math.abs(value) < 0.000001) {
+            return 'bmd-neutral';
+        }
+        return value > 0 ? 'bmd-positive' : 'bmd-negative';
+    }
+
+    function formatPercent(value, digits = 1) {
+        return Number.isFinite(value)
+            ? signed(value, digits, ' %')
+            : '–';
+    }
+
+    function input(type, name, attributes = {}) {
+        const element = document.createElement('input');
+        element.type = type;
+        element.name = name;
+        Object.entries(attributes).forEach(([key, value]) => {
+            if (key === 'value') element.value = value;
+            else if (key === 'required') element.required = Boolean(value);
+            else element.setAttribute(key, value);
+        });
+        return element;
+    }
+
+    function field(caption, control, wide = false) {
+        const label = document.createElement('label');
+        label.className = `bmd-field${wide ? ' bmd-field-wide' : ''}`;
+        const text = document.createElement('span');
+        text.textContent = caption;
+        label.append(text, control);
+        return label;
+    }
+
+    let depotBasePromise = null;
+    const depotDataPromises = new Map();
+
+    /*
+     * In Firefox/Tampermonkey kann das globale fetch() aus dem isolierten
+     * Userscript-Kontext stammen. Dann sieht Brickmerge trotz angemeldeter
+     * Seite keine Sitzungscookies. Der Fetch der echten Seite laeuft dagegen
+     * mit dem Origin der Detailseite und teilt deren Login-Sitzung.
+     */
+    function brickmergeFetch(path, options = {}) {
+        const pageWindow = typeof unsafeWindow !== 'undefined'
+            ? unsafeWindow
+            : window;
+        const pageFetch = typeof pageWindow.fetch === 'function'
+            ? pageWindow.fetch.bind(pageWindow)
+            : window.fetch.bind(window);
+        return pageFetch(new URL(path, window.location.origin).href, {
+            ...options,
+            credentials: 'include',
+            redirect: 'follow',
+            cache: 'no-store'
+        });
+    }
+
+    async function loadDepotBase() {
+        if (depotBasePromise) return depotBasePromise;
+        depotBasePromise = (async () => {
+        const response = await brickmergeFetch('/?a=depot', {
+            headers: { Accept: 'text/html' }
+        });
+        if (!response.ok) throw new Error('Bestandsseite nicht erreichbar.');
+        const depot = new DOMParser().parseFromString(
+            await response.text(),
+            'text/html'
+        );
+        const form = depot.querySelector('#dpAddForm');
+        const listId = form?.querySelector('input[name="l"]')?.value;
+        if (!form || !listId) throw new Error('Bitte melde dich bei brickmerge an.');
+        const storageOptions = Array.from(
+            form.querySelector('#dpAddStorage')?.options || []
+        ).map(option => ({
+            value: option.value,
+            label: option.textContent.trim()
+        }));
+        return { listId, storageOptions };
+        })();
+        try {
+            return await depotBasePromise;
+        } catch (error) {
+            depotBasePromise = null;
+            throw error;
+        }
+    }
+
+    async function loadDepotData(setNumber = '') {
+        const normalizedSetNumber = String(setNumber || '').trim();
+        if (normalizedSetNumber && depotDataPromises.has(normalizedSetNumber)) {
+            return depotDataPromises.get(normalizedSetNumber);
+        }
+        const request = (async () => {
+            const base = await loadDepotBase();
+            if (!/^\d{3,7}$/.test(normalizedSetNumber)) {
+                return { ...base, stock: null };
+            }
+            const params = new URLSearchParams({
+                a: 'depot',
+                l: base.listId,
+                partial: '1',
+                sort: 'nr',
+                dir: '1',
+                dpfilter: 'alle',
+                q: normalizedSetNumber,
+                page: '1'
+            });
+            const response = await brickmergeFetch(`/?${params.toString()}`, {
+                headers: { Accept: 'text/html' }
+            });
+            if (!response.ok) return { ...base, stock: null };
+            const result = new DOMParser().parseFromString(
+                await response.text(),
+                'text/html'
+            );
+            const exactRow = Array.from(
+                result.querySelectorAll('.pa-row[data-nr][data-stock]')
+            ).find(row => String(row.dataset.nr || '') === normalizedSetNumber);
+            const parsedStock = Number.parseInt(exactRow?.dataset.stock || '', 10);
+            return {
+                ...base,
+                stock: Number.isFinite(parsedStock) ? Math.max(0, parsedStock) : 0
+            };
+        })();
+        if (normalizedSetNumber) depotDataPromises.set(normalizedSetNumber, request);
+        try {
+            return await request;
+        } catch (error) {
+            if (normalizedSetNumber) depotDataPromises.delete(normalizedSetNumber);
+            throw error;
+        }
+    }
+
+    function setDetailStock(button, stock) {
+        if (!button || !Number.isFinite(Number(stock))) return;
+        const normalizedStock = Math.max(0, Math.trunc(Number(stock)));
+        button.dataset.bmdStock = String(normalizedStock);
+        button.querySelectorAll(
+            '.bmd-button-label-full, .bmd-button-label-mobile'
+        ).forEach(label => {
+            label.textContent = `Bestand: ${normalizedStock}`;
+        });
+        button.title = normalizedStock === 1
+            ? '1 Stück im Bestand – weiteren Einkauf erfassen'
+            : `${normalizedStock} Stück im Bestand – weiteren Einkauf erfassen`;
+        button.setAttribute('aria-label', button.title);
+    }
+
+    function renderForm(container, setNumber, depotData) {
+        container.replaceChildren();
+        const form = document.createElement('form');
+        form.action = '/';
+        form.method = 'post';
+        form.append(
+            input('hidden', 'a', { value: 'depot' }),
+            input('hidden', 'l', { value: depotData.listId })
+        );
+
+        const fields = document.createElement('div');
+        fields.className = 'bmd-fields';
+        fields.append(
+            field('Setnummer', input('text', 'addset', {
+                value: setNumber,
+                readonly: 'readonly'
+            })),
+            field('Menge', input('number', 'lotqty', {
+                value: '1', min: '1', max: '9999', required: true
+            })),
+            field('Einkaufsdatum', input('date', 'lotdate', { value: today() })),
+            field('Einkaufspreis', input('text', 'lotprice', {
+                value: formatPrice(currentBestPrice()),
+                maxlength: '12',
+                placeholder: '239,99',
+                inputmode: 'decimal'
+            }))
+        );
+
+        const condition = document.createElement('select');
+        condition.name = 'lotcondition';
+        [['1', 'neu'], ['0', 'gebraucht']].forEach(([value, label]) => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            condition.appendChild(option);
+        });
+        fields.appendChild(field('Zustand', condition));
+
+        const storage = document.createElement('select');
+        storage.name = 'lotstorage';
+        const options = depotData.storageOptions.length
+            ? depotData.storageOptions
+            : [
+                { value: '', label: 'ohne Lagerort' },
+                { value: '__new__', label: '+ Neues Lager hinzufügen' }
+            ];
+        options.forEach(entry => {
+            const option = document.createElement('option');
+            option.value = entry.value;
+            option.textContent = entry.label;
+            storage.appendChild(option);
+        });
+        const storageField = field('Lager', storage, true);
+        const newStorage = input('text', 'lotstoragenew', {
+            maxlength: '50',
+            placeholder: 'Name des Lagers'
+        });
+        newStorage.className = 'bmd-new-storage';
+        newStorage.hidden = true;
+        storageField.appendChild(newStorage);
+        fields.appendChild(storageField);
+        fields.appendChild(field('Notiz zur Charge', input('text', 'lotnote', {
+            maxlength: '255',
+            placeholder: 'z. B. VIP 10%'
+        }), true));
+        form.appendChild(fields);
+
+        storage.addEventListener('change', () => {
+            const isNew = storage.value === '__new__';
+            newStorage.hidden = !isNew;
+            newStorage.required = isNew;
+            if (isNew) newStorage.focus();
+        });
+
+        const submit = document.createElement('button');
+        submit.type = 'submit';
+        submit.className = 'button small smallRedButton bmd-submit';
+        submit.textContent = 'Zum Bestand hinzufügen';
+        const status = document.createElement('span');
+        status.className = 'bmd-status';
+        status.setAttribute('role', 'status');
+        form.append(submit, status);
+
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+            if (!form.reportValidity()) return;
+            const addedQuantity = Number.parseInt(
+                form.elements.lotqty.value || '1',
+                10
+            );
+            submit.disabled = true;
+            status.className = 'bmd-status';
+            status.textContent = 'Wird hinzugefügt …';
+            try {
+                const response = await brickmergeFetch('/', {
+                    method: 'POST',
+                    body: new URLSearchParams(new FormData(form)),
+                    headers: {
+                        Accept: 'text/html',
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                    }
+                });
+                const result = new DOMParser().parseFromString(
+                    await response.text(),
+                    'text/html'
+                );
+                const serverError = result.querySelector('.dp-err');
+                if (!response.ok || serverError) {
+                    throw new Error(
+                        serverError?.textContent.replace(/\s+/g, ' ').trim() ||
+                        'Hinzufügen fehlgeschlagen.'
+                    );
+                }
+                if (!result.querySelector('#dpWrap')) {
+                    throw new Error('Bitte melde dich bei brickmerge an.');
+                }
+                form.elements.lotqty.value = '1';
+                form.elements.lotdate.value = today();
+                form.elements.lotprice.value = formatPrice(currentBestPrice());
+                form.elements.lotnote.value = '';
+                newStorage.value = '';
+                const detailButton = document.querySelector(
+                    `.bmd-open-button[data-bmd-set-number="${setNumber}"]`
+                );
+                const previousStock = Number.parseInt(
+                    detailButton?.dataset.bmdStock || '',
+                    10
+                );
+                if (detailButton && Number.isFinite(previousStock)) {
+                    setDetailStock(
+                        detailButton,
+                        previousStock + (Number.isFinite(addedQuantity)
+                            ? addedQuantity
+                            : 1)
+                    );
+                } else {
+                    depotDataPromises.delete(setNumber);
+                    void loadDepotData(setNumber).then(data => {
+                        setDetailStock(detailButton, data.stock);
+                    }).catch(() => {});
+                }
+                status.className = 'bmd-status bmd-status-ok';
+                status.textContent = `LEGO ${setNumber} wurde hinzugefügt.`;
+            } catch (error) {
+                status.className = 'bmd-status bmd-status-error';
+                status.textContent = error?.message || 'Hinzufügen fehlgeschlagen.';
+            } finally {
+                submit.disabled = false;
+            }
+        });
+        container.appendChild(form);
+    }
+
+    let activeOverlay = null;
+    let activeTrigger = null;
+
+    function closeOverlay() {
+        if (!activeOverlay) return;
+        activeOverlay.remove();
+        activeOverlay = null;
+        document.body.classList.remove('bmd-overlay-open');
+        document.removeEventListener('keydown', handleKeydown);
+        activeTrigger?.focus();
+        activeTrigger = null;
+    }
+
+    function handleKeydown(event) {
+        if (event.key === 'Escape') closeOverlay();
+    }
+
+    function mountOverlay(titleText, trigger, dialogClass = '') {
+        if (activeOverlay) return null;
+        activeTrigger = trigger || null;
+        const overlay = document.createElement('div');
+        overlay.className = 'bmd-overlay';
+        const dialog = document.createElement('section');
+        dialog.className = `bmd-dialog${dialogClass ? ` ${dialogClass}` : ''}`;
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-modal', 'true');
+        dialog.setAttribute('aria-labelledby', 'bmd-dialog-title');
+
+        const header = document.createElement('header');
+        header.className = 'bmd-dialog-header';
+        const title = document.createElement('h3');
+        title.id = 'bmd-dialog-title';
+        title.textContent = titleText;
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'bmd-close';
+        close.textContent = '×';
+        close.title = 'Schließen';
+        close.setAttribute('aria-label', 'Dialog schließen');
+        close.addEventListener('click', closeOverlay);
+        header.append(title, close);
+
+        const body = document.createElement('div');
+        body.className = 'bmd-dialog-body';
+        dialog.append(header, body);
+        overlay.appendChild(dialog);
+        overlay.addEventListener('click', event => {
+            if (event.target === overlay) closeOverlay();
+        });
+
+        activeOverlay = overlay;
+        document.body.appendChild(overlay);
+        document.body.classList.add('bmd-overlay-open');
+        document.addEventListener('keydown', handleKeydown);
+        close.focus();
+        return { overlay, dialog, body, close };
+    }
+
+    function openSaleThresholdOverlay(setNumber, purchasePrice, trigger) {
+        const mounted = mountOverlay(
+            `Verkaufsschwelle für LEGO ${setNumber}`,
+            trigger
+        );
+        if (!mounted) return;
+        const { body } = mounted;
+        const settings = readSaleSettings();
+        const hasOverride = Boolean(settings.sets[setNumber]);
+        const current = settings.sets[setNumber] || settings.defaults;
+        const fields = document.createElement('div');
+        fields.className = 'bmd-fields';
+
+        const fee = input('number', 'feePercent', {
+            value: String(current.feePercent), min: '0', max: '99.99',
+            step: '0.01', inputmode: 'decimal'
+        });
+        const fixed = input('number', 'fixedFee', {
+            value: String(current.fixedFee), min: '0', step: '0.01',
+            inputmode: 'decimal'
+        });
+        const shipping = input('number', 'shipping', {
+            value: String(current.shipping), min: '0', step: '0.01',
+            inputmode: 'decimal'
+        });
+        fields.append(
+            field('Ø Einkaufspreis', input('text', 'purchasePrice', {
+                value: formatPrice(purchasePrice), readonly: 'readonly'
+            })),
+            field('Verkaufsgebühr in %', fee),
+            field('Fixgebühr in €', fixed),
+            field('Versand in €', shipping)
+        );
+
+        const result = document.createElement('div');
+        result.className = 'bmd-threshold-result';
+        const resultLabel = document.createElement('span');
+        resultLabel.textContent = 'Mindestens erforderlicher Verkaufspreis';
+        const resultValue = document.createElement('strong');
+        const resultDetail = document.createElement('small');
+        result.append(resultLabel, resultValue, resultDetail);
+
+        const refreshResult = () => {
+            const values = normalizeSaleValues({
+                feePercent: fee.value,
+                fixedFee: fixed.value,
+                shipping: shipping.value
+            }, current);
+            const threshold = calculateSaleThreshold(purchasePrice, values);
+            resultValue.textContent = formatCurrency(threshold);
+            resultDetail.textContent =
+                `${formatCurrency(purchasePrice)} EK + ` +
+                `${formatCurrency(values.shipping)} Versand + ` +
+                `${formatCurrency(values.fixedFee)} Fixgebühr; ` +
+                `${formatPrice(values.feePercent)} % Verkaufsgebühr`;
+        };
+        [fee, fixed, shipping].forEach(control => {
+            control.addEventListener('input', refreshResult);
+        });
+        refreshResult();
+
+        const actions = document.createElement('div');
+        actions.className = 'bmd-threshold-actions';
+        const save = document.createElement('button');
+        save.type = 'button';
+        save.className = 'button small smallRedButton';
+        save.textContent = 'Für dieses Set speichern';
+        save.addEventListener('click', () => {
+            const latest = readSaleSettings();
+            latest.sets[setNumber] = normalizeSaleValues({
+                feePercent: fee.value,
+                fixedFee: fixed.value,
+                shipping: shipping.value
+            }, latest.defaults);
+            writeSaleSettings(latest);
+            closeOverlay();
+            scheduleDepotUpdate();
+        });
+        const reset = document.createElement('button');
+        reset.type = 'button';
+        reset.className = 'button small smallGreyButton';
+        reset.textContent = hasOverride ? 'Standard verwenden' : 'Abbrechen';
+        reset.addEventListener('click', () => {
+            if (hasOverride) {
+                const latest = readSaleSettings();
+                delete latest.sets[setNumber];
+                writeSaleSettings(latest);
+                scheduleDepotUpdate();
+            }
+            closeOverlay();
+        });
+        actions.append(save, reset);
+
+        const note = document.createElement('p');
+        note.className = 'bmd-dashboard-note';
+        note.textContent =
+            'Die Schwelle ist der kalkulatorische Break-even ohne Gewinnaufschlag. ' +
+            'Gebühren werden prozentual vom Verkaufspreis gerechnet.';
+        body.append(fields, result, actions, note);
+    }
+
+    function openOverlay(setNumber, trigger) {
+        if (activeOverlay) return;
+        activeTrigger = trigger;
+        const overlay = document.createElement('div');
+        overlay.className = 'bmd-overlay';
+        const dialog = document.createElement('section');
+        dialog.className = 'bmd-dialog';
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-modal', 'true');
+        dialog.setAttribute('aria-labelledby', 'bmd-dialog-title');
+
+        const header = document.createElement('header');
+        header.className = 'bmd-dialog-header';
+        const title = document.createElement('h3');
+        title.id = 'bmd-dialog-title';
+        title.textContent = `LEGO ${setNumber} zum Bestand hinzufügen`;
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'bmd-close';
+        close.textContent = '×';
+        close.title = 'Schließen';
+        close.setAttribute('aria-label', 'Formular schließen');
+        close.addEventListener('click', closeOverlay);
+        header.append(title, close);
+
+        const body = document.createElement('div');
+        body.className = 'bmd-dialog-body';
+        const loading = document.createElement('span');
+        loading.className = 'bmd-loading';
+        loading.textContent = 'Bestandsformular wird geladen …';
+        body.appendChild(loading);
+        dialog.append(header, body);
+        overlay.appendChild(dialog);
+        overlay.addEventListener('click', event => {
+            if (event.target === overlay) closeOverlay();
+        });
+
+        activeOverlay = overlay;
+        document.body.appendChild(overlay);
+        document.body.classList.add('bmd-overlay-open');
+        document.addEventListener('keydown', handleKeydown);
+        close.focus();
+
+        loadDepotData(setNumber).then(data => {
+            if (!body.isConnected) return;
+            renderForm(body, setNumber, data);
+            body.querySelector('input[name="lotqty"]')?.focus();
+        }).catch(error => {
+            if (!body.isConnected) return;
+            const message = document.createElement('span');
+            message.className = 'bmd-login';
+            message.append(document.createTextNode(
+                `${error?.message || 'Bestandsformular nicht verfügbar'} `
+            ));
+            const link = document.createElement('a');
+            link.href = '/?a=depot';
+            link.textContent = 'Zum Bestand';
+            message.appendChild(link);
+            body.replaceChildren(message);
+        });
+    }
+
+    function setupDetailButton() {
+        const setNumber = getSetNumber();
+        const chartTrigger = document.getElementById('chartTrigger');
+        const host = chartTrigger?.parentElement ||
+            document.querySelector('.content.setdetails .productprice');
+        if (!setNumber || !host || document.querySelector('.bmd-open-button')) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className =
+            'button small smallGreyButton bmd-open-button bm-detail-action-button';
+        button.dataset.bmdSetNumber = setNumber;
+        const content = document.createElement('span');
+        content.className = 'bmd-button-content';
+        const icon = document.createElement('span');
+        icon.className = 'bmd-button-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML =
+            '<svg viewBox="0 0 24 24" focusable="false">' +
+            '<path d="M4 7h16v13H4z"/>' +
+            '<path d="M3 3h18v4H3z"/>' +
+            '<path d="M9 11h6"/>' +
+            '</svg>';
+        const fullLabel = document.createElement('span');
+        fullLabel.className = 'bmd-button-label-full';
+        fullLabel.textContent = 'Bestand';
+        const mobileLabel = document.createElement('span');
+        mobileLabel.className = 'bmd-button-label-mobile';
+        mobileLabel.textContent = 'Bestand';
+        content.append(icon, fullLabel, mobileLabel);
+        button.appendChild(content);
+        button.title = 'Dieses Set zum Bestand hinzufügen';
+        button.setAttribute('aria-label', button.title);
+        button.addEventListener('click', () => openOverlay(setNumber, button));
+        if (chartTrigger) {
+            host.classList.add('bmd-has-depot-button');
+            chartTrigger.insertAdjacentElement('afterend', button);
+        } else {
+            host.appendChild(button);
+        }
+
+        // Die serverseitige Suche berücksichtigt auch große, paginierte Depots.
+        // Schlägt sie fehl (z. B. ausgeloggt), bleibt der neutrale Button stehen.
+        void loadDepotData(setNumber).then(data => {
+            setDetailStock(button, data.stock);
+        }).catch(() => {});
+    }
+
+    function parseNumber(value, german = false) {
+        const text = String(value ?? '').trim();
+        if (!text) return null;
+        const normalized = german
+            ? text.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '')
+            : text.replace(',', '.');
+        const number = Number(normalized);
+        return Number.isFinite(number) ? number : null;
+    }
+
+    function signed(value, digits, suffix) {
+        return `${value > 0 ? '+' : ''}${value.toLocaleString('de-DE', {
+            minimumFractionDigits: digits,
+            maximumFractionDigits: digits
+        })}${suffix}`;
+    }
+
+    function dateAtUtcMidnight(value) {
+        const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return null;
+        const date = Date.UTC(
+            Number(match[1]),
+            Number(match[2]) - 1,
+            Number(match[3])
+        );
+        return Number.isFinite(date) ? date : null;
+    }
+
+    function calculateAnnualizedReturn(row, currentBest) {
+        const item = row.dataset.item;
+        const lots = document.querySelector(`.dp-lots[data-for="${item}"]`);
+        if (!item || !lots || !Number.isFinite(currentBest) || currentBest <= 0) {
+            return null;
+        }
+
+        const todayValue = today();
+        const valuationDate = dateAtUtcMidnight(todayValue);
+        const cashFlows = [];
+        let totalQuantity = 0;
+        for (const lot of lots.querySelectorAll('.dp-lot[data-lot]')) {
+            const edit = lot.querySelector('.dp-editlot');
+            const quantity = Number.parseInt(edit?.dataset.qty || '', 10);
+            const price = parseNumber(edit?.dataset.price, true);
+            const purchaseDate = dateAtUtcMidnight(edit?.dataset.date);
+            if (!Number.isFinite(quantity) || quantity <= 0 ||
+                price === null || price <= 0 || purchaseDate === null ||
+                purchaseDate > valuationDate) {
+                return null;
+            }
+            totalQuantity += quantity;
+            cashFlows.push({
+                years: (valuationDate - purchaseDate) /
+                    (365.2425 * 24 * 60 * 60 * 1000),
+                amount: -(quantity * price)
+            });
+        }
+        if (!cashFlows.length || totalQuantity <= 0 ||
+            !cashFlows.some(flow => flow.years > 0)) return null;
+
+        const valuation = totalQuantity * currentBest;
+        const netPresentValue = rate => valuation + cashFlows.reduce(
+            (sum, flow) => sum + flow.amount /
+                Math.pow(1 + rate, flow.years),
+            0
+        );
+
+        let low = -0.999999;
+        let high = 1;
+        let lowValue = netPresentValue(low);
+        let highValue = netPresentValue(high);
+        while (Number.isFinite(highValue) && highValue < 0 && high < 1e9) {
+            high = high * 2 + 1;
+            highValue = netPresentValue(high);
+        }
+        if (!Number.isFinite(lowValue) || !Number.isFinite(highValue) ||
+            lowValue > 0 || highValue < 0) return null;
+
+        for (let iteration = 0; iteration < 100; iteration += 1) {
+            const middle = (low + high) / 2;
+            const value = netPresentValue(middle);
+            if (!Number.isFinite(value)) return null;
+            if (value < 0) low = middle;
+            else high = middle;
+        }
+        const rate = (low + high) / 2;
+        return Number.isFinite(rate) ? rate * 100 : null;
+    }
+
+    function eolGroup(value) {
+        const match = String(value || '').match(/^(\d{4})(\d{2})(\d{2})$/);
+        if (!match) return 'Kein EOL';
+        const target = Date.UTC(
+            Number(match[1]),
+            Number(match[2]) - 1,
+            Number(match[3])
+        );
+        const current = dateAtUtcMidnight(today());
+        if (!Number.isFinite(target) || !Number.isFinite(current)) return 'Kein EOL';
+        if (target < current) return 'Ausgelaufen';
+        const months = (target - current) / (365.2425 / 12 * 24 * 60 * 60 * 1000);
+        if (months <= 12) return 'EOL in ≤ 12 Monaten';
+        if (months <= 24) return 'EOL in 13–24 Monaten';
+        return 'EOL in > 24 Monaten';
+    }
+
+    function parseDepotPage(documentNode) {
+        const rows = Array.from(documentNode.querySelectorAll(
+            '#dpTableBody .pa-row[data-item][data-nr]'
+        ));
+        const lotBlocks = new Map(Array.from(
+            documentNode.querySelectorAll('#dpTableBody .dp-lots[data-for]')
+        ).map(block => [block.dataset.for, block]));
+        const records = [];
+
+        rows.forEach(row => {
+            const item = String(row.dataset.item || '');
+            const setNumber = String(row.dataset.nr || '');
+            const name = String(row.dataset.name || '').trim() || `LEGO ${setNumber}`;
+            const theme = String(row.dataset.theme || '').trim() || 'Ohne Thema';
+            const eol = String(row.dataset.eol || '');
+            const best = parseNumber(row.dataset.best);
+            const detailUrl = String(row.dataset.url || '').trim();
+            const saleValues = saleValuesForSet(setNumber);
+            const valuationDate = dateAtUtcMidnight(today());
+            const enrichRecord = record => {
+                const currentValue = best !== null && best > 0
+                    ? best * record.quantity
+                    : null;
+                const netPerPiece = best !== null && best > 0
+                    ? best * (1 - saleValues.feePercent / 100) -
+                        saleValues.fixedFee - saleValues.shipping
+                    : null;
+                const purchaseTimestamp = dateAtUtcMidnight(record.purchaseDate);
+                return {
+                    ...record,
+                    name,
+                    detailUrl,
+                    best,
+                    currentValue,
+                    netValue: netPerPiece === null
+                        ? null
+                        : netPerPiece * record.quantity,
+                    ageDays: purchaseTimestamp !== null &&
+                        purchaseTimestamp <= valuationDate
+                        ? (valuationDate - purchaseTimestamp) /
+                            (24 * 60 * 60 * 1000)
+                        : null
+                };
+            };
+            const lotRows = Array.from(
+                lotBlocks.get(item)?.querySelectorAll('.dp-lot[data-lot]') || []
+            );
+            let addedLot = false;
+            lotRows.forEach(lot => {
+                const edit = lot.querySelector('.dp-editlot');
+                const quantity = Number.parseInt(edit?.dataset.qty || '', 10);
+                if (!Number.isFinite(quantity) || quantity <= 0) return;
+                const price = parseNumber(edit?.dataset.price, true);
+                const conditionValue = String(edit?.dataset.condition || '');
+                const storageValue = String(edit?.dataset.storage || '').trim();
+                records.push(enrichRecord({
+                    item,
+                    setNumber,
+                    theme,
+                    eol: eolGroup(eol),
+                    eolRaw: eol,
+                    storage: storageValue || 'Ohne Lagerort',
+                    condition: conditionValue === '0' ? 'gebraucht' : 'neu',
+                    quantity,
+                    capital: price !== null && price >= 0 ? price * quantity : null,
+                    purchaseDate: String(edit?.dataset.date || '')
+                }));
+                addedLot = true;
+            });
+
+            if (!addedLot) {
+                const quantity = Number.parseInt(row.dataset.stock || '', 10);
+                if (!Number.isFinite(quantity) || quantity <= 0) return;
+                const average = parseNumber(row.dataset.avg);
+                records.push(enrichRecord({
+                    item,
+                    setNumber,
+                    theme,
+                    eol: eolGroup(eol),
+                    eolRaw: eol,
+                    storage: String(row.dataset.storage || '').trim() || 'Ohne Lagerort',
+                    condition: /gebraucht/i.test(row.dataset.cond || '')
+                        ? 'gebraucht'
+                        : 'neu',
+                    quantity,
+                    capital: average !== null && average >= 0
+                        ? average * quantity
+                        : null,
+                    purchaseDate: ''
+                }));
+            }
+        });
+        return records;
+    }
+
+    async function fetchDepotDashboardPage(listId, page) {
+        const params = new URLSearchParams({
+            a: 'depot',
+            l: listId,
+            partial: '1',
+            sort: 'nr',
+            dir: '1',
+            dpfilter: 'alle',
+            storage: '',
+            q: '',
+            page: String(page)
+        });
+        const response = await brickmergeFetch(`/?${params.toString()}`, {
+            headers: { Accept: 'text/html' }
+        });
+        if (!response.ok) throw new Error(`Depot-Seite ${page} nicht erreichbar.`);
+        const documentNode = new DOMParser().parseFromString(
+            await response.text(),
+            'text/html'
+        );
+        const meta = documentNode.querySelector('#dpMeta');
+        if (!meta) throw new Error('Depotdaten konnten nicht gelesen werden.');
+        return {
+            records: parseDepotPage(documentNode),
+            pages: Math.max(1, Number.parseInt(meta.dataset.pages || '1', 10) || 1)
+        };
+    }
+
+    let depotDashboardCache = null;
+    let depotDashboardPromise = null;
+    async function loadDepotDashboardData(onProgress = () => {}, force = false) {
+        if (!force && depotDashboardCache &&
+            Date.now() - depotDashboardCache.savedAt < 120000) {
+            onProgress(depotDashboardCache.pages, depotDashboardCache.pages);
+            return depotDashboardCache;
+        }
+        if (depotDashboardPromise) return depotDashboardPromise;
+        depotDashboardPromise = (async () => {
+            const base = await loadDepotBase();
+            const first = await fetchDepotDashboardPage(base.listId, 1);
+            const records = [...first.records];
+            onProgress(1, first.pages);
+            let nextPage = 2;
+            let completed = 1;
+            const worker = async () => {
+                while (nextPage <= first.pages) {
+                    const page = nextPage;
+                    nextPage += 1;
+                    const result = await fetchDepotDashboardPage(base.listId, page);
+                    records.push(...result.records);
+                    completed += 1;
+                    onProgress(completed, first.pages);
+                }
+            };
+            await Promise.all(Array.from(
+                { length: Math.min(4, Math.max(0, first.pages - 1)) },
+                () => worker()
+            ));
+            depotDashboardCache = {
+                records,
+                pages: first.pages,
+                savedAt: Date.now()
+            };
+            return depotDashboardCache;
+        })();
+        try {
+            return await depotDashboardPromise;
+        } finally {
+            depotDashboardPromise = null;
+        }
+    }
+
+    function aggregateDepot(records, dimension) {
+        const groups = new Map();
+        records.forEach(record => {
+            const key = record[dimension] || 'Ohne Angabe';
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    label: key,
+                    items: new Set(),
+                    pieces: 0,
+                    capital: 0,
+                    currentValue: 0,
+                    netValue: 0,
+                    comparableCapital: 0,
+                    comparableValue: 0,
+                    comparableNetValue: 0,
+                    weightedAgeDays: 0,
+                    agedPieces: 0,
+                    missingPieces: 0,
+                    missingOfferPieces: 0
+                });
+            }
+            const group = groups.get(key);
+            group.items.add(record.item);
+            group.pieces += record.quantity;
+            if (record.capital === null) group.missingPieces += record.quantity;
+            else group.capital += record.capital;
+            if (record.currentValue === null) {
+                group.missingOfferPieces += record.quantity;
+            } else {
+                group.currentValue += record.currentValue;
+                group.netValue += record.netValue || 0;
+            }
+            if (record.capital !== null && record.currentValue !== null) {
+                group.comparableCapital += record.capital;
+                group.comparableValue += record.currentValue;
+                group.comparableNetValue += record.netValue || 0;
+            }
+            if (record.ageDays !== null) {
+                group.weightedAgeDays += record.ageDays * record.quantity;
+                group.agedPieces += record.quantity;
+            }
+        });
+        return Array.from(groups.values()).map(group => ({
+            ...group,
+            sets: group.items.size,
+            grossProfit: group.comparableValue - group.comparableCapital,
+            grossReturn: group.comparableCapital > 0
+                ? (group.comparableValue - group.comparableCapital) /
+                    group.comparableCapital * 100
+                : null,
+            netProfit: group.comparableNetValue - group.comparableCapital,
+            netReturn: group.comparableCapital > 0
+                ? (group.comparableNetValue - group.comparableCapital) /
+                    group.comparableCapital * 100
+                : null,
+            averageAgeDays: group.agedPieces > 0
+                ? group.weightedAgeDays / group.agedPieces
+                : null
+        })).sort((a, b) => b.capital - a.capital ||
+            a.label.localeCompare(b.label, 'de'));
+    }
+
+    function aggregateDepotSets(records) {
+        const sets = new Map();
+        records.forEach(record => {
+            if (!sets.has(record.item)) {
+                sets.set(record.item, {
+                    item: record.item,
+                    setNumber: record.setNumber,
+                    name: record.name,
+                    detailUrl: record.detailUrl,
+                    theme: record.theme,
+                    eol: record.eol,
+                    pieces: 0,
+                    capital: 0,
+                    currentValue: 0,
+                    netValue: 0,
+                    comparableCapital: 0,
+                    comparableValue: 0,
+                    comparableNetValue: 0,
+                    missingCapital: false,
+                    missingOffer: false
+                });
+            }
+            const set = sets.get(record.item);
+            set.pieces += record.quantity;
+            if (record.capital === null) set.missingCapital = true;
+            else set.capital += record.capital;
+            if (record.currentValue === null) set.missingOffer = true;
+            else {
+                set.currentValue += record.currentValue;
+                set.netValue += record.netValue || 0;
+            }
+            if (record.capital !== null && record.currentValue !== null) {
+                set.comparableCapital += record.capital;
+                set.comparableValue += record.currentValue;
+                set.comparableNetValue += record.netValue || 0;
+            }
+        });
+        return Array.from(sets.values()).map(set => ({
+            ...set,
+            grossProfit: set.comparableValue - set.comparableCapital,
+            grossReturn: set.comparableCapital > 0
+                ? (set.comparableValue - set.comparableCapital) /
+                    set.comparableCapital * 100
+                : null,
+            netProfit: set.comparableNetValue - set.comparableCapital,
+            netReturn: set.comparableCapital > 0
+                ? (set.comparableNetValue - set.comparableCapital) /
+                    set.comparableCapital * 100
+                : null
+        }));
+    }
+
+    function renderDepotDashboard(body, data) {
+        body.replaceChildren();
+        const records = data.records;
+        const setSummaries = aggregateDepotSets(records);
+        const itemIds = new Set(records.map(record => record.item));
+        const pieces = records.reduce((sum, record) => sum + record.quantity, 0);
+        const capital = records.reduce(
+            (sum, record) => sum + (record.capital === null ? 0 : record.capital),
+            0
+        );
+        const missingPieces = records.reduce(
+            (sum, record) => sum + (record.capital === null ? record.quantity : 0),
+            0
+        );
+        const missingOfferPieces = records.reduce(
+            (sum, record) => sum +
+                (record.currentValue === null ? record.quantity : 0),
+            0
+        );
+        const currentValue = records.reduce(
+            (sum, record) => sum + (record.currentValue || 0),
+            0
+        );
+        const netValue = records.reduce(
+            (sum, record) => sum + (record.netValue || 0),
+            0
+        );
+        const comparableCapital = records.reduce(
+            (sum, record) => sum +
+                (record.capital !== null && record.currentValue !== null
+                    ? record.capital
+                    : 0),
+            0
+        );
+        const comparableValue = records.reduce(
+            (sum, record) => sum +
+                (record.capital !== null && record.currentValue !== null
+                    ? record.currentValue
+                    : 0),
+            0
+        );
+        const comparableNetValue = records.reduce(
+            (sum, record) => sum +
+                (record.capital !== null && record.currentValue !== null
+                    ? record.netValue || 0
+                    : 0),
+            0
+        );
+        const grossProfit = comparableValue - comparableCapital;
+        const grossReturn = comparableCapital > 0
+            ? grossProfit / comparableCapital * 100
+            : null;
+        const netProfit = comparableNetValue - comparableCapital;
+        const netReturn = comparableCapital > 0
+            ? netProfit / comparableCapital * 100
+            : null;
+        const agedPieces = records.reduce(
+            (sum, record) => sum + (record.ageDays === null ? 0 : record.quantity),
+            0
+        );
+        const averageAgeDays = agedPieces > 0
+            ? records.reduce(
+                (sum, record) => sum +
+                    (record.ageDays === null ? 0 : record.ageDays * record.quantity),
+                0
+            ) / agedPieces
+            : null;
+        const expiredCapital = records.filter(record => record.eol === 'Ausgelaufen')
+            .reduce((sum, record) => sum + (record.capital || 0), 0);
+        const expiredShare = capital > 0 ? expiredCapital / capital * 100 : null;
+        const dataCoverage = pieces > 0
+            ? (pieces - Math.max(missingPieces, missingOfferPieces)) / pieces * 100
+            : null;
+
+        const summary = document.createElement('div');
+        summary.className = 'bmd-dashboard-summary';
+        [
+            {
+                label: 'Gebundenes Kapital',
+                value: formatCurrency(capital),
+                detail: `${itemIds.size.toLocaleString('de-DE')} Sets · ` +
+                    `${pieces.toLocaleString('de-DE')} Stück`
+            },
+            {
+                label: 'Aktueller Angebotswert',
+                value: formatCurrency(currentValue),
+                detail: missingOfferPieces
+                    ? `${missingOfferPieces} Stück ohne Angebot`
+                    : 'alle Stücke mit Angebot'
+            },
+            {
+                label: 'Gewinn/Verlust zum EK',
+                value: formatCurrency(grossProfit),
+                detail: formatPercent(grossReturn),
+                performance: grossReturn
+            },
+            {
+                label: 'Netto nach Verkaufskosten',
+                value: formatCurrency(netProfit),
+                detail: `${formatPercent(netReturn)} zum EK`,
+                performance: netReturn
+            },
+            {
+                label: 'Ø Haltedauer',
+                value: averageAgeDays === null
+                    ? '–'
+                    : `${Math.round(averageAgeDays).toLocaleString('de-DE')} Tage`,
+                detail: averageAgeDays === null
+                    ? 'keine Einkaufsdaten'
+                    : `${(averageAgeDays / 365.2425).toLocaleString('de-DE', {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1
+                    })} Jahre`
+            },
+            {
+                label: 'Kapital in EOL-Sets',
+                value: formatCurrency(expiredCapital),
+                detail: `${formatPercent(expiredShare)} des Kapitals`
+            },
+            {
+                label: 'Netto-Verkaufswert',
+                value: formatCurrency(netValue),
+                detail: 'nach Gebühren, Fixkosten und Versand'
+            },
+            {
+                label: 'Datenabdeckung',
+                value: formatPercent(dataCoverage, 0),
+                detail: `${missingPieces} ohne EK · ${missingOfferPieces} ohne Angebot`
+            }
+        ].forEach(entry => {
+            const card = document.createElement('div');
+            card.className = 'bmd-dashboard-kpi';
+            if (Object.hasOwn(entry, 'performance')) {
+                card.classList.add(entry.performance > 0
+                    ? 'bmd-kpi-positive'
+                    : entry.performance < 0
+                        ? 'bmd-kpi-negative'
+                        : 'bmd-kpi-neutral');
+            }
+            const label = document.createElement('span');
+            label.textContent = entry.label;
+            const value = document.createElement('strong');
+            value.textContent = entry.value;
+            if (Object.hasOwn(entry, 'performance')) {
+                value.classList.add(performanceClass(entry.performance));
+            }
+            const detail = document.createElement('small');
+            detail.textContent = entry.detail;
+            if (Object.hasOwn(entry, 'performance')) {
+                detail.classList.add(
+                    'bmd-performance-percent',
+                    performanceClass(entry.performance)
+                );
+            }
+            card.append(label, value, detail);
+            summary.appendChild(card);
+        });
+
+        const saleSettings = readSaleSettings();
+        const settingsBox = document.createElement('section');
+        settingsBox.className = 'bmd-sale-settings';
+        const settingsTitle = document.createElement('h4');
+        settingsTitle.textContent = 'Standard für Verkaufsschwellen';
+        const settingsGrid = document.createElement('div');
+        settingsGrid.className = 'bmd-sale-settings-grid';
+        const fee = input('number', 'dashboardFee', {
+            value: String(saleSettings.defaults.feePercent), min: '0',
+            max: '99.99', step: '0.01', inputmode: 'decimal'
+        });
+        const fixed = input('number', 'dashboardFixed', {
+            value: String(saleSettings.defaults.fixedFee), min: '0',
+            step: '0.01', inputmode: 'decimal'
+        });
+        const shipping = input('number', 'dashboardShipping', {
+            value: String(saleSettings.defaults.shipping), min: '0',
+            step: '0.01', inputmode: 'decimal'
+        });
+        const save = document.createElement('button');
+        save.type = 'button';
+        save.className = 'button small smallRedButton';
+        save.textContent = 'Standard speichern';
+        save.addEventListener('click', () => {
+            const latest = readSaleSettings();
+            latest.defaults = normalizeSaleValues({
+                feePercent: fee.value,
+                fixedFee: fixed.value,
+                shipping: shipping.value
+            }, latest.defaults);
+            writeSaleSettings(latest);
+            save.textContent = 'Gespeichert ✓';
+            window.setTimeout(() => { save.textContent = 'Standard speichern'; }, 1400);
+            scheduleDepotUpdate();
+        });
+        settingsGrid.append(
+            field('Verkaufsgebühr in %', fee),
+            field('Fixgebühr in €', fixed),
+            field('Versand in €', shipping),
+            save
+        );
+        const formula = document.createElement('p');
+        formula.className = 'bmd-sale-formula';
+        formula.textContent =
+            'Break-even = (Einkaufspreis + Versand + Fixgebühr) ÷ ' +
+            '(1 − Verkaufsgebühr). Einzelne Sets lassen sich direkt in der ' +
+            'Bestpreisspalte abweichend konfigurieren.';
+        settingsBox.append(settingsTitle, settingsGrid, formula);
+
+        const section = document.createElement('section');
+        section.className = 'bmd-dashboard-section';
+        const title = document.createElement('h4');
+        title.textContent = 'Aufteilung des gebundenen Kapitals';
+        const tabs = document.createElement('div');
+        tabs.className = 'bmd-dashboard-tabs';
+        tabs.setAttribute('role', 'tablist');
+        const tableWrap = document.createElement('div');
+        tableWrap.className = 'bmd-dashboard-table-wrap';
+        const dimensions = [
+            ['theme', 'Thema'],
+            ['storage', 'Lager'],
+            ['condition', 'Zustand'],
+            ['eol', 'EOL']
+        ];
+
+        const showDimension = dimension => {
+            tabs.querySelectorAll('.bmd-dashboard-tab').forEach(button => {
+                button.setAttribute(
+                    'aria-selected',
+                    String(button.dataset.dimension === dimension)
+                );
+            });
+            const table = document.createElement('table');
+            table.className = 'bmd-dashboard-table';
+            const head = document.createElement('thead');
+            const headRow = document.createElement('tr');
+            [
+                'Gruppe', 'Sets', 'Stück', 'Kapital', 'Akt. Wert',
+                'Gewinn', 'Rendite', 'Kapitalanteil'
+            ].forEach(text => {
+                const th = document.createElement('th');
+                th.textContent = text;
+                headRow.appendChild(th);
+            });
+            head.appendChild(headRow);
+            const tbody = document.createElement('tbody');
+            aggregateDepot(records, dimension).forEach(group => {
+                const row = document.createElement('tr');
+                const share = capital > 0 ? group.capital / capital * 100 : 0;
+                const values = [
+                    group.label,
+                    group.sets.toLocaleString('de-DE'),
+                    group.pieces.toLocaleString('de-DE'),
+                    formatCurrency(group.capital),
+                    formatCurrency(group.currentValue),
+                    formatCurrency(group.grossProfit)
+                ];
+                values.forEach((value, index) => {
+                    const cell = document.createElement('td');
+                    cell.textContent = value;
+                    if (index === 5) {
+                        cell.classList.add(performanceClass(group.grossProfit));
+                    }
+                    row.appendChild(cell);
+                });
+                const returnCell = document.createElement('td');
+                returnCell.textContent = formatPercent(group.grossReturn);
+                returnCell.classList.add(
+                    'bmd-performance-percent',
+                    performanceClass(group.grossReturn)
+                );
+                row.appendChild(returnCell);
+                const shareCell = document.createElement('td');
+                shareCell.append(document.createTextNode(
+                    `${share.toLocaleString('de-DE', {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1
+                    })} %`
+                ));
+                const bar = document.createElement('span');
+                bar.className = 'bmd-dashboard-bar';
+                bar.style.width = `${Math.max(2, Math.min(60, share * 0.6))}px`;
+                bar.setAttribute('aria-hidden', 'true');
+                shareCell.appendChild(bar);
+                row.appendChild(shareCell);
+                const missing = [];
+                if (group.missingPieces > 0) {
+                    missing.push(`${group.missingPieces} Stück ohne Einkaufspreis`);
+                }
+                if (group.missingOfferPieces > 0) {
+                    missing.push(`${group.missingOfferPieces} Stück ohne Angebot`);
+                }
+                row.title = missing.join(' · ');
+                tbody.appendChild(row);
+            });
+            table.append(head, tbody);
+            tableWrap.replaceChildren(table);
+        };
+
+        dimensions.forEach(([dimension, label]) => {
+            const tab = document.createElement('button');
+            tab.type = 'button';
+            tab.className = 'bmd-dashboard-tab';
+            tab.dataset.dimension = dimension;
+            tab.textContent = label;
+            tab.setAttribute('role', 'tab');
+            tab.setAttribute('aria-selected', String(dimension === 'theme'));
+            tab.addEventListener('click', () => showDimension(dimension));
+            tabs.appendChild(tab);
+        });
+        section.append(title, tabs, tableWrap);
+        showDimension('theme');
+
+        const rankings = document.createElement('div');
+        rankings.className = 'bmd-dashboard-rankings';
+        const buildRanking = (heading, entries) => {
+            const panel = document.createElement('section');
+            panel.className = 'bmd-dashboard-ranking';
+            const panelTitle = document.createElement('h4');
+            panelTitle.textContent = heading;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'bmd-dashboard-table-wrap';
+            const table = document.createElement('table');
+            table.className = 'bmd-dashboard-table';
+            const head = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            ['Set', 'Kapital', 'Rendite'].forEach(label => {
+                const th = document.createElement('th');
+                th.textContent = label;
+                headerRow.appendChild(th);
+            });
+            head.appendChild(headerRow);
+            const tbody = document.createElement('tbody');
+            if (entries.length === 0) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 3;
+                cell.textContent = 'Keine vollständigen Daten';
+                row.appendChild(cell);
+                tbody.appendChild(row);
+            } else {
+                entries.slice(0, 7).forEach(entry => {
+                    const row = document.createElement('tr');
+                    const setCell = document.createElement('td');
+                    const link = document.createElement('a');
+                    link.className = 'bmd-dashboard-setlink';
+                    link.href = entry.detailUrl || `/?find=${encodeURIComponent(
+                        entry.setNumber
+                    )}`;
+                    link.textContent = `${entry.setNumber} · ${entry.name}`;
+                    link.title = `${entry.pieces} Stück · ${entry.theme}`;
+                    setCell.appendChild(link);
+                    const capitalCell = document.createElement('td');
+                    capitalCell.textContent = formatCurrency(entry.capital);
+                    const returnCell = document.createElement('td');
+                    returnCell.textContent = formatPercent(entry.grossReturn);
+                    returnCell.classList.add(
+                        'bmd-performance-percent',
+                        performanceClass(entry.grossReturn)
+                    );
+                    row.append(setCell, capitalCell, returnCell);
+                    tbody.appendChild(row);
+                });
+            }
+            table.append(head, tbody);
+            wrapper.appendChild(table);
+            panel.append(panelTitle, wrapper);
+            return panel;
+        };
+        rankings.append(
+            buildRanking(
+                'Größte Kapitalpositionen',
+                [...setSummaries].filter(set => set.capital > 0)
+                    .sort((a, b) => b.capital - a.capital)
+            ),
+            buildRanking(
+                'Stärkste Gewinner',
+                [...setSummaries].filter(set => set.grossReturn > 0)
+                    .sort((a, b) => b.grossReturn - a.grossReturn)
+            ),
+            buildRanking(
+                'Stärkste Verlierer',
+                [...setSummaries].filter(set => set.grossReturn < 0)
+                    .sort((a, b) => a.grossReturn - b.grossReturn)
+            )
+        );
+
+        const coverage = document.createElement('div');
+        coverage.className = 'bmd-dashboard-coverage';
+        [
+            [
+                'Einkaufspreise vorhanden',
+                pieces > 0 ? (pieces - missingPieces) / pieces * 100 : null,
+                `${missingPieces} Stück ohne EK`
+            ],
+            [
+                'Aktuelle Angebote vorhanden',
+                pieces > 0 ? (pieces - missingOfferPieces) / pieces * 100 : null,
+                `${missingOfferPieces} Stück ohne Angebot`
+            ],
+            [
+                'Einkaufsdatum vorhanden',
+                pieces > 0 ? agedPieces / pieces * 100 : null,
+                `${pieces - agedPieces} Stück ohne Datum`
+            ]
+        ].forEach(([labelText, percentageValue, detailText]) => {
+            const item = document.createElement('div');
+            item.className = 'bmd-dashboard-coverage-item';
+            const label = document.createElement('span');
+            label.textContent = labelText;
+            const value = document.createElement('strong');
+            value.textContent = formatPercent(percentageValue, 0);
+            const detail = document.createElement('span');
+            detail.textContent = detailText;
+            item.append(label, value, detail);
+            coverage.appendChild(item);
+        });
+
+        const note = document.createElement('p');
+        note.className = 'bmd-dashboard-note';
+        note.textContent = missingPieces > 0
+            ? `${missingPieces.toLocaleString('de-DE')} Stück ohne Einkaufspreis ` +
+                'sind im gebundenen Kapital nicht enthalten.'
+            : `Alle ${data.pages.toLocaleString('de-DE')} Depot-Seiten wurden berücksichtigt.`;
+        body.append(summary, settingsBox, section, rankings, coverage, note);
+    }
+
+    function openDepotDashboard(trigger, force = false) {
+        const mounted = mountOverlay('Depot-Dashboard', trigger, 'bmd-dashboard-dialog');
+        if (!mounted) return;
+        const { body } = mounted;
+        const loading = document.createElement('span');
+        loading.className = 'bmd-loading';
+        loading.textContent = 'Depot wird vollständig geladen …';
+        body.appendChild(loading);
+        loadDepotDashboardData((completed, pages) => {
+            if (loading.isConnected) {
+                loading.textContent = `Depot wird geladen: ${completed} von ${pages} Seiten …`;
+            }
+        }, force).then(data => {
+            if (body.isConnected) renderDepotDashboard(body, data);
+        }).catch(error => {
+            if (!body.isConnected) return;
+            const message = document.createElement('span');
+            message.className = 'bmd-status bmd-status-error';
+            message.textContent = error?.message || 'Dashboard konnte nicht geladen werden.';
+            body.replaceChildren(message);
+        });
+    }
+
+    function setupDepotDashboardButton() {
+        const wrap = document.getElementById('dpWrap');
+        const tools = wrap?.querySelector('.dp-headtools');
+        if (!tools || tools.querySelector('.bmd-dashboard-button')) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'button small smallGreyButton bmd-dashboard-button';
+        button.textContent = '📊 Dashboard';
+        button.title = 'Depot nach Thema, Lager, Zustand und EOL auswerten';
+        button.addEventListener('click', () => openDepotDashboard(button));
+        tools.prepend(button);
+    }
+
+    function updateDepotSaleThresholds() {
+        const wrap = document.getElementById('dpWrap');
+        if (!wrap) return;
+        wrap.querySelectorAll('#dpTableBody .pa-row[data-nr][data-avg]')
+            .forEach(row => {
+                const setNumber = String(row.dataset.nr || '');
+                const average = parseNumber(row.dataset.avg);
+                const cell = row.querySelector('.pa-c-best');
+                let thresholdButton = cell?.querySelector('.bmd-sale-threshold');
+                if (!cell || !setNumber || average === null || average < 0) {
+                    thresholdButton?.remove();
+                    return;
+                }
+                const settings = readSaleSettings();
+                const hasOverride = Boolean(settings.sets[setNumber]);
+                const values = saleValuesForSet(setNumber);
+                const threshold = calculateSaleThreshold(average, values);
+                if (!thresholdButton) {
+                    thresholdButton = document.createElement('button');
+                    thresholdButton.type = 'button';
+                    thresholdButton.className = 'bmd-sale-threshold';
+                    cell.appendChild(thresholdButton);
+                }
+                thresholdButton.textContent =
+                    `Verkaufsschwelle: ${formatCurrency(threshold)}` +
+                    (hasOverride ? ' •' : '');
+                thresholdButton.title =
+                    `${formatPrice(values.feePercent)} % Gebühr + ` +
+                    `${formatCurrency(values.fixedFee)} Fixgebühr + ` +
+                    `${formatCurrency(values.shipping)} Versand` +
+                    (hasOverride ? ' (Set-Werte)' : ' (Standardwerte)');
+                thresholdButton.onclick = event => {
+                    event.stopPropagation();
+                    openSaleThresholdOverlay(setNumber, average, thresholdButton);
+                };
+            });
+    }
+
+    function updateDepotPartsLinks() {
+        const wrap = document.getElementById('dpWrap');
+        if (!wrap) return;
+        wrap.querySelectorAll('#dpTableBody .pa-row[data-nr]')
+            .forEach(row => {
+                const setNumber = String(row.dataset.nr || '').trim();
+                if (!/^\d{3,7}$/.test(setNumber) ||
+                    row.querySelector('.bmd-parts-link')) return;
+                const subline = row.querySelector('.dp-subline') ||
+                    row.querySelector('.pa-c-set');
+                if (!subline) return;
+                const link = document.createElement('a');
+                link.className = 'bmd-parts-link';
+                link.href =
+                    'https://www.bricklink.com/catalogItemInv.asp?S=' +
+                    encodeURIComponent(`${setNumber}-1`);
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.textContent = '🧱 Einzelteile';
+                link.title = `BrickLink-Einzelteileinventar für LEGO ${setNumber}`;
+                link.setAttribute('aria-label', link.title);
+                subline.appendChild(link);
+            });
+    }
+
+    function updateDepotGrowth() {
+        const wrap = document.getElementById('dpWrap');
+        if (!wrap) return;
+        wrap.querySelectorAll('#dpTableBody .pa-row[data-avg][data-best]')
+            .forEach(row => {
+                const average = parseNumber(row.dataset.avg);
+                const best = parseNumber(row.dataset.best);
+                const cell = row.querySelector('.pa-c-best');
+                let growth = cell?.querySelector('.bmd-growth');
+                if (!cell || average === null || average <= 0 ||
+                    best === null || best <= 0) {
+                    growth?.remove();
+                    return;
+                }
+                const difference = best - average;
+                const percentage = difference / average * 100;
+                const annualized = calculateAnnualizedReturn(row, best);
+                if (!growth) {
+                    growth = document.createElement('span');
+                    growth.className = 'bmd-growth';
+                    cell.appendChild(growth);
+                }
+                growth.className = 'bmd-growth';
+                const differenceValue = document.createElement('span');
+                differenceValue.className = performanceClass(difference);
+                differenceValue.textContent = signed(difference, 2, ' €');
+                const percentageValue = document.createElement('span');
+                percentageValue.className =
+                    `bmd-performance-percent ${performanceClass(percentage)}`;
+                percentageValue.textContent = signed(percentage, 1, ' %');
+                growth.replaceChildren(
+                    differenceValue,
+                    document.createTextNode(' / '),
+                    percentageValue,
+                    document.createTextNode(' zum EK')
+                );
+                if (annualized !== null) {
+                    const annualizedValue = document.createElement('span');
+                    annualizedValue.className =
+                        `bmd-performance-percent ${performanceClass(annualized)}`;
+                    annualizedValue.textContent = signed(annualized, 1, ' %');
+                    growth.append(
+                        document.createTextNode(' · '),
+                        annualizedValue,
+                        document.createTextNode(' p.a.')
+                    );
+                }
+                growth.title =
+                    'Aktueller Bestpreis abzüglich durchschnittlichem Einkaufspreis' +
+                    (annualized === null
+                        ? ''
+                        : '; p.a. = kalkulatorische annualisierte Rendite (XIRR) ' +
+                            'aus allen Einkaufschargen bis heute');
+            });
+
+        const stats = wrap.querySelector('.dp-statsbar');
+        if (!stats) return;
+        let stat = stats.querySelector('.bmd-growth-stat');
+        if (!stat) {
+            stat = document.createElement('span');
+            stat.className = 'dp-stat bmd-growth-stat';
+            const label = document.createElement('span');
+            label.className = 'dp-statlabel';
+            label.textContent = 'Wertsteigerung zum EK';
+            const value = document.createElement('span');
+            value.className = 'dp-statval bmd-growth-total';
+            const percentage = document.createElement('span');
+            percentage.className = 'dp-statsub bmd-growth-percent';
+            stat.append(label, value, percentage);
+            stats.appendChild(stat);
+        }
+
+        const value = stat.querySelector('.bmd-growth-total');
+        const percentage = stat.querySelector('.bmd-growth-percent');
+        const buy = parseNumber(wrap.querySelector('#dpSumBuy')?.textContent, true);
+        const best = parseNumber(wrap.querySelector('#dpSumBest')?.textContent, true);
+        const missingBuy = Number(wrap.querySelector('#dpCntNoPrice')?.textContent || 0);
+        const missingOffer = Number(wrap.querySelector('#dpCntNoOffer')?.textContent || 0);
+        if (buy === null || buy <= 0 || best === null || missingBuy || missingOffer) {
+            value.classList.remove('bmd-positive', 'bmd-negative');
+            value.classList.add('bmd-neutral');
+            percentage.classList.remove(
+                'bmd-positive', 'bmd-negative', 'bmd-performance-percent'
+            );
+            percentage.classList.add('bmd-neutral');
+            value.textContent = '–';
+            percentage.textContent = 'nicht vollständig berechenbar';
+            return;
+        }
+        const difference = best - buy;
+        value.classList.remove('bmd-positive', 'bmd-negative', 'bmd-neutral');
+        value.classList.add(performanceClass(difference));
+        value.textContent = signed(difference, 2, ' €');
+        const percentageValue = difference / buy * 100;
+        percentage.classList.remove('bmd-positive', 'bmd-negative', 'bmd-neutral');
+        percentage.classList.add(
+            'bmd-performance-percent',
+            performanceClass(percentageValue)
+        );
+        percentage.textContent = signed(percentageValue, 1, ' %');
+    }
+
+    let depotObserver = null;
+    let depotUpdateScheduled = false;
+    function observeDepot() {
+        const wrap = document.getElementById('dpWrap');
+        if (depotObserver && wrap) {
+            depotObserver.observe(wrap, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+        }
+    }
+    function scheduleDepotUpdate() {
+        if (depotUpdateScheduled) return;
+        depotUpdateScheduled = true;
+        window.setTimeout(() => {
+            depotUpdateScheduled = false;
+            depotObserver?.disconnect();
+            updateDepotGrowth();
+            updateDepotSaleThresholds();
+            updateDepotPartsLinks();
+            setupDepotDashboardButton();
+            observeDepot();
+        }, 0);
+    }
+    function setupDepotGrowth() {
+        if (!document.getElementById('dpWrap') || depotObserver) return;
+        depotObserver = new MutationObserver(scheduleDepotUpdate);
+        scheduleDepotUpdate();
+    }
+
+    installStyles();
+    setupDetailButton();
+    setupDepotGrowth();
+    setupDepotDashboardButton();
+    window.addEventListener('load', () => {
+        setupDetailButton();
+        setupDepotGrowth();
+        setupDepotDashboardButton();
+    }, { once: true });
+})();
