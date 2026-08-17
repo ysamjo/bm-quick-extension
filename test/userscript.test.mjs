@@ -21,7 +21,7 @@ const metaGptSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.11/);
+    assert.match(loaderSource, /@version\s+5\.5\.12/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -94,7 +94,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.11/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.12/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -267,14 +267,31 @@ test('eBay offers below half the Brickmerge price are rejected', () => {
         context.BM_isMarketplacePricePlausible('ebay', 50, 100),
         true
     );
+    const selected = context.BM_selectPlausibleMarketplaceOffer(
+        'ebay',
+        {
+            found: true,
+            cheapest: { total: 3.39, url: 'https://www.ebay.de/itm/too-cheap' },
+            offers: [
+                { total: 499.99, url: 'https://www.ebay.de/itm/second' },
+                { total: 486.35, url: 'https://www.ebay.de/itm/lowest-plausible' }
+            ]
+        },
+        420.17
+    );
+    assert.equal(selected.total, 486.35);
+    assert.equal(selected.url, 'https://www.ebay.de/itm/lowest-plausible');
     assert.match(
         source,
-        /selectPlausibleMarketplaceOffer\(\s*'ebay',[\s\S]*?getEbayOfferTotal/
+        /BM_selectPlausibleMarketplaceOffer\(\s*'ebay',[\s\S]*?getEbayOfferTotal/
     );
     assert.match(
         source,
-        /selectPlausibleMarketplaceOffer\(\s*'ebay-fr',[\s\S]*?getEbayOfferTotal/
+        /BM_selectPlausibleMarketplaceOffer\(\s*'ebay-fr',[\s\S]*?getEbayOfferTotal/
     );
+    assert.match(source, /ebay-worker-complete-set-v5/);
+    assert.match(source, /ebay-fr-worker-complete-set-v3/);
+    assert.match(source, /&best=\$\{encodeURIComponent\(ebayReferenceCachePart\)\}/);
 });
 
 test('mobile offer rows grow when price details wrap', () => {

@@ -213,6 +213,31 @@ globalThis.BM_isMarketplacePricePlausible = (
     if (minimum === null) return true;
     return candidate + Number.EPSILON >= minimum;
 };
+globalThis.BM_selectPlausibleMarketplaceOffer = (
+    source,
+    result,
+    referencePrice,
+    getPrice = offer => Number(offer?.total ?? offer?.price)
+) => {
+    const candidates = [
+        result?.cheapest,
+        ...(Array.isArray(result?.offers) ? result.offers : [])
+    ].filter(Boolean);
+    const seen = new Set();
+    return candidates
+        .filter(candidate => {
+            const price = getPrice(candidate);
+            const identity = `${candidate?.url || ''}:${price}`;
+            if (seen.has(identity)) return false;
+            seen.add(identity);
+            return globalThis.BM_isMarketplacePricePlausible(
+                source,
+                price,
+                referencePrice
+            );
+        })
+        .sort((left, right) => getPrice(left) - getPrice(right))[0] || null;
+};
 globalThis.BM_EXTENSION_STORAGE_KEYS = Object.freeze({
     workerBaseUrl: 'bm:worker-base-url-v1',
     workerClientId: 'gm:brickmerge-worker-client-id-v1'
@@ -7491,31 +7516,6 @@ globalThis.BM_isFranceEnabled = settings =>
                         return prices.length > 0 ? Math.min(...prices) : null;
                     };
 
-                    const selectPlausibleMarketplaceOffer = (
-                        source,
-                        result,
-                        referencePrice,
-                        getPrice = offer => Number(offer?.total ?? offer?.price)
-                    ) => {
-                        const candidates = [
-                            result?.cheapest,
-                            ...(Array.isArray(result?.offers) ? result.offers : [])
-                        ].filter(Boolean);
-                        const seen = new Set();
-                        return candidates
-                            .filter(candidate => {
-                                const price = getPrice(candidate);
-                                const identity = `${candidate?.url || ''}:${price}`;
-                                if (seen.has(identity)) return false;
-                                seen.add(identity);
-                                return BM_isMarketplacePricePlausible(
-                                    source,
-                                    price,
-                                    referencePrice
-                                );
-                            })
-                            .sort((left, right) => getPrice(left) - getPrice(right))[0] || null;
-                    };
                     const getEbayOfferTotal = offer => {
                         const explicitTotal = Number(offer?.total);
                         if (Number.isFinite(explicitTotal) && explicitTotal > 0) {
@@ -7539,18 +7539,25 @@ globalThis.BM_isFranceEnabled = settings =>
                             ?.textContent.match(/EAN\s*:\s*(\d{8}|\d{12,14})/i)?.[1] || '';
 
                         if (/^\d{8}$|^\d{12,14}$/.test(ean)) {
+                            const ebayReferencePrice = getBrickmergeBestPrice();
+                            const ebayReferenceCachePart = ebayReferencePrice === null
+                                ? 'none'
+                                : ebayReferencePrice.toFixed(2);
                             cachedShopRequest(
                                 'ebay',
                                 makeApiCacheKey(
-                                    'ebay-worker-complete-set-v4',
-                                    `${ean}:${setNumber}`
+                                    'ebay-worker-complete-set-v5',
+                                    `${ean}:${setNumber}:${ebayReferenceCachePart}`
                                 ),
                                 KLAZ_CLIENT_CACHE_TTL,
                                 {
                                     method: 'GET',
                                     url:
                                         `${BM_WORKER_URL}/price?ean=${encodeURIComponent(ean)}` +
-                                        `&set=${encodeURIComponent(setNumber)}`,
+                                        `&set=${encodeURIComponent(setNumber)}` +
+                                        (ebayReferencePrice === null
+                                            ? ''
+                                            : `&best=${encodeURIComponent(ebayReferenceCachePart)}`),
                                     headers: {
                                         'Accept': 'application/json',
                                         'X-BM-Client-ID': workerClientId
@@ -7566,12 +7573,12 @@ globalThis.BM_isFranceEnabled = settings =>
                                             );
                                             return;
                                         }
-                                        if (!result?.found || !result.cheapest) return;
+                                        if (!result?.found) return;
 
-                                        const cheapest = selectPlausibleMarketplaceOffer(
+                                        const cheapest = BM_selectPlausibleMarketplaceOffer(
                                             'ebay',
                                             result,
-                                            getBrickmergeBestPrice(),
+                                            ebayReferencePrice,
                                             getEbayOfferTotal
                                         );
                                         if (!cheapest) {
@@ -7645,15 +7652,18 @@ globalThis.BM_isFranceEnabled = settings =>
                             if (BM_isOfferShopEnabled('ebay-fr')) cachedShopRequest(
                                 'ebay-fr',
                                 makeApiCacheKey(
-                                    'ebay-fr-worker-complete-set-v2',
-                                    `${ean}:${setNumber}`
+                                    'ebay-fr-worker-complete-set-v3',
+                                    `${ean}:${setNumber}:${ebayReferenceCachePart}`
                                 ),
                                 KLAZ_CLIENT_CACHE_TTL,
                                 {
                                     method: 'GET',
                                     url:
                                         `${BM_WORKER_URL}/ebay-fr?ean=${encodeURIComponent(ean)}` +
-                                        `&set=${encodeURIComponent(setNumber)}`,
+                                        `&set=${encodeURIComponent(setNumber)}` +
+                                        (ebayReferencePrice === null
+                                            ? ''
+                                            : `&best=${encodeURIComponent(ebayReferenceCachePart)}`),
                                     headers: {
                                         'Accept': 'application/json',
                                         'X-BM-Client-ID': workerClientId
@@ -7669,12 +7679,12 @@ globalThis.BM_isFranceEnabled = settings =>
                                             );
                                             return;
                                         }
-                                        if (!result?.found || !result.cheapest) return;
+                                        if (!result?.found) return;
 
-                                        const cheapest = selectPlausibleMarketplaceOffer(
+                                        const cheapest = BM_selectPlausibleMarketplaceOffer(
                                             'ebay-fr',
                                             result,
-                                            getBrickmergeBestPrice(),
+                                            ebayReferencePrice,
                                             getEbayOfferTotal
                                         );
                                         if (!cheapest) {
@@ -7866,7 +7876,7 @@ globalThis.BM_isFranceEnabled = settings =>
                             const result = rawResult?.result || rawResult?.data || rawResult;
                             if (!result?.found || !result.cheapest) return false;
                             const brickmergeBestPrice = getBrickmergeBestPrice();
-                            const cheapest = selectPlausibleMarketplaceOffer(
+                            const cheapest = BM_selectPlausibleMarketplaceOffer(
                                 source,
                                 result,
                                 brickmergeBestPrice
@@ -8194,7 +8204,7 @@ globalThis.BM_isFranceEnabled = settings =>
                                             return;
                                         }
 
-                                        const cheapest = selectPlausibleMarketplaceOffer(
+                                        const cheapest = BM_selectPlausibleMarketplaceOffer(
                                             'kleinanzeigen',
                                             result,
                                             brickmergeBestPrice,

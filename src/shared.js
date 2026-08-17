@@ -91,6 +91,31 @@ globalThis.BM_isMarketplacePricePlausible = (
     if (minimum === null) return true;
     return candidate + Number.EPSILON >= minimum;
 };
+globalThis.BM_selectPlausibleMarketplaceOffer = (
+    source,
+    result,
+    referencePrice,
+    getPrice = offer => Number(offer?.total ?? offer?.price)
+) => {
+    const candidates = [
+        result?.cheapest,
+        ...(Array.isArray(result?.offers) ? result.offers : [])
+    ].filter(Boolean);
+    const seen = new Set();
+    return candidates
+        .filter(candidate => {
+            const price = getPrice(candidate);
+            const identity = `${candidate?.url || ''}:${price}`;
+            if (seen.has(identity)) return false;
+            seen.add(identity);
+            return globalThis.BM_isMarketplacePricePlausible(
+                source,
+                price,
+                referencePrice
+            );
+        })
+        .sort((left, right) => getPrice(left) - getPrice(right))[0] || null;
+};
 globalThis.BM_EXTENSION_STORAGE_KEYS = Object.freeze({
     workerBaseUrl: 'bm:worker-base-url-v1',
     workerClientId: 'gm:brickmerge-worker-client-id-v1'
