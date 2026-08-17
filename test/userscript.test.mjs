@@ -21,7 +21,7 @@ const metaGptSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.12/);
+    assert.match(loaderSource, /@version\s+5\.5\.13/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -94,7 +94,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.12/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.13/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -245,6 +245,68 @@ test('current extension marketplace and minifigure features are bundled', () => 
     ]) {
         assert.match(source, new RegExp(sourceName, 'i'));
     }
+});
+
+test('minifigure crosswalk assigns similar variants globally by character identity', () => {
+    const sharedSource = fs.readFileSync(
+        new URL('../src/shared.js', import.meta.url),
+        'utf8'
+    );
+    const context = vm.createContext({ URL });
+    vm.runInContext(sharedSource, context);
+
+    const crosswalk = context.BM_buildMinifigCrosswalk([
+        {
+            set_num: 'fig-014338',
+            set_name: 'Bogrod',
+            quantity: 1
+        },
+        {
+            set_num: 'fig-014349',
+            set_name:
+                'Griphook - Dark Bluish Grey Hair, Black Torso, White Arms, Black Legs',
+            quantity: 1
+        },
+        {
+            set_num: 'fig-014337',
+            set_name: 'Harry Potter, Dark Blue Jacket, Sand Blue Legs',
+            quantity: 1
+        },
+        {
+            set_num: 'fig-014341',
+            set_name:
+                'Harry Potter, Sand Blue Shirt, Short Dark Tan Legs, Excited',
+            quantity: 1
+        }
+    ], [
+        {
+            itemNo: 'hp455',
+            name: 'Bogrod - Dark Bluish Gray Pinstripe Suit',
+            quantity: 1
+        },
+        {
+            itemNo: 'hp445',
+            name: 'Griphook Goblin - Black Pinstripe Vest',
+            quantity: 1
+        },
+        {
+            itemNo: 'hp443',
+            name: 'Harry Potter - Dark Blue Hoodie, Sand Blue Legs',
+            quantity: 1
+        },
+        {
+            itemNo: 'hp449',
+            name:
+                'Harry Potter - Sand Blue Jacket, Dark Tan Short Legs, Broken Glasses',
+            quantity: 1
+        }
+    ]);
+
+    assert.equal(crosswalk.get('fig-014338'), 'hp455');
+    assert.equal(crosswalk.get('fig-014349'), 'hp445');
+    assert.equal(crosswalk.get('fig-014337'), 'hp443');
+    assert.equal(crosswalk.get('fig-014341'), 'hp449');
+    assert.equal(new Set(crosswalk.values()).size, 4);
 });
 
 test('eBay offers below half the Brickmerge price are rejected', () => {

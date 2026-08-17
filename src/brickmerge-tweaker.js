@@ -33,7 +33,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     const KLAZ_CLIENT_CACHE_TTL = 45 * 60 * 1000;
     const MINIFIG_INVENTORY_CACHE_TTL = 6 * 60 * 60 * 1000;
     const MINIFIG_PRICE_CACHE_TTL = 24 * 60 * 60 * 1000;
-    const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-eu-v7';
+    const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-eu-v8';
     const BM_WORKER_CLIENT_ID_STORAGE_KEY = 'brickmerge-worker-client-id-v1';
     const BM_WORKER_URL = globalThis.BM_WORKER_DEFAULT_BASE_URL ||
         'https://getdata.andreas-9b7.workers.dev';

@@ -181,44 +181,114 @@ globalThis.BM_buildMinifigCrosswalk = (rebrickableEntries, brickLinkItems) => {
         .map(entry => ({
             id: String(entry?.set_num || '').trim(),
             name: String(entry?.set_name || entry?.name || '').trim(),
-            quantity: Math.max(1, Number.parseInt(entry?.quantity, 10) || 1)
+            quantity: Math.max(1, Number.parseInt(entry?.quantity, 10) || 1),
+            tokens: [...globalThis.BM_normalizeMinifigNameTokens(
+                entry?.set_name || entry?.name
+            )]
         }))
         .filter(entry => entry.id && entry.name);
     const targets = (Array.isArray(brickLinkItems) ? brickLinkItems : [])
         .map(item => ({
             id: String(item?.itemNo || item?.item_no || '').trim(),
             name: String(item?.name || '').trim(),
-            quantity: Math.max(1, Number.parseInt(item?.quantity, 10) || 1)
+            quantity: Math.max(1, Number.parseInt(item?.quantity, 10) || 1),
+            tokens: [...globalThis.BM_normalizeMinifigNameTokens(item?.name)]
         }))
         .filter(item => item.id && item.name);
-    const candidates = [];
+    if (sources.length === 0 || targets.length === 0) return new Map();
 
-    sources.forEach(source => {
-        const sourceTokens = globalThis.BM_normalizeMinifigNameTokens(source.name);
-        if (sourceTokens.size === 0) return;
-        targets.forEach(target => {
-            const targetTokens = globalThis.BM_normalizeMinifigNameTokens(target.name);
-            const common = [...sourceTokens].filter(token => targetTokens.has(token));
-            if (common.length < 2) return;
-            const coverage = common.length / sourceTokens.size;
-            const precision = common.length / targetTokens.size;
-            const quantityAdjustment = source.quantity === target.quantity ? 0.08 : -0.08;
-            const score = (coverage * 0.68) + (precision * 0.32) + quantityAdjustment;
-            candidates.push({ sourceId: source.id, targetId: target.id, score });
-        });
-    });
+    const scorePair = (source, target) => {
+        const targetTokenSet = new Set(target.tokens);
+        const common = source.tokens.filter(token => targetTokenSet.has(token));
+        const leadingNameMatches = Boolean(
+            source.tokens[0] && source.tokens[0] === target.tokens[0]
+        );
+        if (common.length < 2 && !leadingNameMatches) return 0;
+        const coverage = common.length / source.tokens.length;
+        const precision = common.length / target.tokens.length;
+        const quantityAdjustment = source.quantity === target.quantity
+            ? 0.08
+            : -0.08;
+        // Charakter-Namen wie Bogrod oder Griphook sind aussagekräftiger als
+        // gemeinsam vorkommende Farb- und Kleidungsbegriffe.
+        const leadingNameBonus = leadingNameMatches ? 0.55 : 0;
+        return (coverage * 0.68) + (precision * 0.32) +
+            quantityAdjustment + leadingNameBonus;
+    };
 
-    candidates.sort((a, b) => b.score - a.score);
-    const usedSources = new Set();
-    const usedTargets = new Set();
+    const weights = sources.map(source =>
+        targets.map(target => scorePair(source, target))
+    );
+
+    // Maximale Gesamtzuordnung statt gieriger Einzelentscheidungen. Dadurch
+    // werden ähnliche Varianten (z. B. zwei Harry-Potter-Figuren) gemeinsam
+    // optimal verteilt. Zusätzliche Nullspalten erlauben ungemappte Quellen.
+    const solveMaximumWeightAssignment = matrix => {
+        const rowCount = matrix.length;
+        const realColumnCount = matrix[0]?.length || 0;
+        const columnCount = realColumnCount + rowCount;
+        const rowPotential = Array(rowCount + 1).fill(0);
+        const columnPotential = Array(columnCount + 1).fill(0);
+        const matchedRow = Array(columnCount + 1).fill(0);
+        const previousColumn = Array(columnCount + 1).fill(0);
+
+        for (let row = 1; row <= rowCount; row += 1) {
+            matchedRow[0] = row;
+            let currentColumn = 0;
+            const minimumReducedCost = Array(columnCount + 1).fill(Infinity);
+            const used = Array(columnCount + 1).fill(false);
+            do {
+                used[currentColumn] = true;
+                const currentRow = matchedRow[currentColumn];
+                let delta = Infinity;
+                let nextColumn = 0;
+                for (let column = 1; column <= columnCount; column += 1) {
+                    if (used[column]) continue;
+                    const weight = column <= realColumnCount
+                        ? matrix[currentRow - 1][column - 1]
+                        : 0;
+                    const reducedCost = -weight - rowPotential[currentRow] -
+                        columnPotential[column];
+                    if (reducedCost < minimumReducedCost[column]) {
+                        minimumReducedCost[column] = reducedCost;
+                        previousColumn[column] = currentColumn;
+                    }
+                    if (minimumReducedCost[column] < delta) {
+                        delta = minimumReducedCost[column];
+                        nextColumn = column;
+                    }
+                }
+                for (let column = 0; column <= columnCount; column += 1) {
+                    if (used[column]) {
+                        rowPotential[matchedRow[column]] += delta;
+                        columnPotential[column] -= delta;
+                    } else {
+                        minimumReducedCost[column] -= delta;
+                    }
+                }
+                currentColumn = nextColumn;
+            } while (matchedRow[currentColumn] !== 0);
+
+            do {
+                const nextColumn = previousColumn[currentColumn];
+                matchedRow[currentColumn] = matchedRow[nextColumn];
+                currentColumn = nextColumn;
+            } while (currentColumn !== 0);
+        }
+
+        const assignment = Array(rowCount).fill(-1);
+        for (let column = 1; column <= realColumnCount; column += 1) {
+            if (matchedRow[column] > 0) {
+                assignment[matchedRow[column] - 1] = column - 1;
+            }
+        }
+        return assignment;
+    };
+
     const crosswalk = new Map();
-    candidates.forEach(candidate => {
-        if (candidate.score < 0.42 ||
-            usedSources.has(candidate.sourceId) ||
-            usedTargets.has(candidate.targetId)) return;
-        usedSources.add(candidate.sourceId);
-        usedTargets.add(candidate.targetId);
-        crosswalk.set(candidate.sourceId, candidate.targetId);
+    solveMaximumWeightAssignment(weights).forEach((targetIndex, sourceIndex) => {
+        if (targetIndex < 0 || weights[sourceIndex][targetIndex] < 0.42) return;
+        crosswalk.set(sources[sourceIndex].id, targets[targetIndex].id);
     });
     return crosswalk;
 };
