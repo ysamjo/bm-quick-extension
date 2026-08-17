@@ -12019,6 +12019,64 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         });
     }
 
+    function openNativeDepotAdd(setNumber) {
+        const itemNumber = `${setNumber}-1`;
+        const matchesItem = link => {
+            try {
+                const url = new URL(link.href, window.location.href);
+                return url.searchParams.get('a') === 'depotadd' &&
+                    url.searchParams.get('i') === itemNumber;
+            } catch (error) {
+                return false;
+            }
+        };
+        let nativeLink = Array.from(document.querySelectorAll(
+            'a[href*="a=depotadd"]'
+        )).find(matchesItem);
+        let temporaryLink = false;
+        if (!nativeLink) {
+            nativeLink = document.createElement('a');
+            nativeLink.href = `/?a=depotadd&i=${encodeURIComponent(itemNumber)}`;
+            nativeLink.dataset.revealId = 'myModal';
+            nativeLink.dataset.revealAjax = 'true';
+            nativeLink.hidden = true;
+            document.body.appendChild(nativeLink);
+            temporaryLink = true;
+        }
+
+        const fillCurrentPrice = () => {
+            const form = Array.from(document.querySelectorAll(
+                '#myModal #modalform, #modalform'
+            )).find(candidate =>
+                candidate.querySelector('input[name="a"]')?.value ===
+                    'depotadd' &&
+                candidate.querySelector('input[name="i"]')?.value === itemNumber
+            );
+            if (!form) return false;
+            const price = form.querySelector('input[name="lotprice"]');
+            const bestPrice = currentBestPrice();
+            if (price && !price.value && Number.isFinite(bestPrice)) {
+                price.value = formatPrice(bestPrice);
+            }
+            return true;
+        };
+        if (!fillCurrentPrice()) {
+            const observer = new MutationObserver(() => {
+                if (fillCurrentPrice()) observer.disconnect();
+            });
+            observer.observe(document.documentElement, {
+                childList: true,
+                subtree: true
+            });
+            window.setTimeout(() => observer.disconnect(), 5000);
+        }
+
+        nativeLink.click();
+        if (temporaryLink) {
+            window.setTimeout(() => nativeLink.remove(), 0);
+        }
+    }
+
     function setupDetailButton() {
         const setNumber = getSetNumber();
         const chartTrigger = document.getElementById('chartTrigger');
@@ -12051,19 +12109,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         button.appendChild(content);
         button.title = 'Dieses Set zum Bestand hinzufügen';
         button.setAttribute('aria-label', button.title);
-        button.addEventListener('click', () => openOverlay(setNumber, button));
+        button.addEventListener('click', () => openNativeDepotAdd(setNumber));
         if (chartTrigger) {
             host.classList.add('bmd-has-depot-button');
             chartTrigger.insertAdjacentElement('afterend', button);
         } else {
             host.appendChild(button);
         }
-
-        // Die serverseitige Suche berücksichtigt auch große, paginierte Depots.
-        // Schlägt sie fehl (z. B. ausgeloggt), bleibt der neutrale Button stehen.
-        void loadDepotData(setNumber).then(data => {
-            setDetailStock(button, data.stock);
-        }).catch(() => {});
     }
 
     function parseNumber(value, german = false) {

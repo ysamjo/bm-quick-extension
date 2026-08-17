@@ -21,7 +21,7 @@ const metaGptSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.13/);
+    assert.match(loaderSource, /@version\s+5\.5\.14/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -94,7 +94,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.13/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.14/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -221,6 +221,21 @@ test('search result pages skip the marketplace overview module', () => {
         overviewSource,
         /if \(isSearchPage\(location\.href\)\) return;/
     );
+});
+
+test('stock button opens Brickmerge native authenticated depot form', () => {
+    const setupDetailButton = source.match(
+        /function setupDetailButton\(\) \{[\s\S]*?\n\s*function parseNumber/
+    )?.[0] || '';
+
+    assert.match(source, /function openNativeDepotAdd\(setNumber\)/);
+    assert.match(source, /searchParams\.get\('a'\) === 'depotadd'/);
+    assert.match(source, /#myModal #modalform, #modalform/);
+    assert.match(
+        setupDetailButton,
+        /button\.addEventListener\('click', \(\) => openNativeDepotAdd\(setNumber\)\)/
+    );
+    assert.doesNotMatch(setupDetailButton, /loadDepotData\(/);
 });
 
 test('extension APIs are adapted to the mobile userscript bridge', () => {
