@@ -2675,24 +2675,24 @@ globalThis.BM_isFranceEnabled = settings =>
                 }
                 #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage {
                     display: grid;
-                    grid-template-columns: 66px 18px;
+                    grid-template-columns: 62px 16px;
                     align-items: center;
                     justify-content: center;
                     justify-items: center;
-                    gap: 7px;
+                    gap: 2px;
                     width: 100%;
                     height: 100%;
-                    padding: 0 7px;
+                    padding: 0 3px;
                     box-sizing: border-box;
                     overflow: hidden;
                 }
                 #offerlist .bm-ebay-wordmark {
                     display: block !important;
                     grid-column: 1;
-                    width: 66px !important;
+                    width: 62px !important;
                     height: auto !important;
-                    max-width: 66px !important;
-                    max-height: 27px !important;
+                    max-width: 62px !important;
+                    max-height: 25px !important;
                     margin: 0 !important;
                     color: #111 !important;
                     overflow: visible;
@@ -2705,10 +2705,10 @@ globalThis.BM_isFranceEnabled = settings =>
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    width: 18px;
-                    height: 18px;
-                    min-width: 18px;
-                    min-height: 18px;
+                    width: 16px;
+                    height: 16px;
+                    min-width: 16px;
+                    min-height: 16px;
                     padding: 0;
                     color: #111 !important;
                     background: transparent !important;
@@ -2719,8 +2719,8 @@ globalThis.BM_isFranceEnabled = settings =>
                 }
                 #offerlist .bm-ebay-seller-type-icon svg {
                     display: block;
-                    width: 16px;
-                    height: 16px;
+                    width: 15px;
+                    height: 15px;
                     fill: currentColor;
                     shape-rendering: geometricPrecision;
                 }
@@ -2753,10 +2753,10 @@ globalThis.BM_isFranceEnabled = settings =>
                     position: static;
                     grid-column: 2;
                     display: block;
-                    width: 18px;
-                    height: 12px;
-                    min-width: 18px;
-                    min-height: 12px;
+                    width: 16px;
+                    height: 11px;
+                    min-width: 16px;
+                    min-height: 11px;
                     padding: 0;
                     overflow: hidden;
                     border: 1px solid rgba(0,0,0,0.16);
