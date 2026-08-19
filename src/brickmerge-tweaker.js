@@ -821,7 +821,31 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage > img {
             max-width: 70% !important;
             max-height: 78% !important;
+            filter: grayscale(1) brightness(0) !important;
         }
+        #offerlist .bm-ebay-seller-type-icon {
+            position: absolute;
+            right: 1px;
+            bottom: 1px;
+            z-index: 3;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 17px;
+            height: 17px;
+            border-radius: 50%;
+            color: #111 !important;
+            background: rgba(255,255,255,0.96) !important;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
+        }
+        #offerlist .bm-ebay-seller-type-icon svg {
+            display: block;
+            width: 13px;
+            height: 13px;
+            fill: currentColor;
+        }
+        #offerlist .bm-ebay-commercial-icon { color: #111 !important; }
+        #offerlist .bm-ebay-private-icon { color: #111 !important; }
         #offerlist .bm-ebay-domain-suffix {
             display: inline-flex;
             flex: 0 0 auto;
@@ -5877,7 +5901,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                         searchUrl: document.querySelector('a[data-bmid="btn-ebay"]')?.href || '',
                                         shippingStatus: shipping <= 0.004 ? 'free' : 'paid',
                                         shippingCost: shipping,
-                                        logoDomainSuffix: '.de',
                                         logoCaption: sellerName || sellerTypeLabel,
                                         sellerAccountType,
                                         sellerName
@@ -5983,7 +6006,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                         searchUrl: document.querySelector('a[data-bmid="btn-ebay-fr"]')?.href || '',
                                         shippingStatus: shipping <= 0.004 ? 'free' : 'paid',
                                         shippingCost: shipping,
-                                        logoDomainSuffix: '.fr',
                                         logoCaption: sellerName || sellerTypeLabel,
                                         logoCountryFlag: '🇫🇷',
                                         logoCountryLabel: 'Frankreich',
@@ -6884,6 +6906,36 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
     }
 
+    function decorateEbaySellerTypeIcon(link, sellerAccountType, isFrance = false) {
+        if (!link) return;
+        link.querySelectorAll('.bm-ebay-seller-type-icon')
+            .forEach(icon => icon.remove());
+        if (isFrance) return;
+
+        const normalizedType = normalizeEbaySellerAccountType(
+            sellerAccountType
+        );
+        const kind = normalizedType === 'BUSINESS'
+            ? 'commercial'
+            : normalizedType === 'INDIVIDUAL'
+                ? 'private'
+                : '';
+        if (!kind) return;
+
+        const stage = link.querySelector('.bm-marketplace-logo-stage');
+        if (!stage) return;
+        const marker = document.createElement('span');
+        marker.className =
+            `bm-ebay-seller-type-icon bm-ebay-${kind}-icon`;
+        marker.title = kind === 'commercial'
+            ? 'Gewerblicher eBay-Verkäufer'
+            : 'Privater eBay-Verkäufer';
+        marker.setAttribute('aria-label', marker.title);
+        marker.innerHTML = kind === 'commercial'
+            ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1.2 5 3.2 10-5 3-5-3 3.2-10L9 3zm2.2 2 0.7 2h0.2l0.7-2h-1.6z"/></svg>'
+            : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4.1 0-7 2.1-7 5v1h14v-1c0-2.9-2.9-5-7-5z"/></svg>';
+        stage.appendChild(marker);
+    }
     function labelNativeEbayOffer() {
         const nativePriceRows = document.querySelectorAll(
             '#offerlist .medium-4.small-9.columns.pricerow[data-mid]' +
@@ -6961,6 +7013,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             logoLink.querySelectorAll('.bm-marketplace-country-badge')
                 .forEach(badge => badge.remove());
             normalizeMarketplaceLogoLink(logoLink);
+            decorateEbaySellerTypeIcon(logoLink, 'BUSINESS');
         });
     }
 
@@ -10373,6 +10426,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     flag.setAttribute('aria-label', flag.title);
                     stage.appendChild(flag);
                 }
+            }
+            if (offer.key === 'ebay' || offer.key === 'ebay-fr') {
+                decorateEbaySellerTypeIcon(
+                    iconLink,
+                    offer.sellerAccountType,
+                    offer.key === 'ebay-fr'
+                );
             }
             if (offer.logoDomainSuffix) {
                 const stage = iconLink.querySelector('.bm-marketplace-logo-stage');
