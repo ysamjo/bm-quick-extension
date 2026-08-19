@@ -21,7 +21,7 @@ const metaGptSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.16/);
+    assert.match(loaderSource, /@version\s+5\.5\.17/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -94,7 +94,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.16/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.17/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -488,7 +488,9 @@ test('eBay Offerlist uses black logos with distinct source markers', () => {
     );
     assert.match(tweakerSource, /function ensureBlackEbayWordmark\(/);
     assert.match(tweakerSource, /bm-ebay-wordmark/);
-    assert.match(tweakerSource, /text-rendering:\s*geometricPrecision/);
+    assert.match(tweakerSource, /viewBox', '0 0 1000 400\\.75098'/);
+    assert.match(tweakerSource, /createElementNS/);
+    assert.match(tweakerSource, /grid-template-columns:\\s*66px 18px/);
     assert.match(tweakerSource, /function decorateEbaySellerTypeIcon\(/);
     assert.match(tweakerSource, /bm-ebay-commercial-icon/);
     assert.match(tweakerSource, /bm-ebay-private-icon/);
@@ -499,5 +501,9 @@ test('eBay Offerlist uses black logos with distinct source markers', () => {
     assert.match(tweakerSource, /font-size:\s*0/);
     assert.match(tweakerSource, /PRIVATE_SELLER/);
     assert.match(tweakerSource, /isBusinessSeller/);
+    assert.match(
+        tweakerSource,
+        /offer\\.key === 'ebay' \\? 'INDIVIDUAL' : ''/
+    );
     assert.doesNotMatch(tweakerSource, /logoDomainSuffix:\s*'\.(?:de|fr)'/);
 });

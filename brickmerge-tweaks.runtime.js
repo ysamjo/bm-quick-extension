@@ -2673,37 +2673,45 @@ globalThis.BM_isFranceEnabled = settings =>
                     max-width: 70% !important;
                     max-height: 78% !important;
                 }
+                #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage {
+                    display: grid;
+                    grid-template-columns: 66px 18px;
+                    align-items: center;
+                    justify-content: center;
+                    justify-items: center;
+                    gap: 7px;
+                    width: 100%;
+                    height: 100%;
+                    padding: 0 7px;
+                    box-sizing: border-box;
+                    overflow: hidden;
+                }
                 #offerlist .bm-ebay-wordmark {
                     display: block !important;
-                    flex: 0 0 auto;
-                    width: auto !important;
-                    max-width: none !important;
+                    grid-column: 1;
+                    width: 66px !important;
                     height: auto !important;
-                    max-height: none !important;
+                    max-width: 66px !important;
+                    max-height: 27px !important;
                     margin: 0 !important;
                     color: #111 !important;
-                    font-family: Arial, Helvetica, sans-serif;
-                    font-size: 1.08rem;
-                    font-weight: 700;
-                    letter-spacing: -0.075em;
-                    line-height: 1;
-                    text-rendering: geometricPrecision;
-                    white-space: nowrap;
-                    filter: none !important;
+                    overflow: visible;
+                    shape-rendering: geometricPrecision;
                 }
+                #offerlist .bm-ebay-wordmark path { fill: currentColor; }
                 #offerlist .bm-ebay-seller-type-icon {
-                    position: absolute;
-                    right: 0;
-                    bottom: 0;
-                    z-index: 3;
+                    position: static;
+                    grid-column: 2;
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    width: 14px;
-                    height: 14px;
+                    width: 18px;
+                    height: 18px;
+                    min-width: 18px;
+                    min-height: 18px;
                     padding: 0;
                     color: #111 !important;
-                    background: #fff !important;
+                    background: transparent !important;
                     border: 0;
                     border-radius: 0;
                     box-shadow: none;
@@ -2711,8 +2719,8 @@ globalThis.BM_isFranceEnabled = settings =>
                 }
                 #offerlist .bm-ebay-seller-type-icon svg {
                     display: block;
-                    width: 13px;
-                    height: 13px;
+                    width: 16px;
+                    height: 16px;
                     fill: currentColor;
                     shape-rendering: geometricPrecision;
                 }
@@ -2742,15 +2750,13 @@ globalThis.BM_isFranceEnabled = settings =>
                     display: none !important;
                 }
                 #offerlist .bm-marketplace-country-flag {
-                    position: absolute;
-                    top: 1px;
-                    right: 1px;
-                    z-index: 3;
+                    position: static;
+                    grid-column: 2;
                     display: block;
-                    width: 14px;
-                    height: 9px;
-                    min-width: 14px;
-                    min-height: 9px;
+                    width: 18px;
+                    height: 12px;
+                    min-width: 18px;
+                    min-height: 12px;
                     padding: 0;
                     overflow: hidden;
                     border: 1px solid rgba(0,0,0,0.16);
@@ -2760,12 +2766,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     line-height: 0;
                 }
                 #offerlist .bm-marketplace-country-flag-fr {
-                    background: linear-gradient(
-                        to right,
-                        #0055a4 0 33.333%,
-                        #fff 33.333% 66.666%,
-                        #ef4135 66.666% 100%
-                    ) !important;
+                    background: linear-gradient(to right, #0055a4 0 33.333%, #fff 33.333% 66.666%, #ef4135 66.666% 100%) !important;
                 }
                 #offerlist .bm-marketplace-logo-cell {
                     display: flex !important;
@@ -8790,15 +8791,24 @@ globalThis.BM_isFranceEnabled = settings =>
             function ensureBlackEbayWordmark(link) {
                 const stage = link?.querySelector('.bm-marketplace-logo-stage');
                 if (!stage) return;
-                stage.querySelectorAll(':scope > img').forEach(image => image.remove());
-                let wordmark = stage.querySelector(':scope > .bm-ebay-wordmark');
-                if (!wordmark) {
-                    wordmark = document.createElement('span');
-                    wordmark.className = 'bm-marketplace-logo bm-ebay-wordmark';
-                    wordmark.textContent = 'ebay';
-                    wordmark.setAttribute('aria-hidden', 'true');
-                    stage.prepend(wordmark);
-                }
+                stage.querySelectorAll(':scope > img, :scope > .bm-ebay-wordmark')
+                    .forEach(logo => logo.remove());
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.classList.add('bm-marketplace-logo', 'bm-ebay-wordmark');
+                svg.setAttribute('viewBox', '0 0 1000 400.75098');
+                svg.setAttribute('role', 'img');
+                svg.setAttribute('aria-label', 'eBay');
+                [
+                    'm633.07803 212.53323c-45.43873 1.48929-73.6715 9.689-73.6715 39.61897 0 19.37591 15.44713 40.38162 54.66334 40.38162 52.57698 0 80.64259-28.65902 80.64259-75.66331l.003-5.16994c-18.43302 0-41.16414.16089-61.63704.83266zm111.75103 62.10248c0 14.58313.42155 28.9782 1.69406 41.94092h-46.61408c-1.24325-10.67368-1.6972-21.27945-1.6972-31.56656-25.20195 30.97941-55.17735 39.88537-96.76149 39.88537-61.67674 0-94.70072-32.59982-94.70072-70.30689 0-54.61215 44.91583-73.86739 122.89013-75.65391 21.32332-.48686 45.27419-.55894 65.07531-.55894l-.003-5.33606c0-36.56098-23.44364-51.59335-64.06765-51.59335-30.15876 0-52.38579 12.48057-54.6764 34.0468h-52.65168c5.57217-53.77165 62.06643-67.37115 111.74005-67.37115 59.50837 0 109.77228 21.17288 109.77228 84.11481z',
+                    'm199.63633 185.86602c-1.94427-46.87735-35.77951-64.41973-71.94139-64.41973-38.99421 0-70.12667 19.7327-75.58026 64.41973zm-148.601922 33.32488c2.704332 45.48365 34.069782 72.38437 77.197532 72.38437 29.88033 0 56.45979-12.17498 65.35948-38.66041h51.68424c-10.05205 53.73979-67.15384 71.98058-116.303 71.98058C39.606424 324.89544 0 275.67889 0 209.30653 0 136.24203 40.965642 88.12194 129.78809 88.12194c70.69867 0 122.49992 36.99926 122.49992 117.75572v13.31324z',
+                    'm380.83181 290.6235c46.57228 0 78.44078-33.52181 78.44078-84.10854 0-50.58203-31.8685-84.10854-78.44078-84.10854-46.31058 0-78.44392 33.52651-78.44392 84.10854 0 50.58673 32.13334 84.10854 78.44392 84.10854zM252.2854 0h50.10249l-.005 125.87707c24.55682-29.25975 58.38892-37.75513 91.68976-37.75513 55.83503 0 117.85132 37.6773 117.85132 119.02875 0 68.12232-49.32155 117.74475-118.78114 117.74475-36.35726 0-70.58062-13.04265-91.68663-38.88294 0 10.32107-.57618 20.72364-1.70503 30.56413h-49.17162c.85513-15.90944 1.70555-35.7184 1.70555-51.74693z',
+                    'M1000 96.45747 845.05541 400.75099h-56.10615l44.54652-84.4951-116.60545-219.79842h58.6266l85.80469 171.73057 85.56283-171.73057z'
+                ].forEach(data => {
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', data);
+                    svg.appendChild(path);
+                });
+                stage.prepend(svg);
             }
             function decorateEbaySellerTypeIcon(link, sellerAccountType, isFrance = false) {
                 if (!link) return;
@@ -12333,7 +12343,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     if (offer.key === 'ebay' || offer.key === 'ebay-fr') {
                         decorateEbaySellerTypeIcon(
                             iconLink,
-                            offer.sellerAccountType,
+                            offer.key === 'ebay' ? 'INDIVIDUAL' : '',
                             offer.key === 'ebay-fr'
                         );
                     }
