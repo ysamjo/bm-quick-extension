@@ -21,7 +21,7 @@ const metaGptSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.14/);
+    assert.match(loaderSource, /@version\s+5\.5\.15/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -94,7 +94,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.14/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.15/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -474,4 +474,23 @@ test('worker client ID is never forwarded to third-party requests', async () => 
         false
     );
     assert.equal(requests[1].headers['X-BM-Client-ID'], clientId);
+});
+
+test('eBay Offerlist uses black logos with distinct source markers', () => {
+    const tweakerSource = fs.readFileSync(
+        new URL('../src/brickmerge-tweaker.js', import.meta.url),
+        'utf8'
+    );
+
+    assert.match(
+        tweakerSource,
+        /filter:\s*grayscale\(1\) brightness\(0\) !important/
+    );
+    assert.match(tweakerSource, /function decorateEbaySellerTypeIcon\(/);
+    assert.match(tweakerSource, /bm-ebay-commercial-icon/);
+    assert.match(tweakerSource, /bm-ebay-private-icon/);
+    assert.match(tweakerSource, /Gewerblicher eBay-Verkäufer/);
+    assert.match(tweakerSource, /Privater eBay-Verkäufer/);
+    assert.match(tweakerSource, /logoCountryFlag:\s*'🇫🇷'/);
+    assert.doesNotMatch(tweakerSource, /logoDomainSuffix:\s*'\.(?:de|fr)'/);
 });
