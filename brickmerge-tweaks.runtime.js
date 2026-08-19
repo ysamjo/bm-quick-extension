@@ -2260,27 +2260,56 @@ globalThis.BM_isFranceEnabled = settings =>
             }
 
             function normalizeEbaySellerAccountType(value) {
-                const normalized = String(value || '').trim().toUpperCase();
-                if (normalized === 'BUSINESS' || normalized === 'COMMERCIAL') {
-                    return 'BUSINESS';
-                }
-                if (normalized === 'INDIVIDUAL' || normalized === 'PRIVATE') {
+                const normalized = String(value || '')
+                    .trim()
+                    .toUpperCase()
+                    .replace(/[\s-]+/g, '_');
+                if ([
+                    'INDIVIDUAL', 'PRIVATE', 'PERSONAL', 'NON_BUSINESS',
+                    'PRIVATE_SELLER', 'INDIVIDUAL_SELLER', 'PERSONAL_SELLER'
+                ].includes(normalized)) {
                     return 'INDIVIDUAL';
+                }
+                if ([
+                    'BUSINESS', 'COMMERCIAL', 'PROFESSIONAL',
+                    'BUSINESS_SELLER', 'COMMERCIAL_SELLER', 'PROFESSIONAL_SELLER'
+                ].includes(normalized)) {
+                    return 'BUSINESS';
                 }
                 return '';
             }
 
             function getEbaySellerAccountType(offer) {
                 const seller = offer?.seller;
-                return normalizeEbaySellerAccountType(
+                const sellerObject = seller && typeof seller === 'object' ? seller : {};
+                const explicitType = normalizeEbaySellerAccountType(
                     offer?.sellerAccountType ||
                     offer?.sellerType ||
-                    (seller && typeof seller === 'object'
-                        ? seller.sellerAccountType || seller.accountType
-                        : '')
+                    offer?.sellerLegalType ||
+                    offer?.accountType ||
+                    sellerObject.sellerAccountType ||
+                    sellerObject.sellerType ||
+                    sellerObject.sellerLegalType ||
+                    sellerObject.accountType ||
+                    sellerObject.account_type ||
+                    sellerObject.type
                 );
-            }
+                if (explicitType) return explicitType;
 
+                const businessFlag =
+                    offer?.isBusinessSeller ??
+                    offer?.businessSeller ??
+                    sellerObject.isBusinessSeller ??
+                    sellerObject.businessSeller ??
+                    sellerObject.is_business_seller;
+                if (businessFlag === true || String(businessFlag).toLowerCase() === 'true') {
+                    return 'BUSINESS';
+                }
+                if (businessFlag === false || String(businessFlag).toLowerCase() === 'false') {
+                    return 'INDIVIDUAL';
+                }
+                return '';
+            }
             function getEbaySellerTypeLabel(value) {
                 const accountType = normalizeEbaySellerAccountType(value);
                 if (accountType === 'BUSINESS') return 'gewerblich';
@@ -2643,30 +2672,51 @@ globalThis.BM_isFranceEnabled = settings =>
                 #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage > img {
                     max-width: 70% !important;
                     max-height: 78% !important;
-                    filter: grayscale(1) brightness(0) !important;
+                }
+                #offerlist .bm-ebay-wordmark {
+                    display: block !important;
+                    flex: 0 0 auto;
+                    width: auto !important;
+                    max-width: none !important;
+                    height: auto !important;
+                    max-height: none !important;
+                    margin: 0 !important;
+                    color: #111 !important;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 1.08rem;
+                    font-weight: 700;
+                    letter-spacing: -0.075em;
+                    line-height: 1;
+                    text-rendering: geometricPrecision;
+                    white-space: nowrap;
+                    filter: none !important;
                 }
                 #offerlist .bm-ebay-seller-type-icon {
                     position: absolute;
-                    right: 1px;
-                    bottom: 1px;
+                    right: 0;
+                    bottom: 0;
                     z-index: 3;
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    width: 17px;
-                    height: 17px;
-                    border-radius: 50%;
+                    width: 14px;
+                    height: 14px;
+                    padding: 0;
                     color: #111 !important;
-                    background: rgba(255,255,255,0.96) !important;
-                    box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
+                    background: #fff !important;
+                    border: 0;
+                    border-radius: 0;
+                    box-shadow: none;
+                    line-height: 0;
                 }
                 #offerlist .bm-ebay-seller-type-icon svg {
                     display: block;
                     width: 13px;
                     height: 13px;
                     fill: currentColor;
+                    shape-rendering: geometricPrecision;
                 }
-                #offerlist .bm-ebay-commercial-icon { color: #111 !important; }
+                #offerlist .bm-ebay-commercial-icon,
                 #offerlist .bm-ebay-private-icon { color: #111 !important; }
                 #offerlist .bm-ebay-domain-suffix {
                     display: inline-flex;
@@ -2693,20 +2743,29 @@ globalThis.BM_isFranceEnabled = settings =>
                 }
                 #offerlist .bm-marketplace-country-flag {
                     position: absolute;
-                    top: 0;
+                    top: 1px;
                     right: 1px;
-                    z-index: 2;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 18px;
-                    height: 14px;
+                    z-index: 3;
+                    display: block;
+                    width: 14px;
+                    height: 9px;
+                    min-width: 14px;
+                    min-height: 9px;
                     padding: 0;
-                    border-radius: 2px;
-                    background: rgba(255,255,255,0.94) !important;
-                    box-shadow: 0 0 0 1px rgba(0,0,0,0.14);
-                    font-size: 12px;
-                    line-height: 1;
+                    overflow: hidden;
+                    border: 1px solid rgba(0,0,0,0.16);
+                    border-radius: 1px;
+                    box-sizing: border-box;
+                    font-size: 0;
+                    line-height: 0;
+                }
+                #offerlist .bm-marketplace-country-flag-fr {
+                    background: linear-gradient(
+                        to right,
+                        #0055a4 0 33.333%,
+                        #fff 33.333% 66.666%,
+                        #ef4135 66.666% 100%
+                    ) !important;
                 }
                 #offerlist .bm-marketplace-logo-cell {
                     display: flex !important;
@@ -8728,6 +8787,19 @@ globalThis.BM_isFranceEnabled = settings =>
                 }
             }
 
+            function ensureBlackEbayWordmark(link) {
+                const stage = link?.querySelector('.bm-marketplace-logo-stage');
+                if (!stage) return;
+                stage.querySelectorAll(':scope > img').forEach(image => image.remove());
+                let wordmark = stage.querySelector(':scope > .bm-ebay-wordmark');
+                if (!wordmark) {
+                    wordmark = document.createElement('span');
+                    wordmark.className = 'bm-marketplace-logo bm-ebay-wordmark';
+                    wordmark.textContent = 'ebay';
+                    wordmark.setAttribute('aria-hidden', 'true');
+                    stage.prepend(wordmark);
+                }
+            }
             function decorateEbaySellerTypeIcon(link, sellerAccountType, isFrance = false) {
                 if (!link) return;
                 link.querySelectorAll('.bm-ebay-seller-type-icon')
@@ -8835,6 +8907,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     logoLink.querySelectorAll('.bm-marketplace-country-badge')
                         .forEach(badge => badge.remove());
                     normalizeMarketplaceLogoLink(logoLink);
+                    ensureBlackEbayWordmark(logoLink);
                     decorateEbaySellerTypeIcon(logoLink, 'BUSINESS');
                 });
             }
@@ -12238,12 +12311,20 @@ globalThis.BM_isFranceEnabled = settings =>
                         iconLink.appendChild(badge);
                     }
                     normalizeMarketplaceLogoLink(iconLink);
+                        if (offer.key === 'ebay' || offer.key === 'ebay-fr') {
+                            ensureBlackEbayWordmark(iconLink);
+                        }
                     if (offer.logoCountryFlag) {
                         const stage = iconLink.querySelector('.bm-marketplace-logo-stage');
                         if (stage && !stage.querySelector('.bm-marketplace-country-flag')) {
                             const flag = document.createElement('span');
                             flag.className = 'bm-marketplace-country-flag';
-                            flag.textContent = offer.logoCountryFlag;
+                            if (offer.logoCountryFlag === '🇫🇷') {
+                                flag.classList.add('bm-marketplace-country-flag-fr');
+                                flag.textContent = '';
+                            } else {
+                                flag.textContent = offer.logoCountryFlag;
+                            }
                             flag.title = offer.logoCountryLabel || offer.label;
                             flag.setAttribute('aria-label', flag.title);
                             stage.appendChild(flag);
