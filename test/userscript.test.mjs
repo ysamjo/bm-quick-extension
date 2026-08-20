@@ -21,7 +21,7 @@ const metaGptSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.19/);
+    assert.match(loaderSource, /@version\s+5\.5\.20/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -94,7 +94,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.19/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.20/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -509,4 +509,14 @@ test('eBay Offerlist uses black logos with distinct source markers', () => {
         /offer\\.key === 'ebay' \\? 'INDIVIDUAL' : ''/
     );
     assert.doesNotMatch(tweakerSource, /logoDomainSuffix:\s*'\.(?:de|fr)'/);
+});
+
+
+test('historical best price replaces duplicate relative date labels', () => {
+    assert.match(tweakerSource, /function removeRelativeDayLabelsFromBestPriceLines\(/);
+    assert.ok(
+        tweakerSource.includes(
+            ".replace(/(?:^|\\s)(?:heute|gestern)\\s*!?/gi, '')"
+        )
+    );
 });

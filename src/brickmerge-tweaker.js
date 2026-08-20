@@ -2950,7 +2950,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     if (parent.closest('#bm-price-chart-overlay, #chartWrapper, #bigChart, #chartContainer, #offerlist')) {
                         return NodeFilter.FILTER_REJECT;
                     }
-                    if (!/vor\s+\d+\s+Tagen\b/i.test(node.nodeValue || '')) {
+                    const text = node.nodeValue || '';
+                    if (
+                        !/(?:^|\s)vor\s+\d+\s+Tagen\b/i.test(text) &&
+                        !/(?:^|\s)(?:heute|gestern)\s*!?/i.test(text)
+                    ) {
                         return NodeFilter.FILTER_REJECT;
                     }
                     return NodeFilter.FILTER_ACCEPT;
@@ -2962,7 +2966,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         while (node = walker.nextNode()) nodes.push(node);
         nodes.forEach(textNode => {
             textNode.nodeValue = textNode.nodeValue
-                .replace(/\s+vor\s+\d+\s+Tagen\b/gi, '');
+                .replace(/(?:^|\s)vor\s+\d+\s+Tagen\b/gi, '')
+                .replace(/(?:^|\s)(?:heute|gestern)\s*!?/gi, '');
         });
     }
 
