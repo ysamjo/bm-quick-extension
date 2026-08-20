@@ -21,7 +21,7 @@ const metaGptSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.18/);
+    assert.match(loaderSource, /@version\s+5\.5\.19/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -94,7 +94,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.18/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.19/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -494,6 +494,9 @@ test('eBay Offerlist uses black logos with distinct source markers', () => {
     assert.match(tweakerSource, /function decorateEbaySellerTypeIcon\(/);
     assert.match(tweakerSource, /bm-ebay-commercial-icon/);
     assert.match(tweakerSource, /bm-ebay-private-icon/);
+    assert.match(tweakerSource, /bm-ebay-original-click-target/);
+    assert.match(tweakerSource, /const originalImage = stage\.querySelector/);
+    assert.match(tweakerSource, /bm-marketplace-logo-row/);
     assert.match(tweakerSource, /Gewerblicher eBay-Verkäufer/);
     assert.match(tweakerSource, /Privater eBay-Verkäufer/);
     assert.match(tweakerSource, /logoCountryFlag:\s*'🇫🇷'/);
