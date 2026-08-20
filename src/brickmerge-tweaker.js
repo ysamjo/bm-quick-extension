@@ -877,6 +877,27 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             shape-rendering: geometricPrecision;
         }
         #offerlist .bm-ebay-wordmark path { fill: currentColor; }
+        /* Unsichtbare Original-Klickfläche für Brickmerges Gutschein-Redirect. */
+        #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage
+            > .bm-ebay-original-click-target {
+            position: absolute !important;
+            inset: 0 !important;
+            z-index: 4;
+            display: block !important;
+            width: 100% !important;
+            height: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+            margin: 0 !important;
+            opacity: 0 !important;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        #offerlist .bm-ebay-wordmark,
+        #offerlist .bm-ebay-seller-type-icon,
+        #offerlist .bm-marketplace-country-flag {
+            pointer-events: none;
+        }
         #offerlist .bm-ebay-seller-type-icon {
             position: static;
             grid-column: 2;
@@ -1152,6 +1173,62 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             box-sizing: border-box;
         }
         @media screen and (max-width: 640px) {
+            /* Jede dekorierte Zeile streckt die Logo-Spalte auf die echte
+               Angebotshöhe; damit sitzen auch native Händlerlogos mittig. */
+            #offerlist .row.collapse.bm-marketplace-logo-row {
+                display: flex !important;
+                min-height: 54px;
+                height: auto !important;
+                flex-wrap: nowrap;
+                align-items: stretch;
+            }
+            #offerlist .row.collapse.bm-marketplace-logo-row::after {
+                display: none !important;
+                content: none !important;
+            }
+            #offerlist .row.collapse.bm-marketplace-logo-row
+                > .goto.small-3.columns {
+                display: flex !important;
+                width: 25% !important;
+                height: auto !important;
+                min-height: 54px !important;
+                flex: 0 0 25%;
+                align-items: stretch;
+                float: none !important;
+            }
+            #offerlist .row.collapse.bm-marketplace-logo-row
+                > .medium-4.small-9.columns.pricerow {
+                display: flex !important;
+                width: 75% !important;
+                height: auto !important;
+                min-height: 54px !important;
+                flex: 0 0 75%;
+                align-items: stretch;
+                float: none !important;
+            }
+            #offerlist .row.collapse.bm-marketplace-logo-row
+                > .medium-4.small-9.columns.pricerow > a {
+                display: flex !important;
+                min-width: 0;
+                min-height: 54px;
+                flex: 1 1 auto;
+                align-items: center;
+            }
+            #offerlist .row.collapse.bm-marketplace-logo-row
+                > .goto.small-3.columns > .pricerow {
+                display: flex !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: 54px !important;
+                flex: 1 1 auto;
+                align-items: stretch;
+            }
+            #offerlist .row.collapse.bm-marketplace-logo-row
+                .bm-marketplace-logo-link {
+                min-height: 54px !important;
+                flex: 1 1 auto;
+                align-self: stretch;
+            }
             #offerlist .goto.bm-marketplace-logo-column,
             #offerlist .goto.bm-marketplace-logo-column > .pricerow,
             #offerlist .bm-marketplace-logo-cell {
@@ -6894,8 +6971,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         link.classList.add('bm-marketplace-logo-link');
         const cell = link.closest('.pricerow');
         const column = cell?.closest('.goto');
+        const row = link.closest('.row.collapse');
         cell?.classList.add('bm-marketplace-logo-cell');
         column?.classList.add('bm-marketplace-logo-column');
+        row?.classList.add('bm-marketplace-logo-row');
 
         logo.classList.add('bm-marketplace-logo');
         const logoIdentity = [
@@ -6969,7 +7048,15 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     function ensureBlackEbayWordmark(link) {
         const stage = link?.querySelector('.bm-marketplace-logo-stage');
         if (!stage) return;
-        stage.querySelectorAll(':scope > img, :scope > .bm-ebay-wordmark')
+        // Das originale Händlerbild bleibt als unsichtbare Klickfläche im DOM.
+        // Brickmerge bindet die Gutschein-Weiterleitung teilweise direkt daran;
+        // ein Entfernen des Bildes würde diesen Handler mit entfernen.
+        const originalImage = stage.querySelector(':scope > img');
+        if (originalImage) {
+            originalImage.classList.add('bm-ebay-original-click-target');
+            originalImage.setAttribute('aria-hidden', 'true');
+        }
+        stage.querySelectorAll(':scope > .bm-ebay-wordmark')
             .forEach(logo => logo.remove());
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.classList.add('bm-marketplace-logo', 'bm-ebay-wordmark');
