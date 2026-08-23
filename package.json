@@ -1,10 +1,11 @@
 {
   "name": "brickmerge-tools-userscript",
-  "version": "5.5.20",
+  "version": "5.5.21",
   "private": true,
   "type": "module",
   "scripts": {
     "sync": "node build-userscript.mjs --sync",
+    "sync:icons": "node build-userscript.mjs --sync-icons",
     "build": "node build-userscript.mjs",
     "check": "node --check brickmerge-tweaks.js && node --check brickmerge-tweaks.runtime.js && node --check brickmerge-meta-gpt.user.js && node --check brickmerge-meta-gpt.runtime.js && node --test test/*.test.mjs",
     "test": "npm run build && npm run check"

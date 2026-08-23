@@ -21,20 +21,45 @@ const sourceFiles = [
     ['brickmerge-tweaker-v140.js', 'brickmerge-tweaker.js']
 ];
 
+const copyFileWithRetry = async (source, destination, attempts = 4) => {
+    let lastError = null;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+        try {
+            await fs.copyFile(source, destination);
+            return;
+        } catch (error) {
+            lastError = error;
+            if (!['ETIMEDOUT', 'EBUSY', 'EIO'].includes(error?.code) ||
+                attempt === attempts) throw error;
+            await new Promise(resolve => setTimeout(resolve, attempt * 300));
+        }
+    }
+    throw lastError;
+};
+
 if (process.argv.includes('--sync')) {
     await fs.mkdir(sourceDir, { recursive: true });
     for (const [extensionName, localName] of sourceFiles) {
-        await fs.copyFile(
+        await copyFileWithRetry(
             path.join(extensionDir, extensionName),
             path.join(sourceDir, localName)
         );
     }
-    await fs.rm(path.join(projectDir, 'icons'), { recursive: true, force: true });
-    await fs.cp(
-        path.join(extensionDir, 'icons'),
-        path.join(projectDir, 'icons'),
-        { recursive: true }
-    );
+}
+
+if (process.argv.includes('--sync-icons')) {
+    const extensionIconDir = path.join(extensionDir, 'icons');
+    const userscriptIconDir = path.join(projectDir, 'icons');
+    await fs.mkdir(userscriptIconDir, { recursive: true });
+    const iconEntries = await fs.readdir(extensionIconDir, {
+        withFileTypes: true
+    });
+    for (const entry of iconEntries.filter(item => item.isFile())) {
+        await copyFileWithRetry(
+            path.join(extensionIconDir, entry.name),
+            path.join(userscriptIconDir, entry.name)
+        );
+    }
 }
 
 const mainMetadata = `// ==UserScript==
@@ -224,7 +249,7 @@ const readSource = async name => fs.readFile(path.join(sourceDir, name), 'utf8')
 const adaptExtensionSource = source => source.replace(
     /\bchrome\./g,
     'BM_MOBILE_CHROME.'
-);
+).replace(/\btypeof chrome\b/g, 'typeof BM_MOBILE_CHROME');
 const bootstrap = await readSource('mobile-bootstrap.js');
 const shared = await readSource('shared.js');
 const preclean = adaptExtensionSource(await readSource('preclean.js'));

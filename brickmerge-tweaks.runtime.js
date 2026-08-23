@@ -1,6 +1,11 @@
 (() => {
     'use strict';
 
+    globalThis.BM_PLATFORM = Object.freeze({
+        mobileUserscript: true,
+        franceDefault: true
+    });
+
     const STORAGE_PREFIX = 'brickmerge-mobile-storage:';
     const ASSET_BASE =
         'https://raw.githubusercontent.com/ysamjo/bm-quick-extension/main/';
@@ -100,12 +105,13 @@
     const registerMenu = globalThis.GM_registerMenuCommand ||
         globalThis.GM?.registerMenuCommand;
     if (typeof registerMenu === 'function') {
-        registerMenu('Frankreich-Angebote umschalten', async () => {
+        const isFranceEnabled = current => globalThis.BM_mergeSettings
+            ? globalThis.BM_mergeSettings(current).linkRows.france === true
+            : current?.linkRows?.france !== false;
+        const toggleFrance = async () => {
             const { settings } = await local.get('settings');
             const current = settings || {};
-            const enabled = globalThis.BM_mergeSettings
-                ? globalThis.BM_mergeSettings(current).linkRows.france === true
-                : current.linkRows?.france !== false;
+            const enabled = isFranceEnabled(current);
             await local.set({
                 settings: {
                     ...current,
@@ -116,6 +122,12 @@
                 }
             });
             window.location.reload();
+        };
+        void local.get('settings').then(({ settings }) => {
+            const state = isFranceEnabled(settings || {}) ? 'AN' : 'AUS';
+            registerMenu(`🇫🇷 Frankreich-Angebote: ${state} – umschalten`, toggleFrance);
+        }).catch(() => {
+            registerMenu('🇫🇷 Frankreich-Angebote umschalten', toggleFrance);
         });
     }
 })();
@@ -128,7 +140,6 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
     copyAndMinifigures: true,
     priceCalculations: true,
     shippingAndSorting: true,
-    overviewPriceBadges: true,
     selectionPopup: true,
     networkBlocking: true,
     luckyFallback: true,
@@ -149,7 +160,7 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
     },
     linkRows: {
         marketplaces: true,
-        france: true,
+        france: globalThis.BM_PLATFORM?.franceDefault !== false,
         resources: true,
         history: true
     }
@@ -1145,8 +1156,18 @@ globalThis.BM_isFranceEnabled = settings =>
                         pointer-events: none;
                         opacity: 0.78;
                     }
-                    .bm-detail-all-prices-refresh.is-loading .bm-detail-refresh-icon {
+                    .bm-detail-all-prices-refresh.is-loading::before {
+                        width: 12px;
+                        height: 12px;
+                        border: 2px solid #ddd;
+                        border-top-color: currentColor;
+                        border-radius: 50%;
+                        content: '';
                         animation: bm-all-prices-spin 700ms linear infinite;
+                        box-sizing: border-box;
+                    }
+                    .bm-detail-all-prices-refresh.is-loading .bm-plus-icon {
+                        display: none;
                     }
                     .bm-detail-all-prices-refresh {
                         display: inline-flex !important;
@@ -1170,24 +1191,17 @@ globalThis.BM_isFranceEnabled = settings =>
                     .bm-detail-all-prices-refresh:focus-visible {
                         text-decoration: none;
                     }
-                    .bm-detail-refresh-icon {
+                    .bm-plus-icon {
                         display: inline-flex;
-                        width: 1.2rem;
-                        height: 1.2rem;
-                        flex: 0 0 1.2rem;
+                        width: 1.1em;
+                        height: 1.1em;
+                        flex: 0 0 1.1em;
                         align-items: center;
                         justify-content: center;
+                        font-family: Arial, sans-serif;
+                        font-size: 1.15em;
+                        font-weight: 700;
                         line-height: 1;
-                    }
-                    .bm-detail-refresh-icon svg {
-                        display: block;
-                        width: 1.15rem;
-                        height: 1.15rem;
-                        fill: none;
-                        stroke: currentColor;
-                        stroke-width: 1.8;
-                        stroke-linecap: round;
-                        stroke-linejoin: round;
                     }
                     .bm-chart-controls.bm-has-price-refresh {
                         display: grid !important;
@@ -1285,7 +1299,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     @keyframes bm-all-prices-spin { to { transform: rotate(360deg); } }
                     @media (prefers-reduced-motion: reduce) {
                         .bm-overview-marketplace-offer { transition: none; }
-                        .bm-detail-all-prices-refresh.is-loading .bm-detail-refresh-icon {
+                        .bm-detail-all-prices-refresh.is-loading::before {
                             animation: none;
                         }
                     }
@@ -1422,14 +1436,9 @@ globalThis.BM_isFranceEnabled = settings =>
                     'button small smallGreyButton bm-detail-all-prices-refresh ' +
                     'bm-detail-action-button';
                 button.innerHTML =
-                    '<span class="bm-detail-refresh-icon" aria-hidden="true">' +
-                    '<svg viewBox="0 0 24 24" focusable="false">' +
-                    '<path d="M20 6v5h-5"/><path d="M4 18v-5h5"/>' +
-                    '<path d="M18.5 9A7 7 0 0 0 6.2 6.2L4 9"/>' +
-                    '<path d="M5.5 15A7 7 0 0 0 17.8 17.8L20 15"/>' +
-                    '</svg></span>' +
-                    '<span class="bm-refresh-label">Preise</span>';
-                button.title = 'Weitere Marktplätze gemeinsam abrufen.';
+                    '<span class="bm-plus-icon" aria-hidden="true">➕</span>' +
+                    '<span class="bm-refresh-label">Weitere Marktplätze abrufen</span>';
+                button.title = 'Weitere Marktplätze abrufen; kann Apify-Guthaben verbrauchen.';
                 button.setAttribute('aria-label', 'Weitere Marktplätze abrufen');
                 return button;
             };
@@ -1438,12 +1447,12 @@ globalThis.BM_isFranceEnabled = settings =>
                 button.classList.toggle('is-loading', state === 'loading');
                 button.disabled = state === 'loading';
                 const label = state === 'loading'
-                    ? 'Lädt …'
+                    ? 'Weitere Marktplätze werden abgerufen …'
                     : state === 'done'
-                        ? 'Geladen'
+                        ? '✓ Weitere Marktplätze geladen'
                         : state === 'error'
-                            ? 'Erneut'
-                            : 'Preise';
+                            ? '! Erneut abrufen'
+                            : 'Weitere Marktplätze abrufen';
                 button.querySelector('.bm-refresh-label').textContent = label;
                 button.title = state === 'loading'
                     ? 'Weitere Marktplätze werden abgerufen'
@@ -1451,7 +1460,7 @@ globalThis.BM_isFranceEnabled = settings =>
                         ? 'Weitere Marktplätze wurden abgerufen'
                         : state === 'error'
                             ? String(error || 'Preisaktualisierung fehlgeschlagen')
-                            : 'Weitere Marktplätze gemeinsam abrufen.';
+                            : 'Weitere Marktplätze abrufen; kann Apify-Guthaben verbrauchen.';
                 button.setAttribute('aria-label', button.title);
             };
 
@@ -1652,9 +1661,9 @@ globalThis.BM_isFranceEnabled = settings =>
                             if (!update?.source || completedSources.has(update.source)) return;
                             completedSources.add(update.source);
                             const label = button.querySelector('.bm-refresh-label');
-                            if (label) {
-                                label.textContent = `${completedSources.size}/${sources.length}`;
-                            }
+                            if (label) label.textContent =
+                                'Weitere Marktplätze werden abgerufen … ' +
+                                `(${completedSources.size}/${sources.length})`;
                             if (update.state === 'ready') {
                                 document.dispatchEvent(new CustomEvent(
                                     'bm-marketplace-source-update',
@@ -1692,124 +1701,21 @@ globalThis.BM_isFranceEnabled = settings =>
             const start = settings => {
                 const workerBaseUrl = globalThis.BM_WORKER_DEFAULT_BASE_URL;
                 const detailSet = globalThis.BM_getBrickmergeSetNumber?.(location.href);
-                if (detailSet) {
-                    ensureStyles();
-                    let observer = null;
-                    const tryMount = () => {
-                        if (mountDetailRefresh(settings, workerBaseUrl)) {
-                            return true;
-                        }
-                        return false;
-                    };
-                    tryMount();
-                    observer = new MutationObserver(() => tryMount());
-                    observer.observe(document.documentElement, {
-                        childList: true,
-                        subtree: true
-                    });
-                    [250, 750, 1800].forEach(delay => window.setTimeout(tryMount, delay));
-                    window.setTimeout(() => observer?.disconnect(), 15000);
-                    return;
-                }
-
-                if (isSearchPage(location.href)) return;
-                if (settings.overviewPriceBadges === false) return;
+                if (!detailSet) return;
                 ensureStyles();
-                const sources = enabledSources(settings);
-
-                const productRow = document.getElementById('productrow');
-                if (!productRow) return;
-                const limit = createLimiter(CONCURRENCY);
-                const overviewSortMode = getOverviewSortMode(location.href);
-                const debug = globalThis.BM_OVERVIEW_PRICE_DEBUG = {
-                    observed: 0,
-                    valid: 0,
-                    cacheRequests: 0,
-                    errors: 0
+                let observer = null;
+                const tryMount = () => {
+                    if (mountDetailRefresh(settings, workerBaseUrl)) return true;
+                    return false;
                 };
-
-                const loadCard = card => limit(async () => {
-                    if (card.dataset.bmPriceLookupDone === 'true' ||
-                        card.dataset.bmPriceLookupState === 'loading') return;
-                    card.dataset.bmPriceLookupState = 'loading';
-                    const data = extractCardData(card);
-                    if (!data) {
-                        card.dataset.bmPriceLookupDone = 'true';
-                        card.dataset.bmPriceLookupState = 'invalid-gtin';
-                        return;
-                    }
-                    applyEffectiveCardPrice(card, data, []);
-                    debug.valid += 1;
-                    debug.cacheRequests += 1;
-                    try {
-                        const bundle = (await requestJson(
-                            buildBundleUrl(workerBaseUrl, '/offers/cache', data, sources)
-                        )).payload;
-                        renderCardBundle(card, data, bundle, sources);
-                    } catch (error) {
-                        debug.errors += 1;
-                        card.dataset.bmPriceLookupState = 'error';
-                        console.debug('Brickmerge Tools DB: Cache konnte nicht gelesen werden.', error);
-                    } finally {
-                        card.dataset.bmPriceLookupDone = 'true';
-                    }
+                tryMount();
+                observer = new MutationObserver(() => tryMount());
+                observer.observe(document.documentElement, {
+                    childList: true,
+                    subtree: true
                 });
-
-                const observer = typeof IntersectionObserver === 'function'
-                    ? new IntersectionObserver(entries => {
-                        entries.forEach(entry => {
-                            if (!entry.isIntersecting) return;
-                            observer.unobserve(entry.target);
-                            void loadCard(entry.target);
-                        });
-                    }, { rootMargin: '700px 0px', threshold: 0.01 })
-                    : null;
-
-                const observeCards = root => {
-                    const cards = [];
-                    if (root?.matches?.(CARD_SELECTOR)) cards.push(root);
-                    root?.querySelectorAll?.(CARD_SELECTOR).forEach(card => cards.push(card));
-                    cards.forEach(card => {
-                        if (card.dataset.bmPriceObserved === 'true') return;
-                        card.dataset.bmPriceObserved = 'true';
-                        debug.observed += 1;
-                        if (observer) observer.observe(card);
-                        else void loadCard(card);
-                    });
-                };
-
-                const loadAndSortCards = root => {
-                    const cards = [];
-                    if (root?.matches?.(CARD_SELECTOR)) cards.push(root);
-                    root?.querySelectorAll?.(CARD_SELECTOR).forEach(card => cards.push(card));
-                    const newCards = cards.filter(card =>
-                        card.dataset.bmPriceObserved !== 'true'
-                    );
-                    if (newCards.length === 0) return;
-                    const pending = newCards.map(card => {
-                        card.dataset.bmPriceObserved = 'true';
-                        debug.observed += 1;
-                        return loadCard(card);
-                    });
-                    void Promise.allSettled(pending).then(() => {
-                        sortOverviewCards(
-                            Array.from(document.querySelectorAll(CARD_SELECTOR)),
-                            overviewSortMode
-                        );
-                    });
-                };
-
-                if (overviewSortMode) loadAndSortCards(document);
-                else observeCards(document);
-                new MutationObserver(mutations => {
-                    mutations.forEach(mutation => {
-                        mutation.addedNodes.forEach(node => {
-                            if (node.nodeType !== Node.ELEMENT_NODE) return;
-                            if (overviewSortMode) loadAndSortCards(node);
-                            else observeCards(node);
-                        });
-                    });
-                }).observe(productRow, { childList: true, subtree: true });
+                [250, 750, 1800].forEach(delay => window.setTimeout(tryMount, delay));
+                window.setTimeout(() => observer?.disconnect(), 15000);
             };
 
             BM_MOBILE_CHROME.storage.local.get('settings').then(({ settings }) => {
@@ -6852,6 +6758,36 @@ globalThis.BM_isFranceEnabled = settings =>
                 .bm-info-group:first-child { margin-top: 1em; }
                 .bm-info-group:last-child { margin-bottom: 1.8em; }
                 .bm-info-title { font-size: 1.05em; font-weight: bold; margin: 0 0 0.45em 0; color: #333; }
+                .bm-france-toggle-row {
+                    display: flex;
+                    justify-content: flex-end;
+                    margin: 0.65em 0 0.2em;
+                }
+                .bm-france-toggle {
+                    display: inline-flex !important;
+                    align-items: center;
+                    gap: 0.45em;
+                    min-height: 32px;
+                    margin: 0 !important;
+                    padding: 5px 10px !important;
+                    border: 1px solid #b60000 !important;
+                    border-radius: 999px !important;
+                    background: #b60000 !important;
+                    color: #fff !important;
+                    font: 700 0.86rem/1.2 Arial, sans-serif !important;
+                    text-shadow: none !important;
+                    cursor: pointer;
+                }
+                .bm-france-toggle[aria-pressed="false"] {
+                    background: #fff !important;
+                    color: #8d0000 !important;
+                }
+                .bm-france-toggle:hover,
+                .bm-france-toggle:focus {
+                    border-color: #850000 !important;
+                    box-shadow: 0 0 0 3px rgba(182, 0, 0, 0.14);
+                }
+                .bm-france-toggle:disabled { opacity: 0.65; cursor: wait; }
                 .bm-link-slider { position: relative; min-width: 0; }
                 .bm-link-viewport {
                     overflow-x: auto;
@@ -7148,6 +7084,33 @@ globalThis.BM_isFranceEnabled = settings =>
                     container.id = 'bm-link-panel';
                     container.className = 'bm-link-panel';
                     container.dataset.bmLinkPanel = 'true';
+                    if (globalThis.BM_PLATFORM?.mobileUserscript === true) {
+                        const franceEnabled = BM_isFranceEnabled(BM_SETTINGS);
+                        const franceToggleRow = document.createElement('div');
+                        franceToggleRow.className = 'bm-france-toggle-row';
+                        const franceToggle = document.createElement('button');
+                        franceToggle.type = 'button';
+                        franceToggle.className = 'bm-france-toggle';
+                        franceToggle.setAttribute('aria-pressed', String(franceEnabled));
+                        franceToggle.title = 'Steuert eBay.fr, Leboncoin und Idealo Frankreich';
+                        franceToggle.textContent = `🇫🇷 Frankreich-Angebote: ${franceEnabled ? 'AN' : 'AUS'}`;
+                        franceToggle.addEventListener('click', async () => {
+                            franceToggle.disabled = true;
+                            franceToggle.textContent = '🇫🇷 Einstellung wird gespeichert …';
+                            await BM_MOBILE_CHROME.storage.local.set({
+                                settings: {
+                                    ...BM_SETTINGS,
+                                    linkRows: {
+                                        ...BM_SETTINGS.linkRows,
+                                        france: !franceEnabled
+                                    }
+                                }
+                            });
+                            window.location.reload();
+                        });
+                        franceToggleRow.appendChild(franceToggle);
+                        container.appendChild(franceToggleRow);
+                    }
                     for (const group of groups) {
                         if (BM_SETTINGS.linkRows[group.key] === false) continue;
                         const section = document.createElement("section");

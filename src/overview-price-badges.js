@@ -330,7 +330,7 @@
     globalThis.BM_OVERVIEW_PRICE_CORE = core;
     if (typeof module !== 'undefined' && module.exports) module.exports = core;
 
-    if (typeof document === 'undefined' || typeof BM_MOBILE_CHROME === 'undefined' ||
+    if (typeof document === 'undefined' || typeof chrome === 'undefined' ||
         !chrome.storage?.local) return;
 
     globalThis.BM_DB_UNIFIED_REFRESH = true;
@@ -410,8 +410,18 @@
                 pointer-events: none;
                 opacity: 0.78;
             }
-            .bm-detail-all-prices-refresh.is-loading .bm-detail-refresh-icon {
+            .bm-detail-all-prices-refresh.is-loading::before {
+                width: 12px;
+                height: 12px;
+                border: 2px solid #ddd;
+                border-top-color: currentColor;
+                border-radius: 50%;
+                content: '';
                 animation: bm-all-prices-spin 700ms linear infinite;
+                box-sizing: border-box;
+            }
+            .bm-detail-all-prices-refresh.is-loading .bm-plus-icon {
+                display: none;
             }
             .bm-detail-all-prices-refresh {
                 display: inline-flex !important;
@@ -435,24 +445,17 @@
             .bm-detail-all-prices-refresh:focus-visible {
                 text-decoration: none;
             }
-            .bm-detail-refresh-icon {
+            .bm-plus-icon {
                 display: inline-flex;
-                width: 1.2rem;
-                height: 1.2rem;
-                flex: 0 0 1.2rem;
+                width: 1.1em;
+                height: 1.1em;
+                flex: 0 0 1.1em;
                 align-items: center;
                 justify-content: center;
+                font-family: Arial, sans-serif;
+                font-size: 1.15em;
+                font-weight: 700;
                 line-height: 1;
-            }
-            .bm-detail-refresh-icon svg {
-                display: block;
-                width: 1.15rem;
-                height: 1.15rem;
-                fill: none;
-                stroke: currentColor;
-                stroke-width: 1.8;
-                stroke-linecap: round;
-                stroke-linejoin: round;
             }
             .bm-chart-controls.bm-has-price-refresh {
                 display: grid !important;
@@ -550,7 +553,7 @@
             @keyframes bm-all-prices-spin { to { transform: rotate(360deg); } }
             @media (prefers-reduced-motion: reduce) {
                 .bm-overview-marketplace-offer { transition: none; }
-                .bm-detail-all-prices-refresh.is-loading .bm-detail-refresh-icon {
+                .bm-detail-all-prices-refresh.is-loading::before {
                     animation: none;
                 }
             }
@@ -687,14 +690,9 @@
             'button small smallGreyButton bm-detail-all-prices-refresh ' +
             'bm-detail-action-button';
         button.innerHTML =
-            '<span class="bm-detail-refresh-icon" aria-hidden="true">' +
-            '<svg viewBox="0 0 24 24" focusable="false">' +
-            '<path d="M20 6v5h-5"/><path d="M4 18v-5h5"/>' +
-            '<path d="M18.5 9A7 7 0 0 0 6.2 6.2L4 9"/>' +
-            '<path d="M5.5 15A7 7 0 0 0 17.8 17.8L20 15"/>' +
-            '</svg></span>' +
-            '<span class="bm-refresh-label">Preise</span>';
-        button.title = 'Weitere Marktplätze gemeinsam abrufen.';
+            '<span class="bm-plus-icon" aria-hidden="true">➕</span>' +
+            '<span class="bm-refresh-label">Weitere Marktplätze abrufen</span>';
+        button.title = 'Weitere Marktplätze abrufen; kann Apify-Guthaben verbrauchen.';
         button.setAttribute('aria-label', 'Weitere Marktplätze abrufen');
         return button;
     };
@@ -703,12 +701,12 @@
         button.classList.toggle('is-loading', state === 'loading');
         button.disabled = state === 'loading';
         const label = state === 'loading'
-            ? 'Lädt …'
+            ? 'Weitere Marktplätze werden abgerufen …'
             : state === 'done'
-                ? 'Geladen'
+                ? '✓ Weitere Marktplätze geladen'
                 : state === 'error'
-                    ? 'Erneut'
-                    : 'Preise';
+                    ? '! Erneut abrufen'
+                    : 'Weitere Marktplätze abrufen';
         button.querySelector('.bm-refresh-label').textContent = label;
         button.title = state === 'loading'
             ? 'Weitere Marktplätze werden abgerufen'
@@ -716,7 +714,7 @@
                 ? 'Weitere Marktplätze wurden abgerufen'
                 : state === 'error'
                     ? String(error || 'Preisaktualisierung fehlgeschlagen')
-                    : 'Weitere Marktplätze gemeinsam abrufen.';
+                    : 'Weitere Marktplätze abrufen; kann Apify-Guthaben verbrauchen.';
         button.setAttribute('aria-label', button.title);
     };
 
@@ -917,9 +915,9 @@
                     if (!update?.source || completedSources.has(update.source)) return;
                     completedSources.add(update.source);
                     const label = button.querySelector('.bm-refresh-label');
-                    if (label) {
-                        label.textContent = `${completedSources.size}/${sources.length}`;
-                    }
+                    if (label) label.textContent =
+                        'Weitere Marktplätze werden abgerufen … ' +
+                        `(${completedSources.size}/${sources.length})`;
                     if (update.state === 'ready') {
                         document.dispatchEvent(new CustomEvent(
                             'bm-marketplace-source-update',
@@ -957,124 +955,21 @@
     const start = settings => {
         const workerBaseUrl = globalThis.BM_WORKER_DEFAULT_BASE_URL;
         const detailSet = globalThis.BM_getBrickmergeSetNumber?.(location.href);
-        if (detailSet) {
-            ensureStyles();
-            let observer = null;
-            const tryMount = () => {
-                if (mountDetailRefresh(settings, workerBaseUrl)) {
-                    return true;
-                }
-                return false;
-            };
-            tryMount();
-            observer = new MutationObserver(() => tryMount());
-            observer.observe(document.documentElement, {
-                childList: true,
-                subtree: true
-            });
-            [250, 750, 1800].forEach(delay => window.setTimeout(tryMount, delay));
-            window.setTimeout(() => observer?.disconnect(), 15000);
-            return;
-        }
-
-        if (isSearchPage(location.href)) return;
-        if (settings.overviewPriceBadges === false) return;
+        if (!detailSet) return;
         ensureStyles();
-        const sources = enabledSources(settings);
-
-        const productRow = document.getElementById('productrow');
-        if (!productRow) return;
-        const limit = createLimiter(CONCURRENCY);
-        const overviewSortMode = getOverviewSortMode(location.href);
-        const debug = globalThis.BM_OVERVIEW_PRICE_DEBUG = {
-            observed: 0,
-            valid: 0,
-            cacheRequests: 0,
-            errors: 0
+        let observer = null;
+        const tryMount = () => {
+            if (mountDetailRefresh(settings, workerBaseUrl)) return true;
+            return false;
         };
-
-        const loadCard = card => limit(async () => {
-            if (card.dataset.bmPriceLookupDone === 'true' ||
-                card.dataset.bmPriceLookupState === 'loading') return;
-            card.dataset.bmPriceLookupState = 'loading';
-            const data = extractCardData(card);
-            if (!data) {
-                card.dataset.bmPriceLookupDone = 'true';
-                card.dataset.bmPriceLookupState = 'invalid-gtin';
-                return;
-            }
-            applyEffectiveCardPrice(card, data, []);
-            debug.valid += 1;
-            debug.cacheRequests += 1;
-            try {
-                const bundle = (await requestJson(
-                    buildBundleUrl(workerBaseUrl, '/offers/cache', data, sources)
-                )).payload;
-                renderCardBundle(card, data, bundle, sources);
-            } catch (error) {
-                debug.errors += 1;
-                card.dataset.bmPriceLookupState = 'error';
-                console.debug('Brickmerge Tools DB: Cache konnte nicht gelesen werden.', error);
-            } finally {
-                card.dataset.bmPriceLookupDone = 'true';
-            }
+        tryMount();
+        observer = new MutationObserver(() => tryMount());
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true
         });
-
-        const observer = typeof IntersectionObserver === 'function'
-            ? new IntersectionObserver(entries => {
-                entries.forEach(entry => {
-                    if (!entry.isIntersecting) return;
-                    observer.unobserve(entry.target);
-                    void loadCard(entry.target);
-                });
-            }, { rootMargin: '700px 0px', threshold: 0.01 })
-            : null;
-
-        const observeCards = root => {
-            const cards = [];
-            if (root?.matches?.(CARD_SELECTOR)) cards.push(root);
-            root?.querySelectorAll?.(CARD_SELECTOR).forEach(card => cards.push(card));
-            cards.forEach(card => {
-                if (card.dataset.bmPriceObserved === 'true') return;
-                card.dataset.bmPriceObserved = 'true';
-                debug.observed += 1;
-                if (observer) observer.observe(card);
-                else void loadCard(card);
-            });
-        };
-
-        const loadAndSortCards = root => {
-            const cards = [];
-            if (root?.matches?.(CARD_SELECTOR)) cards.push(root);
-            root?.querySelectorAll?.(CARD_SELECTOR).forEach(card => cards.push(card));
-            const newCards = cards.filter(card =>
-                card.dataset.bmPriceObserved !== 'true'
-            );
-            if (newCards.length === 0) return;
-            const pending = newCards.map(card => {
-                card.dataset.bmPriceObserved = 'true';
-                debug.observed += 1;
-                return loadCard(card);
-            });
-            void Promise.allSettled(pending).then(() => {
-                sortOverviewCards(
-                    Array.from(document.querySelectorAll(CARD_SELECTOR)),
-                    overviewSortMode
-                );
-            });
-        };
-
-        if (overviewSortMode) loadAndSortCards(document);
-        else observeCards(document);
-        new MutationObserver(mutations => {
-            mutations.forEach(mutation => {
-                mutation.addedNodes.forEach(node => {
-                    if (node.nodeType !== Node.ELEMENT_NODE) return;
-                    if (overviewSortMode) loadAndSortCards(node);
-                    else observeCards(node);
-                });
-            });
-        }).observe(productRow, { childList: true, subtree: true });
+        [250, 750, 1800].forEach(delay => window.setTimeout(tryMount, delay));
+        window.setTimeout(() => observer?.disconnect(), 15000);
     };
 
     chrome.storage.local.get('settings').then(({ settings }) => {

@@ -1,6 +1,11 @@
 (() => {
     'use strict';
 
+    globalThis.BM_PLATFORM = Object.freeze({
+        mobileUserscript: true,
+        franceDefault: true
+    });
+
     const STORAGE_PREFIX = 'brickmerge-mobile-storage:';
     const ASSET_BASE =
         'https://raw.githubusercontent.com/ysamjo/bm-quick-extension/main/';
@@ -100,12 +105,13 @@
     const registerMenu = globalThis.GM_registerMenuCommand ||
         globalThis.GM?.registerMenuCommand;
     if (typeof registerMenu === 'function') {
-        registerMenu('Frankreich-Angebote umschalten', async () => {
+        const isFranceEnabled = current => globalThis.BM_mergeSettings
+            ? globalThis.BM_mergeSettings(current).linkRows.france === true
+            : current?.linkRows?.france !== false;
+        const toggleFrance = async () => {
             const { settings } = await local.get('settings');
             const current = settings || {};
-            const enabled = globalThis.BM_mergeSettings
-                ? globalThis.BM_mergeSettings(current).linkRows.france === true
-                : current.linkRows?.france !== false;
+            const enabled = isFranceEnabled(current);
             await local.set({
                 settings: {
                     ...current,
@@ -116,6 +122,12 @@
                 }
             });
             window.location.reload();
+        };
+        void local.get('settings').then(({ settings }) => {
+            const state = isFranceEnabled(settings || {}) ? 'AN' : 'AUS';
+            registerMenu(`🇫🇷 Frankreich-Angebote: ${state} – umschalten`, toggleFrance);
+        }).catch(() => {
+            registerMenu('🇫🇷 Frankreich-Angebote umschalten', toggleFrance);
         });
     }
 })();

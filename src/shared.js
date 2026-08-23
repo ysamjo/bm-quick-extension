@@ -6,7 +6,6 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
     copyAndMinifigures: true,
     priceCalculations: true,
     shippingAndSorting: true,
-    overviewPriceBadges: true,
     selectionPopup: true,
     networkBlocking: true,
     luckyFallback: true,
@@ -27,7 +26,7 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
     },
     linkRows: {
         marketplaces: true,
-        france: true,
+        france: globalThis.BM_PLATFORM?.franceDefault !== false,
         resources: true,
         history: true
     }

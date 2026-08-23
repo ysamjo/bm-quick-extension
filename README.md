@@ -9,8 +9,8 @@ der Chrome-Extension auf Browser mit Tampermonkey- oder Violentmonkey-Unterstüt
 - persönliche Händlerrabatte, Versandkosten, Sortierung und Rabatt-Bubbles
 - gemeinsame Marktplatzpreise über den Cloudflare-Worker `getdata`
 - eBay DE/FR, Kleinanzeigen, Vinted, Leboncoin, StockX, Idealo, BrickLink und BrickOwl
-- Kleinanzeigen auf Übersichtsseiten ausschließlich aus dem gemeinsamen Worker-Cache
-- keine Marktplatzabfragen oder Preisübernahme auf `?find=…`-Suchseiten
+- Marktplatzpreise ausschließlich auf Set-Detailseiten
+- keine Marktplatzabfragen, Preisübernahme oder Neusortierung auf Übersichtsseiten
 - manueller Abruf weiterer Marktplätze und gemeinsamer Preis-Cache
 - Minifiguren-Overlay mit BrickLink-Preisen für Deutschland und EU
 - Copy-Buttons, Preisverlauf und Quick-Links
@@ -36,13 +36,15 @@ die letzte funktionierende Version weiter. `@updateURL` bleibt als zusätzlicher
 Fallback für Änderungen an Berechtigungen oder Seitenregeln erhalten.
 
 Die Frankreich-Angebote sind standardmäßig eingeschaltet und können im
-Userscript-Menü über **Frankreich-Angebote umschalten** deaktiviert werden.
+Userscript-Menü oder über den gut sichtbaren Schalter oberhalb der Linkleiste
+deaktiviert werden. Der Schalter zeigt seinen aktuellen Zustand mit **AN/AUS**.
 
 ## Entwicklung
 
-`npm run sync` übernimmt die aktuellen geprüften Module und Logo-Assets aus dem
-benachbarten Ordner `brickmerge-extension-db` und erzeugt anschließend mit
-`npm run build` zwei installierbare Loader sowie deren GitHub-Runtimes.
+`npm run sync` übernimmt die aktuellen geprüften Kernmodule aus dem benachbarten
+Ordner `brickmerge-extension-db` und erzeugt anschließend mit `npm run build`
+zwei installierbare Loader sowie deren GitHub-Runtimes. Logo-Assets werden wegen
+der Cloud-Laufwerke bewusst nur bei Bedarf mit `npm run sync:icons` abgeglichen.
 
 `npm test` baut die Datei neu, prüft ihre Syntax und kontrolliert die mobilen
 Brücken sowie die wichtigsten aktuellen Funktionen.

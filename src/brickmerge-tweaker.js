@@ -5030,6 +5030,36 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         .bm-info-group:first-child { margin-top: 1em; }
         .bm-info-group:last-child { margin-bottom: 1.8em; }
         .bm-info-title { font-size: 1.05em; font-weight: bold; margin: 0 0 0.45em 0; color: #333; }
+        .bm-france-toggle-row {
+            display: flex;
+            justify-content: flex-end;
+            margin: 0.65em 0 0.2em;
+        }
+        .bm-france-toggle {
+            display: inline-flex !important;
+            align-items: center;
+            gap: 0.45em;
+            min-height: 32px;
+            margin: 0 !important;
+            padding: 5px 10px !important;
+            border: 1px solid #b60000 !important;
+            border-radius: 999px !important;
+            background: #b60000 !important;
+            color: #fff !important;
+            font: 700 0.86rem/1.2 Arial, sans-serif !important;
+            text-shadow: none !important;
+            cursor: pointer;
+        }
+        .bm-france-toggle[aria-pressed="false"] {
+            background: #fff !important;
+            color: #8d0000 !important;
+        }
+        .bm-france-toggle:hover,
+        .bm-france-toggle:focus {
+            border-color: #850000 !important;
+            box-shadow: 0 0 0 3px rgba(182, 0, 0, 0.14);
+        }
+        .bm-france-toggle:disabled { opacity: 0.65; cursor: wait; }
         .bm-link-slider { position: relative; min-width: 0; }
         .bm-link-viewport {
             overflow-x: auto;
@@ -5326,6 +5356,33 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             container.id = 'bm-link-panel';
             container.className = 'bm-link-panel';
             container.dataset.bmLinkPanel = 'true';
+            if (globalThis.BM_PLATFORM?.mobileUserscript === true) {
+                const franceEnabled = BM_isFranceEnabled(BM_SETTINGS);
+                const franceToggleRow = document.createElement('div');
+                franceToggleRow.className = 'bm-france-toggle-row';
+                const franceToggle = document.createElement('button');
+                franceToggle.type = 'button';
+                franceToggle.className = 'bm-france-toggle';
+                franceToggle.setAttribute('aria-pressed', String(franceEnabled));
+                franceToggle.title = 'Steuert eBay.fr, Leboncoin und Idealo Frankreich';
+                franceToggle.textContent = `🇫🇷 Frankreich-Angebote: ${franceEnabled ? 'AN' : 'AUS'}`;
+                franceToggle.addEventListener('click', async () => {
+                    franceToggle.disabled = true;
+                    franceToggle.textContent = '🇫🇷 Einstellung wird gespeichert …';
+                    await chrome.storage.local.set({
+                        settings: {
+                            ...BM_SETTINGS,
+                            linkRows: {
+                                ...BM_SETTINGS.linkRows,
+                                france: !franceEnabled
+                            }
+                        }
+                    });
+                    window.location.reload();
+                });
+                franceToggleRow.appendChild(franceToggle);
+                container.appendChild(franceToggleRow);
+            }
             for (const group of groups) {
                 if (BM_SETTINGS.linkRows[group.key] === false) continue;
                 const section = document.createElement("section");

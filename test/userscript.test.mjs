@@ -19,9 +19,13 @@ const metaGptSource = fs.readFileSync(
     new URL('../brickmerge-meta-gpt.runtime.js', import.meta.url),
     'utf8'
 );
+const tweakerSource = fs.readFileSync(
+    new URL('../src/brickmerge-tweaker.js', import.meta.url),
+    'utf8'
+);
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.20/);
+    assert.match(loaderSource, /@version\s+5\.5\.21/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -94,7 +98,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.20/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.21/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -184,20 +188,20 @@ test('Meta-GPT bridge accepts only fresh, bounded transfers', () => {
     );
 });
 
-test('overview cards read marketplace prices without starting refresh jobs', () => {
+test('all overview pages leave Brickmerge prices and sorting unchanged', () => {
     const overviewSource = fs.readFileSync(
         new URL('../src/overview-price-badges.js', import.meta.url),
         'utf8'
     );
-    const loadCard = overviewSource.match(
-        /const loadCard = card => limit\(async \(\) => \{[\s\S]*?\n\s*\}\);\n\n\s*const observer/
+    const start = overviewSource.match(
+        /const start = settings => \{[\s\S]*?\n\s*\};\n\n\s*chrome\.storage/
     )?.[0] || '';
 
-    assert.match(loadCard, /\/offers\/cache/);
-    assert.doesNotMatch(loadCard, /refreshBundle|\/offers\/refresh/);
+    assert.match(start, /if \(!detailSet\) return;/);
+    assert.doesNotMatch(start, /productrow|CARD_SELECTOR|\/offers\/cache/);
 });
 
-test('search result pages skip the marketplace overview module', () => {
+test('the detail-only marketplace module also excludes search pages', () => {
     const overviewSource = fs.readFileSync(
         new URL('../src/overview-price-badges.js', import.meta.url),
         'utf8'
@@ -219,7 +223,7 @@ test('search result pages skip the marketplace overview module', () => {
     );
     assert.match(
         overviewSource,
-        /if \(isSearchPage\(location\.href\)\) return;/
+        /if \(!detailSet\) return;/
     );
 });
 
@@ -392,8 +396,12 @@ test('mobile offer rows grow when price details wrap', () => {
 });
 
 test('France is enabled by default and can be toggled from the script menu', () => {
-    assert.match(source, /france:\s*true/);
-    assert.match(source, /Frankreich-Angebote umschalten/);
+    assert.match(source, /franceDefault:\s*true/);
+    assert.match(source, /france:\s*globalThis\.BM_PLATFORM\?\.franceDefault !== false/);
+    assert.match(source, /Frankreich-Angebote:.*umschalten/);
+    assert.match(source, /BM_PLATFORM\?\.mobileUserscript === true/);
+    assert.match(source, /className = 'bm-france-toggle'/);
+    assert.match(source, /Frankreich-Angebote: \$\{franceEnabled \? 'AN' : 'AUS'\}/);
 });
 
 test('worker status URLs stay on the configured worker origin', () => {
@@ -477,20 +485,15 @@ test('worker client ID is never forwarded to third-party requests', async () => 
 });
 
 test('eBay Offerlist uses black logos with distinct source markers', () => {
-    const tweakerSource = fs.readFileSync(
-        new URL('../src/brickmerge-tweaker.js', import.meta.url),
-        'utf8'
-    );
-
     assert.doesNotMatch(
         tweakerSource,
         /filter:\s*grayscale\(1\) brightness\(0\)/
     );
     assert.match(tweakerSource, /function ensureBlackEbayWordmark\(/);
     assert.match(tweakerSource, /bm-ebay-wordmark/);
-    assert.match(tweakerSource, /viewBox', '0 0 1000 400\\.75098'/);
+    assert.match(tweakerSource, /viewBox', '0 0 1000 400\.75098'/);
     assert.match(tweakerSource, /createElementNS/);
-    assert.match(tweakerSource, /grid-template-columns:\\s*62px 16px/);
+    assert.match(tweakerSource, /grid-template-columns:\s*62px 16px/);
     assert.match(tweakerSource, /function decorateEbaySellerTypeIcon\(/);
     assert.match(tweakerSource, /bm-ebay-commercial-icon/);
     assert.match(tweakerSource, /bm-ebay-private-icon/);
@@ -506,7 +509,7 @@ test('eBay Offerlist uses black logos with distinct source markers', () => {
     assert.match(tweakerSource, /isBusinessSeller/);
     assert.match(
         tweakerSource,
-        /offer\\.key === 'ebay' \\? 'INDIVIDUAL' : ''/
+        /offer\.key === 'ebay' \? 'INDIVIDUAL' : ''/
     );
     assert.doesNotMatch(tweakerSource, /logoDomainSuffix:\s*'\.(?:de|fr)'/);
 });
