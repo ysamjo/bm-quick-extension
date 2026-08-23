@@ -33,7 +33,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     const KLAZ_CLIENT_CACHE_TTL = 45 * 60 * 1000;
     const MINIFIG_INVENTORY_CACHE_TTL = 6 * 60 * 60 * 1000;
     const MINIFIG_PRICE_CACHE_TTL = 24 * 60 * 60 * 1000;
-    const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-eu-v8';
+    const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-eu-v9';
     const BM_WORKER_CLIENT_ID_STORAGE_KEY = 'brickmerge-worker-client-id-v1';
     const BM_WORKER_URL = globalThis.BM_WORKER_DEFAULT_BASE_URL ||
         'https://getdata.andreas-9b7.workers.dev';
@@ -7840,16 +7840,35 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             return key === undefined ? undefined : snapshot.get(key);
         }
 
+        function selectEffectiveEuMinifigPrice(dePrice, euPrice) {
+            const validPrices = [dePrice, euPrice]
+                .map(Number)
+                .filter(price => Number.isFinite(price) && price > 0);
+            return validPrices.length ? Math.min(...validPrices) : null;
+        }
+
+        function getSnapshotEffectiveEuMinifigPrice(itemNo) {
+            const dePrice = getSnapshotMinifigPrice(itemNo, 'DE');
+            const euPrice = getSnapshotMinifigPrice(itemNo, 'EU');
+            if (dePrice === undefined && euPrice === undefined) return undefined;
+            return selectEffectiveEuMinifigPrice(dePrice, euPrice);
+        }
+
         function rememberMinifigPrice(itemNo, price, region = 'DE') {
             const snapshot = getMinifigPriceSnapshot(region);
             const normalizedPrice = Number.isFinite(Number(price)) &&
                 Number(price) > 0
                 ? Number(price)
                 : null;
-            getMinifigPriceSnapshotKeys(itemNo).forEach(key =>
-                snapshot.set(key, normalizedPrice)
-            );
-            return price;
+            // Fehlgeschlagene oder vorübergehend leere Antworten nicht für die
+            // gesamte Sitzung festschreiben. Beim nächsten Öffnen darf die
+            // Abfrage erneut laufen.
+            if (normalizedPrice !== null) {
+                getMinifigPriceSnapshotKeys(itemNo).forEach(key =>
+                    snapshot.set(key, normalizedPrice)
+                );
+            }
+            return normalizedPrice;
         }
 
         function serializeMinifigPriceSnapshot(region = 'EU') {
@@ -7872,7 +7891,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             return true;
         }
 
-        function getSharedMinifigPrice(blItemNo, requestedRegion = 'DE') {
+        function getRawSharedMinifigPrice(blItemNo, requestedRegion = 'DE') {
             const cleanId = String(blItemNo || '').trim();
             if (!cleanId) return Promise.resolve(null);
             const region = requestedRegion === 'EU' ? 'EU' : 'DE';
@@ -7887,6 +7906,24 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 .finally(() => minifigPriceRequestsInFlight.delete(requestKey));
             minifigPriceRequestsInFlight.set(requestKey, request);
             return request;
+        }
+
+        function getSharedMinifigPrice(blItemNo, requestedRegion = 'DE') {
+            const region = requestedRegion === 'EU' ? 'EU' : 'DE';
+            if (region === 'DE') {
+                return getRawSharedMinifigPrice(blItemNo, 'DE');
+            }
+            // Deutschland ist Teil der EU. Der EU-Wert darf daher niemals
+            // fehlen oder höher sein, wenn bereits ein deutscher Neupreis
+            // vorhanden ist.
+            return Promise.all([
+                getRawSharedMinifigPrice(blItemNo, 'DE'),
+                getRawSharedMinifigPrice(blItemNo, 'EU')
+            ]).then(([dePrice, euPrice]) => rememberMinifigPrice(
+                blItemNo,
+                selectEffectiveEuMinifigPrice(dePrice, euPrice),
+                'EU'
+            ));
         }
 
         function updateMinifigureValueInDataBox(
@@ -9343,7 +9380,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         '.bm-minifig-price[data-bm-region="EU"]'
                     );
                     const cachedPrice = getSnapshotMinifigPrice(itemNo, 'DE');
-                    const cachedEuPrice = getSnapshotMinifigPrice(itemNo, 'EU');
+                    const cachedEuPrice =
+                        getSnapshotEffectiveEuMinifigPrice(itemNo);
                     if (Number.isFinite(Number(cachedPrice)) && Number(cachedPrice) > 0) {
                         setMinifigPriceLabel(
                             priceLabel,
@@ -9445,7 +9483,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                             '.bm-minifig-price[data-bm-region="DE"]'
                         );
                         const cachedPrice = getSnapshotMinifigPrice(brickLinkItemNo, 'DE');
-                        const cachedEuPrice = getSnapshotMinifigPrice(brickLinkItemNo, 'EU');
+                        const cachedEuPrice =
+                            getSnapshotEffectiveEuMinifigPrice(brickLinkItemNo);
                         if (Number.isFinite(Number(cachedPrice)) && Number(cachedPrice) > 0) {
                             setMinifigPriceLabel(
                                 priceLabel,

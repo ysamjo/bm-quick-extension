@@ -25,7 +25,7 @@ const tweakerSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.22/);
+    assert.match(loaderSource, /@version\s+5\.5\.23/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -98,7 +98,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.22/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.23/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -259,11 +259,31 @@ test('current extension marketplace and minifigure features are bundled', () => 
         source,
         /Basis: niedrigster aktueller BrickLink-EU-Neupreis je Figur, ohne Versand/
     );
+    assert.match(source, /function selectEffectiveEuMinifigPrice\(dePrice, euPrice\)/);
+    assert.match(source, /Math\.min\(\.\.\.validPrices\)/);
+    assert.match(source, /getRawSharedMinifigPrice\(blItemNo, 'DE'\)/);
+    assert.match(source, /getRawSharedMinifigPrice\(blItemNo, 'EU'\)/);
+    assert.match(source, /bricklink-minifig-current-total-eu-v9/);
     for (const sourceName of [
         'kleinanzeigen', 'vinted', 'leboncoin', 'stockx', 'idealo', 'bricklink'
     ]) {
         assert.match(source, new RegExp(sourceName, 'i'));
     }
+});
+
+test('EU minifigure price always includes the valid German offer', () => {
+    const functionSource = tweakerSource.match(
+        /function selectEffectiveEuMinifigPrice\(dePrice, euPrice\) \{[\s\S]*?\n\s*\}/
+    )?.[0];
+    assert.ok(functionSource);
+    const selectPrice = Function(
+        `${functionSource}; return selectEffectiveEuMinifigPrice;`
+    )();
+
+    assert.equal(selectPrice(42.01, 37.70), 37.70);
+    assert.equal(selectPrice(42.01, null), 42.01);
+    assert.equal(selectPrice(42.01, 49.99), 42.01);
+    assert.equal(selectPrice(null, null), null);
 });
 
 test('marketplace refresh is a text action in the personal discount toolbar', () => {
