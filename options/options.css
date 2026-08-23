@@ -1,0 +1,101 @@
+:root {
+  color-scheme: light dark;
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+body { margin: 0; background: #f3f4f6; color: #222; }
+main { width: min(920px, calc(100% - 32px)); margin: 28px auto 60px; }
+header { display: flex; align-items: center; gap: 18px; margin-bottom: 22px; }
+header img { width: 76px; height: 76px; border-radius: 13px; box-shadow: 0 3px 14px #0002; }
+h1 { margin: 0; color: #a90000; font-size: 28px; }
+header p { margin: 4px 0 0; color: #666; }
+section {
+  margin: 0 0 18px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 9px #0000000d;
+}
+h2 { margin: 0 0 12px; font-size: 18px; }
+.intro { margin: -4px 0 14px; color: #666; font-size: 13px; }
+.setting {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 42px;
+  margin: 4px 0;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: #fff;
+  cursor: pointer;
+  transition: background-color .18s ease, border-color .18s ease,
+    transform .18s ease, box-shadow .18s ease;
+}
+.setting:hover {
+  border-color: #e8e8e8;
+  background: #f6f6f6;
+  box-shadow: 0 2px 8px #0000000a;
+  transform: translateY(-1px);
+}
+.setting.is-disabled { opacity: .48; cursor: default; }
+.setting.is-disabled:hover {
+  border-color: transparent;
+  background: inherit;
+  box-shadow: none;
+  transform: none;
+}
+.setting input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: #b40000; }
+.setting span, .setting strong, .setting small { display: block; }
+.setting span { min-width: 0; flex: 1; }
+.setting small { margin-top: 2px; color: #6a6a6a; }
+.setting.main { border-bottom: 1px solid #eee; margin-bottom: 4px; padding-bottom: 12px; }
+.shop-grid, .menu-list { display: grid; grid-template-columns: 1fr; gap: 2px; }
+.actions { display: flex; align-items: center; gap: 10px; }
+.credential { margin: 14px 0 0; }
+.credential:first-of-type { margin-top: 4px; }
+.credential > label { display: block; margin-bottom: 6px; }
+.credential-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 7px; }
+.credential-row input {
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  background: #fff;
+  color: #222;
+  font: inherit;
+}
+.credential-row input:focus { border-color: #a90000; outline: 2px solid #a9000025; }
+.credential small { display: block; margin-top: 5px; color: #666; }
+.credential a { color: #a90000; }
+.credential code { font-size: .92em; }
+.worker-url-row { grid-template-columns: minmax(0, 1fr); }
+button {
+  padding: 9px 15px;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  background: #fff;
+  color: #333;
+  font-weight: 650;
+  cursor: pointer;
+}
+button.primary { border-color: #a90000; background: #b40000; color: #fff; }
+#status { margin-left: 6px; color: #16703a; font-weight: 650; }
+@media (max-width: 650px) {
+  .shop-grid { grid-template-columns: 1fr; }
+  main { width: min(100% - 20px, 920px); margin-top: 14px; }
+  section { padding: 14px; }
+  .credential-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .credential-row .clear-secret { grid-column: 2; }
+}
+@media (prefers-color-scheme: dark) {
+  body { background: #17181a; color: #eee; }
+  section { border-color: #444; background: #242528; }
+  header p, .intro, .setting small { color: #aaa; }
+  .setting:hover { background: #303136; }
+  .setting { background: #242528; }
+  .setting.main { border-color: #444; }
+  button { border-color: #555; background: #2b2c2f; color: #eee; }
+  .credential-row input { border-color: #555; background: #1e1f22; color: #eee; }
+  .credential small { color: #aaa; }
+}

@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "sync": "node build-userscript.mjs --sync",
-    "sync:icons": "node build-userscript.mjs --sync-icons",
     "build": "node build-userscript.mjs",
-    "check": "node --check brickmerge-tweaks.js && node --check brickmerge-tweaks.runtime.js && node --check brickmerge-meta-gpt.user.js && node --check brickmerge-meta-gpt.runtime.js && node --test test/*.test.mjs",
+    "extension:check": "node --check background.js && node --check platform-config.js && node --check shared.js && node --check worker-api-bridge.js && node --check overview-price-badges.js && node --check brickmerge-tweaker-v140.js && node --check meta-gpt-bridge.js && node --check options/options.js && node --check popup/popup.js && node check-extension.mjs",
+    "check": "node --check brickmerge-tweaks.js && node --check brickmerge-tweaks.runtime.js && node --check brickmerge-meta-gpt.user.js && node --check brickmerge-meta-gpt.runtime.js && npm run extension:check && node --test test/*.test.mjs",
     "test": "npm run build && npm run check"
   }
 }

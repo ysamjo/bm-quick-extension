@@ -1,0 +1,40 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||brickmerge.de/img/info_",
+      "resourceTypes": ["image"]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||brickmerge.de/img/bm_tg_deals.png",
+      "resourceTypes": ["image"]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||consent.cookiebot.com/",
+      "initiatorDomains": ["brickmerge.de"],
+      "resourceTypes": ["script", "xmlhttprequest", "image"]
+    }
+  },
+  {
+    "id": 4,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||consentcdn.cookiebot.com/",
+      "initiatorDomains": ["brickmerge.de"],
+      "resourceTypes": ["script", "xmlhttprequest", "image"]
+    }
+  }
+]

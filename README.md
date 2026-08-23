@@ -19,6 +19,19 @@ der Chrome-Extension auf Browser mit Tampermonkey- oder Violentmonkey-Unterstüt
 API-Schlüssel und Tokens sind nicht im Userscript enthalten. Sie liegen
 ausschließlich als Secrets in den Cloudflare-Workern.
 
+## Installation als Chrome-Erweiterung
+
+Dieses Repository ist zugleich die entpackte Chrome-Erweiterung:
+
+1. `chrome://extensions` öffnen.
+2. Den Entwicklermodus aktivieren.
+3. **Entpackte Erweiterung laden** wählen.
+4. Den Stammordner dieses Repositorys auswählen, der direkt `manifest.json`
+   enthält.
+
+Der Erweiterungsname in Chrome lautet **Brickmerge Tools**. Ein separater
+`-db`-Ordner ist nicht erforderlich.
+
 ## Installation auf Mobilgeräten
 
 1. Einen mobilen Browser mit Userscript-Unterstützung verwenden.
@@ -41,13 +54,13 @@ deaktiviert werden. Der Schalter zeigt seinen aktuellen Zustand mit **AN/AUS**.
 
 ## Entwicklung
 
-`npm run sync` übernimmt die aktuellen geprüften Kernmodule aus dem benachbarten
-Ordner `brickmerge-extension-db` und erzeugt anschließend mit `npm run build`
-zwei installierbare Loader sowie deren GitHub-Runtimes. Logo-Assets werden wegen
-der Cloud-Laufwerke bewusst nur bei Bedarf mit `npm run sync:icons` abgeglichen.
+Die Chrome-Erweiterung im Repository-Stamm ist die gemeinsame Quelle.
+`npm run sync` übernimmt ihre geprüften Kernmodule nach `src/` und erzeugt
+anschließend mit `npm run build` zwei installierbare Loader sowie deren
+GitHub-Runtimes.
 
 `npm test` baut die Datei neu, prüft ihre Syntax und kontrolliert die mobilen
-Brücken sowie die wichtigsten aktuellen Funktionen.
+Brücken, das Chrome-Manifest und die wichtigsten aktuellen Funktionen.
 
 ## Cloudflare Worker
 

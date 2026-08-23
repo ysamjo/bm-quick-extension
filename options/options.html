@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Brickmerge Tools – Einstellungen</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <header>
+      <img src="../icons/icon128.png" alt="">
+      <div>
+        <h1>Brickmerge Tools</h1>
+        <p>Änderungen werden nach dem Speichern auf offenen Brickmerge-Seiten neu geladen.</p>
+      </div>
+    </header>
+
+    <form id="settings-form">
+      <section>
+        <h2>Brickmerge-Seiten</h2>
+        <label class="setting"><input type="checkbox" data-setting-group="cleanupAndLayout"> <span><strong>Cleaner und Detail-Layout</strong><small>Anti-Flackern, Netzwerkblocker, Galerie, Seitenleiste, Preisdiagramm und kompakter Footer</small></span></label>
+        <label class="setting"><input type="checkbox" data-setting="linkPanel"> <span><strong>Zusätzliche Linkleiste</strong><small>Marktplatz-, Länder- und Ressourcenlinks oberhalb der Offerlist</small></span></label>
+        <label class="setting"><input type="checkbox" data-setting="copyAndMinifigures"> <span><strong>Kopieren und Minifiguren</strong><small>Kopierbutton, Teile- und Minifiguren-Overlays</small></span></label>
+        <label class="setting"><input type="checkbox" data-setting-group="pricesAndSorting"> <span><strong>Preise, Rabatte und Sortierung</strong><small>Effektivpreise, Versandkosten, Bestpreisvergleich und Sortierung der Angebote</small></span></label>
+        <label class="setting"><input type="checkbox" data-setting="luckyFallback"> <span><strong>Lucky-Fallback</strong><small>Leitet erfolglose Brickmerge-Suchen über DuckDuckGo zum passenden Treffer</small></span></label>
+        <label class="setting"><input type="checkbox" data-setting="autoContinueRedirect"> <span><strong>Shop-Weiterleitung automatisch fortsetzen</strong></span></label>
+        <label class="setting"><input type="checkbox" data-setting="metaGptBridge"> <span><strong>Meta-GPT-Übergabe</strong></span></label>
+      </section>
+
+      <section>
+        <h2>Button-Zeilen</h2>
+        <p class="intro">Jede Zeile der zusätzlichen Linkleiste lässt sich einzeln ein- oder ausblenden.</p>
+        <div class="menu-list">
+          <label class="setting"><input type="checkbox" data-link-row="marketplaces"> <span><strong>Marktplätze</strong><small>eBay, Kleinanzeigen, Vinted, StockX, BrickOwl und BrickLink</small></span></label>
+          <label class="setting"><input type="checkbox" data-link-row="france"> <span><strong>Frankreich 🇫🇷</strong><small>Im Standard ausgeschaltet; steuert eBay.fr, Leboncoin und Idealo Frankreich einschließlich Preisabrufen</small></span></label>
+          <label class="setting"><input type="checkbox" data-link-row="resources"> <span><strong>Ressourcen</strong><small>Rebrickable, Meta, Geizhals, idealo und Reviews</small></span></label>
+          <label class="setting"><input type="checkbox" data-link-row="history"> <span><strong>Verkaufshistorie</strong><small>eBay-Historie, BrickLink-Historie und Keepa</small></span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Zusätzliche Shops in der Offerlist</h2>
+        <p class="intro">Jeder Schalter steuert genau einen zusätzlich erzeugten Angebotsblock.</p>
+        <div class="shop-grid menu-list">
+          <label class="setting"><input type="checkbox" data-shop="ebay"> <span><strong>eBay</strong><small>Günstigstes neues Angebot</small></span></label>
+          <label class="setting"><input type="checkbox" data-shop="ebayFr"> <span><strong>eBay.fr</strong><small>Neues Angebot mit Artikelstandort und Lieferung in Frankreich</small></span></label>
+          <label class="setting"><input type="checkbox" data-shop="kleinanzeigen"> <span><strong>Kleinanzeigen</strong><small>Günstigstes passendes Angebot mit Zustand „Neu“</small></span></label>
+          <label class="setting"><input type="checkbox" data-shop="vinted"> <span><strong>Vinted</strong><small>Günstigstes passendes neues Angebot über Apify</small></span></label>
+          <label class="setting"><input type="checkbox" data-shop="leboncoin"> <span><strong>Leboncoin</strong><small>Günstigstes passendes neues Angebot aus Frankreich über Apify</small></span></label>
+          <label class="setting"><input type="checkbox" data-shop="stockx"> <span><strong>StockX</strong><small>Günstigstes passendes Angebot über Apify, maximal drei Treffer</small></span></label>
+          <label class="setting"><input type="checkbox" data-shop="idealo"> <span><strong>Idealo Frankreich</strong><small>Bis zu drei günstige Händlerangebote über Apify</small></span></label>
+          <label class="setting"><input type="checkbox" data-shop="smyths"> <span><strong>Smyths Toys</strong><small>Preis über Brickbank</small></span></label>
+          <label class="setting"><input type="checkbox" data-shop="mueller"> <span><strong>Müller</strong><small>Preis über Brickbank, sofern nicht bereits nativ vorhanden</small></span></label>
+          <label class="setting"><input type="checkbox" data-shop="bricklink"> <span><strong>BrickLink</strong><small>Niedrigster aktueller Neupreis aus Deutschland</small></span></label>
+          <label class="setting"><input type="checkbox" data-shop="brickowl"> <span><strong>BrickOwl</strong><small>Günstigstes deutsches Neuangebot</small></span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Auswahl-Popup</h2>
+        <label class="setting"><input type="checkbox" data-setting="selectionPopup"> <span><strong>Fünfstellige Setnummern erkennen</strong><small>Zeigt auf normalen Webseiten automatisch Brickmerge-Setdetails zur markierten Nummer</small></span></label>
+      </section>
+
+      <div class="actions">
+        <button type="button" id="reset">Standardwerte</button>
+        <button type="submit" class="primary">Speichern</button>
+        <span id="status" role="status"></span>
+      </div>
+    </form>
+  </main>
+  <script src="../platform-config.js"></script>
+  <script src="../shared.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

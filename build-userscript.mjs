@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const projectDir = path.dirname(fileURLToPath(import.meta.url));
-const extensionDir = path.resolve(projectDir, '../brickmerge-extension-db');
+const extensionDir = projectDir;
 const sourceDir = path.join(projectDir, 'src');
 const packageJson = JSON.parse(
     await fs.readFile(path.join(projectDir, 'package.json'), 'utf8')
@@ -22,6 +22,7 @@ const sourceFiles = [
 ];
 
 const copyFileWithRetry = async (source, destination, attempts = 4) => {
+    if (path.resolve(source) === path.resolve(destination)) return;
     let lastError = null;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
         try {

@@ -1,0 +1,145 @@
+{
+  "manifest_version": 3,
+  "name": "Brickmerge Tools",
+  "version": "2.5.0",
+  "description": "Brickmerge-Werkzeuge mit gemeinsamem Marktplatz-Cache und manueller Preisaktualisierung.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Brickmerge-Suche",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "options_page": "options/options.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.brickmerge.de/*",
+        "https://brickmerge.de/*"
+      ],
+      "js": [
+        "platform-config.js",
+        "shared.js",
+        "preclean.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://www.brickmerge.de/*",
+        "https://brickmerge.de/*"
+      ],
+      "js": [
+        "platform-config.js",
+        "gm-compat.js",
+        "worker-api-bridge.js",
+        "overview-price-badges.js",
+        "brickmerge-tweaker-v140.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/g/g-LZvgtoTB9-meta-preisvergleich-gpt*"
+      ],
+      "js": [
+        "platform-config.js",
+        "shared.js",
+        "gm-compat.js",
+        "meta-gpt-bridge.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "exclude_matches": [
+        "*://brickmerge.de/*",
+        "*://*.brickmerge.de/*",
+        "*://localhost/*",
+        "*://127.0.0.1/*",
+        "*://*.local/*",
+        "*://*.internal/*",
+        "*://*.intranet/*",
+        "*://mail.google.com/*",
+        "*://outlook.live.com/*",
+        "*://outlook.office.com/*",
+        "*://outlook.office365.com/*",
+        "*://mail.yahoo.com/*",
+        "*://mail.proton.me/*",
+        "*://app.fastmail.com/*",
+        "*://web.de/*",
+        "*://*.web.de/*",
+        "*://gmx.de/*",
+        "*://*.gmx.de/*",
+        "*://gmx.net/*",
+        "*://*.gmx.net/*",
+        "*://*.sparkasse.de/*",
+        "*://*.volksbank.de/*",
+        "*://*.vr.de/*",
+        "*://*.deutsche-bank.de/*",
+        "*://*.commerzbank.de/*",
+        "*://*.comdirect.de/*",
+        "*://*.ing.de/*",
+        "*://*.dkb.de/*",
+        "*://*.n26.com/*",
+        "*://*.consorsbank.de/*",
+        "*://chatgpt.com/*"
+      ],
+      "js": [
+        "platform-config.js",
+        "shared.js",
+        "selection-popup.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/logo-vinted.png",
+        "icons/logo-leboncoin.png",
+        "icons/logo-ebay-minifig.png",
+        "icons/logo-cdiscount.png",
+        "icons/logo-fnac.png",
+        "icons/logo-idealo.jpg",
+        "icons/logo-smyths.svg",
+        "icons/logo-stockx.svg",
+        "icons/logo-lego-wide.png"
+      ],
+      "matches": [
+        "https://www.brickmerge.de/*",
+        "https://brickmerge.de/*"
+      ]
+    }
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "brickmerge_cleanup",
+        "enabled": true,
+        "path": "rules/brickmerge-cleanup.json"
+      }
+    ]
+  }
+}

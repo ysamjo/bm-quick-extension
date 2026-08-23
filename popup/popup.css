@@ -1,0 +1,71 @@
+:root {
+  color-scheme: light dark;
+  font: 14px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+body {
+  width: 430px;
+  margin: 0;
+  background: #f7f7f7;
+  color: #222;
+}
+main {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px;
+}
+form { min-width: 0; flex: 1; }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.search-row { display: flex; gap: 7px; min-width: 0; }
+input {
+  min-width: 0;
+  height: 38px;
+  flex: 1;
+  padding: 9px 10px;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  background: #fff;
+  color: #222;
+}
+button {
+  border: 0;
+  border-radius: 6px;
+  background: #b40000;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.search-row button { height: 38px; padding: 0 14px; }
+.settings {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #333;
+}
+.settings svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@media (prefers-color-scheme: dark) {
+  body { background: #202124; color: #eee; }
+  input, .settings { border-color: #555; background: #2c2d2f; color: #eee; }
+}
