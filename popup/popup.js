@@ -16,3 +16,9 @@ document.getElementById('open-options').addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
     window.close();
 });
+
+document.getElementById('open-sidepanel').addEventListener('click', async () => {
+    const currentWindow = await chrome.windows.getCurrent();
+    await chrome.sidePanel.open({ windowId: currentWindow.id });
+    window.close();
+});

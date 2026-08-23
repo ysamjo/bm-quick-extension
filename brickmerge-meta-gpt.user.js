@@ -2,7 +2,7 @@
 // @name         Brickmerge Meta-GPT Bridge
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=chatgpt.com
-// @version      5.5.25
+// @version      5.6.0
 // @description  Übergibt Brickmerge-Setdaten automatisch an den Meta Preisvergleich GPT.
 // @match        https://chatgpt.com/g/g-LZvgtoTB9-meta-preisvergleich-gpt*
 // @grant        GM_setValue

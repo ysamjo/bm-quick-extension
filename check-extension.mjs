@@ -19,6 +19,9 @@ if (manifest.options_page) referencedFiles.add(manifest.options_page);
 if (manifest.background?.service_worker) {
     referencedFiles.add(manifest.background.service_worker);
 }
+if (manifest.side_panel?.default_path) {
+    referencedFiles.add(manifest.side_panel.default_path);
+}
 for (const script of manifest.content_scripts || []) {
     (script.js || []).forEach(file => referencedFiles.add(file));
     (script.css || []).forEach(file => referencedFiles.add(file));
@@ -35,6 +38,30 @@ const missingFiles = [...referencedFiles].filter(file =>
 );
 if (missingFiles.length) {
     throw new Error(`Fehlende Manifest-Dateien: ${missingFiles.join(', ')}`);
+}
+
+const extensionHtmlFiles = [
+    manifest.action?.default_popup,
+    manifest.options_page,
+    manifest.side_panel?.default_path
+].filter(Boolean);
+for (const htmlFile of extensionHtmlFiles) {
+    const html = fs.readFileSync(path.join(projectDir, htmlFile), 'utf8');
+    const htmlDir = path.dirname(htmlFile);
+    for (const match of html.matchAll(/(?:src|href)=["']([^"']+)["']/g)) {
+        const target = match[1];
+        if (/^(?:https?:|#|data:)/i.test(target)) continue;
+        referencedFiles.add(path.normalize(path.join(htmlDir, target)));
+    }
+}
+
+const missingHtmlResources = [...referencedFiles].filter(file =>
+    !fs.existsSync(path.join(projectDir, file))
+);
+if (missingHtmlResources.length) {
+    throw new Error(
+        `Fehlende Extension-Ressourcen: ${missingHtmlResources.join(', ')}`
+    );
 }
 
 const commonFiles = [
