@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ebay-price-api",
+  "main": "ebay-worker.js",
+  "compatibility_date": "2026-08-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "ratelimits": [
+    {
+      "name": "UPSTREAM_RATE_LIMITER",
+      "namespace_id": "42154",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    },
+    {
+      "name": "UPSTREAM_IP_RATE_LIMITER",
+      "namespace_id": "42155",
+      "simple": {
+        "limit": 180,
+        "period": 60
+      }
+    }
+  ]
+}

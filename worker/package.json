@@ -1,0 +1,14 @@
+{
+  "name": "getdata-worker",
+  "version": "2.4.9",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check lib/ebay-title-filter.js && node --check worker.js && node --check getdata-entry.js && node --check ebay-worker.js",
+    "test": "node --test",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

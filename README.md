@@ -48,3 +48,9 @@ der Cloud-Laufwerke bewusst nur bei Bedarf mit `npm run sync:icons` abgeglichen.
 
 `npm test` baut die Datei neu, prüft ihre Syntax und kontrolliert die mobilen
 Brücken sowie die wichtigsten aktuellen Funktionen.
+
+## Cloudflare Worker
+
+Der vollständige Quellcode der Worker `getdata` und `ebay-price-api` liegt im
+Ordner [`worker`](worker/). Produktive API-Schlüssel und Tokens sind nicht im
+Repository enthalten und werden ausschließlich als Cloudflare-Secrets gesetzt.
