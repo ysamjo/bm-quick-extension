@@ -25,7 +25,7 @@ const tweakerSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.24/);
+    assert.match(loaderSource, /@version\s+5\.5\.25/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -98,7 +98,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.24/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.25/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -299,6 +299,14 @@ test('price history detail button keeps its chart icon', () => {
     assert.match(tweakerSource, /fullLabel\.textContent = 'Details anzeigen'/);
     assert.match(tweakerSource, /buttonLabel\.append\(icon, fullLabel, mobileLabel\)/);
     assert.match(tweakerSource, /<path d="m6 16 4-5 4 3 5-7"\/>/);
+    assert.match(
+        tweakerSource,
+        /DOMContentLoaded'[\s\S]*?setupPriceChartOverlay/
+    );
+    assert.match(
+        tweakerSource,
+        /window\.addEventListener\([\s\S]*?'load'[\s\S]*?setupPriceChartOverlay/
+    );
 });
 
 test('desktop detail and stock buttons share one height and alignment', () => {

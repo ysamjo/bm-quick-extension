@@ -4863,7 +4863,23 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         });
     }
 
-    if (setNum && BM_SETTINGS.detailLayout) setupPriceChartOverlay();
+    if (setNum && BM_SETTINGS.detailLayout) {
+        setupPriceChartOverlay();
+        if (document.readyState === 'loading') {
+            document.addEventListener(
+                'DOMContentLoaded',
+                setupPriceChartOverlay,
+                { once: true }
+            );
+        }
+        if (document.readyState !== 'complete') {
+            window.addEventListener(
+                'load',
+                setupPriceChartOverlay,
+                { once: true }
+            );
+        }
+    }
 
     // Historische Preisangaben öffnen dieselbe Preisverlaufsansicht wie
     // Brickmerges eigener Chart-Schalter.
