@@ -967,6 +967,33 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         #offerlist .bm-marketplace-country-flag-fr {
             background: linear-gradient(to right, #0055a4 0 33.333%, #fff 33.333% 66.666%, #ef4135 66.666% 100%) !important;
         }
+        @media screen and (min-width: 641px) {
+            #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage {
+                grid-template-columns: 50px 14px;
+                gap: 3px;
+            }
+            #offerlist .bm-ebay-wordmark {
+                width: 50px !important;
+                max-width: 50px !important;
+                max-height: 20px !important;
+            }
+            #offerlist .bm-ebay-seller-type-icon {
+                width: 14px;
+                height: 14px;
+                min-width: 14px;
+                min-height: 14px;
+            }
+            #offerlist .bm-ebay-seller-type-icon svg {
+                width: 13px;
+                height: 13px;
+            }
+            #offerlist .bm-marketplace-country-flag {
+                width: 14px;
+                height: 10px;
+                min-width: 14px;
+                min-height: 10px;
+            }
+        }
         #offerlist .bm-marketplace-logo-cell {
             display: flex !important;
             align-items: center;
@@ -4549,7 +4576,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 '</svg>';
             const fullLabel = document.createElement('span');
             fullLabel.className = 'bm-chart-label-full';
-            fullLabel.textContent = 'Details';
+            fullLabel.textContent = 'Details anzeigen';
             const mobileLabel = document.createElement('span');
             mobileLabel.className = 'bm-chart-label-mobile';
             mobileLabel.textContent = 'Details';

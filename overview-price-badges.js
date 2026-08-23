@@ -426,128 +426,52 @@
             .bm-detail-all-prices-refresh {
                 display: inline-flex !important;
                 align-items: center;
-                justify-content: center;
-                align-self: stretch;
-                gap: 0.35rem;
-                width: 100% !important;
-                min-width: 0 !important;
-                max-width: none !important;
-                min-height: 0;
-                margin: 0 0 0.35rem !important;
+                justify-content: flex-start;
+                flex: 0 1 auto;
+                gap: 0.3rem;
+                width: auto !important;
+                min-width: 0;
+                max-width: 100%;
+                min-height: 21px;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: 0 !important;
+                background: transparent !important;
+                color: #666 !important;
                 font-family: inherit !important;
-                line-height: 1.2;
+                font-size: 0.72rem;
+                font-weight: normal;
+                line-height: 1.1;
                 white-space: nowrap;
-                text-decoration: none;
+                text-decoration: none !important;
+                cursor: pointer;
                 transition: background-color 150ms ease, color 150ms ease;
                 box-sizing: border-box;
             }
             .bm-detail-all-prices-refresh:hover,
             .bm-detail-all-prices-refresh:focus-visible {
-                text-decoration: none;
+                color: #b00 !important;
+                text-decoration: underline !important;
             }
             .bm-plus-icon {
                 display: inline-flex;
-                width: 1.1em;
-                height: 1.1em;
-                flex: 0 0 1.1em;
+                width: 1em;
+                height: 1em;
+                flex: 0 0 1em;
                 align-items: center;
                 justify-content: center;
                 font-family: Arial, sans-serif;
-                font-size: 1.15em;
+                font-size: 1.1em;
                 font-weight: 700;
                 line-height: 1;
             }
-            .bm-chart-controls.bm-has-price-refresh {
-                display: grid !important;
-                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                align-items: stretch !important;
-                column-gap: 0.4rem !important;
-                width: 100%;
-                box-sizing: border-box;
-            }
-            .bm-chart-controls.bm-has-price-refresh.bmd-has-depot-button {
-                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-            }
-            .bm-chart-controls.bm-has-price-refresh > #chartTrigger,
-            .bm-chart-controls.bm-has-price-refresh > .bmd-open-button,
-            .bm-chart-controls.bm-has-price-refresh > .bm-detail-all-prices-refresh {
-                display: flex !important;
-                height: 44px !important;
-                min-height: 44px !important;
-                align-items: center !important;
-                justify-content: center !important;
-                width: 100% !important;
-                min-width: 0 !important;
-                max-width: none !important;
-                padding-top: 0 !important;
-                padding-bottom: 0 !important;
-                margin-right: 0 !important;
-                margin-left: 0 !important;
-                line-height: 1 !important;
-                text-align: center !important;
-                vertical-align: middle !important;
-                box-sizing: border-box;
-            }
-            .bm-chart-controls.bm-has-price-refresh > #chartTrigger .chartbutton,
-            .bm-chart-controls.bm-has-price-refresh > .bmd-open-button .bmd-button-content {
-                display: inline-flex !important;
-                width: 100% !important;
-                height: 1.2rem !important;
-                min-height: 1.2rem !important;
-                align-items: center !important;
-                justify-content: center !important;
-                gap: 0.35rem !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                line-height: 1 !important;
-                text-align: center !important;
-                vertical-align: middle !important;
-            }
-            .bm-chart-controls.bm-has-price-refresh .bm-chart-label-full,
-            .bm-chart-controls.bm-has-price-refresh .bmd-button-label-full,
-            .bm-chart-controls.bm-has-price-refresh .bm-refresh-label {
-                display: inline-flex !important;
-                align-items: center;
-                justify-content: center;
-                height: 1.2rem;
-                margin: 0 !important;
-                padding: 0 !important;
-                line-height: 1.2rem !important;
-                text-align: center !important;
-                vertical-align: middle !important;
-            }
-            .bm-chart-controls.bm-has-price-refresh .bm-chart-label-mobile,
-            .bm-chart-controls.bm-has-price-refresh .bmd-button-label-mobile {
-                display: none !important;
-            }
-            .bm-chart-controls.bm-has-price-refresh > .bm-chart-best-price {
-                grid-column: 1 / -1;
-            }
             .bm-detail-all-prices-refresh:focus-visible {
-                outline: 2px solid #aaa;
+                outline: 2px solid #b00;
                 outline-offset: 2px;
             }
             @media only screen and (max-width: 40em) {
                 .bm-detail-all-prices-refresh {
-                    padding-right: 0.3rem !important;
-                    padding-left: 0.3rem !important;
-                    font-size: 0.7rem !important;
-                }
-                .bm-chart-controls.bm-has-price-refresh .bm-chart-label-full,
-                .bm-chart-controls.bm-has-price-refresh .bmd-button-label-full {
-                    display: none !important;
-                }
-                .bm-chart-controls.bm-has-price-refresh .bm-chart-label-mobile,
-                .bm-chart-controls.bm-has-price-refresh .bmd-button-label-mobile {
-                    display: inline-flex !important;
-                    align-items: center;
-                    justify-content: center;
-                    height: 1.2rem;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    line-height: 1.2rem !important;
-                    text-align: center !important;
-                    vertical-align: middle !important;
+                    font-size: 0.68rem !important;
                 }
             }
             @keyframes bm-all-prices-spin { to { transform: rotate(360deg); } }
@@ -684,13 +608,12 @@
     };
 
     const createDetailRefreshButton = () => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className =
-            'button small smallGreyButton bm-detail-all-prices-refresh ' +
-            'bm-detail-action-button';
+        const button = document.createElement('a');
+        button.href = '#';
+        button.setAttribute('role', 'button');
+        button.className = 'bm-detail-all-prices-refresh';
         button.innerHTML =
-            '<span class="bm-plus-icon" aria-hidden="true">➕</span>' +
+            '<span class="bm-plus-icon" aria-hidden="true">+</span>' +
             '<span class="bm-refresh-label">Weitere Marktplätze abrufen</span>';
         button.title = 'Weitere Marktplätze abrufen; kann Apify-Guthaben verbrauchen.';
         button.setAttribute('aria-label', 'Weitere Marktplätze abrufen');
@@ -699,7 +622,7 @@
 
     const setRefreshButtonState = (button, state, error = '') => {
         button.classList.toggle('is-loading', state === 'loading');
-        button.disabled = state === 'loading';
+        button.setAttribute('aria-disabled', state === 'loading' ? 'true' : 'false');
         const label = state === 'loading'
             ? 'Weitere Marktplätze werden abgerufen …'
             : state === 'done'
@@ -875,23 +798,24 @@
 
     const mountDetailRefresh = (settings, workerBaseUrl) => {
         const offerlist = document.getElementById('offerlist');
-        const chartTrigger = document.getElementById('chartTrigger');
-        const host = chartTrigger?.parentElement;
-        if (!offerlist || !chartTrigger || !host) return false;
+        const toolbar = offerlist?.querySelector('.bm-offer-toolbar');
+        if (!offerlist || !toolbar) return false;
         const sources = buttonSources(settings);
         let button = document.querySelector('.bm-detail-all-prices-refresh');
         if (!button) {
             button = createDetailRefreshButton();
         }
-        host.classList.add('bm-chart-controls', 'bm-has-price-refresh');
-        const depotButton = host.querySelector(':scope > .bmd-open-button');
-        const insertAfter = depotButton || chartTrigger;
-        if (insertAfter.nextElementSibling !== button) {
-            insertAfter.insertAdjacentElement('afterend', button);
+        const discountControl = toolbar.querySelector(
+            ':scope > .bm-discount-toolbar-control'
+        );
+        if (button.parentElement !== toolbar) {
+            toolbar.insertBefore(button, discountControl || null);
         }
         if (button.dataset.bmRefreshBound !== 'true') {
             button.dataset.bmRefreshBound = 'true';
-            button.addEventListener('click', async () => {
+            button.addEventListener('click', async event => {
+                event.preventDefault();
+                if (button.getAttribute('aria-disabled') === 'true') return;
                 const data = extractDetailData();
                 if (!data) {
                     setRefreshButtonState(

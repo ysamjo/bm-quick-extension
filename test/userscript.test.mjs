@@ -25,7 +25,7 @@ const tweakerSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.21/);
+    assert.match(loaderSource, /@version\s+5\.5\.22/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -98,7 +98,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.21/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.22/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -264,6 +264,21 @@ test('current extension marketplace and minifigure features are bundled', () => 
     ]) {
         assert.match(source, new RegExp(sourceName, 'i'));
     }
+});
+
+test('marketplace refresh is a text action in the personal discount toolbar', () => {
+    assert.match(source, /document\.createElement\('a'\)/);
+    assert.match(source, /offerlist\?\.querySelector\('\.bm-offer-toolbar'\)/);
+    assert.match(source, /toolbar\.insertBefore\(button, discountControl \|\| null\)/);
+    assert.doesNotMatch(source, /host\.classList\.add\('bm-chart-controls', 'bm-has-price-refresh'\)/);
+    assert.match(source, /<span class="bm-plus-icon" aria-hidden="true">\+<\/span>/);
+});
+
+test('price history detail button keeps its chart icon', () => {
+    assert.match(tweakerSource, /icon\.className = 'bm-chart-action-icon'/);
+    assert.match(tweakerSource, /fullLabel\.textContent = 'Details anzeigen'/);
+    assert.match(tweakerSource, /buttonLabel\.append\(icon, fullLabel, mobileLabel\)/);
+    assert.match(tweakerSource, /<path d="m6 16 4-5 4 3 5-7"\/>/);
 });
 
 test('minifigure crosswalk assigns similar variants globally by character identity', () => {
@@ -493,7 +508,7 @@ test('eBay Offerlist uses black logos with distinct source markers', () => {
     assert.match(tweakerSource, /bm-ebay-wordmark/);
     assert.match(tweakerSource, /viewBox', '0 0 1000 400\.75098'/);
     assert.match(tweakerSource, /createElementNS/);
-    assert.match(tweakerSource, /grid-template-columns:\s*62px 16px/);
+    assert.match(tweakerSource, /grid-template-columns:\s*50px 14px/);
     assert.match(tweakerSource, /function decorateEbaySellerTypeIcon\(/);
     assert.match(tweakerSource, /bm-ebay-commercial-icon/);
     assert.match(tweakerSource, /bm-ebay-private-icon/);
