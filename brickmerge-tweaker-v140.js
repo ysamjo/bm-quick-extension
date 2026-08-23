@@ -11532,6 +11532,18 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             .bm-chart-controls.bmd-has-depot-button > .bm-chart-best-price {
                 grid-column:1/-1
             }
+            @media screen and (min-width:641px) {
+                .bm-chart-controls.bmd-has-depot-button > #chartTrigger,
+                .bm-chart-controls.bmd-has-depot-button > .bmd-open-button {
+                    display:flex!important;align-items:center!important;
+                    justify-content:center!important;min-height:2.9rem!important;
+                    margin-bottom:0!important
+                }
+                .bm-chart-controls.bmd-has-depot-button > #chartTrigger
+                .chartbutton {
+                    padding:0!important;line-height:1.2!important
+                }
+            }
             body.bmd-overlay-open { overflow:hidden!important }
             .bmd-overlay {
                 position:fixed;inset:0;z-index:2147483000;display:flex;

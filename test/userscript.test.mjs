@@ -25,7 +25,7 @@ const tweakerSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.5\.23/);
+    assert.match(loaderSource, /@version\s+5\.5\.24/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -98,7 +98,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.5\.23/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.5\.24/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -299,6 +299,17 @@ test('price history detail button keeps its chart icon', () => {
     assert.match(tweakerSource, /fullLabel\.textContent = 'Details anzeigen'/);
     assert.match(tweakerSource, /buttonLabel\.append\(icon, fullLabel, mobileLabel\)/);
     assert.match(tweakerSource, /<path d="m6 16 4-5 4 3 5-7"\/>/);
+});
+
+test('desktop detail and stock buttons share one height and alignment', () => {
+    assert.match(
+        tweakerSource,
+        /min-height:2\.9rem!important;[\s\S]*?margin-bottom:0!important/
+    );
+    assert.match(
+        tweakerSource,
+        /#chartTrigger\s*\n\s*\.chartbutton \{[\s\S]*?padding:0!important;line-height:1\.2!important/
+    );
 });
 
 test('minifigure crosswalk assigns similar variants globally by character identity', () => {
