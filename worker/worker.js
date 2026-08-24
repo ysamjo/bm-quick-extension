@@ -456,6 +456,7 @@ function normalizeLeboncoinItems(rawItems, setNumber) {
       : item.shipping_price !== null && item.shipping_price !== void 0
         ? parseListingPrice(item.shipping_price) !== null
         : null;
+    if (shippingAvailable === false) return null;
     const shippingCost = parseListingPrice(
       item.shippingCost ?? item.shipping_price ?? item.delivery_price ?? item.attributes?.shipping_price
     );
@@ -1110,7 +1111,7 @@ function json(body, status = 200, extraHeaders = {}) {
 __name(json, "json");
 
 // src/index.js
-var VERSION = "2.4.9";
+var VERSION = "2.5.2";
 var CACHE_SCHEMA = "bm-central-v22";
 var EBAY_FR_SHARED_CACHE_VERSION = "v6";
 var inflightRequests = /* @__PURE__ */ new Map();
@@ -1167,11 +1168,12 @@ var APIFY_CONFIG = Object.freeze({
   }),
   leboncoin: Object.freeze({
     actorId: "blackfalcondata~leboncoin-scraper",
-    cacheVersion: "v6",
+    cacheVersion: "v8",
     listingHost: "www.leboncoin.fr",
     normalize: normalizeLeboncoinItems,
     buildInput(setNumber) {
       return {
+        startUrls: [buildLeboncoinSearchUrl(setNumber)],
         allowLowConfidence: false,
         compact: false,
         descriptionFormat: "all",
@@ -1185,9 +1187,7 @@ var APIFY_CONFIG = Object.freeze({
         maxResults: 10,
         mode: "listings",
         notifyOnlyChanges: false,
-        query: setNumber,
         skipReposts: true,
-        sort: "relevance"
       };
     }
   }),
@@ -2406,7 +2406,17 @@ async function startApifyMarketplaceJob(request, url, env, marketplace) {
     }), { expirationTtl: APIFY_JOB_TTL_SECONDS });
     return json2({ pending: true, jobId, statusUrl: `/apify/status?job=${encodeURIComponent(jobId)}`, pollAfterMs: 1500 }, 202);
   } catch (error) {
-    return json2({ error: "Apify-Lauf konnte nicht gestartet werden.", code: error?.code || "ACTOR_START_FAILED" }, error?.code === "APIFY_RATE_LIMIT" ? 429 : 502);
+    console.error("Apify marketplace start failed", {
+      marketplace,
+      setNumber,
+      code: error?.code || "ACTOR_START_FAILED",
+      upstreamStatus: error?.upstreamStatus || null
+    });
+    return json2({
+      error: "Apify-Lauf konnte nicht gestartet werden.",
+      code: error?.code || "ACTOR_START_FAILED",
+      upstreamStatus: error?.upstreamStatus || null
+    }, error?.code === "APIFY_RATE_LIMIT" ? 429 : 502);
   }
 }
 __name(startApifyMarketplaceJob, "startApifyMarketplaceJob");

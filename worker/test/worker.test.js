@@ -19,7 +19,7 @@ test('health reports version and KV binding', async () => {
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.ok, true);
-  assert.equal(body.version, '2.4.9');
+  assert.equal(body.version, '2.5.2');
   assert.equal(body.cache, 'edge+kv');
 });
 
@@ -700,12 +700,17 @@ test('BrickLink-Minifiguren werden mit Namen und Menge strukturiert extrahiert',
   test('APIFY_CONFIG.leboncoin.buildInput erzeugt das exakte Leboncoin-Actor-Input', () => {
     const input = __test.APIFY_CONFIG.leboncoin.buildInput('71426');
     assert.equal(input.maxResults, 10);
-    assert.equal(input.query, '71426');
     assert.equal(input.mode, 'listings');
-    assert.equal(input.sort, 'relevance');
     assert.equal(input.skipReposts, true);
     assert.equal(input.extractContacts, false);
-    assert.equal(input.startUrls, undefined);
+    assert.deepEqual(input.startUrls, [__test.buildLeboncoinSearchUrl('71426')]);
+    const searchUrl = new URL(input.startUrls[0]);
+    assert.equal(searchUrl.searchParams.get('text'), 'lego 71426');
+    assert.equal(searchUrl.searchParams.get('sort'), 'relevance');
+    assert.equal(searchUrl.searchParams.get('item_condition'), '1');
+    assert.equal(searchUrl.searchParams.get('shippable'), '1');
+    assert.equal(input.query, undefined);
+    assert.equal(input.sort, undefined);
   });
 
   test('StockX verwendet drei Treffer und das erforderliche 0,10-USD-Lauflimit', () => {
@@ -792,6 +797,7 @@ test('BrickLink-Minifiguren werden mit Namen und Menge strukturiert extrahiert',
       { id: 'l4', subject: 'Marklin 71426 train connexion', price: 3, url: 'https://www.leboncoin.fr/ad/l4', attributes: { condition: 'etatneuf' } },
       { id: 'l5', subject: 'Playmobil 71426 neuf', price: 4, url: 'https://www.leboncoin.fr/ad/l5', attributes: { condition: 'etatneuf' } },
       { id: 'l6', subject: 'LEGO 71426 neuf - seulement remise en main propre', price: 25, url: 'https://www.leboncoin.fr/ad/l6', attributes: { condition: 'etatneuf', shippable: 'false' } },
+      { id: 'l7', subject: 'LEGO 71426 neuf', price: 30, url: 'https://www.leboncoin.fr/ad/l7', attributes: { condition: 'etatneuf', shippable: 'false' } },
       { listingId: '3246277023', title: 'LEGO Super Mario 71426 Plante Piranha neuf', price: 55, url: 'https://www.leboncoin.fr/ad/jeux_jouets/3246277023', city: 'Paris', thumbUrls: ['https://img.leboncoin.fr/example.jpg'], attributes: { condition: 'etatneuf', shippable: 'true' } }
     ];
     const result = __test.normalizeLeboncoinItems(rawItems, '71426');
