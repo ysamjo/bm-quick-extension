@@ -1172,32 +1172,36 @@ globalThis.BM_isFranceEnabled = settings =>
                     .bm-detail-all-prices-refresh {
                         display: inline-flex !important;
                         align-items: center;
-                        justify-content: flex-start;
-                        flex: 0 1 auto;
+                        justify-content: center;
+                        flex: 1 1 0;
                         gap: 0.3rem;
-                        width: auto !important;
+                        width: 100% !important;
                         min-width: 0;
                         max-width: 100%;
-                        min-height: 21px;
+                        min-height: 2.9rem;
                         margin: 0 !important;
-                        padding: 0 !important;
-                        border: 0 !important;
-                        background: transparent !important;
-                        color: #666 !important;
+                        padding: 0.55rem 0.75rem !important;
+                        border: 1px solid #e2e2e2 !important;
+                        border-radius: 2px !important;
+                        background: #f1f1f1 !important;
+                        color: #444 !important;
                         font-family: inherit !important;
-                        font-size: 0.72rem;
+                        font-size: 0.8rem;
                         font-weight: normal;
-                        line-height: 1.1;
+                        line-height: 1.2;
                         white-space: nowrap;
                         text-decoration: none !important;
                         cursor: pointer;
-                        transition: background-color 150ms ease, color 150ms ease;
+                        transition: background-color 150ms ease, border-color 150ms ease,
+                            color 150ms ease;
                         box-sizing: border-box;
                     }
                     .bm-detail-all-prices-refresh:hover,
                     .bm-detail-all-prices-refresh:focus-visible {
-                        color: #b00 !important;
-                        text-decoration: underline !important;
+                        border-color: #cfcfcf !important;
+                        background: #e8e8e8 !important;
+                        color: #a80000 !important;
+                        text-decoration: none !important;
                     }
                     .bm-plus-icon {
                         display: inline-flex;
@@ -1218,6 +1222,10 @@ globalThis.BM_isFranceEnabled = settings =>
                     @media only screen and (max-width: 40em) {
                         .bm-detail-all-prices-refresh {
                             font-size: 0.68rem !important;
+                            min-height: 2.7rem;
+                            padding: 0.4rem 0.5rem !important;
+                            white-space: normal;
+                            text-align: center;
                         }
                     }
                     @keyframes bm-all-prices-spin { to { transform: rotate(360deg); } }
@@ -3978,12 +3986,17 @@ globalThis.BM_isFranceEnabled = settings =>
                     }
                 }
                 .bm-offer-toolbar {
-                    display: flex;
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
                     align-items: center;
-                    justify-content: space-between;
-                    gap: 0.75rem;
-                    margin: 0 0 0.15rem !important;
+                    gap: 0.4rem;
+                    width: 100%;
+                    margin: 0.4rem 0 0.15rem !important;
                     padding: 0;
+                    box-sizing: border-box;
+                }
+                .bm-offer-toolbar > .bm-offerlist-loading {
+                    grid-column: 1 / -1;
                 }
                 #offerlist .bm-marketplace-offer.bm-offer-entering {
                     overflow: hidden;
@@ -4146,11 +4159,25 @@ globalThis.BM_isFranceEnabled = settings =>
                     display: flex;
                     align-items: center;
                     gap: 0.35rem;
-                    justify-content: flex-end;
-                    width: auto;
-                    margin-top: 0;
-                    margin-left: auto;
-                    min-height: 21px;
+                    justify-content: center;
+                    width: 100%;
+                    min-width: 0;
+                    min-height: 2.9rem;
+                    margin: 0;
+                    padding: 0.55rem 0.75rem;
+                    border: 1px solid #e2e2e2;
+                    border-radius: 2px;
+                    background: #f1f1f1;
+                    color: #444;
+                    box-sizing: border-box;
+                    transition: background-color 150ms ease, border-color 150ms ease,
+                        color 150ms ease;
+                }
+                .bm-discount-toolbar-control:hover,
+                .bm-discount-toolbar-control:focus-within {
+                    border-color: #cfcfcf;
+                    background: #e8e8e8;
+                    color: #a80000;
                 }
                 .bm-discount-toolbar-control .switch {
                     flex: 0 0 auto;
@@ -4176,7 +4203,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     background: transparent !important;
                     border: 0 !important;
                     border-radius: 0 !important;
-                    color: #555 !important;
+                    color: inherit !important;
                     font-size: 0.8rem !important;
                     font-weight: normal !important;
                     line-height: 1.1 !important;
@@ -4185,10 +4212,24 @@ globalThis.BM_isFranceEnabled = settings =>
                 .bm-discount-settings-trigger:hover,
                 .bm-discount-settings-trigger:focus {
                     background: transparent !important;
-                    color: #b00000 !important;
-                    text-decoration: underline !important;
-                    text-underline-offset: 0.18rem;
+                    color: inherit !important;
+                    text-decoration: none !important;
                     outline: none;
+                }
+                @media screen and (max-width: 640px) {
+                    .bm-offer-toolbar {
+                        gap: 0.35rem;
+                        margin-top: 0.35rem !important;
+                    }
+                    .bm-discount-toolbar-control {
+                        min-height: 2.7rem;
+                        padding: 0.4rem 0.5rem;
+                    }
+                    .bm-discount-settings-trigger {
+                        font-size: 0.68rem !important;
+                        white-space: normal;
+                        text-align: left;
+                    }
                 }
                 .bm-settings-overlay {
                     position: fixed;
@@ -13115,7 +13156,18 @@ globalThis.BM_isFranceEnabled = settings =>
                     .bm-chart-controls.bmd-has-depot-button > .bm-detail-all-prices-refresh {
                         width:100%!important;min-width:0!important;max-width:none!important;
                         margin-right:0!important;margin-left:0!important;
-                        box-sizing:border-box
+                        border:1px solid #e2e2e2!important;border-radius:2px!important;
+                        background:#f1f1f1!important;background-image:none!important;
+                        color:#444!important;box-shadow:none!important;text-shadow:none!important;
+                        box-sizing:border-box;transition:background-color 150ms ease,
+                        border-color 150ms ease,color 150ms ease
+                    }
+                    .bm-chart-controls.bmd-has-depot-button > #chartTrigger:hover,
+                    .bm-chart-controls.bmd-has-depot-button > #chartTrigger:focus-visible,
+                    .bm-chart-controls.bmd-has-depot-button > .bmd-open-button:hover,
+                    .bm-chart-controls.bmd-has-depot-button > .bmd-open-button:focus-visible {
+                        border-color:#cfcfcf!important;background:#e8e8e8!important;
+                        color:#a80000!important
                     }
                     .bm-chart-controls.bmd-has-depot-button > .bm-chart-best-price {
                         grid-column:1/-1

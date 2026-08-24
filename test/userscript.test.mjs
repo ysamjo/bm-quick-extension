@@ -25,7 +25,7 @@ const tweakerSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.2/);
+    assert.match(loaderSource, /@version\s+5\.6\.3/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -98,7 +98,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.2/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.3/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -334,6 +334,21 @@ test('desktop detail and stock buttons share one height and alignment', () => {
     assert.match(
         tweakerSource,
         /#chartTrigger\s*\n\s*\.chartbutton \{[\s\S]*?padding:0!important;line-height:1\.2!important/
+    );
+});
+
+test('detail actions form a consistent two-by-two action grid', () => {
+    assert.match(
+        tweakerSource,
+        /\.bm-offer-toolbar \{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/
+    );
+    assert.match(
+        tweakerSource,
+        /\.bm-discount-toolbar-control \{[\s\S]*?min-height:\s*2\.9rem;[\s\S]*?background:\s*#f1f1f1;/
+    );
+    assert.match(
+        source,
+        /\.bm-detail-all-prices-refresh \{[\s\S]*?min-height:\s*2\.9rem;[\s\S]*?background:\s*#f1f1f1 !important;/
     );
 });
 

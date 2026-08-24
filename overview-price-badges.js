@@ -426,32 +426,36 @@
             .bm-detail-all-prices-refresh {
                 display: inline-flex !important;
                 align-items: center;
-                justify-content: flex-start;
-                flex: 0 1 auto;
+                justify-content: center;
+                flex: 1 1 0;
                 gap: 0.3rem;
-                width: auto !important;
+                width: 100% !important;
                 min-width: 0;
                 max-width: 100%;
-                min-height: 21px;
+                min-height: 2.9rem;
                 margin: 0 !important;
-                padding: 0 !important;
-                border: 0 !important;
-                background: transparent !important;
-                color: #666 !important;
+                padding: 0.55rem 0.75rem !important;
+                border: 1px solid #e2e2e2 !important;
+                border-radius: 2px !important;
+                background: #f1f1f1 !important;
+                color: #444 !important;
                 font-family: inherit !important;
-                font-size: 0.72rem;
+                font-size: 0.8rem;
                 font-weight: normal;
-                line-height: 1.1;
+                line-height: 1.2;
                 white-space: nowrap;
                 text-decoration: none !important;
                 cursor: pointer;
-                transition: background-color 150ms ease, color 150ms ease;
+                transition: background-color 150ms ease, border-color 150ms ease,
+                    color 150ms ease;
                 box-sizing: border-box;
             }
             .bm-detail-all-prices-refresh:hover,
             .bm-detail-all-prices-refresh:focus-visible {
-                color: #b00 !important;
-                text-decoration: underline !important;
+                border-color: #cfcfcf !important;
+                background: #e8e8e8 !important;
+                color: #a80000 !important;
+                text-decoration: none !important;
             }
             .bm-plus-icon {
                 display: inline-flex;
@@ -472,6 +476,10 @@
             @media only screen and (max-width: 40em) {
                 .bm-detail-all-prices-refresh {
                     font-size: 0.68rem !important;
+                    min-height: 2.7rem;
+                    padding: 0.4rem 0.5rem !important;
+                    white-space: normal;
+                    text-align: center;
                 }
             }
             @keyframes bm-all-prices-spin { to { transform: rotate(360deg); } }
