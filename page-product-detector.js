@@ -47,6 +47,9 @@
         const pageLooksLikeLego = /\bLEGO(?:®)?\b/i.test(
             `${pageName} ${normalize(product?.brand?.name || product?.brand)}`
         );
+        const isBrickmergePage = /(?:^|\.)brickmerge\.de$/i.test(
+            locationValue.hostname
+        );
         const metadataSets = pageLooksLikeLego
             ? [
                 product.mpn,
@@ -57,10 +60,14 @@
             ]
             : [];
         const setCandidates = [
-            locationValue.pathname.match(/\/(\d{3,7})-\d+_/)?.[1],
-            locationValue.search.match(
-                /[?&](?:find|q|query|search)=[^&]*?\b(\d{3,7})\b/i
-            )?.[1],
+            isBrickmergePage
+                ? locationValue.pathname.match(/\/(\d{3,7})-\d+_/)?.[1]
+                : '',
+            pageLooksLikeLego || isBrickmergePage
+                ? locationValue.search.match(
+                    /[?&](?:find|q|query|search)=[^&]*?\b(\d{3,7})\b/i
+                )?.[1]
+                : '',
             pageName.match(/\bLEGO(?:®)?\D{0,24}(\d{3,7})\b/i)?.[1],
             ...metadataSets
         ].map(normalize).filter(validSet);

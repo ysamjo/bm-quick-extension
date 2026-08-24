@@ -46,7 +46,7 @@ test('numeric merchant SKU is not mistaken for a LEGO set', () => {
         name: 'Coffee machine',
         brand: { name: 'Example' },
         mpn: '42154'
-    }), new URL('https://shop.example/coffee-machine'));
+    }), new URL('https://shop.example/coffee-machine?q=42154'));
     assert.equal(product, null);
 });
 
