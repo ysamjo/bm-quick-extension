@@ -95,6 +95,8 @@ test('embedded Brickmerge header is hidden only in the side panel frame', () => 
     assert.match(source, /bm-sidepanel-frame/);
     assert.match(source, /#filterrow/);
     assert.match(source, /\.top-tab/);
+    assert.match(source, /zoom:\s*0\.8/);
+    assert.match(source, /\.content\.setdetails h1/);
 });
 
 test('toolbar click opens the side panel only for a detected product', () => {

@@ -506,6 +506,14 @@ globalThis.BM_isFranceEnabled = settings =>
         html.bm-sidepanel-frame .top-tab {
             display: none !important;
         }
+        html.bm-sidepanel-frame body {
+            width: 125% !important;
+            min-height: 125% !important;
+            zoom: 0.8;
+        }
+        html.bm-sidepanel-frame .content.setdetails h1 {
+            display: none !important;
+        }
     `;
     root.appendChild(style);
 
