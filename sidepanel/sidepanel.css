@@ -15,49 +15,71 @@ html, body { width: 100%; height: 100%; margin: 0; }
 body { display: flex; min-width: 300px; flex-direction: column; overflow: hidden; background: #fafafa; color: var(--text); }
 button { font: inherit; }
 
-.app-header {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 34px;
-  align-items: center;
-  gap: 9px;
-  flex: 0 0 auto;
-  padding: 8px 10px;
-  border-top: 4px solid var(--red);
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-}
-.app-header img { width: 34px; height: 34px; border-radius: 8px; }
-.app-header h1 { margin: 0; font-size: .98rem; line-height: 1.15; }
-.app-header p { overflow: hidden; margin: 2px 0 0; color: var(--muted); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
-.square-button {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-}
-.square-button:hover { border-color: var(--red); color: var(--red); }
-.square-button svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
 main { display: flex; min-height: 0; flex: 1; flex-direction: column; }
 .status-card {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 7px;
   flex: 0 0 auto;
   margin: 10px;
-  padding: 10px 11px;
+  min-height: 46px;
+  padding: 5px 7px 5px 10px;
   border-left: 4px solid var(--yellow);
   border-radius: 3px 8px 8px 3px;
   background: var(--surface-soft);
   color: var(--muted);
 }
 .status-card.is-error { border-left-color: var(--red); color: var(--red); }
-.status-card.is-done .spinner { display: none; }
+.status-card.is-done .spinner,
+.status-card:not(.is-loading) .spinner { display: none; }
+.panel-search-form {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+}
+.panel-search-form input {
+  min-width: 0;
+  width: 100%;
+  height: 34px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text);
+}
+.panel-search-form button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  padding: 6px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--red);
+  color: #fff;
+  cursor: pointer;
+}
+.panel-search-form button:hover { background: #8e0000; }
+.panel-search-form svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.status-message,
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 .spinner {
   width: 16px;
   height: 16px;

@@ -1,12 +1,12 @@
 (() => {
     'use strict';
 
-    const pageHost = document.getElementById('page-host');
     const statusCard = document.getElementById('status-card');
     const statusText = document.getElementById('status-text');
+    const searchForm = document.getElementById('panel-search-form');
+    const searchInput = document.getElementById('panel-query');
     const browserView = document.getElementById('browser-view');
     const brickmergeFrame = document.getElementById('brickmerge-frame');
-    const rescan = document.getElementById('rescan');
 
     let activeTabId = null;
     let loadSequence = 0;
@@ -16,7 +16,7 @@
         statusText.textContent = text;
         statusCard.classList.toggle('is-error', state === 'error');
         statusCard.classList.toggle('is-done', state === 'done');
-        statusCard.hidden = !text;
+        statusCard.classList.toggle('is-loading', state === 'loading');
     };
 
     const buildBrickmergeUrl = product => {
@@ -65,16 +65,20 @@
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (sequence !== loadSequence) return;
         activeTabId = tab?.id || null;
-        let hostname = 'Keine normale Webseite';
-        try { hostname = new URL(tab?.url || '').hostname || hostname; } catch {}
-        pageHost.textContent = hostname;
         const product = activeTabId ? await detectInTab(activeTabId) : null;
         if (sequence !== loadSequence) return;
         if (!showProduct(product)) {
             showNoProduct('Auf dieser Seite wurde kein LEGO-Set erkannt.');
         }
     };
-    rescan.addEventListener('click', () => void loadActiveTab());
+    searchForm.addEventListener('submit', event => {
+        event.preventDefault();
+        const query = searchInput.value.replace(/\s+/g, ' ').trim();
+        if (!query) return;
+        showProduct(/^\d{13}$/.test(query)
+            ? { ean: query }
+            : { setNumber: query });
+    });
     brickmergeFrame.addEventListener('load', () => setStatus('', 'done'));
     chrome.tabs.onActivated.addListener(() => {
         clearTimeout(rescanTimer);

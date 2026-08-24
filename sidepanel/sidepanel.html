@@ -7,21 +7,22 @@
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <header class="app-header">
-    <img src="../icons/icon48.png" width="36" height="36" alt="">
-    <div>
-      <h1>Brickmerge Tools</h1>
-      <p id="page-host">Aktive Seite wird geprüft …</p>
-    </div>
-    <button id="rescan" class="square-button" type="button" title="Aktive Seite erneut prüfen" aria-label="Aktive Seite erneut prüfen">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66"></path><path d="M20 4v7h-7"></path></svg>
-    </button>
-  </header>
-
   <main>
     <section id="status-card" class="status-card" aria-live="polite">
+      <form id="panel-search-form" class="panel-search-form">
+        <label class="visually-hidden" for="panel-query">Setnummer, EAN oder Suchbegriff</label>
+        <input id="panel-query" type="search" autocomplete="off"
+               placeholder="Setnummer, EAN oder Suchbegriff">
+        <button type="submit" title="Brickmerge-Suche starten"
+                aria-label="Brickmerge-Suche starten">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.8" cy="10.8" r="6.2"></circle>
+            <path d="m16 16 5 5"></path>
+          </svg>
+        </button>
+      </form>
       <span class="spinner" aria-hidden="true"></span>
-      <span id="status-text">LEGO-Set wird erkannt …</span>
+      <span id="status-text" class="status-message"></span>
     </section>
 
     <section id="browser-view" class="browser-view" hidden>

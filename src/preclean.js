@@ -5,6 +5,8 @@
     if (!root) return;
 
     root.classList.add('bm-extension-preclean', 'bm-extension-cleaner-enabled');
+    const isSidepanelFrame = window.top !== window;
+    if (isSidepanelFrame) root.classList.add('bm-sidepanel-frame');
 
     const style = document.createElement('style');
     style.id = 'bm-extension-preclean-style';
@@ -24,6 +26,10 @@
         html.bm-extension-cleaner-enabled #offerlist .goto.medium-7,
         html.bm-extension-cleaner-enabled #offerlist span.showmore,
         html.bm-extension-cleaner-enabled form[name="sctoggle"] {
+            display: none !important;
+        }
+        html.bm-sidepanel-frame #filterrow,
+        html.bm-sidepanel-frame .top-tab {
             display: none !important;
         }
     `;
