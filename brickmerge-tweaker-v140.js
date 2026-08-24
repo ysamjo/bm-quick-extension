@@ -2331,7 +2331,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             align-items: center;
             gap: 0.4rem;
             width: 100%;
-            margin: 0.4rem 0 0.15rem !important;
+            margin: 0.4rem 0 !important;
             padding: 0;
             box-sizing: border-box;
         }
@@ -2387,7 +2387,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             }
             .bm-offer-toolbar {
                 min-height: 24px;
-                margin: 0 0 0.15rem !important;
+                margin: 0.4rem 0 !important;
             }
         }
         #ol1st .bm-offer-toolbar + .row.collapse {
@@ -2452,7 +2452,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 font-size: 0.65rem;
             }
             .bm-offer-toolbar {
-                margin: 0 0 0.15rem !important;
+                margin: 0.35rem 0 !important;
             }
             #wrap.bm-set-wrap {
                 margin-bottom: -104px !important;
@@ -2503,6 +2503,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             width: 100%;
             min-width: 0;
             min-height: 2.9rem;
+            height: 2.9rem;
+            max-height: 2.9rem;
             margin: 0;
             padding: 0.55rem 0.75rem;
             border: 1px solid #e2e2e2;
@@ -2559,10 +2561,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         @media screen and (max-width: 640px) {
             .bm-offer-toolbar {
                 gap: 0.35rem;
-                margin-top: 0.35rem !important;
+                margin: 0.35rem 0 !important;
             }
             .bm-discount-toolbar-control {
                 min-height: 2.7rem;
+                height: 2.7rem;
+                max-height: 2.7rem;
                 padding: 0.4rem 0.5rem;
             }
             .bm-discount-settings-trigger {
@@ -11495,6 +11499,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             .bm-chart-controls.bmd-has-depot-button > .bmd-open-button,
             .bm-chart-controls.bmd-has-depot-button > .bm-detail-all-prices-refresh {
                 width:100%!important;min-width:0!important;max-width:none!important;
+                height:2.9rem!important;min-height:2.9rem!important;
+                max-height:2.9rem!important;padding-top:0!important;
+                padding-bottom:0!important;
                 margin-right:0!important;margin-left:0!important;
                 border:1px solid #e2e2e2!important;border-radius:2px!important;
                 background:#f1f1f1!important;background-image:none!important;
@@ -11715,6 +11722,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         max(15px,env(safe-area-inset-left))
                 }
                 .bmd-dialog-header h3 { font-size:1.08rem!important }
+                .bm-chart-controls.bmd-has-depot-button > #chartTrigger,
+                .bm-chart-controls.bmd-has-depot-button > .bmd-open-button {
+                    height:2.7rem!important;min-height:2.7rem!important;
+                    max-height:2.7rem!important
+                }
                 .bmd-open-button { min-width:0;flex:0 0 auto;font-size:.7rem!important }
                 .bmd-button-label-full { display:none }
                 .bmd-button-label-mobile { display:inline }

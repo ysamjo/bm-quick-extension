@@ -43,7 +43,6 @@ button {
   cursor: pointer;
 }
 .search-row button { height: 38px; padding: 0 14px; }
-.icon-button,
 .settings {
   display: flex;
   width: 38px;
@@ -57,7 +56,6 @@ button {
   background: #fff;
   color: #333;
 }
-.icon-button svg,
 .settings svg {
   width: 100%;
   height: 100%;
@@ -69,5 +67,5 @@ button {
 }
 @media (prefers-color-scheme: dark) {
   body { background: #202124; color: #eee; }
-  input, .icon-button, .settings { border-color: #555; background: #2c2d2f; color: #eee; }
+  input, .settings { border-color: #555; background: #2c2d2f; color: #eee; }
 }

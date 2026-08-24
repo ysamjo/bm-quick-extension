@@ -34,7 +34,9 @@ Der Erweiterungsname in Chrome lautet **Brickmerge Tools**. Ein separater
 
 Die Extension besitzt zusätzlich ein Side Panel. Ein grünes Häkchen am
 Toolbar-Icon zeigt an, dass auf der aktiven Seite ein LEGO-Set erkannt wurde.
-Das Panel lädt anschließend die echte responsive Brickmerge-Detailseite. Die
+Ein Klick auf das Icon öffnet dann direkt das Panel mit der echten responsiven
+Brickmerge-Detailseite. Ohne erkannten Set-Kontext zeigt der Klick stattdessen
+die Brickmerge-Suche und die Einstellungen. Die
 vorhandenen Extension-Skripte laufen auch in diesem eingebetteten Frame, sodass
 kein zusätzliches Userscript nötig ist. Dieses Browser-Feature ist absichtlich
 nicht Teil des mobilen Userscripts.

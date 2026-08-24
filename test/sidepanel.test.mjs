@@ -78,7 +78,32 @@ test('side panel embeds the responsive Brickmerge page', () => {
         'utf8'
     );
     assert.match(html, /id="brickmerge-frame"/);
+    assert.doesNotMatch(html, /id="manual-form"/);
     assert.doesNotMatch(html, /sidepanel-core\.js/);
     assert.match(source, /chrome\.tabs\.sendMessage/);
     assert.match(source, /www\.brickmerge\.de/);
+    assert.doesNotMatch(source, /manualQuery|manualForm/);
+});
+
+test('toolbar click opens the side panel only for a detected product', () => {
+    const background = fs.readFileSync(
+        new URL('../background.js', import.meta.url),
+        'utf8'
+    );
+    const popup = fs.readFileSync(
+        new URL('../popup/popup.html', import.meta.url),
+        'utf8'
+    );
+    assert.match(background, /chrome\.action\.setPopup\(\{ tabId, popup: '' \}\)/);
+    assert.match(
+        background,
+        /chrome\.action\.onClicked\.addListener[\s\S]*?chrome\.sidePanel\.open/
+    );
+    assert.match(
+        background,
+        /chrome\.action\.setPopup\(\{ tabId, popup: DEFAULT_POPUP \}\)/
+    );
+    assert.match(popup, /id="search-form"/);
+    assert.match(popup, /id="open-options"/);
+    assert.doesNotMatch(popup, /id="open-sidepanel"/);
 });

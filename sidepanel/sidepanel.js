@@ -4,8 +4,6 @@
     const pageHost = document.getElementById('page-host');
     const statusCard = document.getElementById('status-card');
     const statusText = document.getElementById('status-text');
-    const manualForm = document.getElementById('manual-form');
-    const manualQuery = document.getElementById('manual-query');
     const browserView = document.getElementById('browser-view');
     const brickmergeFrame = document.getElementById('brickmerge-frame');
     const rescan = document.getElementById('rescan');
@@ -30,7 +28,6 @@
 
     const showProduct = product => {
         if (!product?.setNumber && !product?.ean) return false;
-        manualForm.hidden = true;
         browserView.hidden = false;
         setStatus('Mobile Brickmerge-Seite wird geladen …');
         brickmergeFrame.src = buildBrickmergeUrl(product);
@@ -55,17 +52,15 @@
         }
     };
 
-    const showManualSearch = message => {
+    const showNoProduct = message => {
         browserView.hidden = true;
         brickmergeFrame.removeAttribute('src');
-        manualForm.hidden = false;
         setStatus(message, 'done');
     };
 
     const loadActiveTab = async () => {
         const sequence = ++loadSequence;
         browserView.hidden = true;
-        manualForm.hidden = true;
         setStatus('Aktive Seite wird geprüft …');
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (sequence !== loadSequence) return;
@@ -76,18 +71,9 @@
         const product = activeTabId ? await detectInTab(activeTabId) : null;
         if (sequence !== loadSequence) return;
         if (!showProduct(product)) {
-            showManualSearch('Auf dieser Seite wurde kein LEGO-Set erkannt.');
+            showNoProduct('Auf dieser Seite wurde kein LEGO-Set erkannt.');
         }
     };
-
-    manualForm.addEventListener('submit', event => {
-        event.preventDefault();
-        const query = manualQuery.value.replace(/\s+/g, ' ').trim();
-        if (!query) return;
-        showProduct(/^\d{13}$/.test(query)
-            ? { ean: query }
-            : { setNumber: query });
-    });
     rescan.addEventListener('click', () => void loadActiveTab());
     brickmergeFrame.addEventListener('load', () => setStatus('', 'done'));
     chrome.tabs.onActivated.addListener(() => {

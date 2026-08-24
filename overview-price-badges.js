@@ -433,6 +433,8 @@
                 min-width: 0;
                 max-width: 100%;
                 min-height: 2.9rem;
+                height: 2.9rem;
+                max-height: 2.9rem;
                 margin: 0 !important;
                 padding: 0.55rem 0.75rem !important;
                 border: 1px solid #e2e2e2 !important;
@@ -477,6 +479,8 @@
                 .bm-detail-all-prices-refresh {
                     font-size: 0.68rem !important;
                     min-height: 2.7rem;
+                    height: 2.7rem;
+                    max-height: 2.7rem;
                     padding: 0.4rem 0.5rem !important;
                     white-space: normal;
                     text-align: center;

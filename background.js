@@ -1,6 +1,7 @@
 importScripts('shared.js');
 
 const CLEANUP_RULESET = 'brickmerge_cleanup';
+const DEFAULT_POPUP = 'popup/popup.html';
 const detectedProducts = new Map();
 const ALLOWED_FETCH_HOSTS = new Set([
     'brickmerge.de',
@@ -103,6 +104,7 @@ async function updateDetectedProduct(tabId, product) {
         await Promise.all([
             chrome.action.setBadgeText({ tabId, text: '✓' }),
             chrome.action.setBadgeBackgroundColor({ tabId, color: '#16843f' }),
+            chrome.action.setPopup({ tabId, popup: '' }),
             chrome.action.setTitle({
                 tabId,
                 title: product.setNumber
@@ -118,9 +120,16 @@ async function updateDetectedProduct(tabId, product) {
     detectedProducts.delete(tabId);
     await Promise.all([
         chrome.action.setBadgeText({ tabId, text: '' }),
+        chrome.action.setPopup({ tabId, popup: DEFAULT_POPUP }),
         chrome.action.setTitle({ tabId, title: 'Brickmerge Tools' })
     ]);
 }
+
+chrome.action.onClicked.addListener(tab => {
+    const product = detectedProducts.get(Number(tab?.id));
+    if (!product?.setNumber && !product?.ean) return;
+    void chrome.sidePanel.open({ windowId: tab.windowId });
+});
 
 chrome.runtime.onInstalled.addListener(async () => {
     const merged = await loadAndMigrateSettings();
