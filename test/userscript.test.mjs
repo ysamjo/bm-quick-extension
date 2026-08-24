@@ -25,7 +25,7 @@ const tweakerSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.7/);
+    assert.match(loaderSource, /@version\s+5\.6\.8/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -98,7 +98,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.7/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.8/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -456,17 +456,39 @@ test('eBay offers below half the Brickmerge price are rejected', () => {
     );
     assert.equal(selected.total, 486.35);
     assert.equal(selected.url, 'https://www.ebay.de/itm/lowest-plausible');
-    assert.match(
-        source,
-        /BM_selectPlausibleMarketplaceOffer\(\s*'ebay',[\s\S]*?getEbayOfferTotal/
+    const alternatives = context.BM_getPlausibleMarketplaceOffers(
+        'ebay-fr',
+        {
+            cheapest: { total: 100, url: 'https://www.ebay.fr/itm/first' },
+            offers: [
+                { total: 125, url: 'https://www.ebay.fr/itm/second' },
+                { total: 140, url: 'https://www.ebay.fr/itm/third' }
+            ]
+        },
+        180
+    );
+    assert.deepEqual(
+        Array.from(alternatives, offer => offer.total),
+        [100, 125, 140]
     );
     assert.match(
         source,
-        /BM_selectPlausibleMarketplaceOffer\(\s*'ebay-fr',[\s\S]*?getEbayOfferTotal/
+        /createEbayWorkerCandidates[\s\S]*?BM_getPlausibleMarketplaceOffers/
     );
     assert.match(source, /ebay-worker-complete-set-v5/);
     assert.match(source, /ebay-fr-worker-complete-set-v3/);
     assert.match(source, /&best=\$\{encodeURIComponent\(ebayReferenceCachePart\)\}/);
+});
+
+test('offer rows can be dismissed and marketplace alternatives move up', () => {
+    assert.match(tweakerSource, /DISMISSED_OFFERS_KEY/);
+    assert.match(tweakerSource, /function syncDismissedOfferRows\(/);
+    assert.match(tweakerSource, /className = 'bm-offer-dismiss'/);
+    assert.match(tweakerSource, /new CustomEvent\('bm-offer-dismissed'/);
+    assert.match(tweakerSource, /candidateOffers/);
+    assert.match(tweakerSource, /showOfferDismissToast/);
+    assert.match(tweakerSource, /Verworfene wieder anzeigen/);
+    assert.match(tweakerSource, /scheduleOfferPresentation\(\)/);
 });
 
 test('mobile offer rows grow when price details wrap', () => {
@@ -595,7 +617,7 @@ test('eBay Offerlist uses black logos with distinct source markers', () => {
     assert.match(tweakerSource, /bm-marketplace-logo-row/);
     assert.match(tweakerSource, /Gewerblicher eBay-Verkäufer/);
     assert.match(tweakerSource, /Privater eBay-Verkäufer/);
-    assert.match(tweakerSource, /logoCountryFlag:\s*'🇫🇷'/);
+    assert.match(tweakerSource, /logoCountryFlag:\s*isFrance \? '🇫🇷' : ''/);
     assert.match(tweakerSource, /bm-marketplace-country-flag-fr/);
     assert.match(tweakerSource, /font-size:\s*0/);
     assert.match(tweakerSource, /PRIVATE_SELLER/);

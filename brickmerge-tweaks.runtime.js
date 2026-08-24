@@ -224,7 +224,7 @@ globalThis.BM_isMarketplacePricePlausible = (
     if (minimum === null) return true;
     return candidate + Number.EPSILON >= minimum;
 };
-globalThis.BM_selectPlausibleMarketplaceOffer = (
+globalThis.BM_getPlausibleMarketplaceOffers = (
     source,
     result,
     referencePrice,
@@ -247,8 +247,19 @@ globalThis.BM_selectPlausibleMarketplaceOffer = (
                 referencePrice
             );
         })
-        .sort((left, right) => getPrice(left) - getPrice(right))[0] || null;
+        .sort((left, right) => getPrice(left) - getPrice(right));
 };
+globalThis.BM_selectPlausibleMarketplaceOffer = (
+    source,
+    result,
+    referencePrice,
+    getPrice = offer => Number(offer?.total ?? offer?.price)
+) => globalThis.BM_getPlausibleMarketplaceOffers(
+    source,
+    result,
+    referencePrice,
+    getPrice
+)[0] || null;
 globalThis.BM_EXTENSION_STORAGE_KEYS = Object.freeze({
     workerBaseUrl: 'bm:worker-base-url-v1',
     workerClientId: 'gm:brickmerge-worker-client-id-v1'
@@ -2399,6 +2410,82 @@ globalThis.BM_isFranceEnabled = settings =>
                     .bm-shipping-unknown {
                     color: #fff !important;
                 }
+                #offerlist .row.collapse.bm-offer-dismissible {
+                    position: relative;
+                }
+                #offerlist .bm-offer-dismissible .pricerow > a > .price {
+                    width: calc(95% - 1.45rem) !important;
+                }
+                #offerlist .bm-offer-dismiss {
+                    position: absolute;
+                    top: 50%;
+                    right: 0.2rem;
+                    z-index: 18;
+                    display: inline-flex !important;
+                    width: 1.25rem;
+                    height: 1.25rem;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    transform: translateY(-50%);
+                    border: 1px solid #bbb !important;
+                    border-radius: 50% !important;
+                    background: rgba(255,255,255,.94) !important;
+                    color: #777 !important;
+                    font: 700 1rem/1 Arial, sans-serif !important;
+                    text-shadow: none !important;
+                    opacity: 0;
+                    cursor: pointer;
+                    transition: opacity 120ms ease, color 120ms ease,
+                        border-color 120ms ease, background-color 120ms ease;
+                }
+                #offerlist .bm-offer-dismissible:hover > .bm-offer-dismiss,
+                #offerlist .bm-offer-dismissible:focus-within > .bm-offer-dismiss,
+                #offerlist .bm-offer-dismiss:focus-visible {
+                    opacity: 1;
+                }
+                #offerlist .bm-offer-dismiss:hover,
+                #offerlist .bm-offer-dismiss:focus-visible {
+                    border-color: #800 !important;
+                    background: #800 !important;
+                    color: #fff !important;
+                    outline: none;
+                }
+                .bm-offer-dismiss-toast {
+                    position: fixed;
+                    right: 0.8rem;
+                    bottom: 0.8rem;
+                    z-index: 2147483000;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.7rem;
+                    max-width: min(24rem, calc(100vw - 1.6rem));
+                    padding: 0.65rem 0.75rem;
+                    border-radius: 3px;
+                    background: #ff7919;
+                    color: #fff;
+                    font-size: 0.75rem;
+                    line-height: 1.25;
+                    box-shadow: 0 5px 18px rgba(0,0,0,.24);
+                }
+                .bm-offer-dismiss-toast button {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    border: 0 !important;
+                    background: transparent !important;
+                    color: #fff !important;
+                    font: inherit !important;
+                    font-weight: 700 !important;
+                    text-decoration: underline;
+                    white-space: nowrap;
+                    cursor: pointer;
+                }
+                @media screen and (max-width: 640px) {
+                    #offerlist .bm-offer-dismiss {
+                        opacity: 0.72;
+                    }
+                }
                 #offerlist .row.collapse.bm-sold-out-offer {
                     position: relative;
                     box-shadow: inset 3px 0 0 #777;
@@ -4414,6 +4501,187 @@ globalThis.BM_isFranceEnabled = settings =>
             document.head.appendChild(globalStyle);
 
             const setNum = BM_getBrickmergeSetNumber(window.location.href);
+            const DISMISSED_OFFERS_KEY = 'brickmerge-tools-dismissed-offers-v1';
+            const DISMISSED_OFFER_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
+
+            function normalizedOfferUrl(value) {
+                try {
+                    const url = new URL(value, window.location.href);
+                    url.hash = '';
+                    [
+                        'utm_source', 'utm_medium', 'utm_campaign', 'utm_content',
+                        'utm_term', 'mkcid', 'mkevt', 'campid', 'customid', 'toolid',
+                        'itmmeta', 'itmprp', '_trkparms'
+                    ].forEach(key => url.searchParams.delete(key));
+                    url.searchParams.sort();
+                    return url.href;
+                } catch (error) {
+                    return String(value || '').trim();
+                }
+            }
+
+            function makeOfferDismissIdentity(source, url, fallback = '') {
+                const normalizedSource = String(source || 'offer').trim().toLowerCase();
+                const normalizedUrl = normalizedOfferUrl(url);
+                return `${normalizedSource}|${normalizedUrl || String(fallback || '').trim()}`;
+            }
+
+            function readDismissedOfferStore() {
+                let store = {};
+                try {
+                    const parsed = JSON.parse(localStorage.getItem(DISMISSED_OFFERS_KEY) || '{}');
+                    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                        store = parsed;
+                    }
+                } catch (error) {
+                    store = {};
+                }
+                const cutoff = Date.now() - DISMISSED_OFFER_MAX_AGE;
+                let changed = false;
+                Object.entries(store).forEach(([storedSet, entries]) => {
+                    if (!entries || typeof entries !== 'object' || Array.isArray(entries)) {
+                        delete store[storedSet];
+                        changed = true;
+                        return;
+                    }
+                    Object.entries(entries).forEach(([identity, timestamp]) => {
+                        if (!Number.isFinite(Number(timestamp)) || Number(timestamp) < cutoff) {
+                            delete entries[identity];
+                            changed = true;
+                        }
+                    });
+                    if (Object.keys(entries).length === 0) {
+                        delete store[storedSet];
+                        changed = true;
+                    }
+                });
+                if (changed) {
+                    try {
+                        localStorage.setItem(DISMISSED_OFFERS_KEY, JSON.stringify(store));
+                    } catch (error) {}
+                }
+                return store;
+            }
+
+            function isOfferDismissed(identity) {
+                if (!setNum || !identity) return false;
+                const entries = readDismissedOfferStore()[String(setNum)];
+                return Boolean(entries && Object.prototype.hasOwnProperty.call(entries, identity));
+            }
+
+            function setOfferDismissed(identity, dismissed) {
+                if (!setNum || !identity) return;
+                const store = readDismissedOfferStore();
+                const setKey = String(setNum);
+                const entries = store[setKey] && typeof store[setKey] === 'object'
+                    ? store[setKey]
+                    : {};
+                if (dismissed) {
+                    entries[identity] = Date.now();
+                    store[setKey] = entries;
+                } else {
+                    delete entries[identity];
+                    if (Object.keys(entries).length === 0) delete store[setKey];
+                }
+                try {
+                    localStorage.setItem(DISMISSED_OFFERS_KEY, JSON.stringify(store));
+                } catch (error) {
+                    console.warn('Brickmerge Tools: Verworfenes Angebot konnte nicht gespeichert werden.');
+                }
+            }
+
+            function clearDismissedOffersForSet() {
+                if (!setNum) return;
+                const store = readDismissedOfferStore();
+                delete store[String(setNum)];
+                try {
+                    localStorage.setItem(DISMISSED_OFFERS_KEY, JSON.stringify(store));
+                } catch (error) {}
+            }
+
+            function getOfferRowDismissIdentity(wrapper) {
+                if (!wrapper) return '';
+                if (wrapper.dataset.bmOfferIdentity) return wrapper.dataset.bmOfferIdentity;
+                const priceRow = wrapper.querySelector(
+                    '.medium-4.small-9.columns.pricerow[data-mid]'
+                );
+                const link = priceRow?.querySelector(':scope > a[href]');
+                const source = priceRow?.dataset.bmSource ||
+                    (priceRow?.dataset.bmMarketplace === 'true' ? 'marketplace' : 'brickmerge');
+                const fallback = [
+                    priceRow?.dataset.mid,
+                    priceRow?.querySelector('.merchant')?.textContent,
+                    priceRow?.querySelector('.price')?.textContent
+                ].filter(Boolean).join('|').replace(/\s+/g, ' ').trim();
+                const identity = makeOfferDismissIdentity(source, link?.href, fallback);
+                wrapper.dataset.bmOfferIdentity = identity;
+                return identity;
+            }
+
+            let offerDismissToastTimer = null;
+            function showOfferDismissToast(identity) {
+                document.querySelector('.bm-offer-dismiss-toast')?.remove();
+                window.clearTimeout(offerDismissToastTimer);
+                const toast = document.createElement('div');
+                toast.className = 'bm-offer-dismiss-toast';
+                toast.setAttribute('role', 'status');
+                toast.append(document.createTextNode('Angebot verworfen.'));
+                const undo = document.createElement('button');
+                undo.type = 'button';
+                undo.textContent = 'Rückgängig';
+                undo.addEventListener('click', () => {
+                    setOfferDismissed(identity, false);
+                    window.location.reload();
+                });
+                toast.appendChild(undo);
+                document.body.appendChild(toast);
+                offerDismissToastTimer = window.setTimeout(() => toast.remove(), 6500);
+            }
+
+            function dismissOfferRow(wrapper) {
+                const identity = getOfferRowDismissIdentity(wrapper);
+                if (!identity) return;
+                const offerKey = wrapper.dataset.bmOfferKey || '';
+                setOfferDismissed(identity, true);
+                wrapper.remove();
+                document.dispatchEvent(new CustomEvent('bm-offer-dismissed', {
+                    detail: { setNumber: String(setNum || ''), identity, offerKey }
+                }));
+                showOfferDismissToast(identity);
+                scheduleOfferPresentation();
+            }
+
+            function syncDismissedOfferRows() {
+                const offerlist = document.getElementById('offerlist');
+                if (!offerlist || !setNum) return;
+                offerlist.querySelectorAll(
+                    '.medium-4.small-9.columns.pricerow[data-mid]'
+                ).forEach(priceRow => {
+                    if (priceRow.closest('#soldOut') || priceRow.dataset.bmSoldOut === 'true') return;
+                    const wrapper = priceRow.closest('.row.collapse');
+                    if (!wrapper) return;
+                    const identity = getOfferRowDismissIdentity(wrapper);
+                    if (!identity) return;
+                    if (isOfferDismissed(identity)) {
+                        wrapper.remove();
+                        return;
+                    }
+                    wrapper.classList.add('bm-offer-dismissible');
+                    if (wrapper.querySelector(':scope > .bm-offer-dismiss')) return;
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'bm-offer-dismiss';
+                    button.textContent = '×';
+                    button.title = 'Dieses Angebot verwerfen';
+                    button.setAttribute('aria-label', 'Dieses Angebot verwerfen');
+                    button.addEventListener('click', event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        dismissOfferRow(wrapper);
+                    });
+                    wrapper.appendChild(button);
+                });
+            }
 
             function removeThemePromoBlock() {
                 const isThemePage = /^\/LEGO-[^/]+\/?$/i.test(window.location.pathname);
@@ -4863,6 +5131,36 @@ globalThis.BM_isFranceEnabled = settings =>
                 `;
                 document.body.appendChild(overlay);
 
+                const updateDismissedRestoreAction = () => {
+                    const actions = overlay.querySelector('.bm-settings-actions');
+                    if (!actions) return;
+                    const dismissedCount = Object.keys(
+                        readDismissedOfferStore()[String(setNum)] || {}
+                    ).length;
+                    let restoreDismissed = actions.querySelector(
+                        '.bm-settings-restore-dismissed'
+                    );
+                    if (dismissedCount === 0) {
+                        restoreDismissed?.remove();
+                        return;
+                    }
+                    if (!restoreDismissed) {
+                        restoreDismissed = document.createElement('button');
+                        restoreDismissed.type = 'button';
+                        restoreDismissed.className =
+                            'button secondary bm-settings-restore-dismissed';
+                        restoreDismissed.textContent = 'Verworfene wieder anzeigen';
+                        restoreDismissed.addEventListener('click', () => {
+                            clearDismissedOffersForSet();
+                            window.location.reload();
+                        });
+                        actions.prepend(restoreDismissed);
+                    }
+                    restoreDismissed.title =
+                        `${dismissedCount} verworfene Angebote für dieses Set zurücksetzen`;
+                };
+                updateDismissedRestoreAction();
+
                 const body = overlay.querySelector('.bm-settings-body');
                 const escapeHtml = value => String(value)
                     .replace(/&/g, '&amp;')
@@ -4915,6 +5213,7 @@ globalThis.BM_isFranceEnabled = settings =>
 
                 const open = () => {
                     populate(loadPersonalDiscountSettings());
+                    updateDismissedRestoreAction();
                     overlay.classList.add('is-open');
                     document.body.style.setProperty('overflow', 'hidden');
                     overlay.querySelector('.bm-settings-close')?.focus();
@@ -7411,6 +7710,27 @@ globalThis.BM_isFranceEnabled = settings =>
                             );
                             return { priceRow, haystack };
                         });
+                    const chooseAvailableOffer = offer => {
+                        const candidates = Array.isArray(offer?.candidateOffers) &&
+                            offer.candidateOffers.length > 0
+                            ? offer.candidateOffers
+                            : [offer];
+                        const normalizedCandidates = candidates.filter(Boolean).map(candidate => ({
+                            ...candidate,
+                            dismissIdentity: candidate.dismissIdentity ||
+                                makeOfferDismissIdentity(
+                                    candidate.source || candidate.key,
+                                    candidate.url,
+                                    `${candidate.key || ''}|${candidate.priceText || ''}`
+                                )
+                        }));
+                        const selected = normalizedCandidates.find(candidate =>
+                            !isOfferDismissed(candidate.dismissIdentity)
+                        );
+                        return selected
+                            ? { ...selected, candidateOffers: normalizedCandidates }
+                            : null;
+                    };
                     const syncOffers = () => {
                         // Alle nativen Händler werden pro Synchronisierung nur einmal
                         // gelesen. Zuvor wurde die komplette Offerlist für jeden
@@ -7426,7 +7746,12 @@ globalThis.BM_isFranceEnabled = settings =>
                                 )
                             );
                         };
-                        const offers = Array.from(offersByKey.values()).filter(offer => {
+                        const offers = Array.from(offersByKey.entries()).map(([key, offer]) => {
+                            const available = chooseAvailableOffer(offer);
+                            if (available) offersByKey.set(key, available);
+                            else offersByKey.delete(key);
+                            return available;
+                        }).filter(Boolean).filter(offer => {
                             if (!BM_isOfferShopEnabled(offer.key)) return false;
                             if (offer.key === 'mueller-search') {
                                 return !hasNativeMerchant(['müller', 'mueller']);
@@ -7438,10 +7763,23 @@ globalThis.BM_isFranceEnabled = settings =>
                     };
                     const storeOffers = offers => {
                         offers.filter(Boolean).forEach(offer => {
-                            offersByKey.set(offer.key, offer);
+                            const available = chooseAvailableOffer(offer);
+                            if (available) offersByKey.set(offer.key, available);
+                            else offersByKey.delete(offer.key);
                         });
                         syncOffers();
                     };
+                    document.addEventListener('bm-offer-dismissed', event => {
+                        const detail = event.detail || {};
+                        if (String(detail.setNumber || '') !== String(setNumber) ||
+                            !detail.offerKey || !offersByKey.has(detail.offerKey)) return;
+                        const replacement = chooseAvailableOffer(
+                            offersByKey.get(detail.offerKey)
+                        );
+                        if (replacement) offersByKey.set(detail.offerKey, replacement);
+                        else offersByKey.delete(detail.offerKey);
+                        syncOffers();
+                    });
                     function parseBrickbankVendorOffer(jsonText, vendorPattern) {
                         let payload;
                         try {
@@ -7572,7 +7910,8 @@ globalThis.BM_isFranceEnabled = settings =>
                         );
                         return {
                             ...offers[0],
-                            totalLots: offers.length
+                            totalLots: offers.length,
+                            candidates: offers
                         };
                     }
                     function findBrickOwlCatalogUrl(html, setNumber, baseUrl) {
@@ -7693,6 +8032,72 @@ globalThis.BM_isFranceEnabled = settings =>
                         return itemPrice + Math.max(0, shipping);
                     };
 
+                    const createEbayWorkerCandidates = ({
+                        result,
+                        referencePrice,
+                        key,
+                        buttonId,
+                        label,
+                        source,
+                        isFrance = false
+                    }) => globalThis.BM_getPlausibleMarketplaceOffers(
+                        key,
+                        result,
+                        referencePrice,
+                        getEbayOfferTotal
+                    ).map((candidate, index) => {
+                        const shipping = Number(
+                            candidate.shipping ?? candidate.shippingCost ?? 0
+                        );
+                        const itemPrice = Number(candidate.itemPrice ?? candidate.price);
+                        if (!Number.isFinite(itemPrice) || !Number.isFinite(shipping)) {
+                            return null;
+                        }
+                        const sellerAccountType = getEbaySellerAccountType(candidate);
+                        const sellerTypeLabel = getEbaySellerTypeLabel(sellerAccountType);
+                        const sellerName = typeof candidate.seller === 'string'
+                            ? candidate.seller.trim()
+                            : String(
+                                candidate.seller?.username ||
+                                candidate.seller?.name ||
+                                candidate.sellerName ||
+                                candidate.merchantName ||
+                                ''
+                            ).trim();
+                        const sellerDetails = [
+                            sellerTypeLabel ? `Verkäuferart: ${sellerTypeLabel}` : '',
+                            sellerName ? `Verkäufer: ${sellerName}` : ''
+                        ].filter(Boolean).join('; ');
+                        return createOffer(
+                            buttonId,
+                            label,
+                            `${formatEuroValue(itemPrice)} €`,
+                            BM_MOBILE_CHROME.runtime.getURL('icons/logo-ebay-minifig.png'),
+                            source,
+                            `${label}: Angebot ${index + 1} von ${result.comparedOffers} ` +
+                                `neuen Angeboten${isFrance ? ' mit Lieferung nach Frankreich' : ''}` +
+                                `${sellerDetails ? `; ${sellerDetails}` : ''}; ${candidate.title}`,
+                            {
+                                url: candidate.url,
+                                searchUrl: document.querySelector(
+                                    `a[data-bmid="${buttonId}"]`
+                                )?.href || '',
+                                shippingStatus: shipping <= 0.004 ? 'free' : 'paid',
+                                shippingCost: shipping,
+                                logoCaption: sellerName || sellerTypeLabel,
+                                logoCountryFlag: isFrance ? '🇫🇷' : '',
+                                logoCountryLabel: isFrance ? 'Frankreich' : '',
+                                sellerAccountType,
+                                sellerName,
+                                dismissIdentity: makeOfferDismissIdentity(
+                                    source,
+                                    candidate.url,
+                                    candidate.itemId || `${key}|${itemPrice}|${shipping}`
+                                )
+                            }
+                        );
+                    }).filter(Boolean);
+
                     void getWorkerClientId().then(workerClientId => {
                         const ean = document.querySelector(
                             '.bm-ean-line-link[data-ean]'
@@ -7738,66 +8143,24 @@ globalThis.BM_isFranceEnabled = settings =>
                                         }
                                         if (!result?.found) return;
 
-                                        const cheapest = BM_selectPlausibleMarketplaceOffer(
-                                            'ebay',
+                                        const candidates = createEbayWorkerCandidates({
                                             result,
-                                            ebayReferencePrice,
-                                            getEbayOfferTotal
-                                        );
-                                        if (!cheapest) {
+                                            referencePrice: ebayReferencePrice,
+                                            key: 'ebay',
+                                            buttonId: 'btn-ebay',
+                                            label: 'eBay',
+                                            source: 'ebay-worker'
+                                        });
+                                        if (candidates.length === 0) {
                                             console.info(
                                                 'Brickmerge Tweaker: eBay-Angebote unterhalb der 50%-Plausibilitätsgrenze verworfen.'
                                             );
                                             return;
                                         }
-                                        const shipping = Number(
-                                            cheapest.shipping ?? cheapest.shippingCost ?? 0
-                                        );
-                                        const itemPrice = Number(
-                                            cheapest.itemPrice ?? cheapest.price
-                                        );
-                                        if (!Number.isFinite(itemPrice) ||
-                                            !Number.isFinite(shipping)) return;
-                                        const sellerAccountType =
-                                            getEbaySellerAccountType(cheapest);
-                                        const sellerTypeLabel = getEbaySellerTypeLabel(
-                                            sellerAccountType
-                                        );
-                                        const sellerName = typeof cheapest.seller === 'string'
-                                            ? cheapest.seller.trim()
-                                            : String(
-                                                cheapest.seller?.username ||
-                                                cheapest.seller?.name ||
-                                                cheapest.sellerName ||
-                                                cheapest.merchantName ||
-                                                ''
-                                            ).trim();
-                                        const sellerDetails = [
-                                            sellerTypeLabel
-                                                ? `Verkäuferart: ${sellerTypeLabel}`
-                                                : '',
-                                            sellerName ? `Verkäufer: ${sellerName}` : ''
-                                        ].filter(Boolean).join('; ');
-                                        const offer = createOffer(
-                                            'btn-ebay',
-                                            'eBay',
-                                            `${formatEuroValue(itemPrice)} €`,
-                                            BM_MOBILE_CHROME.runtime.getURL(
-                                                'icons/logo-ebay-minifig.png'
-                                            ),
-                                            'ebay-worker',
-                                            `eBay: günstigstes von ${result.comparedOffers} neuen Angeboten${sellerDetails ? `; ${sellerDetails}` : ''}; ${cheapest.title}`,
-                                            {
-                                                url: cheapest.url,
-                                                searchUrl: document.querySelector('a[data-bmid="btn-ebay"]')?.href || '',
-                                                shippingStatus: shipping <= 0.004 ? 'free' : 'paid',
-                                                shippingCost: shipping,
-                                                logoCaption: sellerName || sellerTypeLabel,
-                                                sellerAccountType,
-                                                sellerName
-                                            }
-                                        );
-                                        if (offer) storeOffers([offer]);
+                                        storeOffers([{
+                                            ...candidates[0],
+                                            candidateOffers: candidates
+                                        }]);
                                     },
                                     onerror: () => {
                                         console.warn(
@@ -7843,68 +8206,25 @@ globalThis.BM_isFranceEnabled = settings =>
                                         }
                                         if (!result?.found) return;
 
-                                        const cheapest = BM_selectPlausibleMarketplaceOffer(
-                                            'ebay-fr',
+                                        const candidates = createEbayWorkerCandidates({
                                             result,
-                                            ebayReferencePrice,
-                                            getEbayOfferTotal
-                                        );
-                                        if (!cheapest) {
+                                            referencePrice: ebayReferencePrice,
+                                            key: 'ebay-fr',
+                                            buttonId: 'btn-ebay-fr',
+                                            label: 'eBay.fr',
+                                            source: 'ebay-fr-worker',
+                                            isFrance: true
+                                        });
+                                        if (candidates.length === 0) {
                                             console.info(
                                                 'Brickmerge Tweaker: eBay.fr-Angebote unterhalb der 50%-Plausibilitätsgrenze verworfen.'
                                             );
                                             return;
                                         }
-                                        const shipping = Number(
-                                            cheapest.shipping ?? cheapest.shippingCost ?? 0
-                                        );
-                                        const itemPrice = Number(
-                                            cheapest.itemPrice ?? cheapest.price
-                                        );
-                                        if (!Number.isFinite(itemPrice) ||
-                                            !Number.isFinite(shipping)) return;
-                                        const sellerAccountType =
-                                            getEbaySellerAccountType(cheapest);
-                                        const sellerTypeLabel = getEbaySellerTypeLabel(
-                                            sellerAccountType
-                                        );
-                                        const sellerName = typeof cheapest.seller === 'string'
-                                            ? cheapest.seller.trim()
-                                            : String(
-                                                cheapest.seller?.username ||
-                                                cheapest.seller?.name ||
-                                                cheapest.sellerName ||
-                                                cheapest.merchantName ||
-                                                ''
-                                            ).trim();
-                                        const sellerDetails = [
-                                            sellerTypeLabel
-                                                ? `Verkäuferart: ${sellerTypeLabel}`
-                                                : '',
-                                            sellerName ? `Verkäufer: ${sellerName}` : ''
-                                        ].filter(Boolean).join('; ');
-                                        const offer = createOffer(
-                                            'btn-ebay-fr',
-                                            'eBay.fr',
-                                            `${formatEuroValue(itemPrice)} €`,
-                                            BM_MOBILE_CHROME.runtime.getURL(
-                                                'icons/logo-ebay-minifig.png'
-                                            ),
-                                            'ebay-fr-worker',
-                                            `eBay.fr: günstigstes von ${result.comparedOffers} neuen Angeboten mit Lieferung nach Frankreich${sellerDetails ? `; ${sellerDetails}` : ''}; ${cheapest.title}`,
-                                            {
-                                                url: cheapest.url,
-                                                searchUrl: document.querySelector('a[data-bmid="btn-ebay-fr"]')?.href || '',
-                                                shippingStatus: shipping <= 0.004 ? 'free' : 'paid',
-                                                shippingCost: shipping,
-                                                logoCaption: sellerName || sellerTypeLabel,
-                                                logoCountryFlag: '🇫🇷',
-                                                logoCountryLabel: 'Frankreich',
-                                                sellerAccountType,
-                                                sellerName
-                                            }
-                                        );
-                                        if (offer) storeOffers([offer]);
+                                        storeOffers([{
+                                            ...candidates[0],
+                                            candidateOffers: candidates
+                                        }]);
                                     },
                                     onerror: () => {
                                         console.warn(
@@ -8037,57 +8357,67 @@ globalThis.BM_isFranceEnabled = settings =>
                             const result = rawResult?.result || rawResult?.data || rawResult;
                             if (!result?.found || !result.cheapest) return false;
                             const brickmergeBestPrice = getBrickmergeBestPrice();
-                            const cheapest = BM_selectPlausibleMarketplaceOffer(
+                            const candidates = globalThis.BM_getPlausibleMarketplaceOffers(
                                 source,
                                 result,
                                 brickmergeBestPrice
                             );
-                            if (!cheapest) {
+                            if (candidates.length === 0) {
                                 console.info(
                                     `Brickmerge Tweaker: ${label}-Angebot unterhalb der 50%-Plausibilitätsgrenze verworfen.`
                                 );
                                 return false;
                             }
-                            const total = Number(cheapest.total ?? cheapest.price);
-                            if (!Number.isFinite(total) || total <= 0) return false;
-                            const shippingCost = Number(cheapest.shippingCost);
-                            const transactionFee = Number(cheapest.transactionFee);
-                            const shippingStatus = Number.isFinite(shippingCost)
-                                ? (shippingCost <= 0.004 ? 'free' : 'paid')
-                                : 'unknown';
                             const stockxCurrencyNote = source === 'stockx'
                                 ? 'StockX-DE Lowest Ask in EUR; Versand und StockX-Gebühren kommen gegebenenfalls hinzu; '
                                 : '';
-                            const offer = createOffer(
-                                `btn-${source}`,
-                                label,
-                                `${formatEuroValue(total)} €`,
-                                source === 'vinted'
-                                    ? BM_MOBILE_CHROME.runtime.getURL('icons/logo-vinted.png')
-                                    : source === 'leboncoin'
-                                        ? BM_MOBILE_CHROME.runtime.getURL('icons/logo-leboncoin.png')
-                                        : source === 'stockx'
-                                            ? BM_MOBILE_CHROME.runtime.getURL('icons/logo-stockx.svg')
-                                            : icon(logoDomain),
-                                `${source}-apify`,
-                                `${label}: günstigstes von ${result.comparedOffers} passenden Angeboten; ${stockxCurrencyNote}Gesamtpreis${Number.isFinite(transactionFee) ? ` inklusive geschätzter Transaktionsgebühr ${formatEuroValue(transactionFee)} €` : ''}; ${cheapest.title}`,
-                                {
-                                    url: cheapest.url,
-                                    searchUrl: document.querySelector(
-                                        `a[data-bmid="btn-${source}"]`
-                                    )?.href || '',
-                                    logoText: '',
-                                    logoClass: source === 'stockx'
-                                        ? 'bm-stockx-logo'
-                                        : '',
-                                    shippingStatus,
-                                    shippingCost: Number.isFinite(shippingCost)
-                                        ? shippingCost
-                                        : null
-                                }
-                            );
-                            if (!offer) return false;
-                            storeOffers([offer]);
+                            const candidateOffers = candidates.map((candidate, index) => {
+                                const total = Number(candidate.total ?? candidate.price);
+                                if (!Number.isFinite(total) || total <= 0) return null;
+                                const shippingCost = Number(candidate.shippingCost);
+                                const transactionFee = Number(candidate.transactionFee);
+                                const shippingStatus = Number.isFinite(shippingCost)
+                                    ? (shippingCost <= 0.004 ? 'free' : 'paid')
+                                    : 'unknown';
+                                return createOffer(
+                                    `btn-${source}`,
+                                    label,
+                                    `${formatEuroValue(total)} €`,
+                                    source === 'vinted'
+                                        ? BM_MOBILE_CHROME.runtime.getURL('icons/logo-vinted.png')
+                                        : source === 'leboncoin'
+                                            ? BM_MOBILE_CHROME.runtime.getURL('icons/logo-leboncoin.png')
+                                            : source === 'stockx'
+                                                ? BM_MOBILE_CHROME.runtime.getURL('icons/logo-stockx.svg')
+                                                : icon(logoDomain),
+                                    `${source}-apify`,
+                                    `${label}: Angebot ${index + 1} von ${result.comparedOffers} passenden Angeboten; ${stockxCurrencyNote}Gesamtpreis${Number.isFinite(transactionFee) ? ` inklusive geschätzter Transaktionsgebühr ${formatEuroValue(transactionFee)} €` : ''}; ${candidate.title}`,
+                                    {
+                                        url: candidate.url,
+                                        searchUrl: document.querySelector(
+                                            `a[data-bmid="btn-${source}"]`
+                                        )?.href || '',
+                                        logoText: '',
+                                        logoClass: source === 'stockx'
+                                            ? 'bm-stockx-logo'
+                                            : '',
+                                        shippingStatus,
+                                        shippingCost: Number.isFinite(shippingCost)
+                                            ? shippingCost
+                                            : null,
+                                        dismissIdentity: makeOfferDismissIdentity(
+                                            `${source}-apify`,
+                                            candidate.url,
+                                            candidate.id || `${source}|${total}|${index}`
+                                        )
+                                    }
+                                );
+                            }).filter(Boolean);
+                            if (candidateOffers.length === 0) return false;
+                            storeOffers([{
+                                ...candidateOffers[0],
+                                candidateOffers
+                            }]);
                             return true;
                         };
                         const fetchApifyMarketplaceOffer = (source, label, logoDomain) => {
@@ -8365,53 +8695,67 @@ globalThis.BM_isFranceEnabled = settings =>
                                             return;
                                         }
 
-                                        const cheapest = BM_selectPlausibleMarketplaceOffer(
+                                        const candidates = globalThis.BM_getPlausibleMarketplaceOffers(
                                             'kleinanzeigen',
                                             result,
                                             brickmergeBestPrice,
                                             offer => Number(offer?.price ?? offer?.total)
                                         );
-                                        if (!cheapest) {
+                                        if (candidates.length === 0) {
                                             console.info(
                                                 'Brickmerge Tweaker: Kleinanzeigen-Angebote unterhalb der 50%-Plausibilitätsgrenze verworfen.'
                                             );
                                             publishKleinanzeigenRequestState('done');
                                             return;
                                         }
-                                        const details = [
-                                            `Kleinanzeigen: günstigstes von ${result.comparedOffers} passenden deutschlandweiten Angeboten`,
-                                            BM_getMarketplaceMinimumPrice(brickmergeBestPrice) !== null
-                                                ? `Mindestpreisfilter: ${formatEuroValue(BM_getMarketplaceMinimumPrice(brickmergeBestPrice))} € (50% des Brickmerge-Bestpreises)`
-                                                : '',
-                                            cheapest.city ? `Ort: ${cheapest.city}` : '',
-                                            cheapest.negotiable ? 'Verhandlungsbasis' : '',
-                                            cheapest.shippingAvailable
-                                                ? 'Versand möglich; Versandkosten unbekannt'
-                                                : 'Versand nicht bestätigt',
-                                            result.updatedAt
-                                                ? `Stand: ${new Date(result.updatedAt).toLocaleString('de-DE')}`
-                                                : '',
-                                            `Titel: ${cheapest.title}`
-                                        ].filter(Boolean).join('; ');
-                                        const shippingCost = Number(cheapest.shippingCost);
-                                        const shippingStatus = Number.isFinite(shippingCost)
-                                            ? (shippingCost <= 0.004 ? 'free' : 'paid')
-                                            : 'unknown';
-                                        const offer = createOffer(
-                                            'btn-kleinanzeigen',
-                                            'Kleinanzeigen',
-                                            `${formatEuroValue(Number(cheapest.price))} €`,
-                                            'https://themen.kleinanzeigen.de/media/files/d6/3e/d63e6861-498c-4123-a08d-6f8033055581/ka_horizontal_lightgreen_rgb.png',
-                                            'kleinanzeigen-worker',
-                                            details,
-                                            {
-                                                url: cheapest.url,
-                                                searchUrl: document.querySelector('a[data-bmid="btn-kleinanzeigen"]')?.href || '',
-                                                shippingStatus,
-                                                shippingCost: Number.isFinite(shippingCost) ? shippingCost : null
-                                            }
-                                        );
-                                        if (offer) storeOffers([offer]);
+                                        const candidateOffers = candidates.map((candidate, index) => {
+                                            const price = Number(candidate.price ?? candidate.total);
+                                            if (!Number.isFinite(price) || price <= 0) return null;
+                                            const details = [
+                                                `Kleinanzeigen: Angebot ${index + 1} von ${result.comparedOffers} passenden deutschlandweiten Angeboten`,
+                                                BM_getMarketplaceMinimumPrice(brickmergeBestPrice) !== null
+                                                    ? `Mindestpreisfilter: ${formatEuroValue(BM_getMarketplaceMinimumPrice(brickmergeBestPrice))} € (50% des Brickmerge-Bestpreises)`
+                                                    : '',
+                                                candidate.city ? `Ort: ${candidate.city}` : '',
+                                                candidate.negotiable ? 'Verhandlungsbasis' : '',
+                                                candidate.shippingAvailable
+                                                    ? 'Versand möglich; Versandkosten unbekannt'
+                                                    : 'Versand nicht bestätigt',
+                                                result.updatedAt
+                                                    ? `Stand: ${new Date(result.updatedAt).toLocaleString('de-DE')}`
+                                                    : '',
+                                                `Titel: ${candidate.title}`
+                                            ].filter(Boolean).join('; ');
+                                            const shippingCost = Number(candidate.shippingCost);
+                                            const shippingStatus = Number.isFinite(shippingCost)
+                                                ? (shippingCost <= 0.004 ? 'free' : 'paid')
+                                                : 'unknown';
+                                            return createOffer(
+                                                'btn-kleinanzeigen',
+                                                'Kleinanzeigen',
+                                                `${formatEuroValue(price)} €`,
+                                                'https://themen.kleinanzeigen.de/media/files/d6/3e/d63e6861-498c-4123-a08d-6f8033055581/ka_horizontal_lightgreen_rgb.png',
+                                                'kleinanzeigen-worker',
+                                                details,
+                                                {
+                                                    url: candidate.url,
+                                                    searchUrl: document.querySelector('a[data-bmid="btn-kleinanzeigen"]')?.href || '',
+                                                    shippingStatus,
+                                                    shippingCost: Number.isFinite(shippingCost) ? shippingCost : null,
+                                                    dismissIdentity: makeOfferDismissIdentity(
+                                                        'kleinanzeigen-worker',
+                                                        candidate.url,
+                                                        candidate.id || `kleinanzeigen|${price}|${index}`
+                                                    )
+                                                }
+                                            );
+                                        }).filter(Boolean);
+                                        if (candidateOffers.length > 0) {
+                                            storeOffers([{
+                                                ...candidateOffers[0],
+                                                candidateOffers
+                                            }]);
+                                        }
                                         publishKleinanzeigenRequestState('done');
                                 },
                                 error => {
@@ -8564,27 +8908,40 @@ globalThis.BM_isFranceEnabled = settings =>
                                 );
                                 return;
                             }
-                            const cheapest = result.cheapest;
-                            const total = Number(cheapest.total ?? cheapest.price);
-                            if (!Number.isFinite(total) || total <= 0) return;
-                            const sellerDescription = cheapest.seller
-                                ? `; günstigstes Angebot von ${cheapest.seller}`
-                                : '';
-                            const offer = createOffer(
-                                'btn-bl',
-                                'BrickLink',
-                                `${formatEuroValue(total)} €`,
-                                'https://static2.bricklink.com/img/bricklink_2026.svg',
-                                'bricklink-de',
-                                `BrickLink: niedrigster aktueller Neupreis bei deutschen Händlern aus ${result.comparedOffers} Angeboten${sellerDescription}; Versandkosten unbekannt`,
-                                {
-                                    url: cheapest.url,
-                                    searchUrl: document.querySelector('a[data-bmid="btn-bl"]')?.href || '',
-                                    shippingStatus: 'unknown',
-                                    shippingCost: null
-                                }
+                            const candidates = globalThis.BM_getPlausibleMarketplaceOffers(
+                                'bricklink',
+                                result,
+                                getBrickmergeBestPrice(),
+                                candidate => Number(candidate?.total ?? candidate?.price)
                             );
-                            if (offer) storeOffers([offer]);
+                            const candidateOffers = candidates.map((candidate, index) => {
+                                const total = Number(candidate.total ?? candidate.price);
+                                if (!Number.isFinite(total) || total <= 0) return null;
+                                const sellerDescription = candidate.seller
+                                    ? `; Angebot von ${candidate.seller}`
+                                    : '';
+                                return createOffer(
+                                    'btn-bl',
+                                    'BrickLink',
+                                    `${formatEuroValue(total)} €`,
+                                    'https://static2.bricklink.com/img/bricklink_2026.svg',
+                                    'bricklink-de',
+                                    `BrickLink: Angebot ${index + 1} von ${result.comparedOffers} aktuellen Neupreisen bei deutschen Händlern${sellerDescription}; Versandkosten unbekannt`,
+                                    {
+                                        url: candidate.url,
+                                        searchUrl: document.querySelector('a[data-bmid="btn-bl"]')?.href || '',
+                                        shippingStatus: 'unknown',
+                                        shippingCost: null,
+                                        dismissIdentity: `bricklink-de|${candidate.id || `${candidate.seller || ''}|${total}`}`
+                                    }
+                                );
+                            }).filter(Boolean);
+                            if (candidateOffers.length > 0) {
+                                storeOffers([{
+                                    ...candidateOffers[0],
+                                    candidateOffers
+                                }]);
+                            }
                         },
                         onerror: () => {
                             console.warn(
@@ -8671,29 +9028,40 @@ globalThis.BM_isFranceEnabled = settings =>
                                     return;
                                 }
 
-                                const sellerDescription = brickOwlOffer.storeName
-                                    ? `; günstigstes Angebot von ${brickOwlOffer.storeName}`
-                                    : '';
-                                const shippingDescription = brickOwlOffer.shippingStatus === 'paid'
-                                    ? `; Versand ${formatEuroValue(brickOwlOffer.shippingCost)} €`
-                                    : brickOwlOffer.shippingStatus === 'free'
-                                        ? '; Versand frei'
-                                        : '; Versand unbekannt';
-                                const offer = createOffer(
-                                    'btn-bo',
-                                    'BrickOwl',
-                                    `${formatEuroValue(brickOwlOffer.price)} €`,
-                                    'https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickowl-offerlist.png',
-                                    'brickowl-de',
-                                    `BrickOwl: günstigstes aktuelles Neupreis-Angebot bei deutschen Händlern aus ${brickOwlOffer.totalLots} Angeboten${sellerDescription}${shippingDescription}`,
-                                    {
-                                        url: brickOwlOffer.url,
-                                        searchUrl: document.querySelector('a[data-bmid="btn-bo"]')?.href || '',
-                                        shippingStatus: brickOwlOffer.shippingStatus,
-                                        shippingCost: brickOwlOffer.shippingCost
-                                    }
-                                );
-                                if (offer) storeOffers([offer]);
+                                const candidates = Array.isArray(brickOwlOffer.candidates)
+                                    ? brickOwlOffer.candidates
+                                    : [brickOwlOffer];
+                                const candidateOffers = candidates.map((candidate, index) => {
+                                    const sellerDescription = candidate.storeName
+                                        ? `; Angebot von ${candidate.storeName}`
+                                        : '';
+                                    const shippingDescription = candidate.shippingStatus === 'paid'
+                                        ? `; Versand ${formatEuroValue(candidate.shippingCost)} €`
+                                        : candidate.shippingStatus === 'free'
+                                            ? '; Versand frei'
+                                            : '; Versand unbekannt';
+                                    return createOffer(
+                                        'btn-bo',
+                                        'BrickOwl',
+                                        `${formatEuroValue(candidate.price)} €`,
+                                        'https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickowl-offerlist.png',
+                                        'brickowl-de',
+                                        `BrickOwl: Angebot ${index + 1} von ${brickOwlOffer.totalLots} aktuellen Neupreisen bei deutschen Händlern${sellerDescription}${shippingDescription}`,
+                                        {
+                                            url: candidate.url,
+                                            searchUrl: document.querySelector('a[data-bmid="btn-bo"]')?.href || '',
+                                            shippingStatus: candidate.shippingStatus,
+                                            shippingCost: candidate.shippingCost,
+                                            dismissIdentity: `brickowl-de|${normalizedOfferUrl(candidate.url)}|${candidate.storeName || ''}|${candidate.price}`
+                                        }
+                                    );
+                                }).filter(Boolean);
+                                if (candidateOffers.length > 0) {
+                                    storeOffers([{
+                                        ...candidateOffers[0],
+                                        candidateOffers
+                                    }]);
+                                }
                             },
                             onerror: () => {
                                 console.warn(
@@ -9030,6 +9398,7 @@ globalThis.BM_isFranceEnabled = settings =>
                 [
                     [BM_SETTINGS.cleaner, removeCorrectionReportButtons],
                     [BM_SETTINGS.shippingAndSorting, removeOfferListPriceDecorations],
+                    [true, syncDismissedOfferRows],
                     [true, labelNativeEbayOffer],
                     [true, decorateOfferLogoLinks],
                     [BM_SETTINGS.shippingAndSorting, injectShippingCostsFromOfferTitles],
@@ -12282,6 +12651,13 @@ globalThis.BM_isFranceEnabled = settings =>
                     wrapper.dataset.bmSource = offer.source || 'marketplace';
                     wrapper.dataset.bmMarketplace = 'true';
                     wrapper.dataset.bmShortcutId = `btn-${offer.key}`;
+                    wrapper.dataset.bmOfferKey = offer.key;
+                    wrapper.dataset.bmOfferIdentity = offer.dismissIdentity ||
+                        makeOfferDismissIdentity(
+                            offer.source || offer.key,
+                            offer.url,
+                            `${offer.key}|${offer.priceText}`
+                        );
 
                     const iconColumn = document.createElement('div');
                     iconColumn.className = 'goto medium-1 small-3 columns bm-marketplace-logo-column';

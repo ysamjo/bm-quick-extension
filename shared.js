@@ -90,7 +90,7 @@ globalThis.BM_isMarketplacePricePlausible = (
     if (minimum === null) return true;
     return candidate + Number.EPSILON >= minimum;
 };
-globalThis.BM_selectPlausibleMarketplaceOffer = (
+globalThis.BM_getPlausibleMarketplaceOffers = (
     source,
     result,
     referencePrice,
@@ -113,8 +113,19 @@ globalThis.BM_selectPlausibleMarketplaceOffer = (
                 referencePrice
             );
         })
-        .sort((left, right) => getPrice(left) - getPrice(right))[0] || null;
+        .sort((left, right) => getPrice(left) - getPrice(right));
 };
+globalThis.BM_selectPlausibleMarketplaceOffer = (
+    source,
+    result,
+    referencePrice,
+    getPrice = offer => Number(offer?.total ?? offer?.price)
+) => globalThis.BM_getPlausibleMarketplaceOffers(
+    source,
+    result,
+    referencePrice,
+    getPrice
+)[0] || null;
 globalThis.BM_EXTENSION_STORAGE_KEYS = Object.freeze({
     workerBaseUrl: 'bm:worker-base-url-v1',
     workerClientId: 'gm:brickmerge-worker-client-id-v1'
