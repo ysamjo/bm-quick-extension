@@ -32,47 +32,11 @@
       </div>
     </form>
 
-    <section id="product" class="product-card" hidden>
-      <img id="product-image" class="product-image" alt="" hidden>
-      <div class="product-content">
-        <h2 id="product-name"></h2>
-        <div class="identifiers">
-          <span>Set <strong id="set-number"></strong><button class="copy-button" data-copy="set" type="button" title="Setnummer kopieren" aria-label="Setnummer kopieren">▢</button></span>
-          <span id="ean-row">EAN <strong id="ean"></strong><button class="copy-button" data-copy="ean" type="button" title="EAN kopieren" aria-label="EAN kopieren">▢</button></span>
-        </div>
-        <div class="brickmerge-price-row">
-          <span>Brickmerge</span>
-          <strong id="brickmerge-price">–</strong>
-          <span id="brickmerge-discount" class="discount" hidden></span>
-        </div>
-        <a id="brickmerge-link" class="text-link" href="#">Bei Brickmerge öffnen ↗</a>
-      </div>
-    </section>
-
-    <section id="offers-section" hidden>
-      <div class="section-heading">
-        <div>
-          <h2>Preise im Cache</h2>
-          <p id="cache-summary"></p>
-        </div>
-      </div>
-      <div id="offers" class="offers"></div>
-      <button id="refresh-offers" class="refresh-offers" type="button">
-        <span class="plus" aria-hidden="true">+</span>
-        <span class="refresh-label">Weitere Marktplätze abrufen</span>
-      </button>
-      <p class="cost-note">Nur dieser manuelle Abruf kann Apify-Guthaben verbrauchen.</p>
-    </section>
-
-    <section id="links-section" hidden>
-      <h2>Direkt suchen</h2>
-      <div id="marketplace-links" class="marketplace-links"></div>
+    <section id="browser-view" class="browser-view" hidden>
+      <iframe id="brickmerge-frame" title="Mobile Brickmerge-Detailseite"></iframe>
     </section>
   </main>
 
-  <script src="../platform-config.js"></script>
-  <script src="../shared.js"></script>
-  <script src="sidepanel-core.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

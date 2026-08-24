@@ -2493,7 +2493,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         .bm-discount-toolbar-control {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.35rem;
             justify-content: flex-end;
             width: auto;
             margin-top: 0;
@@ -2515,40 +2515,28 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             opacity: 0;
             cursor: pointer;
         }
-        .bm-discount-toolbar-label {
-            color: #555;
-            font-size: 0.8rem;
-            font-weight: normal;
-            line-height: 1.1;
-        }
         .bm-discount-settings-trigger {
             display: inline-flex !important;
             align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 30px;
-            margin: 0 0 0 0.15rem !important;
-            padding: 0 !important;
+            min-height: 24px;
+            margin: 0 !important;
+            padding: 0.15rem 0 !important;
             background: transparent !important;
             border: 0 !important;
             border-radius: 0 !important;
-            color: #666 !important;
-            line-height: 1 !important;
-        }
-        .bm-discount-settings-trigger svg {
-            display: block;
-            width: 23px;
-            height: 23px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
+            color: #555 !important;
+            font-size: 0.8rem !important;
+            font-weight: normal !important;
+            line-height: 1.1 !important;
+            text-decoration: none !important;
         }
         .bm-discount-settings-trigger:hover,
         .bm-discount-settings-trigger:focus {
             background: transparent !important;
             color: #b00000 !important;
+            text-decoration: underline !important;
+            text-underline-offset: 0.18rem;
+            outline: none;
         }
         .bm-settings-overlay {
             position: fixed;
@@ -3110,22 +3098,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                            aria-label="Persönlichen Rabatt verwenden">
                     <div class="slider round"></div>
                 </label>
-                <span class="bm-discount-toolbar-label">Persönlicher Rabatt</span>
                 <button type="button" class="bm-discount-settings-trigger"
                         aria-haspopup="dialog" aria-controls="bm-discount-settings"
                         title="Persönlichen Rabatt einstellen"
                         aria-label="Persönlichen Rabatt einstellen">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <line x1="21" x2="14" y1="4" y2="4"></line>
-                        <line x1="10" x2="3" y1="4" y2="4"></line>
-                        <line x1="21" x2="12" y1="12" y2="12"></line>
-                        <line x1="8" x2="3" y1="12" y2="12"></line>
-                        <line x1="21" x2="16" y1="20" y2="20"></line>
-                        <line x1="12" x2="3" y1="20" y2="20"></line>
-                        <line x1="14" x2="14" y1="2" y2="6"></line>
-                        <line x1="8" x2="8" y1="10" y2="14"></line>
-                        <line x1="16" x2="16" y1="18" y2="22"></line>
-                    </svg>
+                    Persönlicher Rabatt
                 </button>
             </div>
         `;

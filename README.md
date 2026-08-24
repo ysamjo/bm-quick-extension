@@ -32,12 +32,12 @@ Dieses Repository ist zugleich die entpackte Chrome-Erweiterung:
 Der Erweiterungsname in Chrome lautet **Brickmerge Tools**. Ein separater
 `-db`-Ordner ist nicht erforderlich.
 
-Die Extension besitzt zusätzlich ein Side Panel. Es erkennt ein LEGO-Set auf
-der aktiven Produktseite erst beim Öffnen oder Tabwechsel, ergänzt Setdaten über
-Brickmerge und zeigt vorhandene Worker-Cachepreise. Nur der ausdrücklich
-angeklickte Eintrag **Weitere Marktplätze abrufen** kann neue Apify-Abfragen
-starten. Dieses Browser-Feature ist absichtlich nicht Teil des mobilen
-Userscripts.
+Die Extension besitzt zusätzlich ein Side Panel. Ein grünes Häkchen am
+Toolbar-Icon zeigt an, dass auf der aktiven Seite ein LEGO-Set erkannt wurde.
+Das Panel lädt anschließend die echte responsive Brickmerge-Detailseite. Die
+vorhandenen Extension-Skripte laufen auch in diesem eingebetteten Frame, sodass
+kein zusätzliches Userscript nötig ist. Dieses Browser-Feature ist absichtlich
+nicht Teil des mobilen Userscripts.
 
 ## Installation auf Mobilgeräten
 

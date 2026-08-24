@@ -25,7 +25,7 @@ const tweakerSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.0/);
+    assert.match(loaderSource, /@version\s+5\.6\.1/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -98,7 +98,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.0/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.1/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -292,6 +292,23 @@ test('marketplace refresh is a text action in the personal discount toolbar', ()
     assert.match(source, /toolbar\.insertBefore\(button, discountControl \|\| null\)/);
     assert.doesNotMatch(source, /host\.classList\.add\('bm-chart-controls', 'bm-has-price-refresh'\)/);
     assert.match(source, /<span class="bm-plus-icon" aria-hidden="true">\+<\/span>/);
+});
+
+test('personal discount switch and settings label form one control', () => {
+    const toolbarMarkup = tweakerSource.match(
+        /toolbar\.innerHTML = `[\s\S]*?`;\n\s*firstOffer/
+    )?.[0] || '';
+    assert.match(toolbarMarkup, /class="switch"/);
+    assert.match(
+        toolbarMarkup,
+        /class="bm-discount-settings-trigger"[\s\S]*?Persönlicher Rabatt/
+    );
+    assert.doesNotMatch(toolbarMarkup, /bm-discount-toolbar-label/);
+    assert.doesNotMatch(toolbarMarkup, /<svg/);
+    assert.match(
+        tweakerSource,
+        /bm-discount-settings-trigger'\)\.addEventListener\('click', open\)/
+    );
 });
 
 test('price history detail button keeps its chart icon', () => {

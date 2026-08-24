@@ -3,90 +3,82 @@ import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const coreSource = fs.readFileSync(
-    new URL('../sidepanel/sidepanel-core.js', import.meta.url),
+const detectorSource = fs.readFileSync(
+    new URL('../page-product-detector.js', import.meta.url),
     'utf8'
 );
-const context = vm.createContext({ URL, module: { exports: {} } });
-vm.runInContext(coreSource, context);
-const core = context.module.exports;
+const context = vm.createContext({ module: { exports: {} } });
+vm.runInContext(detectorSource, context);
+const detector = context.module.exports;
 
-test('side panel validates LEGO GTIN-13 values', () => {
-    assert.equal(core.isValidGtin13('5702017424965'), true);
-    assert.equal(core.isValidGtin13('5702017424964'), false);
+const productDocument = product => ({
+    title: product.name,
+    body: { innerText: '' },
+    querySelector() { return null; },
+    querySelectorAll(selector) {
+        if (selector === 'script[type="application/ld+json"]') {
+            return [{ textContent: JSON.stringify(product) }];
+        }
+        return [];
+    }
 });
 
-test('side panel normalizes Brickmerge Product JSON-LD', () => {
-    const product = core.normalizeBrickmergeProduct({
-        productJson: {
-            '@type': 'Product',
-            url: 'https://www.brickmerge.de/42154-1_lego-technic-ford-gt-2022',
-            name: 'LEGO Technic 42154 Ford GT 2022',
-            mpn: '42154',
-            gtin13: '5702017424965',
-            image: ['https://www.brickmerge.de/img/sets/l/LEGO_42154.jpg'],
-            offers: { lowPrice: '74.39' }
-        },
-        referencePrice: 'UVP 119,99 €'
-    });
+test('page detector validates LEGO GTIN-13 values', () => {
+    assert.equal(detector.validGtin13('5702017424965'), true);
+    assert.equal(detector.validGtin13('5702017424964'), false);
+});
+
+test('page detector reads a LEGO Product JSON-LD object', () => {
+    const product = detector.detect(productDocument({
+        '@type': 'Product',
+        name: 'LEGO Technic 42154 Ford GT 2022',
+        brand: { name: 'LEGO' },
+        mpn: '42154',
+        gtin13: '5702017424965'
+    }), new URL('https://shop.example/lego-ford-gt'));
     assert.equal(product.setNumber, '42154');
     assert.equal(product.ean, '5702017424965');
-    assert.equal(product.bestPrice, 74.39);
-    assert.equal(product.referencePrice, 119.99);
 });
 
-test('side panel excludes France sources while France is disabled', () => {
-    const sources = Array.from(core.enabledSources({
-        linkRows: { france: false },
-        offerShops: {}
-    }));
-    assert.deepEqual(sources, [
-        'ebay', 'bricklink', 'kleinanzeigen', 'vinted', 'stockx'
-    ]);
+test('numeric merchant SKU is not mistaken for a LEGO set', () => {
+    const product = detector.detect(productDocument({
+        '@type': 'Product',
+        name: 'Coffee machine',
+        brand: { name: 'Example' },
+        mpn: '42154'
+    }), new URL('https://shop.example/coffee-machine'));
+    assert.equal(product, null);
 });
 
-test('side panel uses only cached ready offers and sorts by total price', () => {
-    const offers = Array.from(core.offersFromBundle({
-        sources: {
-            ebay: {
-                state: 'ready',
-                data: {
-                    found: true,
-                    cheapest: { total: 89.95, url: 'https://www.ebay.de/itm/1' }
-                }
-            },
-            bricklink: {
-                state: 'ready',
-                data: {
-                    found: true,
-                    cheapest: {
-                        itemPrice: 70,
-                        shipping: 5,
-                        url: 'https://www.bricklink.com/v2/catalog/catalogitem.page?S=42154-1'
-                    }
-                }
-            },
-            vinted: { state: 'missing' }
-        }
-    }, { bestPrice: 74.39 }));
-    assert.deepEqual(offers.map(offer => offer.source), ['bricklink', 'ebay']);
-    assert.deepEqual(offers.map(offer => offer.total), [75, 89.95]);
-});
-
-test('side panel marketplace links follow the France setting', () => {
-    const withoutFrance = Array.from(core.buildMarketplaceLinks('42154', false));
-    const withFrance = Array.from(core.buildMarketplaceLinks('42154', true));
-    assert.equal(withoutFrance.some(link => link.label === 'eBay FR'), false);
-    assert.equal(withFrance.some(link => link.label === 'eBay FR'), true);
-    assert.match(withoutFrance.find(link => link.label === 'BrickLink').url, /42154-1/);
-});
-
-test('manifest registers the official side panel and required permissions', () => {
+test('manifest registers badge detection and modifies the embedded page', () => {
     const manifest = JSON.parse(fs.readFileSync(
         new URL('../manifest.json', import.meta.url),
         'utf8'
     ));
     assert.equal(manifest.side_panel.default_path, 'sidepanel/sidepanel.html');
     assert.equal(manifest.permissions.includes('sidePanel'), true);
-    assert.equal(manifest.permissions.includes('scripting'), true);
+    assert.equal(manifest.permissions.includes('scripting'), false);
+    assert.equal(manifest.content_scripts.some(entry =>
+        entry.js?.includes('page-product-detector.js')
+    ), true);
+    const brickmergeScripts = manifest.content_scripts.filter(entry =>
+        entry.matches?.includes('https://www.brickmerge.de/*') &&
+        !entry.js?.includes('page-product-detector.js')
+    );
+    assert.equal(brickmergeScripts.every(entry => entry.all_frames === true), true);
+});
+
+test('side panel embeds the responsive Brickmerge page', () => {
+    const html = fs.readFileSync(
+        new URL('../sidepanel/sidepanel.html', import.meta.url),
+        'utf8'
+    );
+    const source = fs.readFileSync(
+        new URL('../sidepanel/sidepanel.js', import.meta.url),
+        'utf8'
+    );
+    assert.match(html, /id="brickmerge-frame"/);
+    assert.doesNotMatch(html, /sidepanel-core\.js/);
+    assert.match(source, /chrome\.tabs\.sendMessage/);
+    assert.match(source, /www\.brickmerge\.de/);
 });

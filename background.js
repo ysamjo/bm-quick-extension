@@ -1,6 +1,7 @@
 importScripts('shared.js');
 
 const CLEANUP_RULESET = 'brickmerge_cleanup';
+const detectedProducts = new Map();
 const ALLOWED_FETCH_HOSTS = new Set([
     'brickmerge.de',
     'www.brickmerge.de',
@@ -95,6 +96,32 @@ async function loadAndMigrateSettings() {
     return migrated;
 }
 
+async function updateDetectedProduct(tabId, product) {
+    if (!Number.isInteger(tabId)) return;
+    if (product?.setNumber || product?.ean) {
+        detectedProducts.set(tabId, product);
+        await Promise.all([
+            chrome.action.setBadgeText({ tabId, text: '✓' }),
+            chrome.action.setBadgeBackgroundColor({ tabId, color: '#16843f' }),
+            chrome.action.setTitle({
+                tabId,
+                title: product.setNumber
+                    ? `Brickmerge Tools – Set ${product.setNumber} erkannt`
+                    : 'Brickmerge Tools – LEGO-Produkt erkannt'
+            })
+        ]);
+        if (chrome.action.setBadgeTextColor) {
+            await chrome.action.setBadgeTextColor({ tabId, color: '#ffffff' });
+        }
+        return;
+    }
+    detectedProducts.delete(tabId);
+    await Promise.all([
+        chrome.action.setBadgeText({ tabId, text: '' }),
+        chrome.action.setTitle({ tabId, title: 'Brickmerge Tools' })
+    ]);
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
     const merged = await loadAndMigrateSettings();
     await applyNetworkBlocking(merged);
@@ -111,8 +138,28 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     }
 });
 
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (changeInfo.status === 'loading') void updateDetectedProduct(tabId, null);
+});
+
+chrome.tabs.onRemoved.addListener(tabId => {
+    detectedProducts.delete(tabId);
+});
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message?.type !== 'bm-fetch-text') return false;
-    void fetchText(message.request).then(sendResponse);
-    return true;
+    if (message?.type === 'bm-page-product-detected') {
+        void updateDetectedProduct(_sender.tab?.id, message.product);
+        return false;
+    }
+    if (message?.type === 'bm-get-detected-set') {
+        sendResponse({
+            product: detectedProducts.get(Number(message.tabId)) || null
+        });
+        return false;
+    }
+    if (message?.type === 'bm-fetch-text') {
+        void fetchText(message.request).then(sendResponse);
+        return true;
+    }
+    return false;
 });
