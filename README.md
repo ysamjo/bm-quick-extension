@@ -55,9 +55,10 @@ Tampermonkeys eigene `@updateURL`-Prüfung ausbleibt. Bei einem GitHub-Ausfall l
 die letzte funktionierende Version weiter. `@updateURL` bleibt als zusätzlicher
 Fallback für Änderungen an Berechtigungen oder Seitenregeln erhalten.
 
-Die Frankreich-Angebote sind standardmäßig eingeschaltet und können im
-Userscript-Menü oder über den gut sichtbaren Schalter oberhalb der Linkleiste
-deaktiviert werden. Der Schalter zeigt seinen aktuellen Zustand mit **AN/AUS**.
+Die Frankreich-Angebote sind standardmäßig eingeschaltet und können ausschließlich
+über den Tampermonkey-Menüeintrag **Frankreich-Angebote: AN/AUS – umschalten**
+deaktiviert oder wieder aktiviert werden. Auf der Brickmerge-Seite selbst wird
+kein zusätzlicher Frankreich-Schalter eingeblendet.
 
 ## Entwicklung
 

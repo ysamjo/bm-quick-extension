@@ -25,7 +25,7 @@ const tweakerSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.1/);
+    assert.match(loaderSource, /@version\s+5\.6\.2/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -98,7 +98,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.1/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.2/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -470,9 +470,8 @@ test('France is enabled by default and can be toggled from the script menu', () 
     assert.match(source, /franceDefault:\s*true/);
     assert.match(source, /france:\s*globalThis\.BM_PLATFORM\?\.franceDefault !== false/);
     assert.match(source, /Frankreich-Angebote:.*umschalten/);
-    assert.match(source, /BM_PLATFORM\?\.mobileUserscript === true/);
-    assert.match(source, /className = 'bm-france-toggle'/);
-    assert.match(source, /Frankreich-Angebote: \$\{franceEnabled \? 'AN' : 'AUS'\}/);
+    assert.doesNotMatch(source, /className = 'bm-france-toggle'/);
+    assert.doesNotMatch(source, /bm-france-toggle-row/);
 });
 
 test('worker status URLs stay on the configured worker origin', () => {
