@@ -97,7 +97,7 @@ test('toolbar click opens the side panel only for a detected product', () => {
     assert.match(background, /chrome\.action\.setPopup\(\{ tabId, popup: '' \}\)/);
     assert.match(
         background,
-        /chrome\.action\.onClicked\.addListener[\s\S]*?chrome\.sidePanel\.open/
+        /chrome\.sidePanel\.setPanelBehavior\(\{[\s\S]*?openPanelOnActionClick: true/
     );
     assert.match(
         background,

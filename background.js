@@ -19,6 +19,12 @@ const ALLOWED_FETCH_HOSTS = new Set([
     'duckduckgo.com'
 ]);
 
+void chrome.sidePanel.setPanelBehavior({
+    openPanelOnActionClick: true
+}).catch(error => {
+    console.error('Side Panel konnte nicht an die Toolbar-Aktion gebunden werden.', error);
+});
+
 function isAllowedFetchUrl(rawUrl) {
     try {
         const url = new URL(rawUrl);
@@ -124,12 +130,6 @@ async function updateDetectedProduct(tabId, product) {
         chrome.action.setTitle({ tabId, title: 'Brickmerge Tools' })
     ]);
 }
-
-chrome.action.onClicked.addListener(tab => {
-    const product = detectedProducts.get(Number(tab?.id));
-    if (!product?.setNumber && !product?.ean) return;
-    void chrome.sidePanel.open({ windowId: tab.windowId });
-});
 
 chrome.runtime.onInstalled.addListener(async () => {
     const merged = await loadAndMigrateSettings();
