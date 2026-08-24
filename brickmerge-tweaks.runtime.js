@@ -4233,6 +4233,20 @@ globalThis.BM_isFranceEnabled = settings =>
                         gap: 0.35rem;
                         margin: 0.35rem 0 !important;
                     }
+                    /* The chart/depot pair lives immediately above this toolbar. Keep
+                       all four action cells on the same mobile rhythm: the native
+                       chart/depot buttons previously retained a 2.9rem height and a
+                       bottom margin while the lower pair used 2.7rem. */
+                    .bm-chart-controls.bmd-has-depot-button > #chartTrigger,
+                    .bm-chart-controls.bmd-has-depot-button > .bmd-open-button,
+                    .bm-offer-toolbar > .bm-detail-all-prices-refresh,
+                    .bm-offer-toolbar > .bm-discount-toolbar-control {
+                        min-height: 2.7rem !important;
+                        height: 2.7rem !important;
+                        max-height: 2.7rem !important;
+                        margin-top: 0 !important;
+                        margin-bottom: 0 !important;
+                    }
                     .bm-discount-toolbar-control {
                         min-height: 2.7rem;
                         height: 2.7rem;
