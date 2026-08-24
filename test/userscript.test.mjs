@@ -25,7 +25,7 @@ const tweakerSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.8/);
+    assert.match(loaderSource, /@version\s+5\.6\.9/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -98,7 +98,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.8/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.9/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -482,6 +482,10 @@ test('eBay offers below half the Brickmerge price are rejected', () => {
 
 test('offer rows can be dismissed and marketplace alternatives move up', () => {
     assert.match(tweakerSource, /DISMISSED_OFFERS_KEY/);
+    assert.match(tweakerSource, /VISITED_OFFERS_KEY/);
+    assert.match(tweakerSource, /function markOfferVisited\(/);
+    assert.match(tweakerSource, /if \(!isOfferVisited\(identity\)\)/);
+    assert.match(tweakerSource, /addEventListener\('auxclick', rememberVisit\)/);
     assert.match(tweakerSource, /function syncDismissedOfferRows\(/);
     assert.match(tweakerSource, /className = 'bm-offer-dismiss'/);
     assert.match(tweakerSource, /new CustomEvent\('bm-offer-dismissed'/);
@@ -489,6 +493,7 @@ test('offer rows can be dismissed and marketplace alternatives move up', () => {
     assert.match(tweakerSource, /showOfferDismissToast/);
     assert.match(tweakerSource, /Verworfene wieder anzeigen/);
     assert.match(tweakerSource, /scheduleOfferPresentation\(\)/);
+    assert.match(tweakerSource, /right:\s*-1\.55rem/);
 });
 
 test('mobile offer rows grow when price details wrap', () => {

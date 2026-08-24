@@ -2412,14 +2412,15 @@ globalThis.BM_isFranceEnabled = settings =>
                 }
                 #offerlist .row.collapse.bm-offer-dismissible {
                     position: relative;
+                    overflow: visible;
                 }
                 #offerlist .bm-offer-dismissible .pricerow > a > .price {
-                    width: calc(95% - 1.45rem) !important;
+                    width: 95% !important;
                 }
                 #offerlist .bm-offer-dismiss {
                     position: absolute;
                     top: 50%;
-                    right: 0.2rem;
+                    right: -1.55rem;
                     z-index: 18;
                     display: inline-flex !important;
                     width: 1.25rem;
@@ -2483,6 +2484,7 @@ globalThis.BM_isFranceEnabled = settings =>
                 }
                 @media screen and (max-width: 640px) {
                     #offerlist .bm-offer-dismiss {
+                        right: -1.35rem;
                         opacity: 0.72;
                     }
                 }
@@ -4502,6 +4504,7 @@ globalThis.BM_isFranceEnabled = settings =>
 
             const setNum = BM_getBrickmergeSetNumber(window.location.href);
             const DISMISSED_OFFERS_KEY = 'brickmerge-tools-dismissed-offers-v1';
+            const VISITED_OFFERS_KEY = 'brickmerge-tools-visited-offers-v1';
             const DISMISSED_OFFER_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
 
             function normalizedOfferUrl(value) {
@@ -4526,10 +4529,10 @@ globalThis.BM_isFranceEnabled = settings =>
                 return `${normalizedSource}|${normalizedUrl || String(fallback || '').trim()}`;
             }
 
-            function readDismissedOfferStore() {
+            function readTimestampedOfferStore(storageKey) {
                 let store = {};
                 try {
-                    const parsed = JSON.parse(localStorage.getItem(DISMISSED_OFFERS_KEY) || '{}');
+                    const parsed = JSON.parse(localStorage.getItem(storageKey) || '{}');
                     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
                         store = parsed;
                     }
@@ -4557,10 +4560,38 @@ globalThis.BM_isFranceEnabled = settings =>
                 });
                 if (changed) {
                     try {
-                        localStorage.setItem(DISMISSED_OFFERS_KEY, JSON.stringify(store));
+                        localStorage.setItem(storageKey, JSON.stringify(store));
                     } catch (error) {}
                 }
                 return store;
+            }
+
+            function readDismissedOfferStore() {
+                return readTimestampedOfferStore(DISMISSED_OFFERS_KEY);
+            }
+
+            function readVisitedOfferStore() {
+                return readTimestampedOfferStore(VISITED_OFFERS_KEY);
+            }
+
+            function isOfferVisited(identity) {
+                if (!setNum || !identity) return false;
+                const entries = readVisitedOfferStore()[String(setNum)];
+                return Boolean(entries && Object.prototype.hasOwnProperty.call(entries, identity));
+            }
+
+            function markOfferVisited(identity) {
+                if (!setNum || !identity) return;
+                const store = readVisitedOfferStore();
+                const setKey = String(setNum);
+                const entries = store[setKey] && typeof store[setKey] === 'object'
+                    ? store[setKey]
+                    : {};
+                entries[identity] = Date.now();
+                store[setKey] = entries;
+                try {
+                    localStorage.setItem(VISITED_OFFERS_KEY, JSON.stringify(store));
+                } catch (error) {}
             }
 
             function isOfferDismissed(identity) {
@@ -4664,6 +4695,21 @@ globalThis.BM_isFranceEnabled = settings =>
                     if (!identity) return;
                     if (isOfferDismissed(identity)) {
                         wrapper.remove();
+                        return;
+                    }
+                    const offerLink = priceRow.querySelector(':scope > a[href]');
+                    if (offerLink && offerLink.dataset.bmOfferVisitBound !== 'true') {
+                        offerLink.dataset.bmOfferVisitBound = 'true';
+                        const rememberVisit = () => {
+                            markOfferVisited(identity);
+                            scheduleOfferPresentation();
+                        };
+                        offerLink.addEventListener('click', rememberVisit);
+                        offerLink.addEventListener('auxclick', rememberVisit);
+                    }
+                    if (!isOfferVisited(identity)) {
+                        wrapper.classList.remove('bm-offer-dismissible');
+                        wrapper.querySelector(':scope > .bm-offer-dismiss')?.remove();
                         return;
                     }
                     wrapper.classList.add('bm-offer-dismissible');
