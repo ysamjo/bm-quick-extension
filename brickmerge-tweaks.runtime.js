@@ -3726,7 +3726,24 @@ globalThis.BM_isFranceEnabled = settings =>
                     cursor: pointer;
                 }
                 #chartdiv2.bm-chart-detail-trigger:hover {
-                    background: #fafafa;
+                    background: transparent;
+                }
+                #chartdiv2.bm-chart-detail-trigger a[href*="amcharts"] {
+                    display: inline-block !important;
+                    padding: 0.12rem 0.35rem !important;
+                    border-radius: 2px;
+                    background: rgba(255, 255, 255, 0.88) !important;
+                    color: #555 !important;
+                    text-decoration: none !important;
+                    transition: background-color 150ms ease, color 150ms ease,
+                        box-shadow 150ms ease;
+                }
+                #chartdiv2.bm-chart-detail-trigger a[href*="amcharts"]:hover,
+                #chartdiv2.bm-chart-detail-trigger a[href*="amcharts"]:focus-visible {
+                    background: #fff !important;
+                    color: #b00000 !important;
+                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+                    outline: none;
                 }
                 #chartdiv2.bm-chart-detail-trigger:focus-visible {
                     outline: 2px solid #b00;
@@ -6642,12 +6659,12 @@ globalThis.BM_isFranceEnabled = settings =>
                             }
                         }
                         matches.forEach(textNode => {
-                            textNode.nodeValue = 'Details anzeigen · amCharts';
+                            textNode.nodeValue = 'Details anzeigen';
                             const labelledElement = textNode.parentElement?.closest('[aria-label]');
                             if (labelledElement) {
                                 labelledElement.setAttribute(
                                     'aria-label',
-                                    'Preisentwicklung im Detail anzeigen · amCharts'
+                                    'Preisentwicklung im Detail anzeigen'
                                 );
                             }
                         });

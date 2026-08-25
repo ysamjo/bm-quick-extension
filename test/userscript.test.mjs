@@ -33,7 +33,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.12/);
+    assert.match(loaderSource, /@version\s+5\.6\.13/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -106,7 +106,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.12/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.13/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -329,7 +329,8 @@ test('small chart opens price history while the native trigger stays hidden', ()
     assert.match(tweakerSource, /document\.getElementById\('chartdiv2'\)/);
     assert.match(tweakerSource, /summaryChart\.classList\.add\('bm-chart-detail-trigger'\)/);
     assert.match(tweakerSource, /openPriceChartOverlay\?\.\(\)/);
-    assert.match(tweakerSource, /Details anzeigen · amCharts/);
+    assert.match(tweakerSource, /textNode\.nodeValue = 'Details anzeigen'/);
+    assert.doesNotMatch(tweakerSource, /Details anzeigen · amCharts/);
     assert.match(tweakerSource, /chartTrigger\.classList\.add\('bm-native-chart-loader'\)/);
     assert.match(
         tweakerSource,
