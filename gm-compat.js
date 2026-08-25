@@ -49,7 +49,8 @@
             request: {
                 url: details.url,
                 method: details.method || 'GET',
-                headers: details.headers || {}
+                headers: details.headers || {},
+                data: details.data
             }
         }).then(result => {
             if (timeoutId !== null) window.clearTimeout(timeoutId);

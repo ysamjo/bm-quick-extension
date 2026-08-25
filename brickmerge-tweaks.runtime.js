@@ -1722,7 +1722,7 @@ globalThis.BM_isFranceEnabled = settings =>
             const KLAZ_CLIENT_CACHE_TTL = 45 * 60 * 1000;
             const MINIFIG_INVENTORY_CACHE_TTL = 6 * 60 * 60 * 1000;
             const MINIFIG_PRICE_CACHE_TTL = 24 * 60 * 60 * 1000;
-            const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-eu-v9';
+            const MINIFIG_TOTAL_CACHE_SCOPE = 'bricklink-minifig-current-total-eu-v10';
             const BM_WORKER_CLIENT_ID_STORAGE_KEY = 'brickmerge-worker-client-id-v1';
             const BM_WORKER_URL = globalThis.BM_WORKER_DEFAULT_BASE_URL ||
                 'https://getdata.andreas-9b7.workers.dev';
@@ -1831,7 +1831,9 @@ globalThis.BM_isFranceEnabled = settings =>
                 fetch(details.url, {
                     method: details.method || 'GET',
                     headers: fetchHeaders,
+                    body: details.data,
                     credentials: 'omit',
+                    keepalive: details.method && details.method !== 'GET',
                     signal: controller.signal
                 }).then(async response => {
                     if (timeoutId !== null) window.clearTimeout(timeoutId);
@@ -4574,6 +4576,73 @@ globalThis.BM_isFranceEnabled = settings =>
                 return readTimestampedOfferStore(VISITED_OFFERS_KEY);
             }
 
+            function requestWorkerDismissals(method, payload = null) {
+                if (!setNum) return Promise.resolve(null);
+                return getWorkerClientId().then(clientId => new Promise(resolve => {
+                    const url = new URL(`${BM_WORKER_URL}/offers/dismissals`);
+                    if (method === 'GET') url.searchParams.set('set', setNum);
+                    const headers = {
+                        'Accept': 'application/json',
+                        'X-BM-Client-ID': clientId
+                    };
+                    if (payload) headers['Content-Type'] = 'application/json';
+                    requestWithGm({
+                        method,
+                        url: url.href,
+                        headers,
+                        data: payload ? JSON.stringify({ setNumber: setNum, ...payload }) : undefined,
+                        timeout: 8000,
+                        onload: response => resolve(response),
+                        onerror: () => resolve(null),
+                        ontimeout: () => resolve(null)
+                    });
+                })).catch(() => null);
+            }
+
+            function syncOfferDismissalToWorker(identity, dismissed) {
+                return requestWorkerDismissals('POST', { identity, dismissed });
+            }
+
+            let workerDismissalsLoaded = false;
+            async function syncDismissedOffersFromWorker() {
+                if (!setNum || workerDismissalsLoaded) return;
+                workerDismissalsLoaded = true;
+                const response = await requestWorkerDismissals('GET');
+                if (!response || response.status !== 200) return;
+                let payload = null;
+                try {
+                    payload = JSON.parse(response.responseText || '{}');
+                } catch (error) {
+                    return;
+                }
+                const remoteEntries = Array.isArray(payload?.dismissed)
+                    ? payload.dismissed
+                    : [];
+                if (remoteEntries.length === 0) return;
+
+                const store = readDismissedOfferStore();
+                const setKey = String(setNum);
+                const entries = store[setKey] && typeof store[setKey] === 'object'
+                    ? store[setKey]
+                    : {};
+                remoteEntries.forEach(entry => {
+                    const identity = String(entry?.identity || '').trim();
+                    const dismissedAt = Number(entry?.dismissedAt);
+                    if (!identity || identity.length > 1200) return;
+                    entries[identity] = Number.isFinite(dismissedAt)
+                        ? dismissedAt
+                        : Date.now();
+                });
+                store[setKey] = entries;
+                try {
+                    localStorage.setItem(DISMISSED_OFFERS_KEY, JSON.stringify(store));
+                } catch (error) {}
+                document.dispatchEvent(new CustomEvent('bm-offer-dismissals-synced', {
+                    detail: { setNumber: setKey }
+                }));
+                scheduleOfferPresentation();
+            }
+
             function isOfferVisited(identity) {
                 if (!setNum || !identity) return false;
                 const entries = readVisitedOfferStore()[String(setNum)];
@@ -4619,6 +4688,7 @@ globalThis.BM_isFranceEnabled = settings =>
                 } catch (error) {
                     console.warn('Brickmerge Tools: Verworfenes Angebot konnte nicht gespeichert werden.');
                 }
+                void syncOfferDismissalToWorker(identity, dismissed);
             }
 
             function clearDismissedOffersForSet() {
@@ -4628,7 +4698,10 @@ globalThis.BM_isFranceEnabled = settings =>
                 try {
                     localStorage.setItem(DISMISSED_OFFERS_KEY, JSON.stringify(store));
                 } catch (error) {}
+                void requestWorkerDismissals('POST', { clear: true });
             }
+
+            if (setNum) void syncDismissedOffersFromWorker();
 
             function getOfferRowDismissIdentity(wrapper) {
                 if (!wrapper) return '';
@@ -7826,6 +7899,10 @@ globalThis.BM_isFranceEnabled = settings =>
                         else offersByKey.delete(detail.offerKey);
                         syncOffers();
                     });
+                    document.addEventListener('bm-offer-dismissals-synced', event => {
+                        if (String(event.detail?.setNumber || '') !== String(setNumber)) return;
+                        syncOffers();
+                    });
                     function parseBrickbankVendorOffer(jsonText, vendorPattern) {
                         let payload;
                         try {
@@ -8932,7 +9009,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     void getWorkerClientId().then(brickLinkWorkerClientId => {
                         cachedShopRequest(
                             'bricklink',
-                            makeApiCacheKey('bricklink-set-offer-worker-v1', setNumber),
+                            makeApiCacheKey('bricklink-set-offer-worker-v2', setNumber),
                             OFFER_CACHE_TTL,
                             {
                         method: 'GET',
@@ -9763,7 +9840,7 @@ globalThis.BM_isFranceEnabled = settings =>
 
                     const bundledCurrentPrice = await fetchWithCache(
                         makeApiCacheKey(
-                            `bricklink-minifig-current-price-v4-${regionCacheKey}`,
+                            `bricklink-minifig-current-price-v5-${regionCacheKey}`,
                             cleanId
                         ),
                         MINIFIG_PRICE_CACHE_TTL,
@@ -9810,7 +9887,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     ).catch(() => null);
                     const currentPrice = itemId ? await fetchWithCache(
                         makeApiCacheKey(
-                            `bricklink-minifig-current-price-v4-${regionCacheKey}`,
+                            `bricklink-minifig-current-price-v5-${regionCacheKey}`,
                             cleanId
                         ),
                         MINIFIG_PRICE_CACHE_TTL,

@@ -1111,8 +1111,10 @@ function json(body, status = 200, extraHeaders = {}) {
 __name(json, "json");
 
 // src/index.js
-var VERSION = "2.5.2";
+var VERSION = "2.5.3";
 var CACHE_SCHEMA = "bm-central-v22";
+var OFFER_DISMISSAL_TTL_SECONDS = 180 * 24 * 60 * 60;
+var OFFER_DISMISSAL_MAX_ENTRIES = 200;
 var EBAY_FR_SHARED_CACHE_VERSION = "v6";
 var inflightRequests = /* @__PURE__ */ new Map();
 var JSON_HEADERS2 = Object.freeze({
@@ -1235,8 +1237,11 @@ var index_default = {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") return corsPreflight();
     const url = new URL(request.url);
-    if (request.method !== "GET" && !url.pathname.startsWith("/ebay-webhook")) {
-      return json2({ error: "Nur GET-Anfragen sind erlaubt." }, 405);
+    const isDismissalWrite = url.pathname === "/offers/dismissals" &&
+      request.method === "POST";
+    if (request.method !== "GET" && !isDismissalWrite &&
+      !url.pathname.startsWith("/ebay-webhook")) {
+      return json2({ error: "Methode nicht erlaubt." }, 405);
     }
     try {
       if (url.pathname === "/" || url.pathname === "/health") {
@@ -1255,6 +1260,7 @@ var index_default = {
             "/stockx",
             "/idealo",
             "/bricklink",
+            "/offers/dismissals",
             "/offers/cache",
             "/offers/refresh",
             "/apify/status?job=...",
@@ -1307,6 +1313,9 @@ var index_default = {
       }
       if (url.pathname === "/bricklink") {
         return handleBricklinkSetOffer(request, url, env, ctx);
+      }
+      if (url.pathname === "/offers/dismissals") {
+        return handleOfferDismissals(request, url, env);
       }
       if (url.pathname === "/offers/cache") {
         return handleOfferBundle(request, url, env, ctx, true);
@@ -1649,6 +1658,92 @@ async function handleBrickbank(request, url, env, ctx) {
     headers: jsonRequestHeaders()
   });
 }
+async function handleOfferDismissals(request, url, env) {
+  if (!env.BM_CACHE?.get || !env.BM_CACHE?.put) {
+    return json2({ error: "BM_CACHE fehlt im Worker." }, 503);
+  }
+  const clientId = String(request.headers.get("x-bm-client-id") || "")
+    .trim()
+    .toLowerCase();
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(clientId)) {
+    return json2({ error: "Ungültige Client-ID." }, 400);
+  }
+
+  let payload = null;
+  if (request.method === "POST") {
+    const contentLength = Number(request.headers.get("content-length") || 0);
+    if (contentLength > 8 * 1024) {
+      return json2({ error: "Anfrage zu groß." }, 413);
+    }
+    payload = await request.json().catch(() => null);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return json2({ error: "Ungültige JSON-Anfrage." }, 400);
+    }
+  }
+
+  const setNumber = cleanSetNumber(
+    request.method === "POST" ? payload?.setNumber : url.searchParams.get("set")
+  );
+  if (!setNumber) {
+    return json2({ error: "Ungültige LEGO-Setnummer." }, 400);
+  }
+
+  const key = `offer-dismissals:v1:${clientId}:${setNumber}`;
+  const now = Date.now();
+  const cutoff = now - OFFER_DISMISSAL_TTL_SECONDS * 1e3;
+  const stored = await env.BM_CACHE.get(key, "json").catch(() => null);
+  let entries = Array.isArray(stored?.entries)
+    ? stored.entries.filter((entry) =>
+      typeof entry?.identity === "string" &&
+      entry.identity.length > 0 && entry.identity.length <= 1200 &&
+      Number.isFinite(Number(entry.dismissedAt)) &&
+      Number(entry.dismissedAt) >= cutoff
+    )
+    : [];
+
+  if (request.method === "POST") {
+    const rateLimitResponse = await enforceRateLimit(
+      request,
+      env,
+      "offer-dismissals"
+    );
+    if (rateLimitResponse) return rateLimitResponse;
+
+    if (payload.clear === true) {
+      entries = [];
+    } else {
+      const identity = String(payload.identity || "").trim();
+      if (!identity || identity.length > 1200) {
+        return json2({ error: "Ungültige Angebots-ID." }, 400);
+      }
+      entries = entries.filter((entry) => entry.identity !== identity);
+      if (payload.dismissed !== false) {
+        entries.push({ identity, dismissedAt: now });
+      }
+    }
+
+    entries.sort((left, right) =>
+      Number(right.dismissedAt) - Number(left.dismissedAt)
+    );
+    entries = entries.slice(0, OFFER_DISMISSAL_MAX_ENTRIES);
+    if (entries.length === 0 && env.BM_CACHE.delete) {
+      await env.BM_CACHE.delete(key);
+    } else {
+      await env.BM_CACHE.put(key, JSON.stringify({
+        version: 1,
+        setNumber,
+        updatedAt: now,
+        entries
+      }), { expirationTtl: OFFER_DISMISSAL_TTL_SECONDS });
+    }
+  }
+
+  return json2({
+    setNumber,
+    dismissed: entries,
+    count: entries.length
+  }, 200, { "cache-control": "no-store" });
+}
 async function handleBricklinkCatalog(request, url, env, ctx) {
   const type = url.searchParams.get("type") === "M" ? "M" : "S";
   const item = cleanCatalogItem(url.searchParams.get("item"));
@@ -1683,7 +1778,7 @@ async function handleBricklinkSetOffer(request, url, env, ctx) {
     return json2({ error: "Ungültige LEGO-Setnummer." }, 400);
   }
   return cachedUpstream(request, env, ctx, {
-    cacheKey: `bricklink:set-offer:v1:${setNumber}`,
+    cacheKey: `bricklink:set-offer:v2:${setNumber}`,
     ttlSeconds: TTL.bricklinkSetOffer,
     rateLimitRoute: "bricklink",
     cacheOnly: url.searchParams.get("cache") === "only",
@@ -1768,7 +1863,7 @@ async function handleBricklinkMinifigPrice(request, url, env, ctx) {
     return json2({ error: "Ung\xFCltige BrickLink-Minifiguren-ID." }, 400);
   }
   return cachedUpstream(request, env, ctx, {
-    cacheKey: `bricklink:minifig-current-price-v3:${region.toLowerCase()}:${itemNo.toLowerCase()}`,
+    cacheKey: `bricklink:minifig-current-price-v4:${region.toLowerCase()}:${itemNo.toLowerCase()}`,
     ttlSeconds: TTL.bricklinkMinifigPrice,
     rateLimitRoute: "bricklink",
     fetcher: async () => {
@@ -2211,7 +2306,7 @@ function normalizeMoney(value) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 && number <= 1e4 ? Math.round(number * 100) / 100 : null;
 }
-function parseBricklinkMoney(value) {
+function parseBricklinkMoneyDetails(value) {
   const text = normalizedText(value);
   const match = text.match(
     /(?:EUR|\u20AC)\s*([\d.,]+)|([\d.,]+)\s*(?:EUR|\u20AC)/i
@@ -2228,11 +2323,32 @@ function parseBricklinkMoney(value) {
   } else if (commaIndex >= 0) {
     normalized = raw.replace(",", ".");
   }
-  return normalizeMoney(normalized);
+  const decimalIndex = Math.max(commaIndex, dotIndex);
+  const decimalPlaces = decimalIndex >= 0
+    ? raw.length - decimalIndex - 1
+    : 0;
+  const amount = Number(normalized);
+  return Number.isFinite(amount) && amount > 0 && amount <= 1e4
+    ? { amount, decimalPlaces }
+    : null;
+}
+function parseBricklinkMoney(value) {
+  const details = parseBricklinkMoneyDetails(value);
+  return details ? normalizeMoney(details.amount) : null;
 }
 function parseBricklinkOfferPrice(offer) {
-  return parseBricklinkMoney(offer?.mInvSalePrice || "") ??
-    parseBricklinkMoney(offer?.mDisplaySalePrice || "");
+  const details = parseBricklinkMoneyDetails(offer?.mInvSalePrice || "") ??
+    parseBricklinkMoneyDetails(offer?.mDisplaySalePrice || "");
+  if (!details) return null;
+
+  // BrickLink liefert bei einem nicht-deutschen Worker-Standort die Preise
+  // umsatzsteuerpflichtiger EU-Händler als Nettowert mit mehr als zwei
+  // Nachkommastellen. Die deutsche BrickLink-Oberfläche zeigt für denselben
+  // Bestand dagegen den Endkundenpreis inklusive 19 % deutscher MwSt.
+  const consumerPrice = details.decimalPlaces > 2
+    ? details.amount * 1.19
+    : details.amount;
+  return normalizeMoney(consumerPrice);
 }
 function parseBricklinkCatalogItemId(html) {
   const value = String(html || "").match(/\bidItem\s*[:=]\s*(\d+)/)?.[1] || "";

@@ -48,8 +48,16 @@ async function fetchText(request) {
     }
 
     const method = String(request.method || 'GET').toUpperCase();
-    if (method !== 'GET') {
-        return { ok: false, error: 'Nur GET-Anfragen sind erlaubt.' };
+    const targetUrl = new URL(request.url);
+    const isDismissalWrite = method === 'POST' &&
+        targetUrl.hostname === 'getdata.andreas-9b7.workers.dev' &&
+        targetUrl.pathname === '/offers/dismissals';
+    if (method !== 'GET' && !isDismissalWrite) {
+        return { ok: false, error: 'Methode nicht erlaubt.' };
+    }
+    const requestBody = typeof request.data === 'string' ? request.data : undefined;
+    if (requestBody && requestBody.length > 8 * 1024) {
+        return { ok: false, error: 'Anfrage zu groß.' };
     }
 
     const headers = new Headers();
@@ -61,12 +69,12 @@ async function fetchText(request) {
     }
 
     try {
-        const targetUrl = new URL(request.url);
         const useBrowserSession = targetUrl.hostname === 'brickowl.com' ||
             targetUrl.hostname.endsWith('.brickowl.com');
         const response = await fetch(request.url, {
             method,
             headers,
+            body: isDismissalWrite ? requestBody : undefined,
             credentials: useBrowserSession ? 'include' : 'omit',
             redirect: 'follow',
             cache: 'no-store'

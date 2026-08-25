@@ -24,6 +24,13 @@ Preis liegt im gemeinsamen Angebots-Cache und wird auf Set-Detailseiten
 verwendet. Übersichts- und Suchseiten übernehmen keine Marktplatzpreise und
 werden nicht neu sortiert. Versandkosten sind beim BrickLink-Wert nicht
 enthalten, weil BrickLink sie vor der Warenkorbanfrage nicht zuverlässig liefert.
+Von BrickLink als Nettobetrag mit vier Nachkommastellen gelieferte EU-Händlerpreise
+werden für deutsche Endkunden inklusive 19 % MwSt. normalisiert.
+
+`/offers/dismissals` speichert verworfene Angebots-IDs je anonymer Client-ID und
+LEGO-Set für 180 Tage in KV. GET synchronisiert die gespeicherten IDs, POST setzt,
+entfernt oder löscht sie. Konkrete Angebotsdaten und API-Schlüssel werden dabei
+nicht gespeichert.
 
 Vinted und Leboncoin werden über getrennte Apify-Actors abgefragt. Dafür muss
 das Worker-Secret `APIFY_TOKEN` gesetzt sein. Pro Lauf werden höchstens acht

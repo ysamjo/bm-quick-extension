@@ -19,7 +19,7 @@ test('health reports version and KV binding', async () => {
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.ok, true);
-  assert.equal(body.version, '2.5.2');
+  assert.equal(body.version, '2.5.3');
   assert.equal(body.cache, 'edge+kv');
 });
 
@@ -30,15 +30,70 @@ test('BrickLink money parser handles German and international EUR formats', () =
   assert.equal(__test.parseBricklinkMoney('USD 12.34'), null);
 });
 
-test('BrickLink minifigure offers prefer the inventory EUR price', () => {
+test('BrickLink prices include German VAT for net inventory values', () => {
   assert.equal(__test.parseBricklinkOfferPrice({
     mDisplaySalePrice: 'US $13.50',
     mInvSalePrice: 'EUR 11.7227'
-  }), 11.72);
+  }), 13.95);
+  assert.equal(__test.parseBricklinkOfferPrice({
+    mDisplaySalePrice: 'US $442.40',
+    mInvSalePrice: 'EUR 378.1513'
+  }), 450);
   assert.equal(__test.parseBricklinkOfferPrice({
     mDisplaySalePrice: 'EUR 12.34',
     mInvSalePrice: ''
   }), 12.34);
+});
+
+test('dismissed offers are persisted per client and set in KV', async () => {
+  const values = new Map();
+  const env = {
+    BM_CACHE: {
+      async get(key, type) {
+        const value = values.get(key);
+        return type === 'json' && value ? JSON.parse(value) : value ?? null;
+      },
+      async put(key, value) { values.set(key, value); },
+      async delete(key) { values.delete(key); }
+    }
+  };
+  const clientId = 'b8fd03c9-c0ea-4fe0-8a15-a09995b56bb8';
+  const identity = 'bricklink-de|543459993';
+  const dismissResponse = await worker.fetch(new Request(
+    'https://getdata.example/offers/dismissals',
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-bm-client-id': clientId
+      },
+      body: JSON.stringify({ setNumber: '75397', identity, dismissed: true })
+    }
+  ), env, context);
+  assert.equal(dismissResponse.status, 200);
+
+  const readResponse = await worker.fetch(new Request(
+    'https://getdata.example/offers/dismissals?set=75397',
+    { headers: { 'x-bm-client-id': clientId } }
+  ), env, context);
+  assert.equal(readResponse.status, 200);
+  const readBody = await readResponse.json();
+  assert.equal(readBody.count, 1);
+  assert.equal(readBody.dismissed[0].identity, identity);
+
+  const clearResponse = await worker.fetch(new Request(
+    'https://getdata.example/offers/dismissals',
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-bm-client-id': clientId
+      },
+      body: JSON.stringify({ setNumber: '75397', clear: true })
+    }
+  ), env, context);
+  assert.equal(clearResponse.status, 200);
+  assert.equal((await clearResponse.json()).count, 0);
 });
 
 test('BrickLink minifigure offer parameters distinguish DE and EU', () => {

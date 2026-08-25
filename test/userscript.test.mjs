@@ -23,9 +23,17 @@ const tweakerSource = fs.readFileSync(
     new URL('../src/brickmerge-tweaker.js', import.meta.url),
     'utf8'
 );
+const backgroundSource = fs.readFileSync(
+    new URL('../background.js', import.meta.url),
+    'utf8'
+);
+const gmCompatSource = fs.readFileSync(
+    new URL('../gm-compat.js', import.meta.url),
+    'utf8'
+);
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.9/);
+    assert.match(loaderSource, /@version\s+5\.6\.10/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -98,7 +106,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.9/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.10/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -263,7 +271,7 @@ test('current extension marketplace and minifigure features are bundled', () => 
     assert.match(source, /Math\.min\(\.\.\.validPrices\)/);
     assert.match(source, /getRawSharedMinifigPrice\(blItemNo, 'DE'\)/);
     assert.match(source, /getRawSharedMinifigPrice\(blItemNo, 'EU'\)/);
-    assert.match(source, /bricklink-minifig-current-total-eu-v9/);
+    assert.match(source, /bricklink-minifig-current-total-eu-v10/);
     for (const sourceName of [
         'kleinanzeigen', 'vinted', 'leboncoin', 'stockx', 'idealo', 'bricklink'
     ]) {
@@ -494,6 +502,10 @@ test('offer rows can be dismissed and marketplace alternatives move up', () => {
     assert.match(tweakerSource, /Verworfene wieder anzeigen/);
     assert.match(tweakerSource, /scheduleOfferPresentation\(\)/);
     assert.match(tweakerSource, /right:\s*-1\.55rem/);
+    assert.match(tweakerSource, /\/offers\/dismissals/);
+    assert.match(tweakerSource, /bm-offer-dismissals-synced/);
+    assert.match(backgroundSource, /isDismissalWrite/);
+    assert.match(gmCompatSource, /data:\s*details\.data/);
 });
 
 test('mobile offer rows grow when price details wrap', () => {
