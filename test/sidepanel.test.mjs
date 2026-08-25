@@ -99,6 +99,13 @@ test('side panel embeds the responsive Brickmerge page', () => {
         new URL('../sidepanel/sidepanel.js', import.meta.url),
         'utf8'
     );
+    const styles = fs.readFileSync(
+        new URL('../sidepanel/sidepanel.css', import.meta.url),
+        'utf8'
+    );
+    const brickmergeFont = fs.readFileSync(
+        new URL('../fonts/open-sans-v18-latin-regular.woff2', import.meta.url)
+    );
     assert.match(html, /id="brickmerge-frame"/);
     assert.match(html, /id="panel-search-form"/);
     assert.doesNotMatch(html, /class="app-header"/);
@@ -107,6 +114,10 @@ test('side panel embeds the responsive Brickmerge page', () => {
     assert.match(source, /www\.brickmerge\.de/);
     assert.match(source, /panel-query/);
     assert.doesNotMatch(source, /pageHost|id=["']rescan["']/);
+    assert.match(styles, /@font-face[\s\S]*?font-family: "Open Sans"/);
+    assert.match(styles, /open-sans-v18-latin-regular\.woff2/);
+    assert.match(styles, /button, input \{ font: inherit; \}/);
+    assert.ok(brickmergeFont.byteLength > 10_000);
 });
 
 test('embedded Brickmerge header is hidden only in the side panel frame', () => {
