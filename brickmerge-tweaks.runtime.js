@@ -1095,10 +1095,9 @@ globalThis.BM_isFranceEnabled = settings =>
                 });
             };
 
-            // Auf Übersichtsseiten werden ausschließlich vorhandene Worker-Cachewerte
-            // gelesen. Neue Kleinanzeigen-Abfragen starten nur auf Set-Detailseiten.
-            const buttonSources = settings => enabledSources(settings)
-                .filter(source => source !== 'kleinanzeigen');
+            // Der bewusste Klick auf der Set-Detailseite darf alle aktivierten Quellen
+            // aktualisieren. Dazu gehört auch der manuelle Kleinanzeigen-Apify-Fallback.
+            const buttonSources = settings => enabledSources(settings);
 
             const core = Object.freeze({
                 CARD_SELECTOR,
@@ -1642,19 +1641,18 @@ globalThis.BM_isFranceEnabled = settings =>
                             if (label) label.textContent =
                                 'Marktplätze werden geladen … ' +
                                 `(${completedSources.size}/${sources.length})`;
-                            if (update.state === 'ready') {
-                                document.dispatchEvent(new CustomEvent(
-                                    'bm-marketplace-source-update',
-                                    {
-                                        detail: {
-                                            setNumber: data.setNumber,
-                                            source: update.source,
-                                            state: update.state,
-                                            payload: update.payload
-                                        }
+                            document.dispatchEvent(new CustomEvent(
+                                'bm-marketplace-source-update',
+                                {
+                                    detail: {
+                                        setNumber: data.setNumber,
+                                        source: update.source,
+                                        state: update.state,
+                                        payload: update.payload,
+                                        error: update.error
                                     }
-                                ));
-                            }
+                                }
+                            ));
                         };
                         try {
                             await refreshBundle(
@@ -7089,6 +7087,7 @@ globalThis.BM_isFranceEnabled = settings =>
                 const brickOwlSearchUrl = value =>
                     `https://www.brickowl.com/search/catalog?cat=3&jump=1&query=${encodeURIComponent(`${value}-1`)}`;
                         let kleinanzeigenRequestState = 'idle';
+                        let kleinanzeigenRequestMessage = '';
                         let idealoRequestHandler = null;
                         let idealoRequestPending = false;
                         let idealoRequestState = 'idle';
@@ -7130,34 +7129,35 @@ globalThis.BM_isFranceEnabled = settings =>
                     if (idealoRequestHandler) idealoRequestHandler();
                     else idealoRequestPending = true;
                 };
+                const applyKleinanzeigenStatusToShortcut = shortcut => {
+                    if (!shortcut) return;
+                    let badge = shortcut.querySelector('.bm-kleinanzeigen-error-badge');
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.className = 'bm-kleinanzeigen-error-badge';
+                        badge.textContent = '!';
+                        shortcut.appendChild(badge);
+                    }
+                    const hasError = kleinanzeigenRequestState === 'error' ||
+                        kleinanzeigenRequestState === 'credits-exhausted';
+                    const tooltip = kleinanzeigenRequestMessage ||
+                        'Kleinanzeigen konnte nicht geladen werden.';
+                    badge.hidden = !hasError;
+                    badge.title = hasError ? tooltip : '';
+                    badge.setAttribute('aria-hidden', hasError ? 'false' : 'true');
+                    if (hasError) badge.setAttribute('aria-label', tooltip);
+                    else badge.removeAttribute('aria-label');
+                    shortcut.classList.toggle('bm-kleinanzeigen-has-error', hasError);
+                };
                 const publishKleinanzeigenRequestState = (state, message = '') => {
                     kleinanzeigenRequestState = state;
+                    kleinanzeigenRequestMessage = String(message || '');
                     document.dispatchEvent(new CustomEvent(
                         'bm-kleinanzeigen-request-state',
-                        { detail: { state, message } }
+                        { detail: { state, message: kleinanzeigenRequestMessage } }
                     ));
-
-                    let feedback = document.querySelector('.bm-kleinanzeigen-feedback');
-                    if (!feedback && message) {
-                        feedback = document.createElement('div');
-                        feedback.className = 'bm-kleinanzeigen-feedback';
-                        feedback.dataset.bmStandalone = 'true';
-                        feedback.setAttribute('role', 'alert');
-                        feedback.setAttribute('aria-live', 'assertive');
-                        const offerList = document.getElementById('offerlist');
-                        if (offerList?.parentNode) {
-                            offerList.parentNode.insertBefore(feedback, offerList);
-                        } else {
-                            document.querySelector('.content.setdetails')?.prepend(feedback);
-                        }
-                    }
-                    if (feedback) {
-                        feedback.textContent = message;
-                        feedback.hidden = !message;
-                        if (!message && feedback.dataset.bmStandalone === 'true') {
-                            feedback.remove();
-                        }
-                    }
+                    document.querySelectorAll('a[data-bmid="btn-kleinanzeigen"]')
+                        .forEach(applyKleinanzeigenStatusToShortcut);
                 };
                 const groups = [
                     {
@@ -7258,6 +7258,26 @@ globalThis.BM_isFranceEnabled = settings =>
                     object-fit: contain;
                 }
                 .bm-link:hover span { text-decoration: underline; }
+                .bm-kleinanzeigen-error-badge {
+                    display: inline-flex;
+                    width: 1.05rem;
+                    height: 1.05rem;
+                    flex: 0 0 1.05rem;
+                    align-items: center;
+                    justify-content: center;
+                    margin-left: 0.38rem;
+                    border-radius: 50%;
+                    background: #b00000;
+                    color: #fff !important;
+                    font: 700 0.72rem/1 Arial, sans-serif;
+                    text-decoration: none !important;
+                    box-shadow: 0 0 0 1px #fff;
+                    cursor: help;
+                }
+                .bm-kleinanzeigen-error-badge[hidden] { display: none !important; }
+                .bm-link:hover .bm-kleinanzeigen-error-badge {
+                    text-decoration: none !important;
+                }
                 .bm-kleinanzeigen-dual-link {
                     overflow: hidden;
                     padding: 0;
@@ -7348,18 +7368,6 @@ globalThis.BM_isFranceEnabled = settings =>
                 .bm-kleinanzeigen-load.is-empty {
                     color: #777 !important;
                 }
-                .bm-kleinanzeigen-feedback {
-                    margin: 0.45rem 0 0;
-                    padding: 0.55rem 0.7rem;
-                    border-left: 3px solid #b00;
-                    border-radius: 2px;
-                    background: #fff0f0;
-                    color: #7d0000;
-                    font-size: 0.78rem;
-                    line-height: 1.35;
-                    animation: bm-info-group-in .18s ease-out;
-                }
-                .bm-kleinanzeigen-feedback[hidden] { display: none !important; }
                 @keyframes bm-kleinanzeigen-spin { to { transform: rotate(360deg); } }
                 @keyframes bm-info-group-in {
                     from { opacity: 0; transform: translateY(5px); }
@@ -7529,17 +7537,6 @@ globalThis.BM_isFranceEnabled = settings =>
                         viewport.className = "bm-link-viewport";
                         const row = document.createElement("div");
                         row.className = "bm-info-links";
-                        let kleinanzeigenFeedback = null;
-                        if (
-                            group.key === 'marketplaces' &&
-                            BM_SETTINGS.offerShops.kleinanzeigen
-                        ) {
-                            kleinanzeigenFeedback = document.createElement('div');
-                            kleinanzeigenFeedback.className = 'bm-kleinanzeigen-feedback';
-                            kleinanzeigenFeedback.setAttribute('role', 'status');
-                            kleinanzeigenFeedback.setAttribute('aria-live', 'polite');
-                            kleinanzeigenFeedback.hidden = true;
-                        }
                         const previous = document.createElement("button");
                         previous.type = "button";
                         previous.className = "bm-link-scroll bm-link-scroll-prev";
@@ -7660,6 +7657,9 @@ globalThis.BM_isFranceEnabled = settings =>
                             span.textContent = name;
                             a.dataset.bmDefaultLabel = name;
                             a.appendChild(span);
+                            if (id === 'btn-kleinanzeigen') {
+                                applyKleinanzeigenStatusToShortcut(a);
+                            }
                             row.appendChild(a);
                         }
                         viewport.appendChild(row);
@@ -7668,17 +7668,6 @@ globalThis.BM_isFranceEnabled = settings =>
                         slider.appendChild(next);
                         section.appendChild(title);
                         section.appendChild(slider);
-                        if (kleinanzeigenFeedback) {
-                            document.addEventListener(
-                                'bm-kleinanzeigen-request-state',
-                                event => {
-                                    const message = String(event.detail?.message || '');
-                                    kleinanzeigenFeedback.textContent = message;
-                                    kleinanzeigenFeedback.hidden = !message;
-                                }
-                            );
-                            section.appendChild(kleinanzeigenFeedback);
-                        }
                         container.appendChild(section);
                     }
                     return container;
@@ -8711,8 +8700,16 @@ globalThis.BM_isFranceEnabled = settings =>
                             'bm-marketplace-source-update',
                             event => {
                                 const detail = event.detail || {};
-                                if (String(detail.setNumber || '') !== String(setNumber) ||
-                                    detail.state !== 'ready') return;
+                                if (String(detail.setNumber || '') !== String(setNumber)) return;
+                                if (detail.source === 'kleinanzeigen') {
+                                    if (detail.state === 'error') {
+                                        publishKleinanzeigenFailure(detail.error);
+                                    } else if (detail.state === 'ready' ||
+                                        detail.state === 'empty') {
+                                        publishKleinanzeigenRequestState('done');
+                                    }
+                                }
+                                if (detail.state !== 'ready') return;
                                 const config = apifyMarketplaceConfigs.get(detail.source);
                                 if (config && BM_isOfferShopEnabled(detail.source)) {
                                     applyApifyMarketplaceResult(
@@ -8729,9 +8726,9 @@ globalThis.BM_isFranceEnabled = settings =>
                         );
 
                         const kleinanzeigenCreditsMessage =
-                            'Kleinanzeigen konnte nicht abgefragt werden: Die API-Credits ' +
-                            'des Worker-Secrets sind aufgebraucht und auch der Apify-Fallback ' +
-                            'konnte kein Ergebnis liefern. Bitte später erneut versuchen.';
+                            'Kleinanzeigen konnte nicht automatisch abgefragt werden: ' +
+                            'Die API-Credits sind aufgebraucht. Über „Weitere Marktplätze ' +
+                            'abrufen“ kann der Apify-Fallback manuell versucht werden.';
                         const kleinanzeigenGenericErrorMessage =
                             'Der Kleinanzeigen-Preis konnte nicht geladen werden. ' +
                             'Bitte später erneut versuchen.';

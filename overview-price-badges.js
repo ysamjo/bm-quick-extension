@@ -302,10 +302,9 @@
         });
     };
 
-    // Auf Übersichtsseiten werden ausschließlich vorhandene Worker-Cachewerte
-    // gelesen. Neue Kleinanzeigen-Abfragen starten nur auf Set-Detailseiten.
-    const buttonSources = settings => enabledSources(settings)
-        .filter(source => source !== 'kleinanzeigen');
+    // Der bewusste Klick auf der Set-Detailseite darf alle aktivierten Quellen
+    // aktualisieren. Dazu gehört auch der manuelle Kleinanzeigen-Apify-Fallback.
+    const buttonSources = settings => enabledSources(settings);
 
     const core = Object.freeze({
         CARD_SELECTOR,
@@ -849,19 +848,18 @@
                     if (label) label.textContent =
                         'Marktplätze werden geladen … ' +
                         `(${completedSources.size}/${sources.length})`;
-                    if (update.state === 'ready') {
-                        document.dispatchEvent(new CustomEvent(
-                            'bm-marketplace-source-update',
-                            {
-                                detail: {
-                                    setNumber: data.setNumber,
-                                    source: update.source,
-                                    state: update.state,
-                                    payload: update.payload
-                                }
+                    document.dispatchEvent(new CustomEvent(
+                        'bm-marketplace-source-update',
+                        {
+                            detail: {
+                                setNumber: data.setNumber,
+                                source: update.source,
+                                state: update.state,
+                                payload: update.payload,
+                                error: update.error
                             }
-                        ));
-                    }
+                        }
+                    ));
                 };
                 try {
                     await refreshBundle(

@@ -33,7 +33,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.15/);
+    assert.match(loaderSource, /@version\s+5\.6\.16/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -106,7 +106,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.15/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.16/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -233,6 +233,24 @@ test('the detail-only marketplace module also excludes search pages', () => {
         overviewSource,
         /if \(!detailSet\) return;/
     );
+});
+
+test('manual marketplace refresh includes Kleinanzeigen and keeps its error compact', () => {
+    const overviewSource = fs.readFileSync(
+        new URL('../src/overview-price-badges.js', import.meta.url),
+        'utf8'
+    );
+    const context = vm.createContext({ URL });
+    vm.runInContext(overviewSource, context);
+
+    const sources = context.BM_OVERVIEW_PRICE_CORE.buttonSources({
+        linkRows: { france: false },
+        offerShops: {}
+    });
+    assert.equal(Array.from(sources).includes('kleinanzeigen'), true);
+    assert.match(tweakerSource, /bm-kleinanzeigen-error-badge/);
+    assert.match(tweakerSource, /kann der Apify-Fallback manuell versucht werden/);
+    assert.doesNotMatch(tweakerSource, /bm-kleinanzeigen-feedback/);
 });
 
 test('stock action lives in the parts block and opens the native depot form', () => {
