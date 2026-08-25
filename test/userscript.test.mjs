@@ -646,6 +646,8 @@ test('eBay Offerlist uses black logos with distinct source markers', () => {
     assert.match(tweakerSource, /Privater eBay-Verkäufer/);
     assert.match(tweakerSource, /logoCountryFlag:\s*isFrance \? '🇫🇷' : ''/);
     assert.match(tweakerSource, /bm-marketplace-country-flag-fr/);
+    assert.match(tweakerSource, /flag\.textContent = offer\.logoCountryFlag/);
+    assert.match(tweakerSource, /font-family:\s*"Apple Color Emoji"/);
     assert.match(tweakerSource, /font-size:\s*0/);
     assert.match(tweakerSource, /PRIVATE_SELLER/);
     assert.match(tweakerSource, /isBusinessSeller/);

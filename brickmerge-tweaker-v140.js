@@ -1045,7 +1045,17 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             line-height: 0;
         }
         #offerlist .bm-marketplace-country-flag-fr {
-            background: linear-gradient(to right, #0055a4 0 33.333%, #fff 33.333% 66.666%, #ef4135 66.666% 100%) !important;
+            /* Dieselbe native Flagge wie im Frankreich-Schalter verwenden. */
+            background: transparent !important;
+            border: 0;
+            width: 16px;
+            height: 16px;
+            min-width: 16px;
+            min-height: 16px;
+            overflow: visible;
+            font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+            font-size: 14px;
+            line-height: 16px;
         }
         @media screen and (min-width: 641px) {
             #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage {
@@ -11214,7 +11224,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     flag.className = 'bm-marketplace-country-flag';
                     if (offer.logoCountryFlag === '🇫🇷') {
                         flag.classList.add('bm-marketplace-country-flag-fr');
-                        flag.textContent = '';
+                        flag.textContent = offer.logoCountryFlag;
                     } else {
                         flag.textContent = offer.logoCountryFlag;
                     }
