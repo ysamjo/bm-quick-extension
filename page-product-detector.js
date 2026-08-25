@@ -4,6 +4,7 @@
     const normalize = value => String(value || '').replace(/\s+/g, ' ').trim();
     const validSet = value => /^\d{3,7}$/.test(value) &&
         !/^(?:19|20)\d{2}$/.test(value);
+    const fiveDigitSet = value => normalize(value).match(/(?:^|[^\d])(\d{5})(?!\d)/)?.[1] || '';
     const validGtin13 = value => {
         const digits = String(value || '').replace(/\D/g, '');
         if (!/^\d{13}$/.test(digits)) return false;
@@ -40,12 +41,16 @@
             normalize(entry?.brand?.name || entry?.brand) + ' ' +
             normalize(entry?.name)
         )) || products[0] || {};
+        const heading = normalize(documentValue.querySelector('h1')?.textContent);
+        const title = normalize(documentValue.title);
         const pageName = normalize(
             product.name || documentValue.querySelector('h1')?.textContent ||
             documentValue.title
         );
+        const brand = normalize(product?.brand?.name || product?.brand);
+        const sourceText = `${locationValue.pathname} ${locationValue.search} ${title} ${heading}`;
         const pageLooksLikeLego = /\bLEGO(?:®)?\b/i.test(
-            `${pageName} ${normalize(product?.brand?.name || product?.brand)}`
+            `${sourceText} ${pageName} ${brand}`
         );
         const isBrickmergePage = /(?:^|\.)brickmerge\.de$/i.test(
             locationValue.hostname
@@ -62,6 +67,9 @@
         const setCandidates = [
             isBrickmergePage
                 ? locationValue.pathname.match(/\/(\d{3,7})-\d+_/)?.[1]
+                : '',
+            pageLooksLikeLego
+                ? fiveDigitSet(sourceText)
                 : '',
             pageLooksLikeLego || isBrickmergePage
                 ? locationValue.search.match(
@@ -102,7 +110,7 @@
         };
     };
 
-    const api = Object.freeze({ validSet, validGtin13, detect });
+    const api = Object.freeze({ validSet, validGtin13, fiveDigitSet, detect });
     globalThis.BM_PAGE_PRODUCT_DETECTOR = api;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
 

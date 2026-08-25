@@ -12,9 +12,12 @@ vm.runInContext(detectorSource, context);
 const detector = context.module.exports;
 
 const productDocument = product => ({
-    title: product.name,
-    body: { innerText: '' },
-    querySelector() { return null; },
+    title: product.title || product.name || '',
+    body: { innerText: product.body || '' },
+    querySelector(selector) {
+        if (selector === 'h1' && product.h1) return { textContent: product.h1 };
+        return null;
+    },
     querySelectorAll(selector) {
         if (selector === 'script[type="application/ld+json"]') {
             return [{ textContent: JSON.stringify(product) }];
@@ -47,6 +50,25 @@ test('numeric merchant SKU is not mistaken for a LEGO set', () => {
         brand: { name: 'Example' },
         mpn: '42154'
     }), new URL('https://shop.example/coffee-machine?q=42154'));
+    assert.equal(product, null);
+});
+
+test('page detector accepts LEGO plus a five-digit number in URL, title, or h1', () => {
+    for (const source of [
+        { url: 'https://shop.example/lego/31168', title: 'Product page' },
+        { url: 'https://shop.example/product', title: 'LEGO 31168 kaufen' },
+        { url: 'https://shop.example/product', title: 'Produkt', h1: 'LEGO Set 31168' }
+    ]) {
+        const product = detector.detect(productDocument(source), new URL(source.url));
+        assert.equal(product?.setNumber, '31168');
+    }
+});
+
+test('five-digit number without LEGO context is not detected', () => {
+    const product = detector.detect(productDocument({
+        title: 'Klemmbausteine 31168',
+        h1: 'Bausatz 31168'
+    }), new URL('https://shop.example/product/31168'));
     assert.equal(product, null);
 });
 
