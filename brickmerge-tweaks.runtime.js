@@ -514,7 +514,8 @@ globalThis.BM_isFranceEnabled = settings =>
             display: none !important;
         }
         html.bm-sidepanel-frame #filterrow,
-        html.bm-sidepanel-frame .top-tab {
+        html.bm-sidepanel-frame .top-tab,
+        html.bm-sidepanel-frame .content.setdetails [itemscope][itemtype$="BreadcrumbList"] {
             display: none !important;
         }
         html.bm-sidepanel-frame {
@@ -522,7 +523,7 @@ globalThis.BM_isFranceEnabled = settings =>
             max-width: 100% !important;
             min-width: 0 !important;
             overflow-x: hidden !important;
-            font-size: 80% !important;
+            font-size: 100% !important;
         }
         html.bm-sidepanel-frame body {
             width: 100% !important;
