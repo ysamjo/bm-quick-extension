@@ -33,7 +33,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.11/);
+    assert.match(loaderSource, /@version\s+5\.6\.12/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -106,7 +106,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.11/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.12/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -360,6 +360,21 @@ test('marketplace and discount actions use the compact text toolbar', () => {
         /\.bm-detail-all-prices-refresh \{[\s\S]*?width: auto !important;[\s\S]*?background: transparent !important;/
     );
     assert.doesNotMatch(tweakerSource, /\.bm-chart-controls\.bmd-has-depot-button/);
+});
+
+test('tracked Brickmerge coupon links open the shop without reloading the set page', () => {
+    const normalizeLinks = tweakerSource.match(
+        /function normalizeBrickmergeTrackedOfferLinks\(\) \{[\s\S]*?\n\s*function runOfferPresentationSteps/
+    )?.[0] || '';
+    assert.match(normalizeLinks, /a\[href\*="go2i="\]\[href\*="go2m="\]/);
+    assert.match(normalizeLinks, /new URL\('\/go2\/'/);
+    assert.match(normalizeLinks, /searchParams\.set\('m', merchantId\)/);
+    assert.match(normalizeLinks, /searchParams\.set\('i', itemNumber\)/);
+    assert.match(normalizeLinks, /link\.removeAttribute\('onclick'\)/);
+    assert.match(
+        tweakerSource,
+        /\[true, normalizeBrickmergeTrackedOfferLinks\],[\s\S]*?\[true, syncDismissedOfferRows\]/
+    );
 });
 
 test('minifigure crosswalk assigns similar variants globally by character identity', () => {

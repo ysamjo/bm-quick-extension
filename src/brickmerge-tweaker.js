@@ -7800,10 +7800,36 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         });
     }
 
+    function normalizeBrickmergeTrackedOfferLinks() {
+        document.querySelectorAll(
+            'a[href*="go2i="][href*="go2m="]'
+        ).forEach(link => {
+            let trackedUrl;
+            try {
+                trackedUrl = new URL(link.getAttribute('href'), window.location.href);
+            } catch (error) {
+                return;
+            }
+            const itemNumber = String(trackedUrl.searchParams.get('go2i') || '').trim();
+            const merchantId = String(trackedUrl.searchParams.get('go2m') || '').trim();
+            if (!/^\d{3,7}(?:-\d+)?$/.test(itemNumber) || !/^\d+$/.test(merchantId)) {
+                return;
+            }
+
+            const directUrl = new URL('/go2/', window.location.origin);
+            directUrl.searchParams.set('m', merchantId);
+            directUrl.searchParams.set('i', itemNumber);
+            link.href = directUrl.href;
+            link.removeAttribute('onclick');
+            link.dataset.bmDirectOfferLink = 'true';
+        });
+    }
+
     function runOfferPresentationSteps() {
         [
             [BM_SETTINGS.cleaner, removeCorrectionReportButtons],
             [BM_SETTINGS.shippingAndSorting, removeOfferListPriceDecorations],
+            [true, normalizeBrickmergeTrackedOfferLinks],
             [true, syncDismissedOfferRows],
             [true, labelNativeEbayOffer],
             [true, decorateOfferLogoLinks],
