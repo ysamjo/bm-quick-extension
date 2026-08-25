@@ -1111,7 +1111,7 @@ function json(body, status = 200, extraHeaders = {}) {
 __name(json, "json");
 
 // src/index.js
-var VERSION = "2.5.3";
+var VERSION = "2.5.4";
 var CACHE_SCHEMA = "bm-central-v22";
 var OFFER_DISMISSAL_TTL_SECONDS = 180 * 24 * 60 * 60;
 var OFFER_DISMISSAL_MAX_ENTRIES = 200;
@@ -1526,6 +1526,9 @@ async function handleOfferBundle(request, url, env, ctx, cacheOnly) {
     if (best !== null) sourceUrl.searchParams.set("best", best.toFixed(2));
     sourceUrl.searchParams.set("async", "1");
     if (cacheOnly) sourceUrl.searchParams.set("cache", "only");
+    if (!cacheOnly && path === "/kleinanzeigen") {
+      sourceUrl.searchParams.set("fallback", "apify");
+    }
     return sourceUrl;
   };
   const operations = {
@@ -1642,6 +1645,7 @@ async function handleKleinanzeigenApiFirst(request, url, env, ctx) {
   const apiBody = await apiResponse.clone().json().catch(() => null);
   if (url.searchParams.get("cache") === "only") return apiResponse;
   if (apiResponse.ok && apiBody?.found) return apiResponse;
+  if (url.searchParams.get("fallback") !== "apify") return apiResponse;
   if (!env.APIFY_TOKEN) return apiResponse;
   return startApifyMarketplaceJob(request, url, env, "kleinanzeigen");
 }
@@ -2435,6 +2439,32 @@ async function normalizeMarketplaceItems(marketplace, rawItems, setNumber, env) 
   return config.normalize(rawItems, setNumber);
 }
 __name(normalizeMarketplaceItems, "normalizeMarketplaceItems");
+function buildApifyMarketplaceResult(marketplace, setNumber, offers, best, runId = null) {
+  const filtered = excludeSuspiciousLowPrices(offers, best);
+  const sortedOffers = [...filtered.offers]
+    .sort((a, b) => Number(a.total) - Number(b.total))
+    .slice(0, 10);
+  return {
+    setNumber,
+    marketplace,
+    found: sortedOffers.length > 0,
+    cheapest: sortedOffers[0] || null,
+    comparedOffers: sortedOffers.length,
+    excludedSuspiciousOffers: filtered.excludedCount,
+    excludedBelowReferencePrice: filtered.excludedBelowReferencePrice,
+    referencePrice: best,
+    minimumReferencePrice: filtered.minimumReferencePrice,
+    offers: sortedOffers,
+    sources: {
+      [marketplace]: {
+        success: true,
+        count: sortedOffers.length,
+        runId
+      }
+    }
+  };
+}
+__name(buildApifyMarketplaceResult, "buildApifyMarketplaceResult");
 // Lange Actor-Läufe werden für die Extension als Job ausgeführt. So bleibt
 // keine einzelne Worker-Anfrage offen, während Apify noch scrape't.
 async function startApifyActor(env, actorId, input, maxTotalChargeUsd = 0.05) {
@@ -2490,8 +2520,27 @@ async function startApifyMarketplaceJob(request, url, env, marketplace) {
   if (!env.BM_CACHE) return json2({ error: "BM_CACHE fehlt im Worker" }, 503);
   try {
     const best = normalizeMoney(url.searchParams.get("best"));
-    const resultCacheKey = `${CACHE_SCHEMA}:apify-result:${marketplace}:${config.cacheVersion}:${setNumber}:${best ?? "none"}`;
-    const cachedResult = await env.BM_CACHE.get(resultCacheKey, "json");
+    const rawResultCacheKey = marketplace === "kleinanzeigen"
+      ? `${CACHE_SCHEMA}:apify-raw:${marketplace}:${config.cacheVersion}:${setNumber}`
+      : null;
+    if (rawResultCacheKey) {
+      const cachedRawResult = await env.BM_CACHE.get(rawResultCacheKey, "json");
+      if (Array.isArray(cachedRawResult?.offers)) {
+        return json2(buildApifyMarketplaceResult(
+          marketplace,
+          setNumber,
+          cachedRawResult.offers,
+          best,
+          cachedRawResult.runId || null
+        ), 200, { "x-worker-cache": "HIT" });
+      }
+    }
+    const resultCacheKey = rawResultCacheKey
+      ? null
+      : `${CACHE_SCHEMA}:apify-result:${marketplace}:${config.cacheVersion}:${setNumber}:${best ?? "none"}`;
+    const cachedResult = resultCacheKey
+      ? await env.BM_CACHE.get(resultCacheKey, "json")
+      : null;
     if (cachedResult) return json2(cachedResult, 200, { "x-worker-cache": "HIT" });
     if (url.searchParams.get("cache") === "only") {
       return json2({
@@ -2517,7 +2566,8 @@ async function startApifyMarketplaceJob(request, url, env, marketplace) {
     const jobId = crypto.randomUUID();
     await env.BM_CACHE.put(`apify-job:${jobId}`, JSON.stringify({
       type: "marketplace", marketplace, setNumber, best, actorId: config.actorId,
-      input, resultCacheKey, runId: started.runId, status: started.status,
+      input, resultCacheKey, rawResultCacheKey, runId: started.runId,
+      status: started.status,
       createdAt: Date.now()
     }), { expirationTtl: APIFY_JOB_TTL_SECONDS });
     return json2({ pending: true, jobId, statusUrl: `/apify/status?job=${encodeURIComponent(jobId)}`, pollAfterMs: 1500 }, 202);
@@ -2604,9 +2654,23 @@ async function handleApifyJobStatus(request, url, env) {
         env
       );
       const deduped = dedupeByListingIdOrUrl(normalized);
-      const filtered = excludeSuspiciousLowPrices(deduped, job.best);
-      const offers = [...filtered.offers].sort((a, b) => Number(a.total) - Number(b.total)).slice(0, 10);
-      result = { setNumber: job.setNumber, marketplace: job.marketplace, found: offers.length > 0, cheapest: offers[0] || null, comparedOffers: offers.length, excludedSuspiciousOffers: filtered.excludedCount, excludedBelowReferencePrice: filtered.excludedBelowReferencePrice, referencePrice: job.best, minimumReferencePrice: filtered.minimumReferencePrice, offers, sources: { [job.marketplace]: { success: true, count: offers.length, runId: job.runId } } };
+      result = buildApifyMarketplaceResult(
+        job.marketplace,
+        job.setNumber,
+        deduped,
+        job.best,
+        job.runId
+      );
+      if (job.rawResultCacheKey) {
+        const rawTtlSeconds = deduped.length > 0
+          ? TTL[job.marketplace]
+          : TTL[`${job.marketplace}Empty`];
+        await env.BM_CACHE.put(job.rawResultCacheKey, JSON.stringify({
+          offers: deduped,
+          runId: job.runId,
+          updatedAt: new Date().toISOString()
+        }), { expirationTtl: rawTtlSeconds || 20 * 60 });
+      }
     }
     const actorStartedAt = Date.parse(run?.startedAt || "");
     const actorFinishedAt = Date.parse(run?.finishedAt || "");

@@ -54,6 +54,11 @@ damit vollständig im eBay-Worker gekapselt.
   keinen externen oder kostenpflichtigen Abruf.
 - `/offers/refresh?set=...&ean=...` aktualisiert die gewählten Quellen. Apify-
   Abfragen laufen asynchron und bleiben je Lauf auf maximal 0,05 USD begrenzt.
+- Der direkte Kleinanzeigen-Abruf und automatische Seitenaufrufe verwenden nur
+  die Kleinanzeigen-Agent-API. Erst `/offers/refresh` darf bei Fehlern oder null
+  Treffern ausdrücklich den Apify-Actor als Backup starten. Die Apify-Rohdaten
+  werden dabei pro Set und unabhängig vom schwankenden Brickmerge-Bestpreis
+  zwischengespeichert.
 - Detailseiten können dadurch bereits erzeugte Ergebnisse wiederverwenden.
   Neue Abrufe werden ausschließlich durch den gemeinsamen Aktualisieren-Button
   der Extension oder des Userscripts ausgelöst.

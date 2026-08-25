@@ -19,7 +19,7 @@ test('health reports version and KV binding', async () => {
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.ok, true);
-  assert.equal(body.version, '2.5.3');
+  assert.equal(body.version, '2.5.4');
   assert.equal(body.cache, 'edge+kv');
 });
 
@@ -664,7 +664,7 @@ test('Kleinanzeigen starts Apify asynchronously when the primary API fails', asy
   };
   try {
     const response = await worker.fetch(
-      new Request('https://getdata.example/kleinanzeigen?set=42154&async=1'),
+      new Request('https://getdata.example/kleinanzeigen?set=42154&async=1&fallback=apify'),
       {
         KLAZ_API_KEY: 'klaz_worker_secret',
         APIFY_TOKEN: 'apify-secret',
@@ -682,6 +682,128 @@ test('Kleinanzeigen starts Apify asynchronously when the primary API fails', asy
     assert.equal(storedJob?.marketplace, 'kleinanzeigen');
     assert.equal(storedJob?.runId, 'fallback-run');
     assert.equal(requestedUrls.length, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('automatic Kleinanzeigen requests never start the paid Apify fallback', async () => {
+  const originalFetch = globalThis.fetch;
+  const requestedUrls = [];
+  globalThis.fetch = async input => {
+    const url = String(input);
+    requestedUrls.push(url);
+    if (url.includes('api.kleinanzeigen-agent.de')) {
+      return Response.json({ error_code: 'temporary' }, { status: 503 });
+    }
+    throw new Error('Apify darf ohne expliziten Fallback nicht starten');
+  };
+  try {
+    const response = await worker.fetch(
+      new Request('https://getdata.example/kleinanzeigen?set=42154&async=1'),
+      {
+        KLAZ_API_KEY: 'klaz_worker_secret',
+        APIFY_TOKEN: 'apify-secret'
+      },
+      context
+    );
+    assert.equal(response.status, 503);
+    assert.equal(requestedUrls.length, 1);
+    assert.match(requestedUrls[0], /api\.kleinanzeigen-agent\.de/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('manual offer refresh explicitly enables the Kleinanzeigen Apify fallback', async () => {
+  const originalFetch = globalThis.fetch;
+  const requestedUrls = [];
+  globalThis.fetch = async input => {
+    const url = String(input);
+    requestedUrls.push(url);
+    if (url.includes('api.kleinanzeigen-agent.de')) {
+      return Response.json({ error_code: 'temporary' }, { status: 503 });
+    }
+    if (url.includes('/acts/memo23~kleinanzeigen-search-scraper-ppe/runs')) {
+      return Response.json({ data: { id: 'manual-fallback-run', status: 'RUNNING' } });
+    }
+    return new Response('', { status: 500 });
+  };
+  try {
+    const response = await worker.fetch(
+      new Request(
+        'https://getdata.example/offers/refresh?' +
+        'set=42154&ean=5702017424965&sources=kleinanzeigen'
+      ),
+      {
+        KLAZ_API_KEY: 'klaz_worker_secret',
+        APIFY_TOKEN: 'apify-secret',
+        BM_CACHE: {
+          async get() { return null; },
+          async put() {}
+        }
+      },
+      context
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.sources.kleinanzeigen.state, 'pending');
+    assert.equal(
+      requestedUrls.some(url => /kleinanzeigen-search-scraper-ppe/.test(url)),
+      true
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('Kleinanzeigen reuses raw Apify results when the comparison price changes', async () => {
+  const originalFetch = globalThis.fetch;
+  let actorCalls = 0;
+  globalThis.fetch = async input => {
+    const url = String(input);
+    if (url.includes('api.kleinanzeigen-agent.de')) {
+      return Response.json({ error_code: 'temporary' }, { status: 503 });
+    }
+    actorCalls += 1;
+    throw new Error('Der vorhandene Rohdaten-Cache muss den Actor-Aufruf verhindern');
+  };
+  try {
+    const rawCacheKey = 'bm-central-v22:apify-raw:kleinanzeigen:v4:42154';
+    const response = await worker.fetch(
+      new Request(
+        'https://getdata.example/kleinanzeigen?' +
+        'set=42154&best=100&async=1&fallback=apify'
+      ),
+      {
+        KLAZ_API_KEY: 'klaz_worker_secret',
+        APIFY_TOKEN: 'apify-secret',
+        BM_CACHE: {
+          async get(key) {
+            if (key !== rawCacheKey) return null;
+            return {
+              offers: [{
+                id: 'cached-offer',
+                title: 'LEGO Technic 42154 Ford GT Neu OVP',
+                price: 60,
+                total: 60,
+                url: 'https://www.kleinanzeigen.de/s-anzeige/cached-offer'
+              }],
+              runId: 'cached-run'
+            };
+          },
+          async put() {}
+        }
+      },
+      context
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('x-worker-cache'), 'HIT');
+    const body = await response.json();
+    assert.equal(body.found, true);
+    assert.equal(body.cheapest.total, 60);
+    assert.equal(body.referencePrice, 100);
+    assert.equal(actorCalls, 0);
   } finally {
     globalThis.fetch = originalFetch;
   }
