@@ -113,6 +113,13 @@ test('side panel embeds the responsive Brickmerge page', () => {
     assert.match(source, /chrome\.tabs\.sendMessage/);
     assert.match(source, /www\.brickmerge\.de/);
     assert.match(source, /panel-query/);
+    assert.doesNotMatch(source, /chrome\.tabs\.onActivated\.addListener/);
+    assert.match(
+        source,
+        /chrome\.tabs\.onUpdated\.addListener\(\(tabId, changeInfo, tab\)/
+    );
+    assert.match(source, /changeInfo\.status !== 'complete' \|\| !tab\?\.active/);
+    assert.match(source, /loadActiveTab\(tabId\)/);
     assert.doesNotMatch(source, /pageHost|id=["']rescan["']/);
     assert.match(styles, /@font-face[\s\S]*?font-family: "Open Sans"/);
     assert.match(styles, /open-sans-v18-latin-regular\.woff2/);

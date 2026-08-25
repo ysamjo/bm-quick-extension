@@ -8,7 +8,6 @@
     const browserView = document.getElementById('browser-view');
     const brickmergeFrame = document.getElementById('brickmerge-frame');
 
-    let activeTabId = null;
     let loadSequence = 0;
     let rescanTimer = null;
 
@@ -58,14 +57,15 @@
         setStatus(message, 'done');
     };
 
-    const loadActiveTab = async () => {
+    const loadActiveTab = async (expectedTabId = null) => {
         const sequence = ++loadSequence;
-        browserView.hidden = true;
-        setStatus('Aktive Seite wird geprüft …');
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (sequence !== loadSequence) return;
-        activeTabId = tab?.id || null;
-        const product = activeTabId ? await detectInTab(activeTabId) : null;
+        const tabId = tab?.id || null;
+        if (expectedTabId !== null && tabId !== expectedTabId) return;
+        browserView.hidden = true;
+        setStatus('Aktive Seite wird geprüft …');
+        const product = tabId ? await detectInTab(tabId) : null;
         if (sequence !== loadSequence) return;
         if (!showProduct(product)) {
             showNoProduct('Auf dieser Seite wurde kein LEGO-Set erkannt.');
@@ -80,14 +80,10 @@
             : { setNumber: query });
     });
     brickmergeFrame.addEventListener('load', () => setStatus('', 'done'));
-    chrome.tabs.onActivated.addListener(() => {
+    chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+        if (changeInfo.status !== 'complete' || !tab?.active) return;
         clearTimeout(rescanTimer);
-        rescanTimer = setTimeout(() => void loadActiveTab(), 120);
-    });
-    chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-        if (tabId !== activeTabId || changeInfo.status !== 'complete') return;
-        clearTimeout(rescanTimer);
-        rescanTimer = setTimeout(() => void loadActiveTab(), 180);
+        rescanTimer = setTimeout(() => void loadActiveTab(tabId), 180);
     });
 
     void loadActiveTab();
