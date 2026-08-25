@@ -32,10 +32,31 @@
         html.bm-sidepanel-frame .top-tab {
             display: none !important;
         }
+        html.bm-sidepanel-frame {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            overflow-x: hidden !important;
+            font-size: 80% !important;
+        }
         html.bm-sidepanel-frame body {
-            width: 125% !important;
-            min-height: 125% !important;
-            zoom: 0.8;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            min-height: 100% !important;
+            overflow-x: hidden !important;
+        }
+        html.bm-sidepanel-frame #wrap,
+        html.bm-sidepanel-frame .content.setdetails,
+        html.bm-sidepanel-frame .content.setdetails > .row {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+        }
+        html.bm-sidepanel-frame img,
+        html.bm-sidepanel-frame canvas,
+        html.bm-sidepanel-frame svg {
+            max-width: 100% !important;
         }
         html.bm-sidepanel-frame .content.setdetails h1 {
             display: none !important;

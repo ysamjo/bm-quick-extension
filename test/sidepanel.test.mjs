@@ -117,7 +117,9 @@ test('embedded Brickmerge header is hidden only in the side panel frame', () => 
     assert.match(source, /bm-sidepanel-frame/);
     assert.match(source, /#filterrow/);
     assert.match(source, /\.top-tab/);
-    assert.match(source, /zoom:\s*0\.8/);
+    assert.match(source, /font-size:\s*80%/);
+    assert.doesNotMatch(source, /width:\s*125%|zoom:\s*0\.8/);
+    assert.match(source, /overflow-x:\s*hidden/);
     assert.match(source, /\.content\.setdetails h1/);
 });
 
