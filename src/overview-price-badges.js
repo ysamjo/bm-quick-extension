@@ -427,11 +427,12 @@
                 display: inline-flex !important;
                 align-items: center;
                 justify-content: flex-start;
-                flex: 0 1 auto;
+                flex: 1 1 auto;
                 gap: 0.3rem;
                 width: auto !important;
                 min-width: 0;
                 max-width: 100%;
+                overflow: hidden;
                 min-height: 21px;
                 margin: 0 !important;
                 padding: 0 !important;
@@ -447,6 +448,12 @@
                 cursor: pointer;
                 transition: background-color 150ms ease, color 150ms ease;
                 box-sizing: border-box;
+            }
+            .bm-detail-all-prices-refresh .bm-refresh-label {
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
             .bm-detail-all-prices-refresh:hover,
             .bm-detail-all-prices-refresh:focus-visible {
@@ -624,7 +631,7 @@
         button.classList.toggle('is-loading', state === 'loading');
         button.setAttribute('aria-disabled', state === 'loading' ? 'true' : 'false');
         const label = state === 'loading'
-            ? 'Weitere Marktplätze werden abgerufen …'
+            ? 'Marktplätze werden geladen …'
             : state === 'done'
                 ? '✓ Weitere Marktplätze geladen'
                 : state === 'error'
@@ -840,7 +847,7 @@
                     completedSources.add(update.source);
                     const label = button.querySelector('.bm-refresh-label');
                     if (label) label.textContent =
-                        'Weitere Marktplätze werden abgerufen … ' +
+                        'Marktplätze werden geladen … ' +
                         `(${completedSources.size}/${sources.length})`;
                     if (update.state === 'ready') {
                         document.dispatchEvent(new CustomEvent(

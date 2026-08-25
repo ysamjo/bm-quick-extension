@@ -2419,12 +2419,15 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 0.75rem;
+            gap: 0.6rem;
+            min-width: 0;
             margin: 0 0 0.15rem !important;
             padding: 0;
         }
         .bm-offer-toolbar > .bm-offerlist-loading {
-            flex: 0 0 100%;
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
         }
         #offerlist .bm-marketplace-offer.bm-offer-entering {
             overflow: hidden;
@@ -2588,10 +2591,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             align-items: center;
             gap: 0.35rem;
             justify-content: flex-end;
+            flex: 0 0 auto;
             width: auto;
             min-height: 21px;
             margin-top: 0;
             margin-left: auto;
+            white-space: nowrap;
         }
         .bm-discount-toolbar-control .switch {
             flex: 0 0 auto;
@@ -2611,6 +2616,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         .bm-discount-settings-trigger {
             display: inline-flex !important;
             align-items: center;
+            flex: 0 0 auto;
             min-height: 24px;
             margin: 0 !important;
             padding: 0.15rem 0 !important;
@@ -2621,6 +2627,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             font-size: 0.8rem !important;
             font-weight: normal !important;
             line-height: 1.1 !important;
+            white-space: nowrap;
             text-decoration: none !important;
         }
         .bm-discount-settings-trigger:hover,

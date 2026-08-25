@@ -33,7 +33,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.14/);
+    assert.match(loaderSource, /@version\s+5\.6\.15/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -106,7 +106,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.14/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.15/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -354,12 +354,17 @@ test('marketplace and discount actions use the compact text toolbar', () => {
     );
     assert.match(
         tweakerSource,
-        /\.bm-discount-toolbar-control \{[\s\S]*?width: auto;[\s\S]*?min-height: 21px;/
+        /\.bm-discount-toolbar-control \{[\s\S]*?flex: 0 0 auto;[\s\S]*?width: auto;[\s\S]*?white-space: nowrap;/
     );
     assert.match(
         source,
-        /\.bm-detail-all-prices-refresh \{[\s\S]*?width: auto !important;[\s\S]*?background: transparent !important;/
+        /\.bm-detail-all-prices-refresh \{[\s\S]*?flex: 1 1 auto;[\s\S]*?overflow: hidden;[\s\S]*?background: transparent !important;/
     );
+    assert.match(
+        source,
+        /\.bm-detail-all-prices-refresh \.bm-refresh-label \{[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/
+    );
+    assert.match(source, /Marktplätze werden geladen …/);
     assert.doesNotMatch(tweakerSource, /\.bm-chart-controls\.bmd-has-depot-button/);
 });
 

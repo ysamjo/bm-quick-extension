@@ -1220,11 +1220,12 @@ globalThis.BM_isFranceEnabled = settings =>
                         display: inline-flex !important;
                         align-items: center;
                         justify-content: flex-start;
-                        flex: 0 1 auto;
+                        flex: 1 1 auto;
                         gap: 0.3rem;
                         width: auto !important;
                         min-width: 0;
                         max-width: 100%;
+                        overflow: hidden;
                         min-height: 21px;
                         margin: 0 !important;
                         padding: 0 !important;
@@ -1240,6 +1241,12 @@ globalThis.BM_isFranceEnabled = settings =>
                         cursor: pointer;
                         transition: background-color 150ms ease, color 150ms ease;
                         box-sizing: border-box;
+                    }
+                    .bm-detail-all-prices-refresh .bm-refresh-label {
+                        min-width: 0;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
                     }
                     .bm-detail-all-prices-refresh:hover,
                     .bm-detail-all-prices-refresh:focus-visible {
@@ -1417,7 +1424,7 @@ globalThis.BM_isFranceEnabled = settings =>
                 button.classList.toggle('is-loading', state === 'loading');
                 button.setAttribute('aria-disabled', state === 'loading' ? 'true' : 'false');
                 const label = state === 'loading'
-                    ? 'Weitere Marktplätze werden abgerufen …'
+                    ? 'Marktplätze werden geladen …'
                     : state === 'done'
                         ? '✓ Weitere Marktplätze geladen'
                         : state === 'error'
@@ -1633,7 +1640,7 @@ globalThis.BM_isFranceEnabled = settings =>
                             completedSources.add(update.source);
                             const label = button.querySelector('.bm-refresh-label');
                             if (label) label.textContent =
-                                'Weitere Marktplätze werden abgerufen … ' +
+                                'Marktplätze werden geladen … ' +
                                 `(${completedSources.size}/${sources.length})`;
                             if (update.state === 'ready') {
                                 document.dispatchEvent(new CustomEvent(
@@ -4118,12 +4125,15 @@ globalThis.BM_isFranceEnabled = settings =>
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    gap: 0.75rem;
+                    gap: 0.6rem;
+                    min-width: 0;
                     margin: 0 0 0.15rem !important;
                     padding: 0;
                 }
                 .bm-offer-toolbar > .bm-offerlist-loading {
-                    flex: 0 0 100%;
+                    flex: 1 1 auto;
+                    min-width: 0;
+                    overflow: hidden;
                 }
                 #offerlist .bm-marketplace-offer.bm-offer-entering {
                     overflow: hidden;
@@ -4287,10 +4297,12 @@ globalThis.BM_isFranceEnabled = settings =>
                     align-items: center;
                     gap: 0.35rem;
                     justify-content: flex-end;
+                    flex: 0 0 auto;
                     width: auto;
                     min-height: 21px;
                     margin-top: 0;
                     margin-left: auto;
+                    white-space: nowrap;
                 }
                 .bm-discount-toolbar-control .switch {
                     flex: 0 0 auto;
@@ -4310,6 +4322,7 @@ globalThis.BM_isFranceEnabled = settings =>
                 .bm-discount-settings-trigger {
                     display: inline-flex !important;
                     align-items: center;
+                    flex: 0 0 auto;
                     min-height: 24px;
                     margin: 0 !important;
                     padding: 0.15rem 0 !important;
@@ -4320,6 +4333,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     font-size: 0.8rem !important;
                     font-weight: normal !important;
                     line-height: 1.1 !important;
+                    white-space: nowrap;
                     text-decoration: none !important;
                 }
                 .bm-discount-settings-trigger:hover,
