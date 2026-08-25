@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Brickmerge Tools",
-  "version": "2.6.11",
+  "version": "2.6.12",
   "description": "Brickmerge-Werkzeuge mit mobiler Detailseite im Side Panel und erkanntem LEGO-Set-Indikator.",
   "icons": {
     "16": "icons/icon16.png",

@@ -1197,38 +1197,32 @@ globalThis.BM_isFranceEnabled = settings =>
                     .bm-detail-all-prices-refresh {
                         display: inline-flex !important;
                         align-items: center;
-                        justify-content: center;
-                        flex: 1 1 0;
+                        justify-content: flex-start;
+                        flex: 0 1 auto;
                         gap: 0.3rem;
-                        width: 100% !important;
+                        width: auto !important;
                         min-width: 0;
                         max-width: 100%;
-                        min-height: 2.9rem;
-                        height: 2.9rem;
-                        max-height: 2.9rem;
+                        min-height: 21px;
                         margin: 0 !important;
-                        padding: 0.55rem 0.75rem !important;
-                        border: 1px solid #e2e2e2 !important;
-                        border-radius: 2px !important;
-                        background: #f1f1f1 !important;
-                        color: #444 !important;
+                        padding: 0 !important;
+                        border: 0 !important;
+                        background: transparent !important;
+                        color: #666 !important;
                         font-family: inherit !important;
-                        font-size: 0.8rem;
+                        font-size: 0.72rem;
                         font-weight: normal;
-                        line-height: 1.2;
+                        line-height: 1.1;
                         white-space: nowrap;
                         text-decoration: none !important;
                         cursor: pointer;
-                        transition: background-color 150ms ease, border-color 150ms ease,
-                            color 150ms ease;
+                        transition: background-color 150ms ease, color 150ms ease;
                         box-sizing: border-box;
                     }
                     .bm-detail-all-prices-refresh:hover,
                     .bm-detail-all-prices-refresh:focus-visible {
-                        border-color: #cfcfcf !important;
-                        background: #e8e8e8 !important;
-                        color: #a80000 !important;
-                        text-decoration: none !important;
+                        color: #b00 !important;
+                        text-decoration: underline !important;
                     }
                     .bm-plus-icon {
                         display: inline-flex;
@@ -1249,12 +1243,6 @@ globalThis.BM_isFranceEnabled = settings =>
                     @media only screen and (max-width: 40em) {
                         .bm-detail-all-prices-refresh {
                             font-size: 0.68rem !important;
-                            min-height: 2.7rem;
-                            height: 2.7rem;
-                            max-height: 2.7rem;
-                            padding: 0.4rem 0.5rem !important;
-                            white-space: normal;
-                            text-align: center;
                         }
                     }
                     @keyframes bm-all-prices-spin { to { transform: rotate(360deg); } }
@@ -3732,6 +3720,21 @@ globalThis.BM_isFranceEnabled = settings =>
                 #chartdiv2 {
                     margin-bottom: 0.75rem !important;
                 }
+                #chartdiv2.bm-chart-detail-trigger {
+                    position: relative;
+                    border-radius: 2px;
+                    cursor: pointer;
+                }
+                #chartdiv2.bm-chart-detail-trigger:hover {
+                    background: #fafafa;
+                }
+                #chartdiv2.bm-chart-detail-trigger:focus-visible {
+                    outline: 2px solid #b00;
+                    outline-offset: 2px;
+                }
+                #chartTrigger.bm-native-chart-loader {
+                    display: none !important;
+                }
                 .bm-chart-controls {
                     display: flex;
                     flex-wrap: wrap;
@@ -3745,38 +3748,6 @@ globalThis.BM_isFranceEnabled = settings =>
                     font-size: 0.75rem;
                     font-weight: 600;
                     line-height: 1.25;
-                }
-                .bm-chart-label-mobile {
-                    display: none;
-                }
-                #chartTrigger .chartbutton {
-                    display: inline-flex !important;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 0.35rem;
-                }
-                #chartTrigger .chartbutton::before {
-                    display: none !important;
-                    content: none !important;
-                }
-                .bm-chart-action-icon {
-                    display: inline-flex;
-                    width: 1.2rem;
-                    height: 1.2rem;
-                    flex: 0 0 1.2rem;
-                    align-items: center;
-                    justify-content: center;
-                    line-height: 1;
-                }
-                .bm-chart-action-icon svg {
-                    display: block;
-                    width: 1.15rem;
-                    height: 1.15rem;
-                    fill: none;
-                    stroke: currentColor;
-                    stroke-width: 1.8;
-                    stroke-linecap: round;
-                    stroke-linejoin: round;
                 }
                 @media screen and (min-width: 1025px) {
                     .content.setdetails .bm-detail-layout {
@@ -4095,17 +4066,15 @@ globalThis.BM_isFranceEnabled = settings =>
                     }
                 }
                 .bm-offer-toolbar {
-                    display: grid;
-                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    display: flex;
                     align-items: center;
-                    gap: 0.4rem;
-                    width: 100%;
-                    margin: 0.4rem 0 !important;
+                    justify-content: space-between;
+                    gap: 0.75rem;
+                    margin: 0 0 0.15rem !important;
                     padding: 0;
-                    box-sizing: border-box;
                 }
                 .bm-offer-toolbar > .bm-offerlist-loading {
-                    grid-column: 1 / -1;
+                    flex: 0 0 100%;
                 }
                 #offerlist .bm-marketplace-offer.bm-offer-entering {
                     overflow: hidden;
@@ -4156,7 +4125,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     }
                     .bm-offer-toolbar {
                         min-height: 24px;
-                        margin: 0.4rem 0 !important;
+                        margin: 0 0 0.15rem !important;
                     }
                 }
                 #ol1st .bm-offer-toolbar + .row.collapse {
@@ -4221,7 +4190,7 @@ globalThis.BM_isFranceEnabled = settings =>
                         font-size: 0.65rem;
                     }
                     .bm-offer-toolbar {
-                        margin: 0.35rem 0 !important;
+                        margin: 0 0 0.15rem !important;
                     }
                     #wrap.bm-set-wrap {
                         margin-bottom: -104px !important;
@@ -4268,27 +4237,11 @@ globalThis.BM_isFranceEnabled = settings =>
                     display: flex;
                     align-items: center;
                     gap: 0.35rem;
-                    justify-content: center;
-                    width: 100%;
-                    min-width: 0;
-                    min-height: 2.9rem;
-                    height: 2.9rem;
-                    max-height: 2.9rem;
-                    margin: 0;
-                    padding: 0.55rem 0.75rem;
-                    border: 1px solid #e2e2e2;
-                    border-radius: 2px;
-                    background: #f1f1f1;
-                    color: #444;
-                    box-sizing: border-box;
-                    transition: background-color 150ms ease, border-color 150ms ease,
-                        color 150ms ease;
-                }
-                .bm-discount-toolbar-control:hover,
-                .bm-discount-toolbar-control:focus-within {
-                    border-color: #cfcfcf;
-                    background: #e8e8e8;
-                    color: #a80000;
+                    justify-content: flex-end;
+                    width: auto;
+                    min-height: 21px;
+                    margin-top: 0;
+                    margin-left: auto;
                 }
                 .bm-discount-toolbar-control .switch {
                     flex: 0 0 auto;
@@ -4314,7 +4267,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     background: transparent !important;
                     border: 0 !important;
                     border-radius: 0 !important;
-                    color: inherit !important;
+                    color: #555 !important;
                     font-size: 0.8rem !important;
                     font-weight: normal !important;
                     line-height: 1.1 !important;
@@ -4323,39 +4276,17 @@ globalThis.BM_isFranceEnabled = settings =>
                 .bm-discount-settings-trigger:hover,
                 .bm-discount-settings-trigger:focus {
                     background: transparent !important;
-                    color: inherit !important;
-                    text-decoration: none !important;
+                    color: #b00000 !important;
+                    text-decoration: underline !important;
+                    text-underline-offset: 0.18rem;
                     outline: none;
                 }
                 @media screen and (max-width: 640px) {
                     .bm-offer-toolbar {
-                        gap: 0.35rem;
-                        margin: 0.35rem 0 !important;
-                    }
-                    /* The chart/depot pair lives immediately above this toolbar. Keep
-                       all four action cells on the same mobile rhythm: the native
-                       chart/depot buttons previously retained a 2.9rem height and a
-                       bottom margin while the lower pair used 2.7rem. */
-                    .bm-chart-controls.bmd-has-depot-button > #chartTrigger,
-                    .bm-chart-controls.bmd-has-depot-button > .bmd-open-button,
-                    .bm-offer-toolbar > .bm-detail-all-prices-refresh,
-                    .bm-offer-toolbar > .bm-discount-toolbar-control {
-                        min-height: 2.7rem !important;
-                        height: 2.7rem !important;
-                        max-height: 2.7rem !important;
-                        margin-top: 0 !important;
-                        margin-bottom: 0 !important;
-                    }
-                    .bm-discount-toolbar-control {
-                        min-height: 2.7rem;
-                        height: 2.7rem;
-                        max-height: 2.7rem;
-                        padding: 0.4rem 0.5rem;
+                        margin: 0 0 0.15rem !important;
                     }
                     .bm-discount-settings-trigger {
                         font-size: 0.68rem !important;
-                        white-space: normal;
-                        text-align: left;
                     }
                 }
                 .bm-settings-overlay {
@@ -6226,6 +6157,9 @@ globalThis.BM_isFranceEnabled = settings =>
                     list.appendChild(link);
                 });
 
+                const stockButton = document.querySelector('.bmd-open-button');
+                if (stockButton) list.appendChild(stockButton);
+
                 panel.append(heading, list);
 
                 const instructionPanel = sideColumn.querySelector('.bm-sidebar-instructions');
@@ -6669,44 +6603,72 @@ globalThis.BM_isFranceEnabled = settings =>
 
             function setupPriceChartOverlay() {
                 const chartTrigger = document.getElementById('chartTrigger');
+                const summaryChart = document.getElementById('chartdiv2');
                 const chartContainer = document.getElementById('chartContainer');
                 const bigChart = document.getElementById('bigChart');
+
+                if (summaryChart && summaryChart.dataset.bmChartDetailBound !== 'true') {
+                    summaryChart.dataset.bmChartDetailBound = 'true';
+                    summaryChart.classList.add('bm-chart-detail-trigger');
+                    summaryChart.setAttribute('role', 'button');
+                    summaryChart.setAttribute('tabindex', '0');
+                    summaryChart.setAttribute('aria-haspopup', 'dialog');
+                    summaryChart.setAttribute('aria-controls', 'bm-price-chart-overlay');
+                    summaryChart.setAttribute('aria-label', 'Preisentwicklung im Detail anzeigen');
+                    summaryChart.title = 'Preisentwicklung im Detail anzeigen';
+
+                    const openFromSummaryChart = event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openPriceChartOverlay?.();
+                    };
+                    summaryChart.addEventListener('click', openFromSummaryChart, true);
+                    summaryChart.addEventListener('keydown', event => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            openFromSummaryChart(event);
+                        }
+                    });
+
+                    const renameChartCredit = () => {
+                        const walker = document.createTreeWalker(
+                            summaryChart,
+                            NodeFilter.SHOW_TEXT
+                        );
+                        const matches = [];
+                        let node;
+                        while (node = walker.nextNode()) {
+                            if (/^\s*JS chart by amCharts\s*$/i.test(node.nodeValue || '')) {
+                                matches.push(node);
+                            }
+                        }
+                        matches.forEach(textNode => {
+                            textNode.nodeValue = 'Details anzeigen · amCharts';
+                            const labelledElement = textNode.parentElement?.closest('[aria-label]');
+                            if (labelledElement) {
+                                labelledElement.setAttribute(
+                                    'aria-label',
+                                    'Preisentwicklung im Detail anzeigen · amCharts'
+                                );
+                            }
+                        });
+                    };
+                    renameChartCredit();
+                    const summaryChartObserver = new MutationObserver(renameChartCredit);
+                    summaryChartObserver.observe(summaryChart, {
+                        childList: true,
+                        subtree: true,
+                        characterData: true
+                    });
+                }
                 if (!chartTrigger || !chartContainer || !bigChart) return;
                 if (document.getElementById('bm-price-chart-overlay')) return;
 
                 chartTrigger.parentElement?.classList.add('bm-chart-controls');
-                chartTrigger.classList.add(
-                    'button',
-                    'small',
-                    'smallGreyButton',
-                    'bm-detail-action-button'
-                );
+                chartTrigger.classList.add('bm-native-chart-loader');
+                chartTrigger.setAttribute('tabindex', '-1');
+                chartTrigger.setAttribute('aria-hidden', 'true');
                 chartTrigger.setAttribute('aria-haspopup', 'dialog');
                 chartTrigger.setAttribute('aria-controls', 'bm-price-chart-overlay');
-
-                const normalizeChartTriggerLabel = () => {
-                    const buttonLabel = chartTrigger.querySelector('.chartbutton');
-                    if (!buttonLabel || buttonLabel.querySelector('.bm-chart-label-full')) {
-                        return;
-                    }
-                    buttonLabel.textContent = '';
-                    const icon = document.createElement('span');
-                    icon.className = 'bm-chart-action-icon';
-                    icon.setAttribute('aria-hidden', 'true');
-                    icon.innerHTML =
-                        '<svg viewBox="0 0 24 24" focusable="false">' +
-                        '<path d="M3 3v18h18"/>' +
-                        '<path d="m6 16 4-5 4 3 5-7"/>' +
-                        '</svg>';
-                    const fullLabel = document.createElement('span');
-                    fullLabel.className = 'bm-chart-label-full';
-                    fullLabel.textContent = 'Details anzeigen';
-                    const mobileLabel = document.createElement('span');
-                    mobileLabel.className = 'bm-chart-label-mobile';
-                    mobileLabel.textContent = 'Details';
-                    buttonLabel.append(icon, fullLabel, mobileLabel);
-                };
-                normalizeChartTriggerLabel();
 
                 const overlay = document.createElement('div');
                 overlay.id = 'bm-price-chart-overlay';
@@ -6899,8 +6861,6 @@ globalThis.BM_isFranceEnabled = settings =>
                     bigChart.style.display = 'block';
                     customizeNativeChart();
 
-                    normalizeChartTriggerLabel();
-
                     const offerColumn = document.getElementById('ol1st');
                     offerColumn?.classList.remove('large-12');
                     offerColumn?.classList.add('large-8');
@@ -6923,7 +6883,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     overlay.setAttribute('aria-hidden', 'true');
                     document.body.classList.remove('bm-chart-overlay-open');
                     window.scrollTo(0, storedScrollY);
-                    chartTrigger.focus({ preventScroll: true });
+                    summaryChart?.focus({ preventScroll: true });
                 };
 
                 openPriceChartOverlay = () => {
@@ -13674,53 +13634,16 @@ globalThis.BM_isFranceEnabled = settings =>
                         stroke-linejoin:round
                     }
                     .bmd-button-label-mobile { display:none }
-                    .bm-chart-controls .bmd-open-button {
-                        flex:0 0 auto
+                    .bmd-parts-stock-button {
+                        width:100%!important;margin:.35rem 0 0!important;
+                        border:0!important;border-radius:0!important;
+                        background:#f2f2f2!important;color:#b00!important;
+                        font:inherit!important;font-size:.72rem!important;
+                        text-align:left!important;text-shadow:none!important;
+                        box-shadow:none!important
                     }
-                    .bm-chart-controls.bmd-has-depot-button {
-                        display:grid!important;
-                        grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
-                        align-items:stretch!important;column-gap:.4rem!important;
-                        width:100%;box-sizing:border-box
-                    }
-                    .bm-chart-controls.bmd-has-depot-button.bm-has-price-refresh {
-                        grid-template-columns:repeat(3,minmax(0,1fr))!important
-                    }
-                    .bm-chart-controls.bmd-has-depot-button > #chartTrigger,
-                    .bm-chart-controls.bmd-has-depot-button > .bmd-open-button,
-                    .bm-chart-controls.bmd-has-depot-button > .bm-detail-all-prices-refresh {
-                        width:100%!important;min-width:0!important;max-width:none!important;
-                        height:2.9rem!important;min-height:2.9rem!important;
-                        max-height:2.9rem!important;padding-top:0!important;
-                        padding-bottom:0!important;
-                        margin-right:0!important;margin-left:0!important;
-                        border:1px solid #e2e2e2!important;border-radius:2px!important;
-                        background:#f1f1f1!important;background-image:none!important;
-                        color:#444!important;box-shadow:none!important;text-shadow:none!important;
-                        box-sizing:border-box;transition:background-color 150ms ease,
-                        border-color 150ms ease,color 150ms ease
-                    }
-                    .bm-chart-controls.bmd-has-depot-button > #chartTrigger:hover,
-                    .bm-chart-controls.bmd-has-depot-button > #chartTrigger:focus-visible,
-                    .bm-chart-controls.bmd-has-depot-button > .bmd-open-button:hover,
-                    .bm-chart-controls.bmd-has-depot-button > .bmd-open-button:focus-visible {
-                        border-color:#cfcfcf!important;background:#e8e8e8!important;
-                        color:#a80000!important
-                    }
-                    .bm-chart-controls.bmd-has-depot-button > .bm-chart-best-price {
-                        grid-column:1/-1
-                    }
-                    @media screen and (min-width:641px) {
-                        .bm-chart-controls.bmd-has-depot-button > #chartTrigger,
-                        .bm-chart-controls.bmd-has-depot-button > .bmd-open-button {
-                            display:flex!important;align-items:center!important;
-                            justify-content:center!important;min-height:2.9rem!important;
-                            margin-bottom:0!important
-                        }
-                        .bm-chart-controls.bmd-has-depot-button > #chartTrigger
-                        .chartbutton {
-                            padding:0!important;line-height:1.2!important
-                        }
+                    .bmd-parts-stock-button:hover,.bmd-parts-stock-button:focus {
+                        background:#b00!important;color:#fff!important;outline:none
                     }
                     body.bmd-overlay-open { overflow:hidden!important }
                     .bmd-overlay {
@@ -13913,12 +13836,7 @@ globalThis.BM_isFranceEnabled = settings =>
                                 max(15px,env(safe-area-inset-left))
                         }
                         .bmd-dialog-header h3 { font-size:1.08rem!important }
-                        .bm-chart-controls.bmd-has-depot-button > #chartTrigger,
-                        .bm-chart-controls.bmd-has-depot-button > .bmd-open-button {
-                            height:2.7rem!important;min-height:2.7rem!important;
-                            max-height:2.7rem!important
-                        }
-                        .bmd-open-button { min-width:0;flex:0 0 auto;font-size:.7rem!important }
+                        .bmd-open-button { min-width:0;font-size:.7rem!important }
                         .bmd-button-label-full { display:none }
                         .bmd-button-label-mobile { display:inline }
                         .bmd-fields { grid-template-columns:1fr }
@@ -14640,14 +14558,23 @@ globalThis.BM_isFranceEnabled = settings =>
 
             function setupDetailButton() {
                 const setNumber = getSetNumber();
-                const chartTrigger = document.getElementById('chartTrigger');
-                const host = chartTrigger?.parentElement ||
-                    document.querySelector('.content.setdetails .productprice');
-                if (!setNumber || !host || document.querySelector('.bmd-open-button')) return;
+                const desktopPartsList = window.matchMedia('(min-width: 1025px)').matches
+                    ? document.querySelector('.bm-sidebar-parts-list')
+                    : null;
+                const sourcePartsHeading = Array.from(document.querySelectorAll(
+                    '#ol1st h3, .content.setdetails h3'
+                )).find(heading => /Einzelteilelisten/i.test(heading.textContent || ''));
+                const host = desktopPartsList || sourcePartsHeading?.closest('section');
+                if (!setNumber || !host) return;
+                const existingButton = document.querySelector('.bmd-open-button');
+                if (existingButton) {
+                    if (existingButton.parentElement !== host) host.appendChild(existingButton);
+                    return;
+                }
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className =
-                    'button small smallGreyButton bmd-open-button bm-detail-action-button';
+                    'bm-sidebar-parts-link bmd-open-button bmd-parts-stock-button';
                 button.dataset.bmdSetNumber = setNumber;
                 const content = document.createElement('span');
                 content.className = 'bmd-button-content';
@@ -14662,21 +14589,16 @@ globalThis.BM_isFranceEnabled = settings =>
                     '</svg>';
                 const fullLabel = document.createElement('span');
                 fullLabel.className = 'bmd-button-label-full';
-                fullLabel.textContent = 'Bestand';
+                fullLabel.textContent = 'Zum Bestand hinzufügen';
                 const mobileLabel = document.createElement('span');
                 mobileLabel.className = 'bmd-button-label-mobile';
-                mobileLabel.textContent = 'Bestand';
+                mobileLabel.textContent = 'Zum Bestand hinzufügen';
                 content.append(icon, fullLabel, mobileLabel);
                 button.appendChild(content);
                 button.title = 'Dieses Set zum Bestand hinzufügen';
                 button.setAttribute('aria-label', button.title);
                 button.addEventListener('click', () => openNativeDepotAdd(setNumber));
-                if (chartTrigger) {
-                    host.classList.add('bmd-has-depot-button');
-                    chartTrigger.insertAdjacentElement('afterend', button);
-                } else {
-                    host.appendChild(button);
-                }
+                host.appendChild(button);
             }
 
             function parseNumber(value, german = false) {
@@ -15724,6 +15646,8 @@ globalThis.BM_isFranceEnabled = settings =>
 
             installStyles();
             setupDetailButton();
+            window.setTimeout(setupDetailButton, 0);
+            window.setTimeout(setupDetailButton, 1000);
             setupDepotGrowth();
             setupDepotDashboardButton();
             window.addEventListener('load', () => {

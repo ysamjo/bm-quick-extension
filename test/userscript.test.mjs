@@ -33,7 +33,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.10/);
+    assert.match(loaderSource, /@version\s+5\.6\.11/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -106,7 +106,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.10/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.11/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -235,7 +235,7 @@ test('the detail-only marketplace module also excludes search pages', () => {
     );
 });
 
-test('stock button opens Brickmerge native authenticated depot form', () => {
+test('stock action lives in the parts block and opens the native depot form', () => {
     const setupDetailButton = source.match(
         /function setupDetailButton\(\) \{[\s\S]*?\n\s*function parseNumber/
     )?.[0] || '';
@@ -247,6 +247,12 @@ test('stock button opens Brickmerge native authenticated depot form', () => {
         setupDetailButton,
         /button\.addEventListener\('click', \(\) => openNativeDepotAdd\(setNumber\)\)/
     );
+    assert.match(setupDetailButton, /document\.querySelector\('\.bm-sidebar-parts-list'\)/);
+    assert.match(setupDetailButton, /host\.appendChild\(button\)/);
+    assert.match(setupDetailButton, /host\.appendChild\(existingButton\)/);
+    assert.match(tweakerSource, /if \(stockButton\) list\.appendChild\(stockButton\)/);
+    assert.match(setupDetailButton, /Zum Bestand hinzufügen/);
+    assert.doesNotMatch(setupDetailButton, /chartTrigger/);
     assert.doesNotMatch(setupDetailButton, /loadDepotData\(/);
 });
 
@@ -319,11 +325,17 @@ test('personal discount switch and settings label form one control', () => {
     );
 });
 
-test('price history detail button keeps its chart icon', () => {
-    assert.match(tweakerSource, /icon\.className = 'bm-chart-action-icon'/);
-    assert.match(tweakerSource, /fullLabel\.textContent = 'Details anzeigen'/);
-    assert.match(tweakerSource, /buttonLabel\.append\(icon, fullLabel, mobileLabel\)/);
-    assert.match(tweakerSource, /<path d="m6 16 4-5 4 3 5-7"\/>/);
+test('small chart opens price history while the native trigger stays hidden', () => {
+    assert.match(tweakerSource, /document\.getElementById\('chartdiv2'\)/);
+    assert.match(tweakerSource, /summaryChart\.classList\.add\('bm-chart-detail-trigger'\)/);
+    assert.match(tweakerSource, /openPriceChartOverlay\?\.\(\)/);
+    assert.match(tweakerSource, /Details anzeigen · amCharts/);
+    assert.match(tweakerSource, /chartTrigger\.classList\.add\('bm-native-chart-loader'\)/);
+    assert.match(
+        tweakerSource,
+        /#chartTrigger\.bm-native-chart-loader \{[\s\S]*?display: none !important/
+    );
+    assert.doesNotMatch(tweakerSource, /fullLabel\.textContent = 'Details anzeigen'/);
     assert.match(
         tweakerSource,
         /DOMContentLoaded'[\s\S]*?setupPriceChartOverlay/
@@ -334,38 +346,20 @@ test('price history detail button keeps its chart icon', () => {
     );
 });
 
-test('desktop detail and stock buttons share one height and alignment', () => {
+test('marketplace and discount actions use the compact text toolbar', () => {
     assert.match(
         tweakerSource,
-        /min-height:2\.9rem!important;[\s\S]*?margin-bottom:0!important/
+        /\.bm-offer-toolbar \{[\s\S]*?display: flex;[\s\S]*?justify-content: space-between/
     );
     assert.match(
         tweakerSource,
-        /#chartTrigger\s*\n\s*\.chartbutton \{[\s\S]*?padding:0!important;line-height:1\.2!important/
-    );
-});
-
-test('detail actions form a consistent two-by-two action grid', () => {
-    assert.match(
-        tweakerSource,
-        /\.bm-offer-toolbar \{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/
-    );
-    assert.match(
-        tweakerSource,
-        /\.bm-discount-toolbar-control \{[\s\S]*?height:\s*2\.9rem;[\s\S]*?background:\s*#f1f1f1;/
+        /\.bm-discount-toolbar-control \{[\s\S]*?width: auto;[\s\S]*?min-height: 21px;/
     );
     assert.match(
         source,
-        /\.bm-detail-all-prices-refresh \{[\s\S]*?height:\s*2\.9rem;[\s\S]*?background:\s*#f1f1f1 !important;/
+        /\.bm-detail-all-prices-refresh \{[\s\S]*?width: auto !important;[\s\S]*?background: transparent !important;/
     );
-    assert.match(
-        tweakerSource,
-        /\.bm-chart-controls\.bmd-has-depot-button > #chartTrigger,[\s\S]*?height:2\.9rem!important;/
-    );
-    assert.match(
-        tweakerSource,
-        /\.bm-offer-toolbar \{[\s\S]*?margin:\s*0\.4rem 0 !important;/
-    );
+    assert.doesNotMatch(tweakerSource, /\.bm-chart-controls\.bmd-has-depot-button/);
 });
 
 test('minifigure crosswalk assigns similar variants globally by character identity', () => {
