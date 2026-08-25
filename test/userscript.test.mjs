@@ -33,7 +33,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.16/);
+    assert.match(loaderSource, /@version\s+5\.6\.17/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -106,7 +106,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.16/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.17/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -250,6 +250,10 @@ test('manual marketplace refresh includes Kleinanzeigen and keeps its error comp
     assert.equal(Array.from(sources).includes('kleinanzeigen'), true);
     assert.match(tweakerSource, /bm-kleinanzeigen-error-badge/);
     assert.match(tweakerSource, /kann der Apify-Fallback manuell versucht werden/);
+    assert.match(
+        tweakerSource,
+        /applyApifyMarketplaceResult\(\s*'kleinanzeigen',\s*'Kleinanzeigen'/
+    );
     assert.doesNotMatch(tweakerSource, /bm-kleinanzeigen-feedback/);
 });
 

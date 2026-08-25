@@ -8704,10 +8704,18 @@ globalThis.BM_isFranceEnabled = settings =>
                                 if (detail.source === 'kleinanzeigen') {
                                     if (detail.state === 'error') {
                                         publishKleinanzeigenFailure(detail.error);
-                                    } else if (detail.state === 'ready' ||
-                                        detail.state === 'empty') {
+                                    } else if (detail.state === 'ready') {
+                                        applyApifyMarketplaceResult(
+                                            'kleinanzeigen',
+                                            'Kleinanzeigen',
+                                            'kleinanzeigen.de',
+                                            detail.payload
+                                        );
+                                        publishKleinanzeigenRequestState('done');
+                                    } else if (detail.state === 'empty') {
                                         publishKleinanzeigenRequestState('done');
                                     }
+                                    return;
                                 }
                                 if (detail.state !== 'ready') return;
                                 const config = apifyMarketplaceConfigs.get(detail.source);

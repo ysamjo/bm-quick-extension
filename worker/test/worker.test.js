@@ -19,7 +19,7 @@ test('health reports version and KV binding', async () => {
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.ok, true);
-  assert.equal(body.version, '2.5.4');
+  assert.equal(body.version, '2.5.5');
   assert.equal(body.cache, 'edge+kv');
 });
 
@@ -710,6 +710,54 @@ test('automatic Kleinanzeigen requests never start the paid Apify fallback', asy
     assert.equal(response.status, 503);
     assert.equal(requestedUrls.length, 1);
     assert.match(requestedUrls[0], /api\.kleinanzeigen-agent\.de/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('cached Kleinanzeigen Apify results survive the cache-only page reload', async () => {
+  const originalFetch = globalThis.fetch;
+  let actorCalls = 0;
+  globalThis.fetch = async input => {
+    if (String(input).includes('/acts/')) actorCalls += 1;
+    throw new Error('Cache-only darf keinen externen Abruf starten');
+  };
+  try {
+    const rawCacheKey = 'bm-central-v22:apify-raw:kleinanzeigen:v4:76461';
+    const response = await worker.fetch(
+      new Request(
+        'https://getdata.example/offers/cache?' +
+        'set=76461&ean=5702018063385&sources=kleinanzeigen'
+      ),
+      {
+        KLAZ_API_KEY: 'klaz_worker_secret',
+        APIFY_TOKEN: 'apify-secret',
+        BM_CACHE: {
+          async get(key) {
+            if (key !== rawCacheKey) return null;
+            return {
+              offers: [{
+                id: 'cached-kleinanzeigen-offer',
+                title: 'LEGO Harry Potter 76461 neu OVP',
+                price: 15,
+                total: 15.99,
+                url: 'https://www.kleinanzeigen.de/s-anzeige/cached-offer'
+              }],
+              runId: 'cached-kleinanzeigen-run'
+            };
+          },
+          async put() {}
+        }
+      },
+      context
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.cacheOnly, true);
+    assert.equal(body.sources.kleinanzeigen.state, 'ready');
+    assert.equal(body.sources.kleinanzeigen.data.found, true);
+    assert.equal(body.sources.kleinanzeigen.data.cheapest.total, 15.99);
+    assert.equal(actorCalls, 0);
   } finally {
     globalThis.fetch = originalFetch;
   }

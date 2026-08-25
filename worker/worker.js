@@ -1111,7 +1111,7 @@ function json(body, status = 200, extraHeaders = {}) {
 __name(json, "json");
 
 // src/index.js
-var VERSION = "2.5.4";
+var VERSION = "2.5.5";
 var CACHE_SCHEMA = "bm-central-v22";
 var OFFER_DISMISSAL_TTL_SECONDS = 180 * 24 * 60 * 60;
 var OFFER_DISMISSAL_MAX_ENTRIES = 200;
@@ -1643,8 +1643,25 @@ async function normalizeKleinanzeigenError(response) {
 async function handleKleinanzeigenApiFirst(request, url, env, ctx) {
   const apiResponse = await handleKleinanzeigenCached(request, url, env, ctx);
   const apiBody = await apiResponse.clone().json().catch(() => null);
-  if (url.searchParams.get("cache") === "only") return apiResponse;
   if (apiResponse.ok && apiBody?.found) return apiResponse;
+  // Ein bereits bezahlter Apify-Lauf muss auch nach einem Seitenreload
+  // verfügbar bleiben. Diese Abfrage liest ausschließlich den Rohdaten-Cache
+  // und darf niemals selbst einen Actor starten.
+  if (env.BM_CACHE) {
+    const apifyCacheUrl = new URL(url);
+    apifyCacheUrl.searchParams.set("cache", "only");
+    const apifyCacheResponse = await startApifyMarketplaceJob(
+      request,
+      apifyCacheUrl,
+      env,
+      "kleinanzeigen"
+    );
+    const apifyCacheBody = await apifyCacheResponse.clone().json().catch(() => null);
+    if (apifyCacheResponse.ok && apifyCacheBody?.found) {
+      return apifyCacheResponse;
+    }
+  }
+  if (url.searchParams.get("cache") === "only") return apiResponse;
   if (url.searchParams.get("fallback") !== "apify") return apiResponse;
   if (!env.APIFY_TOKEN) return apiResponse;
   return startApifyMarketplaceJob(request, url, env, "kleinanzeigen");
