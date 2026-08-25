@@ -109,6 +109,8 @@ test('toolbar click opens the side panel only for a detected product', () => {
         'utf8'
     );
     assert.match(background, /chrome\.action\.setPopup\(\{ tabId, popup: '' \}\)/);
+    assert.match(background, /function isBrickmergePage\(product\)/);
+    assert.match(background, /text: onBrickmergePage \? '' : '✓'/);
     assert.match(
         background,
         /chrome\.sidePanel\.setPanelBehavior\(\{[\s\S]*?openPanelOnActionClick: true/

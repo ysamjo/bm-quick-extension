@@ -111,17 +111,34 @@ async function loadAndMigrateSettings() {
     return migrated;
 }
 
+function isBrickmergePage(product) {
+    const hostname = String(product?.hostname || '').trim().toLowerCase();
+    if (hostname === 'brickmerge.de' || hostname === 'www.brickmerge.de') {
+        return true;
+    }
+    try {
+        return /(?:^|\.)brickmerge\.de$/i.test(
+            new URL(String(product?.url || '')).hostname
+        );
+    } catch {
+        return false;
+    }
+}
+
 async function updateDetectedProduct(tabId, product) {
     if (!Number.isInteger(tabId)) return;
     if (product?.setNumber || product?.ean) {
         detectedProducts.set(tabId, product);
+        const onBrickmergePage = isBrickmergePage(product);
         await Promise.all([
-            chrome.action.setBadgeText({ tabId, text: '✓' }),
+            chrome.action.setBadgeText({ tabId, text: onBrickmergePage ? '' : '✓' }),
             chrome.action.setBadgeBackgroundColor({ tabId, color: '#16843f' }),
             chrome.action.setPopup({ tabId, popup: '' }),
             chrome.action.setTitle({
                 tabId,
-                title: product.setNumber
+                title: onBrickmergePage
+                    ? 'Brickmerge Tools – Brickmerge-Seite'
+                    : product.setNumber
                     ? `Brickmerge Tools – Set ${product.setNumber} erkannt`
                     : 'Brickmerge Tools – LEGO-Produkt erkannt'
             })
