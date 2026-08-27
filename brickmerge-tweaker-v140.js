@@ -5488,7 +5488,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 title: "Marktplätze",
                 links: [
                     { id: "btn-ebay", name: "eBay", url: `https://www.ebay.de/sch/i.html?_dcat=19006&_fsrp=1&_from=R40&_nkw=lego+${setNum}&_sacat=0&LH_BIN=1&LH_PrefLoc=1&LH_ItemCondition=1000&_sop=15`, icon: icon("ebay.de") },
-                    { id: "btn-google-shopping", name: "Google Shopping", url: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(`LEGO ${setNum}`)}`, icon: icon("shopping.google.com") },
                     { id: "btn-kleinanzeigen", name: "Kleinanzeigen", url: `https://www.kleinanzeigen.de/s-spielzeug/sortierung:preis/lego-${setNum}/k0c23+spielzeug.condition_s:new`, icon: icon("kleinanzeigen.de") },
                     { id: "btn-vinted", name: "Vinted", url: `https://www.vinted.de/catalog?search_text=lego+${setNum}`, icon: icon("vinted.de") },
                     { id: "btn-stockx", name: "StockX", url: `https://stockx.com/search?s=lego%20${setNum}`, icon: icon("stockx.com") },
@@ -5521,6 +5520,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         secondaryIcon: icon("chatgpt.com")
                     },
                     { name: "Geizhals", url: `https://www.google.com/search?q=site%3Ageizhals.de+lego+${setNum}&btnI=1`, icon: icon("geizhals.at") },
+                    { id: "btn-google-shopping", name: "Google Shopping", url: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(`LEGO ${setNum}`)}`, icon: icon("shopping.google.com") },
                     { name: "idealo DE", url: `https://www.google.com/search?q=site%3Aidealo.de+lego+${setNum}&btnI=1`, icon: icon("idealo.de") },
                     { name: "Reviews", url: `https://www.youtube.com/results?search_query=${encodeURIComponent(`lego ${setNum} review`)}`, icon: icon("youtube.com") }
                 ]
@@ -6767,7 +6767,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                     'Google Shopping',
                                     `${formatEuroValue(itemPrice)} €`,
                                     icon('shopping.google.com'),
-                                    'google-shopping-worker',
+                                        'google-shopping-worker',
                                     `Google Shopping: günstigstes von ${result.comparedOffers} passenden Ergebnissen${shopName ? `; Händler: ${shopName}` : ''}; ${candidate.title || ''}`,
                                     {
                                         url: candidate.url,
@@ -6776,6 +6776,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                                 'a[data-bmid="btn-google-shopping"]'
                                             )?.href || '',
                                         logoCaption: shopName,
+                                        merchantName: shopName,
                                         shippingStatus: Number.isFinite(shippingCost)
                                             ? (shippingCost <= 0.004 ? 'free' : 'paid')
                                             : 'unknown',
@@ -11454,7 +11455,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             priceSpan.className = 'price';
             const merchant = document.createElement('span');
             merchant.className = 'show-for-small-only merchant';
-            merchant.append(`${offer.label}`);
+            merchant.append(`${offer.merchantName || offer.label}`);
             merchant.appendChild(document.createElement('br'));
             priceSpan.appendChild(merchant);
             priceSpan.append(
