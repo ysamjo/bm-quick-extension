@@ -4,6 +4,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         ebay: 'ebay',
         'ebay-minifig': 'ebay',
         'ebay-fr': 'ebayFr',
+        'google-shopping': 'googleShopping',
         kleinanzeigen: 'kleinanzeigen',
         'smyths-search': 'smyths',
         'mueller-search': 'mueller',
@@ -4999,7 +5000,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     }
                 }
                 matches.forEach(textNode => {
-                    textNode.nodeValue = 'Details anzeigen';
+                    textNode.nodeValue = 'Händler-Details';
                     const labelledElement = textNode.parentElement?.closest('[aria-label]');
                     if (labelledElement) {
                         labelledElement.setAttribute(
@@ -5387,6 +5388,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 let idealoRequestHandler = null;
                 let idealoRequestPending = false;
                 let idealoRequestState = 'idle';
+                let idealoRequestMessage = '';
                 const activeBackgroundLookups = new Set();
                 const updateOfferListLoadingIndicator = () => {
                     const offerList = document.getElementById('offerlist');
@@ -5416,9 +5418,15 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     else activeBackgroundLookups.delete(source);
                     updateOfferListLoadingIndicator();
                 };
-        const publishIdealoRequestState = state => {
+        const publishIdealoRequestState = (state, message = '') => {
             idealoRequestState = state;
-            document.dispatchEvent(new CustomEvent('bm-idealo-request-state', { detail: { state } }));
+            idealoRequestMessage = String(message || '');
+            document.dispatchEvent(new CustomEvent(
+                'bm-idealo-request-state',
+                { detail: { state, message: idealoRequestMessage } }
+            ));
+            document.querySelectorAll('a[data-bmid="btn-idealo"]')
+                .forEach(applyIdealoStatusToShortcut);
         };
         const triggerIdealoRequest = () => {
             publishIdealoRequestState('loading');
@@ -5445,6 +5453,25 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             else badge.removeAttribute('aria-label');
             shortcut.classList.toggle('bm-kleinanzeigen-has-error', hasError);
         };
+        const applyIdealoStatusToShortcut = shortcut => {
+            if (!shortcut) return;
+            let badge = shortcut.querySelector('.bm-idealo-error-badge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'bm-idealo-error-badge';
+                badge.textContent = '!';
+                shortcut.appendChild(badge);
+            }
+            const hasError = idealoRequestState === 'error';
+            const tooltip = idealoRequestMessage ||
+                'Idealo konnte nicht geladen werden.';
+            badge.hidden = !hasError;
+            badge.title = hasError ? tooltip : '';
+            badge.setAttribute('aria-hidden', hasError ? 'false' : 'true');
+            if (hasError) badge.setAttribute('aria-label', tooltip);
+            else badge.removeAttribute('aria-label');
+            shortcut.classList.toggle('bm-idealo-has-error', hasError);
+        };
         const publishKleinanzeigenRequestState = (state, message = '') => {
             kleinanzeigenRequestState = state;
             kleinanzeigenRequestMessage = String(message || '');
@@ -5461,6 +5488,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 title: "Marktplätze",
                 links: [
                     { id: "btn-ebay", name: "eBay", url: `https://www.ebay.de/sch/i.html?_dcat=19006&_fsrp=1&_from=R40&_nkw=lego+${setNum}&_sacat=0&LH_BIN=1&LH_PrefLoc=1&LH_ItemCondition=1000&_sop=15`, icon: icon("ebay.de") },
+                    { id: "btn-google-shopping", name: "Google Shopping", url: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(`LEGO ${setNum}`)}`, icon: icon("shopping.google.com") },
                     { id: "btn-kleinanzeigen", name: "Kleinanzeigen", url: `https://www.kleinanzeigen.de/s-spielzeug/sortierung:preis/lego-${setNum}/k0c23+spielzeug.condition_s:new`, icon: icon("kleinanzeigen.de") },
                     { id: "btn-vinted", name: "Vinted", url: `https://www.vinted.de/catalog?search_text=lego+${setNum}`, icon: icon("vinted.de") },
                     { id: "btn-stockx", name: "StockX", url: `https://stockx.com/search?s=lego%20${setNum}`, icon: icon("stockx.com") },
@@ -5554,7 +5582,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             object-fit: contain;
         }
         .bm-link:hover span { text-decoration: underline; }
-        .bm-kleinanzeigen-error-badge {
+        .bm-kleinanzeigen-error-badge,
+        .bm-idealo-error-badge {
             display: inline-flex;
             width: 1.05rem;
             height: 1.05rem;
@@ -5570,8 +5599,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             box-shadow: 0 0 0 1px #fff;
             cursor: help;
         }
-        .bm-kleinanzeigen-error-badge[hidden] { display: none !important; }
-        .bm-link:hover .bm-kleinanzeigen-error-badge {
+        .bm-kleinanzeigen-error-badge[hidden],
+        .bm-idealo-error-badge[hidden] { display: none !important; }
+        .bm-link:hover .bm-kleinanzeigen-error-badge,
+        .bm-link:hover .bm-idealo-error-badge {
             text-decoration: none !important;
         }
         .bm-kleinanzeigen-dual-link {
@@ -5955,6 +5986,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     a.appendChild(span);
                     if (id === 'btn-kleinanzeigen') {
                         applyKleinanzeigenStatusToShortcut(a);
+                    }
+                    if (id === 'btn-idealo') {
+                        applyIdealoStatusToShortcut(a);
                     }
                     row.appendChild(a);
                 }
@@ -6669,6 +6703,102 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                             }
                         }
                     );
+                    if (BM_isOfferShopEnabled('google-shopping')) cachedShopRequest(
+                        'google-shopping',
+                        makeApiCacheKey(
+                            'google-shopping-serpapi-v1',
+                            `${ean}:${setNumber}:${ebayReferenceCachePart}`
+                        ),
+                        KLAZ_CLIENT_CACHE_TTL,
+                        {
+                            method: 'GET',
+                            url:
+                                `${BM_WORKER_URL}/google-shopping?ean=${encodeURIComponent(ean)}` +
+                                `&set=${encodeURIComponent(setNumber)}` +
+                                (ebayReferencePrice === null
+                                    ? ''
+                                    : `&best=${encodeURIComponent(ebayReferenceCachePart)}`),
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-BM-Client-ID': workerClientId
+                            },
+                            timeout: 20000,
+                            onload: response => {
+                                let result;
+                                try {
+                                    result = JSON.parse(response.responseText);
+                                } catch (error) {
+                                    console.warn(
+                                        'Brickmerge Tweaker: Ungültige Google-Shopping-Antwort.'
+                                    );
+                                    return;
+                                }
+                                const candidate = [
+                                    ...(Array.isArray(result?.offers)
+                                        ? result.offers
+                                        : []),
+                                    result?.cheapest
+                                ].filter(Boolean).find(entry => {
+                                    const total = Number(entry.total ?? entry.price);
+                                    return Number.isFinite(total) &&
+                                        BM_isMarketplacePricePlausible(
+                                            'google-shopping',
+                                            total,
+                                            ebayReferencePrice
+                                        );
+                                });
+                                if (!result?.found || !candidate) return;
+                                const itemPrice = Number(
+                                    candidate.itemPrice ?? candidate.price
+                                );
+                                const total = Number(candidate.total ?? itemPrice);
+                                if (!Number.isFinite(itemPrice) || itemPrice <= 0 ||
+                                    !BM_isMarketplacePricePlausible(
+                                        'google-shopping',
+                                        total,
+                                        ebayReferencePrice
+                                    )) return;
+                                const shippingCost = Number(candidate.shippingCost);
+                                const shopName = String(
+                                    candidate.shopName || candidate.source || ''
+                                ).trim();
+                                const offer = createOffer(
+                                    'btn-google-shopping',
+                                    'Google Shopping',
+                                    `${formatEuroValue(itemPrice)} €`,
+                                    icon('shopping.google.com'),
+                                    'google-shopping-worker',
+                                    `Google Shopping: günstigstes von ${result.comparedOffers} passenden Ergebnissen${shopName ? `; Händler: ${shopName}` : ''}; ${candidate.title || ''}`,
+                                    {
+                                        url: candidate.url,
+                                        searchUrl: result.searchUrl ||
+                                            document.querySelector(
+                                                'a[data-bmid="btn-google-shopping"]'
+                                            )?.href || '',
+                                        logoCaption: shopName,
+                                        shippingStatus: Number.isFinite(shippingCost)
+                                            ? (shippingCost <= 0.004 ? 'free' : 'paid')
+                                            : 'unknown',
+                                        shippingCost: Number.isFinite(shippingCost)
+                                            ? shippingCost
+                                            : null,
+                                        dismissIdentity: makeOfferDismissIdentity(
+                                            'google-shopping-worker',
+                                            candidate.url,
+                                            candidate.id || `google-shopping|${total}`
+                                        )
+                                    }
+                                );
+                                if (offer) storeOffers([offer]);
+                            },
+                            onerror: () => console.warn(
+                                'Brickmerge Tweaker: Google-Shopping-Abfrage fehlgeschlagen.'
+                            ),
+                            ontimeout: () => console.warn(
+                                'Brickmerge Tweaker: Google-Shopping-Abfrage - Timeout.'
+                            )
+                        }
+                    );
                 }
 
                 const fetchAsyncApify = (
@@ -6973,7 +7103,21 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                 publishIdealoRequestState('done');
                         },
                         error => {
-                            publishIdealoRequestState('error');
+                            const errorText = [
+                                error?.code,
+                                error?.error,
+                                error?.message,
+                                error?.details
+                            ].filter(Boolean).join(' ');
+                            const quotaExhausted =
+                                /free[_ -]?(?:limit|quota)|limit[_ -]?reached|50\s*(?:von|of)\s*50|kontingent/i
+                                    .test(errorText);
+                            publishIdealoRequestState(
+                                'error',
+                                quotaExhausted
+                                    ? 'Das kostenlose Idealo-Kontingent von 50 Abfragen ist aufgebraucht.'
+                                    : 'Idealo konnte nicht geladen werden.'
+                            );
                             console.warn('Brickmerge Tweaker: Idealo-Abfrage fehlgeschlagen.', error);
                         },
                         {},

@@ -19,6 +19,10 @@ const metaGptSource = fs.readFileSync(
     new URL('../brickmerge-meta-gpt.runtime.js', import.meta.url),
     'utf8'
 );
+const sharedSource = fs.readFileSync(
+    new URL('../shared.js', import.meta.url),
+    'utf8'
+);
 const tweakerSource = fs.readFileSync(
     new URL('../src/brickmerge-tweaker.js', import.meta.url),
     'utf8'
@@ -33,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.17/);
+    assert.match(loaderSource, /@version\s+5\.6\.18/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -106,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.17/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.18/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -235,7 +239,7 @@ test('the detail-only marketplace module also excludes search pages', () => {
     );
 });
 
-test('manual marketplace refresh includes Kleinanzeigen and keeps its error compact', () => {
+test('manual marketplace refresh includes Kleinanzeigen and keeps marketplace errors compact', () => {
     const overviewSource = fs.readFileSync(
         new URL('../src/overview-price-badges.js', import.meta.url),
         'utf8'
@@ -249,12 +253,22 @@ test('manual marketplace refresh includes Kleinanzeigen and keeps its error comp
     });
     assert.equal(Array.from(sources).includes('kleinanzeigen'), true);
     assert.match(tweakerSource, /bm-kleinanzeigen-error-badge/);
+    assert.match(tweakerSource, /bm-idealo-error-badge/);
+    assert.match(tweakerSource, /Das kostenlose Idealo-Kontingent von 50 Abfragen ist aufgebraucht/);
     assert.match(tweakerSource, /kann der Apify-Fallback manuell versucht werden/);
     assert.match(
         tweakerSource,
         /applyApifyMarketplaceResult\(\s*'kleinanzeigen',\s*'Kleinanzeigen'/
     );
     assert.doesNotMatch(tweakerSource, /bm-kleinanzeigen-feedback/);
+});
+
+test('Google Shopping loads the best SerpApi result directly into the offer list', () => {
+    assert.match(sharedSource, /googleShopping:\s*true/);
+    assert.match(tweakerSource, /\/google-shopping\?ean=/);
+    assert.match(tweakerSource, /btn-google-shopping/);
+    assert.match(tweakerSource, /google-shopping-worker/);
+    assert.match(tweakerSource, /shopping\.google\.com/);
 });
 
 test('stock action lives in the parts block and opens the native depot form', () => {
@@ -351,8 +365,8 @@ test('small chart opens price history while the native trigger stays hidden', ()
     assert.match(tweakerSource, /document\.getElementById\('chartdiv2'\)/);
     assert.match(tweakerSource, /summaryChart\.classList\.add\('bm-chart-detail-trigger'\)/);
     assert.match(tweakerSource, /openPriceChartOverlay\?\.\(\)/);
-    assert.match(tweakerSource, /textNode\.nodeValue = 'Details anzeigen'/);
-    assert.doesNotMatch(tweakerSource, /Details anzeigen · amCharts/);
+    assert.match(tweakerSource, /textNode\.nodeValue = 'Händler-Details'/);
+    assert.doesNotMatch(tweakerSource, /Händler-Details · amCharts/);
     assert.match(tweakerSource, /chartTrigger\.classList\.add\('bm-native-chart-loader'\)/);
     assert.match(
         tweakerSource,
