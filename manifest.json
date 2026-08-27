@@ -172,7 +172,8 @@
         "icons/logo-idealo.jpg",
         "icons/logo-smyths.svg",
         "icons/logo-stockx.svg",
-        "icons/logo-lego-wide.png"
+        "icons/logo-lego-wide.png",
+        "icons/logo-google-shopping.png"
       ],
       "matches": [
         "https://www.brickmerge.de/*",
