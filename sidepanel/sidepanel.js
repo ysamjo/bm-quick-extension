@@ -10,6 +10,7 @@
 
     let loadSequence = 0;
     let rescanTimer = null;
+    let lastCompletedTabUrl = '';
 
     const setStatus = (text, state = 'loading') => {
         statusText.textContent = text;
@@ -27,9 +28,16 @@
 
     const showProduct = product => {
         if (!product?.setNumber && !product?.ean) return false;
+        const nextUrl = buildBrickmergeUrl(product);
+        const currentUrl = brickmergeFrame.getAttribute('src') || '';
         browserView.hidden = false;
-        setStatus('Mobile Brickmerge-Seite wird geladen …');
-        brickmergeFrame.src = buildBrickmergeUrl(product);
+        if (currentUrl !== nextUrl) {
+            if (currentUrl) setStatus('', 'done');
+            else setStatus('Mobile Brickmerge-Seite wird geladen …');
+            brickmergeFrame.src = nextUrl;
+        } else {
+            setStatus('', 'done');
+        }
         return true;
     };
 
@@ -63,11 +71,24 @@
         if (sequence !== loadSequence) return;
         const tabId = tab?.id || null;
         if (expectedTabId !== null && tabId !== expectedTabId) return;
-        browserView.hidden = true;
-        setStatus('Aktive Seite wird geprüft …');
+        const hadFrame = Boolean(brickmergeFrame.getAttribute('src'));
+        if (!hadFrame) {
+            browserView.hidden = true;
+            setStatus('Aktive Seite wird geprüft …');
+        }
         const product = tabId ? await detectInTab(tabId) : null;
         if (sequence !== loadSequence) return;
         if (!showProduct(product)) {
+            if (hadFrame) {
+                // Content scripts can report a short-lived empty result while a
+                // newly navigated page is still wiring up. Keep the old frame
+                // visible during one retry instead of flashing it away.
+                await new Promise(resolve => setTimeout(resolve, 250));
+                if (sequence !== loadSequence) return;
+                const retry = tabId ? await detectInTab(tabId) : null;
+                if (sequence !== loadSequence) return;
+                if (showProduct(retry)) return;
+            }
             showNoProduct('Auf dieser Seite wurde kein LEGO-Set erkannt.');
         }
     };
@@ -82,6 +103,9 @@
     brickmergeFrame.addEventListener('load', () => setStatus('', 'done'));
     chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         if (changeInfo.status !== 'complete' || !tab?.active) return;
+        const completedUrl = String(tab.url || '').trim();
+        if (completedUrl && completedUrl === lastCompletedTabUrl) return;
+        if (completedUrl) lastCompletedTabUrl = completedUrl;
         clearTimeout(rescanTimer);
         rescanTimer = setTimeout(() => void loadActiveTab(tabId), 180);
     });

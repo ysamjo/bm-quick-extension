@@ -119,6 +119,9 @@ test('side panel embeds the responsive Brickmerge page', () => {
         /chrome\.tabs\.onUpdated\.addListener\(\(tabId, changeInfo, tab\)/
     );
     assert.match(source, /changeInfo\.status !== 'complete' \|\| !tab\?\.active/);
+    assert.match(source, /lastCompletedTabUrl/);
+    assert.match(source, /currentUrl !== nextUrl/);
+    assert.match(source, /newly navigated page is still wiring up/);
     assert.match(source, /loadActiveTab\(tabId\)/);
     assert.doesNotMatch(source, /pageHost|id=["']rescan["']/);
     assert.match(styles, /@font-face[\s\S]*?font-family: "Open Sans"/);
