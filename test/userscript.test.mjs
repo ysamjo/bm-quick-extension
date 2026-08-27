@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.19/);
+    assert.match(loaderSource, /@version\s+5\.6\.20/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.19/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.20/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -268,7 +268,7 @@ test('Google Shopping loads the best SerpApi result directly into the offer list
     assert.match(tweakerSource, /\/google-shopping\?ean=/);
     assert.match(tweakerSource, /btn-google-shopping/);
     assert.match(tweakerSource, /google-shopping-worker/);
-    assert.match(tweakerSource, /shopping\.google\.com/);
+    assert.match(tweakerSource, /logo-google-shopping\.png/);
     const resourcesSection = tweakerSource.match(
         /key: 'resources',[\s\S]*?key: 'history'/
     )?.[0] || '';

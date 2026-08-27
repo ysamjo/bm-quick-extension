@@ -5520,7 +5520,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         secondaryIcon: icon("chatgpt.com")
                     },
                     { name: "Geizhals", url: `https://www.google.com/search?q=site%3Ageizhals.de+lego+${setNum}&btnI=1`, icon: icon("geizhals.at") },
-                    { id: "btn-google-shopping", name: "Google Shopping", url: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(`LEGO ${setNum}`)}`, icon: icon("shopping.google.com") },
+                    { id: "btn-google-shopping", name: "Google Shopping", url: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(`LEGO ${setNum}`)}`, icon: chrome.runtime.getURL('icons/logo-google-shopping.png') },
                     { name: "idealo DE", url: `https://www.google.com/search?q=site%3Aidealo.de+lego+${setNum}&btnI=1`, icon: icon("idealo.de") },
                     { name: "Reviews", url: `https://www.youtube.com/results?search_query=${encodeURIComponent(`lego ${setNum} review`)}`, icon: icon("youtube.com") }
                 ]
@@ -5567,6 +5567,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
         .bm-link[hidden] { display: none !important; }
         .bm-link > img { width: 20px; height: 20px; object-fit: contain; border-radius: 3px; margin-right: 6px; }
+        .bm-link.bm-google-shopping-link > img { width: 58px; height: 20px; object-fit: cover; object-position: center; border-radius: 0; }
         .bm-link-icons {
             display: inline-flex;
             flex: 0 0 auto;
@@ -5983,6 +5984,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     span.className = 'bm-link-label';
                     span.textContent = name;
                     a.dataset.bmDefaultLabel = name;
+                    if (id === 'btn-google-shopping') {
+                        a.classList.add('bm-google-shopping-link');
+                    }
                     a.appendChild(span);
                     if (id === 'btn-kleinanzeigen') {
                         applyKleinanzeigenStatusToShortcut(a);
@@ -6766,7 +6770,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                     'btn-google-shopping',
                                     'Google Shopping',
                                     `${formatEuroValue(itemPrice)} €`,
-                                    icon('shopping.google.com'),
+                                    chrome.runtime.getURL('icons/logo-google-shopping.png'),
                                         'google-shopping-worker',
                                     `Google Shopping: günstigstes von ${result.comparedOffers} passenden Ergebnissen${shopName ? `; Händler: ${shopName}` : ''}; ${candidate.title || ''}`,
                                     {
@@ -6777,6 +6781,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                             )?.href || '',
                                         logoCaption: shopName,
                                         merchantName: shopName,
+                                        logoClass: 'bm-google-shopping-logo',
                                         shippingStatus: Number.isFinite(shippingCost)
                                             ? (shippingCost <= 0.004 ? 'free' : 'paid')
                                             : 'unknown',

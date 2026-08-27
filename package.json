@@ -1,6 +1,6 @@
 {
   "name": "brickmerge-tools-userscript",
-  "version": "5.6.19",
+  "version": "5.6.20",
   "private": true,
   "type": "module",
   "scripts": {
