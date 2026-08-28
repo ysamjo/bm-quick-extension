@@ -215,18 +215,28 @@ function extractTaskId(location) {
 async function resolveImages(row, competitor, env) {
   const messages = [];
   const urls = [];
-  if (env.LEGO_IMAGES_ENABLED === 'true' && row.legoImageUrl) urls.push(row.legoImageUrl);
+  let source = 'keine';
+  if (env.LEGO_IMAGES_ENABLED === 'true' && isHttpsUrl(row.legoImageUrl)) {
+    urls.push(row.legoImageUrl);
+    source = isLegoUrl(row.legoImageUrl) ? 'LEGO.de' : 'Tabellenbild';
+  }
   if (env.LEGO_IMAGES_ENABLED === 'true' && !urls.length && row.legoProductUrl) {
     const html = await limitedText(await fetch(row.legoProductUrl, { headers: { 'user-agent': 'LEGO-eBay-Draft-Tool/1.0' } }), 2_000_000);
     const match = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-    if (match) urls.push(decodeHtml(match[1]));
+    if (match && isHttpsUrl(decodeHtml(match[1]))) {
+      urls.push(decodeHtml(match[1]));
+      source = 'LEGO.de';
+    }
   }
   if (!urls.length && competitor.image) {
     urls.push(competitor.image);
     messages.push('eBay-Katalogbild als Fallback verwendet.');
     return { urls, source: 'eBay-Katalog', messages };
   }
-  return { urls: [...new Set(urls)].slice(0, 12), source: urls.length ? 'LEGO.de' : 'keine', messages: urls.length ? [...messages, 'LEGO.de-Bild verwendet; Nutzungsrecht vor Veröffentlichung prüfen.'] : ['Kein Bild gefunden.'] };
+  const rightsMessage = source === 'LEGO.de'
+    ? 'LEGO.de-Bild verwendet; Nutzungsrecht vor Veröffentlichung prüfen.'
+    : 'Vorhandenes Tabellenbild verwendet; Herkunft und Nutzungsrecht vor Veröffentlichung prüfen.';
+  return { urls: [...new Set(urls)].slice(0, 12), source, messages: urls.length ? [...messages, rightsMessage] : ['Kein Bild gefunden.'] };
 }
 
 function validateListingConfig(row, env) {
@@ -271,6 +281,8 @@ async function sha256(value) {
 }
 
 function decodeHtml(value) { return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"'); }
+function isHttpsUrl(value) { try { return new URL(String(value || '')).protocol === 'https:'; } catch { return false; } }
+function isLegoUrl(value) { try { const host = new URL(value).hostname.toLowerCase(); return host === 'lego.com' || host.endsWith('.lego.com'); } catch { return false; } }
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]); }
 function roundMoney(value) { return Math.round((Number(value) + Number.EPSILON) * 100) / 100; }
 function json(body, status = 200) { return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' } }); }
