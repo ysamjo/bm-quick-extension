@@ -1,4 +1,4 @@
-import { getEbayUserAccessToken, getStoredEbayRefreshToken } from './ebay-oauth.js';
+import { getEbayUserAccessToken } from './ebay-oauth.js';
 
 const DEFAULT_SHIPPING = 4.99;
 const MARKETPLACE_ID = 'EBAY_DE';
@@ -11,6 +11,13 @@ export async function handleEbayDrafts(request, url, env, helpers) {
   const action = url.pathname === '/v1/preview' ? 'preview' : 'draft';
   try {
     const body = await request.json();
+    if (url.pathname === '/v1/draft-status') {
+      const token = await getUserToken(env);
+      const taskIds = [...new Set((body.taskIds || []).map(String).filter(Boolean))].slice(0, 50);
+      const tasks = [];
+      for (const taskId of taskIds) tasks.push(await getSellerHubDraftTask(taskId, token));
+      return json({ tasks });
+    }
     const results = [];
     for (const row of body.rows || []) results.push(await processRow(row, action, env, helpers));
     return json({ results });
@@ -18,6 +25,22 @@ export async function handleEbayDrafts(request, url, env, helpers) {
     console.error('eBay draft request failed', { message: String(error?.message || error) });
     return json({ error: String(error?.message || error) }, 400);
   }
+}
+
+async function getSellerHubDraftTask(taskId, token) {
+  const response = await fetch(`https://api.ebay.com/sell/feed/v1/task/${encodeURIComponent(taskId)}`, {
+    headers: { authorization: `Bearer ${token}`, 'x-ebay-c-marketplace-id': MARKETPLACE_ID }
+  });
+  const text = await limitedText(response, 256_000);
+  let data = {};
+  try { data = JSON.parse(text); } catch {}
+  if (!response.ok) return { taskId, status: 'FEHLER', message: data.errors?.[0]?.message || `eBay Feed-Status ${response.status}` };
+  return {
+    taskId,
+    status: data.status || 'UNBEKANNT',
+    successCount: data.uploadSummary?.successCount ?? null,
+    failureCount: data.uploadSummary?.failureCount ?? null
+  };
 }
 
 async function processRow(row, action, env, helpers) {
@@ -53,8 +76,8 @@ async function processRow(row, action, env, helpers) {
   if (!legal.ok || !image.urls.length) return { ...result, status: 'PRÜFEN', messages: [...result.messages, 'eBay-Schreibzugriff wegen fehlender Pflichtdaten oder Bilder übersprungen.'] };
 
   try {
-    const eBay = await createUnpublishedOffer(row, itemPrice, image.urls, env);
-    return { ...result, draftId: eBay.sku, offerId: eBay.offerId, status: 'ENTWURF BEREIT' };
+    const eBay = await createSellerHubDraft(row, itemPrice, image.urls, env);
+    return { ...result, draftId: eBay.sku, taskId: eBay.taskId, status: 'ENTWURF EINGEREICHT' };
   } catch (error) {
     return { ...result, status: 'FEHLER', messages: [...result.messages, String(error?.message || error)] };
   }
@@ -119,27 +142,74 @@ async function searchCommercialOffers(row, env, helpers) {
   return unique.sort((a, b) => a.total - b.total);
 }
 
-async function createUnpublishedOffer(row, itemPrice, imageUrls, env) {
-  if (!(await getStoredEbayRefreshToken(env))) throw new Error('eBay-Refresh-Token fehlt.');
+async function createSellerHubDraft(row, itemPrice, imageUrls, env) {
   const token = await getUserToken(env);
-  const sku = row.sku || `LEGO-${row.setNumber}`;
-  const existing = await ebayUserFetch(`/sell/inventory/v1/offer?sku=${encodeURIComponent(sku)}`, token);
-  const existingOffer = existing.offers?.[0];
-  if (existingOffer?.offerId) return { sku, offerId: existingOffer.offerId };
-  const aspects = { Marke: ['LEGO'] };
-  if (row.ean) aspects.EAN = [row.ean];
-  if (/duplo/i.test(String(row.duplo || ''))) aspects.Altersstufe = ['2+'];
-  const inventory = { product: { title: row.title || `LEGO ${row.setNumber}`, imageUrls, aspects }, condition: 'NEW', availability: { shipToLocationAvailability: { quantity: Number(row.quantity) } } };
-  await ebayUserFetch(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, token, { method: 'PUT', body: inventory });
-  const offerBody = {
-    sku, marketplaceId: MARKETPLACE_ID, format: 'FIXED_PRICE', availableQuantity: Number(row.quantity), categoryId: env.EBAY_CATEGORY_ID,
-    listingDescription: row.description || env.EBAY_LISTING_DESCRIPTION_TEMPLATE || row.title || `LEGO ${row.setNumber}`,
-    pricingSummary: { price: { value: itemPrice.toFixed(2), currency: 'EUR' } }, merchantLocationKey: env.EBAY_MERCHANT_LOCATION_KEY,
-    listingPolicies: { fulfillmentPolicyId: env.EBAY_FULFILLMENT_POLICY_ID, paymentPolicyId: env.EBAY_PAYMENT_POLICY_ID, returnPolicyId: env.EBAY_RETURN_POLICY_ID }
-  };
-  if (env.EBAY_REGULATORY_JSON) offerBody.regulatory = JSON.parse(env.EBAY_REGULATORY_JSON);
-  const offer = await ebayUserFetch('/sell/inventory/v1/offer', token, { method: 'POST', body: offerBody });
-  return { sku, offerId: offer.offerId || '' };
+  const sku = sanitizeSku(row.sku || `LEGO-${row.setNumber}`);
+  const storedTask = env.EBAY_OAUTH_STORE && await env.EBAY_OAUTH_STORE.get(`ebay:draft-task:${sku}`);
+  if (storedTask) return { sku, taskId: storedTask };
+
+  const taskResponse = await fetch('https://api.ebay.com/sell/feed/v1/task', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json',
+      'x-ebay-c-marketplace-id': MARKETPLACE_ID
+    },
+    body: JSON.stringify({ feedType: 'FX_LISTING', schemaVersion: '1.0' })
+  });
+  const taskText = await limitedText(taskResponse, 256_000);
+  let taskData = {};
+  try { taskData = JSON.parse(taskText); } catch {}
+  if (!taskResponse.ok) throw new Error(taskData.errors?.[0]?.message || `eBay Feed-Task ${taskResponse.status}`);
+  const taskId = taskData.taskId || extractTaskId(taskResponse.headers.get('location'));
+  if (!taskId) throw new Error('eBay Feed API hat keine Task-ID geliefert.');
+
+  const csv = buildSellerHubDraftCsv(row, sku, itemPrice, imageUrls[0], env);
+  const form = new FormData();
+  form.append('file', new Blob([csv], { type: 'text/csv;charset=UTF-8' }), `ebay-draft-${sku}.csv`);
+  const uploadResponse = await fetch(`https://api.ebay.com/sell/feed/v1/task/${encodeURIComponent(taskId)}/upload_file`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'x-ebay-c-marketplace-id': MARKETPLACE_ID },
+    body: form
+  });
+  const uploadText = await limitedText(uploadResponse, 256_000);
+  if (!uploadResponse.ok) {
+    let uploadData = {};
+    try { uploadData = JSON.parse(uploadText); } catch {}
+    throw new Error(uploadData.errors?.[0]?.message || `eBay Feed-Upload ${uploadResponse.status}`);
+  }
+  if (env.EBAY_OAUTH_STORE) {
+    await env.EBAY_OAUTH_STORE.put(`ebay:draft-task:${sku}`, taskId, { expirationTtl: 30 * 24 * 60 * 60 });
+  }
+  return { sku, taskId };
+}
+
+export function buildSellerHubDraftCsv(row, sku, itemPrice, imageUrl, env) {
+  const title = String(row.title || `LEGO ${row.setNumber}`).trim().slice(0, 80);
+  const isDuplo = /duplo/i.test(`${row.duplo || ''} ${title}`);
+  const safety = isDuplo
+    ? '<p>LEGO DUPLO ist für Kinder unter 3 Jahren geeignet. Bitte die Altersempfehlung auf der Originalverpackung beachten.</p>'
+    : '<p><strong>Achtung:</strong> Nicht für Kinder unter 36 Monaten geeignet. Kleine Teile. Erstickungsgefahr.</p>';
+  const description = row.description || `${env.EBAY_LISTING_DESCRIPTION_TEMPLATE || `<p><strong>${escapeHtml(title)}</strong></p><p>Neu und originalverpackt.</p>`}${safety}<p>Hersteller: LEGO System A/S, Aastvej 1, 7190 Billund, Dänemark.</p>`;
+  const header = 'Action(SiteID=Germany|Country=DE|Currency=EUR|Version=1193|CC=UTF-8);Custom label (SKU);Category ID;Title;UPC;Price;Quantity;Item photo URL;Condition ID;Description;Format';
+  const values = ['Draft', sku, env.EBAY_CATEGORY_ID || '19006', title, row.ean || '', itemPrice.toFixed(2), String(Number(row.quantity)), imageUrl || '', 'NEW', description, 'FixedPrice'];
+  return `\uFEFF#INFO;Version=0.0.2;Template= eBay-draft-listings-template_DE;;;;;;;\r\n#INFO Action und Category ID sind erforderliche Felder. 1) Stellen Sie Action auf Draft ein. 2) Die Kategorie-ID für Ihre Angebote finden Sie hier: https://pages.ebay.com/sellerinformation/news/categorychanges.html;;;;;;;;;\r\n#INFO Nachdem Sie Ihren Entwurf erfolgreich im Berichte-Tab Ihres Verkäufer-Cockpit Pro heruntergeladen haben; können Sie die Entwürfe hier zu aktiven Angeboten vervollständigen: https://www.ebay.de/sh/lst/drafts;;;;;;;;;\r\n#INFO;;;;;;;;;;\r\n${header}\r\n${values.map(csvCell).join(';')}\r\n`;
+}
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function sanitizeSku(value) {
+  const sku = String(value || '').trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
+  if (!sku) throw new Error('Keine gültige SKU erzeugbar.');
+  return sku;
+}
+
+function extractTaskId(location) {
+  const match = String(location || '').match(/\/task\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
 }
 
 async function resolveImages(row, competitor, env) {
@@ -169,15 +239,6 @@ function validateListingConfig(row, env) {
 
 async function getUserToken(env) {
   return getEbayUserAccessToken(env);
-}
-
-async function ebayUserFetch(path, token, options = {}) {
-  const response = await fetch(`https://api.ebay.com${path}`, { method: options.method || 'GET', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'accept-language': 'de-DE' }, body: options.body ? JSON.stringify(options.body) : undefined });
-  const text = await limitedText(response, 1_000_000);
-  let data = {};
-  try { data = JSON.parse(text); } catch {}
-  if (!response.ok) throw new Error(data.errors?.[0]?.message || `eBay Inventory API ${response.status}`);
-  return data;
 }
 
 async function limitedText(response, maxBytes) {
@@ -210,5 +271,6 @@ async function sha256(value) {
 }
 
 function decodeHtml(value) { return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"'); }
+function escapeHtml(value) { return String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]); }
 function roundMoney(value) { return Math.round((Number(value) + Number.EPSILON) * 100) / 100; }
 function json(body, status = 200) { return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' } }); }

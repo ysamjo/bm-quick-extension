@@ -54,11 +54,13 @@ damit vollständig im eBay-Worker gekapselt.
 
 ## eBay-Entwürfe aus Google Sheets
 
-Der bestehende eBay-Worker stellt zusätzlich `POST /v1/preview` und
-`POST /v1/drafts` bereit. Beide Routen verwenden dieselbe Browse-API- und
+Der bestehende eBay-Worker stellt zusätzlich `POST /v1/preview`,
+`POST /v1/drafts` und `POST /v1/draft-status` bereit. Die ersten beiden Routen verwenden dieselbe Browse-API- und
 Titelnormalisierung wie `/price`, filtern aber zusätzlich auf gewerbliche
-Verkäufer. `/v1/drafts` legt bei aktivierter Schreibfreigabe ein Inventory-Item
-und ein unveröffentlichtes Fixed-Price-Angebot an; es gibt keinen Publish-Aufruf.
+Verkäufer. `/v1/drafts` erzeugt bei aktivierter Schreibfreigabe exakt die
+deutsche Seller-Hub-CSV mit der Aktion `Draft` und lädt sie über den Sell Feed
+`FX_LISTING` hoch. Es gibt keinen Aufruf, der ein Angebot veröffentlicht.
+`/v1/draft-status` liest anschließend den asynchronen Feed-Status aus.
 
 Benötigte Secrets/Variablen: `DRAFT_API_TOKEN`, der über den OAuth-Ablauf
 verschlüsselt gespeicherte eBay-Refresh-Token,

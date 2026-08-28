@@ -26,7 +26,7 @@ var ebay_price_worker_default = {
     if (request.method === "GET" && ["/oauth/start", "/oauth/callback", "/oauth/declined"].includes(url.pathname)) {
       return handleEbayOAuth(request, url, env);
     }
-    if (request.method === "POST" && (url.pathname === "/v1/preview" || url.pathname === "/v1/drafts")) {
+    if (request.method === "POST" && (url.pathname === "/v1/preview" || url.pathname === "/v1/drafts" || url.pathname === "/v1/draft-status")) {
       return handleEbayDrafts(request, url, env, { getApplicationToken, normalizeOffer });
     }
     if (request.method === "GET" && url.pathname === "/ebay-webhook") {
