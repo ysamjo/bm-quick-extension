@@ -60,7 +60,8 @@ Titelnormalisierung wie `/price`, filtern aber zusätzlich auf gewerbliche
 Verkäufer. `/v1/drafts` legt bei aktivierter Schreibfreigabe ein Inventory-Item
 und ein unveröffentlichtes Fixed-Price-Angebot an; es gibt keinen Publish-Aufruf.
 
-Benötigte Secrets/Variablen: `DRAFT_API_TOKEN`, `EBAY_REFRESH_TOKEN`,
+Benötigte Secrets/Variablen: `DRAFT_API_TOKEN`, der über den OAuth-Ablauf
+verschlüsselt gespeicherte eBay-Refresh-Token,
 `EBAY_CATEGORY_ID`, `EBAY_FULFILLMENT_POLICY_ID`, `EBAY_PAYMENT_POLICY_ID`,
 `EBAY_RETURN_POLICY_ID`, `EBAY_MERCHANT_LOCATION_KEY`,
 `EBAY_FEE_PERCENT`, `EBAY_FEE_FIXED_EUR`, `ACTUAL_SHIPPING_COST_EUR`,

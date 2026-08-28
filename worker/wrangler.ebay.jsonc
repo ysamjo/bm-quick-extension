@@ -10,6 +10,11 @@
     "EBAY_RUNAME": "Andreas_Stegman-AndreasS-bm-PRD-jobnjgdy",
     "EBAY_USER_SCOPES": "https://api.ebay.com/oauth/api_scope/sell.inventory",
     "DRAFT_PRICE_UNDERCUT_EUR": "0.01",
+    "EBAY_FEE_PERCENT": "14.28",
+    "EBAY_FEE_FIXED_EUR": "0.5355",
+    "ACTUAL_SHIPPING_COST_EUR": "6.99",
+    "PACKAGING_COST_EUR": "0",
+    "MIN_PROFIT_EUR": "10",
     "EBAY_DRAFT_WRITES_ENABLED": "false",
     "LEGO_IMAGES_ENABLED": "false"
   },
