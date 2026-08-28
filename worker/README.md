@@ -114,7 +114,12 @@ als Cloudflare-Secrets gesetzt werden und gehören niemals in Git:
 - `REBRICKABLE_API_KEY`
 - `EBAY_CLIENT_ID`
 - `EBAY_CLIENT_SECRET`
+- `EBAY_OAUTH_ENCRYPTION_KEY` (zufälliger 32-Byte-Schlüssel in Base64)
 - optional `EBAY_VERIFICATION_TOKEN` und `EBAY_WEBHOOK_ENDPOINT`
+
+Der einmalige eBay-OAuth-Verbindungsweg startet unter `/oauth/start`. Nach der
+Zustimmung speichert der Callback den Refresh-Token verschlüsselt im gebundenen
+KV-Namespace `EBAY_OAUTH_STORE`; Tokenwerte werden nie im Browser ausgegeben.
 
 Lokale Secret-Dateien wie `.dev.vars` und `.env` werden über `.gitignore`
 ausgeschlossen.

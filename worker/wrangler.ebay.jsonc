@@ -2,11 +2,13 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ebay-price-api",
   "main": "ebay-worker.js",
-  "compatibility_date": "2026-08-05",
+  "compatibility_date": "2026-08-28",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "vars": {
     "EBAY_MARKETPLACE_ID": "EBAY_DE",
+    "EBAY_RUNAME": "Andreas_Stegman-AndreasS-bm-PRD-jobnjgdy",
+    "EBAY_USER_SCOPES": "https://api.ebay.com/oauth/api_scope/sell.inventory",
     "DRAFT_PRICE_UNDERCUT_EUR": "0.01",
     "EBAY_DRAFT_WRITES_ENABLED": "false",
     "LEGO_IMAGES_ENABLED": "false"
@@ -14,6 +16,12 @@
   "observability": {
     "enabled": true
   },
+  "kv_namespaces": [
+    {
+      "binding": "EBAY_OAUTH_STORE",
+      "id": "c1a2d3eb54ba4cf18187a8ff5db2c4e2"
+    }
+  ],
   "ratelimits": [
     {
       "name": "UPSTREAM_RATE_LIMITER",

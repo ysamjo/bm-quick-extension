@@ -1,5 +1,6 @@
 import { isCompleteEbaySetTitle } from "./lib/ebay-title-filter.js";
 import { handleEbayDrafts } from "./ebay-drafts.js";
+import { handleEbayOAuth } from "./ebay-oauth.js";
 
 // src/legacy.js
 var __defProp = Object.defineProperty;
@@ -22,6 +23,9 @@ var EBAY_EMPTY_CACHE_TTL_SECONDS = 20 * 60;
 var ebay_price_worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (request.method === "GET" && ["/oauth/start", "/oauth/callback", "/oauth/declined"].includes(url.pathname)) {
+      return handleEbayOAuth(request, url, env);
+    }
     if (request.method === "POST" && (url.pathname === "/v1/preview" || url.pathname === "/v1/drafts")) {
       return handleEbayDrafts(request, url, env, { getApplicationToken, normalizeOffer });
     }

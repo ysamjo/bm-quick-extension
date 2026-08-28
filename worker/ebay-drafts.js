@@ -1,3 +1,5 @@
+import { getStoredEbayRefreshToken } from './ebay-oauth.js';
+
 const DEFAULT_SHIPPING = 4.99;
 const MARKETPLACE_ID = 'EBAY_DE';
 
@@ -118,7 +120,7 @@ async function searchCommercialOffers(row, env, helpers) {
 }
 
 async function createUnpublishedOffer(row, itemPrice, imageUrls, env) {
-  if (!env.EBAY_REFRESH_TOKEN) throw new Error('EBAY_REFRESH_TOKEN fehlt.');
+  if (!(await getStoredEbayRefreshToken(env))) throw new Error('eBay-Refresh-Token fehlt.');
   const token = await getUserToken(env);
   const sku = row.sku || `LEGO-${row.setNumber}`;
   const existing = await ebayUserFetch(`/sell/inventory/v1/offer?sku=${encodeURIComponent(sku)}`, token);
@@ -165,8 +167,10 @@ function validateListingConfig(row, env) {
 }
 
 async function getUserToken(env) {
+  const refreshToken = await getStoredEbayRefreshToken(env);
+  if (!refreshToken) throw new Error('eBay-Refresh-Token fehlt.');
   const credentials = btoa(`${env.EBAY_CLIENT_ID}:${env.EBAY_CLIENT_SECRET}`);
-  const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: env.EBAY_REFRESH_TOKEN });
+  const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken });
   if (env.EBAY_USER_SCOPES) body.set('scope', env.EBAY_USER_SCOPES);
   const response = await fetch('https://api.ebay.com/identity/v1/oauth2/token', { method: 'POST', headers: { authorization: `Basic ${credentials}`, 'content-type': 'application/x-www-form-urlencoded' }, body });
   const data = await response.json();
