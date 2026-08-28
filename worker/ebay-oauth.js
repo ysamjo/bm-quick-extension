@@ -28,6 +28,22 @@ export async function getStoredEbayRefreshToken(env) {
   return decryptToken(envelope, env.EBAY_OAUTH_ENCRYPTION_KEY);
 }
 
+export async function getEbayUserAccessToken(env) {
+  const refreshToken = await getStoredEbayRefreshToken(env);
+  if (!refreshToken) throw new Error('eBay-Refresh-Token fehlt.');
+  const credentials = btoa(`${env.EBAY_CLIENT_ID}:${env.EBAY_CLIENT_SECRET}`);
+  const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken });
+  if (env.EBAY_USER_SCOPES) body.set('scope', env.EBAY_USER_SCOPES);
+  const response = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
+    method: 'POST',
+    headers: { authorization: `Basic ${credentials}`, 'content-type': 'application/x-www-form-urlencoded' },
+    body
+  });
+  const token = await readLimitedJson(response, MAX_TOKEN_RESPONSE_BYTES);
+  if (!response.ok || !token.access_token) throw new Error('eBay-Benutzer-OAuth fehlgeschlagen.');
+  return token.access_token;
+}
+
 async function startOAuth(env) {
   const missing = oauthConfigMissing(env);
   if (missing.length) return htmlPage('OAuth noch nicht bereit', `Worker-Konfiguration fehlt: ${missing.join(', ')}`, 503);

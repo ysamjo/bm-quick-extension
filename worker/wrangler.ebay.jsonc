@@ -9,6 +9,12 @@
     "EBAY_MARKETPLACE_ID": "EBAY_DE",
     "EBAY_RUNAME": "Andreas_Stegman-AndreasS-bm-PRD-jobnjgdy",
     "EBAY_USER_SCOPES": "https://api.ebay.com/oauth/api_scope/sell.inventory https://api.ebay.com/oauth/api_scope/sell.account",
+    "EBAY_CATEGORY_ID": "19006",
+    "EBAY_FULFILLMENT_POLICY_ID": "263481355013",
+    "EBAY_PAYMENT_POLICY_ID": "256321308013",
+    "EBAY_RETURN_POLICY_ID": "256322777013",
+    "EBAY_MERCHANT_LOCATION_KEY": "kuppenheim-main",
+    "EBAY_REGULATORY_JSON": "{\"manufacturer\":{\"companyName\":\"LEGO System A/S\",\"addressLine1\":\"Aastvej 1\",\"city\":\"Billund\",\"postalCode\":\"7190\",\"country\":\"DK\",\"contactUrl\":\"https://www.lego.com/de-de/service/contact-us\"}}",
     "DRAFT_PRICE_UNDERCUT_EUR": "0.01",
     "EBAY_FEE_PERCENT": "14.28",
     "EBAY_FEE_FIXED_EUR": "0.5355",
@@ -16,7 +22,7 @@
     "PACKAGING_COST_EUR": "0",
     "MIN_PROFIT_EUR": "10",
     "EBAY_DRAFT_WRITES_ENABLED": "false",
-    "LEGO_IMAGES_ENABLED": "false"
+    "LEGO_IMAGES_ENABLED": "true"
   },
   "observability": {
     "enabled": true

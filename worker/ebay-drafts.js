@@ -1,4 +1,4 @@
-import { getStoredEbayRefreshToken } from './ebay-oauth.js';
+import { getEbayUserAccessToken, getStoredEbayRefreshToken } from './ebay-oauth.js';
 
 const DEFAULT_SHIPPING = 4.99;
 const MARKETPLACE_ID = 'EBAY_DE';
@@ -130,14 +130,15 @@ async function createUnpublishedOffer(row, itemPrice, imageUrls, env) {
   if (row.ean) aspects.EAN = [row.ean];
   if (/duplo/i.test(String(row.duplo || ''))) aspects.Altersstufe = ['2+'];
   const inventory = { product: { title: row.title || `LEGO ${row.setNumber}`, imageUrls, aspects }, condition: 'NEW', availability: { shipToLocationAvailability: { quantity: Number(row.quantity) } } };
-  if (env.EBAY_REGULATORY_JSON) inventory.regulatory = JSON.parse(env.EBAY_REGULATORY_JSON);
   await ebayUserFetch(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, token, { method: 'PUT', body: inventory });
-  const offer = await ebayUserFetch('/sell/inventory/v1/offer', token, { method: 'POST', body: {
+  const offerBody = {
     sku, marketplaceId: MARKETPLACE_ID, format: 'FIXED_PRICE', availableQuantity: Number(row.quantity), categoryId: env.EBAY_CATEGORY_ID,
     listingDescription: row.description || env.EBAY_LISTING_DESCRIPTION_TEMPLATE || row.title || `LEGO ${row.setNumber}`,
     pricingSummary: { price: { value: itemPrice.toFixed(2), currency: 'EUR' } }, merchantLocationKey: env.EBAY_MERCHANT_LOCATION_KEY,
     listingPolicies: { fulfillmentPolicyId: env.EBAY_FULFILLMENT_POLICY_ID, paymentPolicyId: env.EBAY_PAYMENT_POLICY_ID, returnPolicyId: env.EBAY_RETURN_POLICY_ID }
-  } });
+  };
+  if (env.EBAY_REGULATORY_JSON) offerBody.regulatory = JSON.parse(env.EBAY_REGULATORY_JSON);
+  const offer = await ebayUserFetch('/sell/inventory/v1/offer', token, { method: 'POST', body: offerBody });
   return { sku, offerId: offer.offerId || '' };
 }
 
@@ -167,15 +168,7 @@ function validateListingConfig(row, env) {
 }
 
 async function getUserToken(env) {
-  const refreshToken = await getStoredEbayRefreshToken(env);
-  if (!refreshToken) throw new Error('eBay-Refresh-Token fehlt.');
-  const credentials = btoa(`${env.EBAY_CLIENT_ID}:${env.EBAY_CLIENT_SECRET}`);
-  const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken });
-  if (env.EBAY_USER_SCOPES) body.set('scope', env.EBAY_USER_SCOPES);
-  const response = await fetch('https://api.ebay.com/identity/v1/oauth2/token', { method: 'POST', headers: { authorization: `Basic ${credentials}`, 'content-type': 'application/x-www-form-urlencoded' }, body });
-  const data = await response.json();
-  if (!response.ok || !data.access_token) throw new Error('eBay-Benutzer-OAuth fehlgeschlagen.');
-  return data.access_token;
+  return getEbayUserAccessToken(env);
 }
 
 async function ebayUserFetch(path, token, options = {}) {
