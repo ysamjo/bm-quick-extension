@@ -4854,6 +4854,9 @@ globalThis.BM_isFranceEnabled = settings =>
                     'q',
                     `!ducky site:brickmerge.de ${searchTerm}`
                 );
+                const googleLuckyUrl = new URL('https://www.google.com/search');
+                googleLuckyUrl.searchParams.set('btnI', '1');
+                googleLuckyUrl.searchParams.set('q', `site:brickmerge.de ${searchTerm}`);
 
                 const getBrickmergeTarget = rawUrl => {
                     try {
@@ -4909,7 +4912,7 @@ globalThis.BM_isFranceEnabled = settings =>
 
                     applied = true;
                     void resolveLuckyTarget().then(target => {
-                        if (target) window.location.replace(target);
+                        window.location.replace(target || googleLuckyUrl.href);
                     });
                     return true;
                 };

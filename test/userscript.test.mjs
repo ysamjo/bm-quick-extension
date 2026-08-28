@@ -277,6 +277,11 @@ test('Google Shopping loads the best SerpApi result directly into the offer list
     assert.match(tweakerSource, /offer\.merchantName \|\| offer\.label/);
 });
 
+test('search fallback uses Google Lucky when no Brickmerge target is resolved', () => {
+    assert.match(tweakerSource, /const googleLuckyUrl = new URL\('https:\/\/www\.google\.com\/search'\)/);
+    assert.match(tweakerSource, /window\.location\.replace\(target \|\| googleLuckyUrl\.href\)/);
+});
+
 test('stock action lives in the parts block and opens the native depot form', () => {
     const setupDetailButton = source.match(
         /function setupDetailButton\(\) \{[\s\S]*?\n\s*function parseNumber/
