@@ -1,5 +1,5 @@
 const OAUTH_STORE_KEY = 'ebay:oauth:refresh-token:v1';
-const DEFAULT_SCOPE = 'https://api.ebay.com/oauth/api_scope/sell.inventory';
+const DEFAULT_SCOPE = 'https://api.ebay.com/oauth/api_scope/sell.inventory https://api.ebay.com/oauth/api_scope/sell.account';
 const MAX_TOKEN_RESPONSE_BYTES = 64 * 1024;
 
 export async function handleEbayOAuth(request, url, env) {
@@ -232,4 +232,3 @@ function escapeHtml(value) {
 function text(body, status) {
   return new Response(body, { status, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
 }
-

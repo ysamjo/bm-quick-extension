@@ -8,7 +8,7 @@
   "vars": {
     "EBAY_MARKETPLACE_ID": "EBAY_DE",
     "EBAY_RUNAME": "Andreas_Stegman-AndreasS-bm-PRD-jobnjgdy",
-    "EBAY_USER_SCOPES": "https://api.ebay.com/oauth/api_scope/sell.inventory",
+    "EBAY_USER_SCOPES": "https://api.ebay.com/oauth/api_scope/sell.inventory https://api.ebay.com/oauth/api_scope/sell.account",
     "DRAFT_PRICE_UNDERCUT_EUR": "0.01",
     "EBAY_FEE_PERCENT": "14.28",
     "EBAY_FEE_FIXED_EUR": "0.5355",
