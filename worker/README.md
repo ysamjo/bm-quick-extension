@@ -42,10 +42,32 @@ Alle Apify-Routen starten ausschließlich asynchron. Die Extension verfolgt den
 zurückgegebenen Status-Endpunkt; einzelne Worker-Anfragen bleiben deshalb nicht
 während eines langen Actor-Laufs geöffnet.
 
+Google Shopping wird auf Set-Detailseiten direkt über SerpApi geladen. Der
+Worker verwendet dafür das Secret `SERPAPI_API_KEY`, fragt deutsche
+Google-Shopping-Ergebnisse ab und speichert positive Treffer zwei Stunden im
+gemeinsamen Cache. In die Offerlist gelangt nur der günstigste passende Treffer.
+
 `/ebay-minifig?itemNo=...` liefert den günstigsten passenden eBay-Sofort-Kaufen-
 Treffer für eine BrickLink-Minifiguren-ID. Wie `/price` wird die Route intern an
 `ebay-price-api` delegiert. OAuth, Secrets, eBay-Cache und Rate-Limits bleiben
 damit vollständig im eBay-Worker gekapselt.
+
+## eBay-Entwürfe aus Google Sheets
+
+Der bestehende eBay-Worker stellt zusätzlich `POST /v1/preview` und
+`POST /v1/drafts` bereit. Beide Routen verwenden dieselbe Browse-API- und
+Titelnormalisierung wie `/price`, filtern aber zusätzlich auf gewerbliche
+Verkäufer. `/v1/drafts` legt bei aktivierter Schreibfreigabe ein Inventory-Item
+und ein unveröffentlichtes Fixed-Price-Angebot an; es gibt keinen Publish-Aufruf.
+
+Benötigte Secrets/Variablen: `DRAFT_API_TOKEN`, `EBAY_REFRESH_TOKEN`,
+`EBAY_CATEGORY_ID`, `EBAY_FULFILLMENT_POLICY_ID`, `EBAY_PAYMENT_POLICY_ID`,
+`EBAY_RETURN_POLICY_ID`, `EBAY_MERCHANT_LOCATION_KEY`,
+`EBAY_FEE_PERCENT`, `EBAY_FEE_FIXED_EUR`, `ACTUAL_SHIPPING_COST_EUR`,
+`PACKAGING_COST_EUR`, `MIN_PROFIT_EUR` und bei aktivem Schreiben
+`EBAY_REGULATORY_JSON`. Die eBay-Refresh-Token-Scopes müssen Inventory- und
+Account-Zugriff abdecken. `LEGO_IMAGES_ENABLED=true` aktiviert die LEGO.de-
+Bildquelle; die Bildrechte müssen vor einer Veröffentlichung geprüft werden.
 
 ## Gemeinsamer Angebots-Cache
 
@@ -87,6 +109,7 @@ Die Konfiguration enthält nur Bindings und Namespace-IDs. Folgende Werte müsse
 als Cloudflare-Secrets gesetzt werden und gehören niemals in Git:
 
 - `APIFY_TOKEN`
+- `SERPAPI_API_KEY`
 - `KLAZ_API_KEY`
 - `REBRICKABLE_API_KEY`
 - `EBAY_CLIENT_ID`

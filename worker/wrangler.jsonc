@@ -11,7 +11,8 @@
   "services": [
     {
       "binding": "LEGACY_WORKER",
-      "service": "ebay-price-api"
+      "service": "ebay-price-api",
+      "environment": "production"
     }
   ],
   "kv_namespaces": [

@@ -657,7 +657,7 @@ test('Kleinanzeigen starts Apify asynchronously when the primary API fails', asy
     if (url.includes('api.kleinanzeigen-agent.de')) {
       return Response.json({ error_code: 'temporary' }, { status: 503 });
     }
-    if (url.includes('/acts/memo23~kleinanzeigen-search-scraper-ppe/runs')) {
+    if (url.includes('/acts/fatihtahta~ebay-kleinanzeigen-scraper/runs')) {
       return Response.json({ data: { id: 'fallback-run', status: 'RUNNING' } });
     }
     return new Response('', { status: 500 });
@@ -723,7 +723,7 @@ test('cached Kleinanzeigen Apify results survive the cache-only page reload', as
     throw new Error('Cache-only darf keinen externen Abruf starten');
   };
   try {
-    const rawCacheKey = 'bm-central-v22:apify-raw:kleinanzeigen:v4:76461';
+    const rawCacheKey = 'bm-central-v22:apify-raw:kleinanzeigen:v5:76461';
     const response = await worker.fetch(
       new Request(
         'https://getdata.example/offers/cache?' +
@@ -772,7 +772,7 @@ test('manual offer refresh explicitly enables the Kleinanzeigen Apify fallback',
     if (url.includes('api.kleinanzeigen-agent.de')) {
       return Response.json({ error_code: 'temporary' }, { status: 503 });
     }
-    if (url.includes('/acts/memo23~kleinanzeigen-search-scraper-ppe/runs')) {
+    if (url.includes('/acts/fatihtahta~ebay-kleinanzeigen-scraper/runs')) {
       return Response.json({ data: { id: 'manual-fallback-run', status: 'RUNNING' } });
     }
     return new Response('', { status: 500 });
@@ -797,7 +797,7 @@ test('manual offer refresh explicitly enables the Kleinanzeigen Apify fallback',
     const body = await response.json();
     assert.equal(body.sources.kleinanzeigen.state, 'pending');
     assert.equal(
-      requestedUrls.some(url => /kleinanzeigen-search-scraper-ppe/.test(url)),
+      requestedUrls.some(url => /fatihtahta~ebay-kleinanzeigen-scraper/.test(url)),
       true
     );
   } finally {
@@ -817,7 +817,7 @@ test('Kleinanzeigen reuses raw Apify results when the comparison price changes',
     throw new Error('Der vorhandene Rohdaten-Cache muss den Actor-Aufruf verhindern');
   };
   try {
-    const rawCacheKey = 'bm-central-v22:apify-raw:kleinanzeigen:v4:42154';
+    const rawCacheKey = 'bm-central-v22:apify-raw:kleinanzeigen:v5:42154';
     const response = await worker.fetch(
       new Request(
         'https://getdata.example/kleinanzeigen?' +
@@ -1038,18 +1038,98 @@ test('BrickLink-Minifiguren werden mit Namen und Menge strukturiert extrahiert',
   });
 
   test('Kleinanzeigen-Apify-Input und Filter behalten Versandangebote und verwerfen Abholung', () => {
-    const input = __test.APIFY_CONFIG.kleinanzeigen.buildInput('71426');
-    assert.equal(input.maxItems, 10);
-    assert.match(input.startUrls[0].url, /lego-71426/);
-    assert.match(input.startUrls[0].url, /condition_s:new/);
+    const config = __test.APIFY_CONFIG.kleinanzeigen;
+    const input = config.buildInput('71426');
+    assert.equal(config.actorId, 'fatihtahta~ebay-kleinanzeigen-scraper');
+    assert.equal(config.maxTotalChargeUsd, 1);
+    assert.deepEqual(input, {
+      queries: ['LEGO 71426'],
+      category: '23',
+      condition: ['new'],
+      offer_type: 'for_sale',
+      shipping: 'shipping_available',
+      enrich_data: false,
+      maximize_coverage: false,
+      limit: 10
+    });
     const result = __test.normalizeKleinanzeigenApifyItems([
       { id: 'k1', title: 'LEGO 71426', condition: 'Neu', price: '49,99 €', itemUrl: 'https://www.kleinanzeigen.de/s-anzeige/k1', shippingCost: '4,99 €', shippingAvailable: true },
+      { listing_id: 'k4', title: 'LEGO 71426 neu OVP', product: { description: 'Komplett und ungeöffnet', url: 'https://www.kleinanzeigen.de/s-anzeige/k4' }, offer: { condition: 'Neu' }, pricing: { price: 44.99 }, availability: { shipping_available: true }, media: { main_image_url: 'https://img.kleinanzeigen.de/k4.jpg' }, seller: { seller_name: 'Tester' } },
       { id: 'k2', title: 'LEGO 71426 neu OVP, nur Abholung', price: '39,99 €', url: 'https://www.kleinanzeigen.de/s-anzeige/k2' },
       { id: 'k3', title: 'Playmobil 71426 neu', price: '5 €', url: 'https://www.kleinanzeigen.de/s-anzeige/k3' }
     ], '71426');
-    assert.equal(result.length, 1);
+    assert.equal(result.length, 2);
     assert.equal(result[0].total, 54.98);
     assert.equal(result[0].shippingCost, 4.99);
+    assert.equal(result[1].id, 'k4');
+    assert.equal(result[1].sellerName, 'Tester');
+  });
+
+  test('Google Shopping normalisiert den günstigsten passenden neuen LEGO-Treffer', () => {
+    const result = __test.normalizeGoogleShoppingResults({
+      shopping_results: [
+        { product_id: 'g1', title: 'LEGO 71426 Piranha-Pflanze', extracted_price: 55, delivery: 'Kostenlose Lieferung', source: 'Shop A', product_link: 'https://www.google.com/shopping/product/g1' },
+        { product_id: 'g2', title: 'LEGO 71426 Piranha-Pflanze', extracted_price: 45, delivery: 'Lieferung 4,99 €', source: 'Shop B', product_link: 'https://www.google.com/shopping/product/g2' },
+        { product_id: 'g3', title: 'Vitrine für LEGO 71426', extracted_price: 20, source: 'Zubehör', product_link: 'https://www.google.com/shopping/product/g3' },
+        { product_id: 'g4', title: 'LEGO 71426 gebraucht', extracted_price: 30, second_hand_condition: 'Gebraucht', source: 'Shop C', product_link: 'https://www.google.com/shopping/product/g4' },
+        { product_id: 'g5', title: 'LEGO 71426 Piranha-Pflanze', extracted_price: 60, seller: { name: 'Alternativer Händler' }, product_link: 'https://www.google.com/shopping/product/g5' },
+        { product_id: 'g6', title: 'LEGO 71426 Piranha-Pflanze', extracted_price: 65, multiple_sources: true, product_link: 'https://www.google.com/shopping/product/g6' }
+      ]
+    }, '71426', 40);
+    assert.equal(result.length, 4);
+    assert.equal(result[0].id, 'g2');
+    assert.equal(result[0].total, 49.99);
+    assert.equal(result[0].shopName, 'Shop B');
+    assert.equal(result.find(offer => offer.id === 'g5')?.shopName, 'Alternativer Händler');
+    assert.equal(result.find(offer => offer.id === 'g6')?.shopName, 'Mehrere Händler');
+    assert.equal(__test.parseGoogleShoppingDelivery('Kostenlose Lieferung'), 0);
+  });
+
+  test('Google-Shopping-Route fragt deutsche SerpApi-Ergebnisse ab', async () => {
+    const originalFetch = globalThis.fetch;
+    let requestedUrl = '';
+    globalThis.fetch = async input => {
+      requestedUrl = String(input);
+      return Response.json({
+        search_metadata: {
+          google_url: 'https://www.google.de/search?tbm=shop&q=LEGO+71426'
+        },
+        shopping_results: [
+          {
+            product_id: 'g1',
+            title: 'LEGO 71426 Piranha-Pflanze',
+            price: '49,99 €',
+            extracted_price: 49.99,
+            delivery: 'Kostenlose Lieferung',
+            source: 'Deutscher Händler',
+            product_link: 'https://www.google.com/shopping/product/g1'
+          }
+        ]
+      });
+    };
+    try {
+      const response = await worker.fetch(
+        new Request('https://getdata.example/google-shopping?set=71426&ean=5702017424965'),
+        {
+          SERPAPI_API_KEY: 'test-secret',
+          BM_CACHE: { async get() { return null; }, async put() {} }
+        },
+        context
+      );
+      assert.equal(response.status, 200);
+      const body = await response.json();
+      assert.equal(body.found, true);
+      assert.equal(body.cheapest.shopName, 'Deutscher Händler');
+      const url = new URL(requestedUrl);
+      assert.equal(url.searchParams.get('engine'), 'google_shopping');
+      assert.equal(url.searchParams.get('google_domain'), 'google.de');
+      assert.equal(url.searchParams.get('gl'), 'de');
+      assert.equal(url.searchParams.get('location'), 'Germany');
+      assert.equal(url.searchParams.get('api_key'), 'test-secret');
+      assert.equal(response.headers.get('x-bm-upstream-url'), null);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test('StockX übernimmt nur den lokalisierten deutschen EUR-Lowest-Ask', () => {

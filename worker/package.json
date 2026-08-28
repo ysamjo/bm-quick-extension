@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check lib/ebay-title-filter.js && node --check worker.js && node --check getdata-entry.js && node --check ebay-worker.js",
+    "check": "node --check lib/ebay-title-filter.js && node --check ebay-drafts.js && node --check worker.js && node --check getdata-entry.js && node --check ebay-worker.js",
     "test": "node --test",
     "deploy": "wrangler deploy"
   },

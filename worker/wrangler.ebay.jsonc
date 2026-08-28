@@ -5,6 +5,12 @@
   "compatibility_date": "2026-08-05",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  "vars": {
+    "EBAY_MARKETPLACE_ID": "EBAY_DE",
+    "DRAFT_PRICE_UNDERCUT_EUR": "0.01",
+    "EBAY_DRAFT_WRITES_ENABLED": "false",
+    "LEGO_IMAGES_ENABLED": "false"
+  },
   "observability": {
     "enabled": true
   },

@@ -1,4 +1,5 @@
 import { isCompleteEbaySetTitle } from "./lib/ebay-title-filter.js";
+import { handleEbayDrafts } from "./ebay-drafts.js";
 
 // src/legacy.js
 var __defProp = Object.defineProperty;
@@ -21,6 +22,9 @@ var EBAY_EMPTY_CACHE_TTL_SECONDS = 20 * 60;
 var ebay_price_worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (request.method === "POST" && (url.pathname === "/v1/preview" || url.pathname === "/v1/drafts")) {
+      return handleEbayDrafts(request, url, env, { getApplicationToken, normalizeOffer });
+    }
     if (request.method === "GET" && url.pathname === "/ebay-webhook") {
       return handleWebhookChallenge(url, env);
     }
@@ -489,9 +493,9 @@ function normalizeKleinanzeigenApifyItems(rawItems, setNumber) {
   if (!Array.isArray(rawItems)) return [];
   return rawItems.map((item) => {
     if (!item || typeof item !== "object") return null;
-    const title = normalizedText(item.title ?? item.subject ?? item.name ?? item.headline);
-    const description = normalizedText(item.description ?? item.body ?? "");
-    const condition = normalizedText(item.condition ?? item.zustand ?? item.itemCondition ?? item.specifications?.Zustand ?? "");
+    const title = normalizedText(item.title ?? item.subject ?? item.name ?? item.headline ?? item.product?.title);
+    const description = normalizedText(item.description ?? item.body ?? item.product?.description ?? "");
+    const condition = normalizedText(item.condition ?? item.zustand ?? item.itemCondition ?? item.offer?.condition ?? item.product?.attributes?.Zustand ?? item.attributes?.listing_attributes?.Zustand ?? item.specifications?.Zustand ?? "");
     const brand = normalizedText(item.brand ?? item.manufacturer ?? item.marke ?? "");
     if ((!/\blego\b/i.test(title) && !/^lego$/i.test(brand)) || !isRelevantLegoListing(title, description, setNumber)) return null;
     // Die Kleinanzeigen-Such-URL enthält zwar den Neu-Filter, der Apify-Actor
@@ -501,14 +505,14 @@ function normalizeKleinanzeigenApifyItems(rawItems, setNumber) {
     if (/\b(?:beleuchtungsset|ersatzteile?|vitrine|nur\s+teile|anleitung|karton|leere?\s+box|(?:fehlen|fehlende?)\s+(?:ein\s+paar\s+|einige\s+|mehrere\s+)?(?:teile|steine)|nicht\s+\d+\s*prozentig\s+alles\s+drin)\b/i.test(`${title} ${description}`)) return null;
     const shippingText = `${title} ${description} ${normalizedText(item.shipping ?? item.delivery ?? item.shippingType ?? item.fulfillment ?? "")}`;
     if (/\b(?:nur\s+abholung|abholung\s+only|only\s+pickup|pickup\s+only|selbstabholung)\b/i.test(shippingText)) return null;
-    const price = parseListingPrice(item.price ?? item.priceAmount ?? item.amount ?? item.cost);
+    const price = parseListingPrice(item.price ?? item.priceAmount ?? item.amount ?? item.cost ?? item.pricing?.price);
     if (price === null) return null;
     const shippingCost = parseListingPrice(item.shippingCost ?? item.shipping_price ?? item.deliveryCost ?? item.delivery_price ?? item.versandkosten ?? item.shipping);
-    const rawUrl = item.url ?? item.link ?? item.adUrl ?? item.ad_url ?? item.itemUrl ?? item.permalink;
+    const rawUrl = item.url ?? item.link ?? item.adUrl ?? item.ad_url ?? item.itemUrl ?? item.permalink ?? item.product?.url;
     const url = absolutizeUrl(rawUrl, "https://www.kleinanzeigen.de");
     if (!url) return null;
     const shippingLabel = normalizedText(item.shipping ?? item.delivery ?? item.shippingType ?? "");
-    const rawShipping = item.shippingAvailable ?? item.shipping_available ?? item.shippable ?? item.hasShipping ?? item.versand;
+    const rawShipping = item.shippingAvailable ?? item.shipping_available ?? item.shippable ?? item.hasShipping ?? item.versand ?? item.availability?.shipping_available;
     const shippingAvailable = /\bversand\b/i.test(shippingLabel)
       ? true
       : rawShipping === null || rawShipping === void 0
@@ -516,23 +520,80 @@ function normalizeKleinanzeigenApifyItems(rawItems, setNumber) {
         : !/^(?:false|0|no|nein|abholung)$/i.test(String(rawShipping));
     return {
       marketplace: "kleinanzeigen",
-      id: item.id ?? item.listingId ?? item.adId ?? item.ad_id ?? item.itemId ?? null,
+      id: item.id ?? item.listingId ?? item.listing_id ?? item.adId ?? item.ad_id ?? item.itemId ?? item.product?.listing_id ?? null,
       title,
       price,
       currency: item.currency ?? "EUR",
       url,
-      imageUrl: item.imageUrl ?? item.image ?? item.image_url ?? item.thumbnail ?? item.images?.[0] ?? null,
+      imageUrl: item.imageUrl ?? item.image ?? item.image_url ?? item.thumbnail ?? item.images?.[0] ?? item.media?.main_image_url ?? item.media?.primary_image_url ?? null,
       condition: condition || null,
-      location: item.location ?? item.city ?? item.ort ?? null,
+      location: typeof item.location === "string" ? item.location : item.location?.display_location ?? item.location?.locality ?? item.city ?? item.ort ?? null,
       shippingAvailable,
       shippingCost,
-      sellerName: item.sellerName ?? item.seller ?? item.user?.name ?? null,
+      sellerName: item.sellerName ?? item.seller?.seller_name ?? item.seller?.name ?? (typeof item.seller === "string" ? item.seller : null) ?? item.user?.name ?? null,
       total: roundMoney(price + (shippingCost ?? 0)),
       raw: item
     };
   }).filter(Boolean);
 }
 __name(normalizeKleinanzeigenApifyItems, "normalizeKleinanzeigenApifyItems");
+function parseGoogleShoppingDelivery(value) {
+  const text = normalizedText(value);
+  if (!text) return null;
+  if (/kostenlos|gratis|free\s+delivery/i.test(text)) return 0;
+  return parseListingPrice(text);
+}
+__name(parseGoogleShoppingDelivery, "parseGoogleShoppingDelivery");
+function normalizeGoogleShoppingResults(payload, setNumber, best = null) {
+  const items = Array.isArray(payload?.shopping_results)
+    ? payload.shopping_results
+    : [];
+  const offers = items.map((item) => {
+    if (!item || typeof item !== "object") return null;
+    const title = normalizedText(item.title ?? item.name ?? "");
+    if (!/\blego\b/i.test(title) ||
+      !isRelevantLegoListing(title, item.snippet ?? "", setNumber)) return null;
+    if (normalizedText(item.second_hand_condition)) return null;
+    if (/[£$]|\bCHF\b/i.test(normalizedText(item.price ?? ""))) return null;
+    const itemPrice = parseListingPrice(item.extracted_price ?? item.price);
+    if (itemPrice === null) return null;
+    const shippingCost = parseGoogleShoppingDelivery(item.delivery);
+    const total = roundMoney(itemPrice + (shippingCost ?? 0));
+    const rawUrl = item.product_link ?? item.link ?? item.serpapi_product_api;
+    const url = absolutizeUrl(rawUrl, "https://www.google.com");
+    if (!url) return null;
+    const shopName = [
+      item.source,
+      item.source_name,
+      item.shopName,
+      typeof item.seller === "string" ? item.seller : item.seller?.name,
+      typeof item.merchant === "string" ? item.merchant : item.merchant?.name,
+      typeof item.retailer === "string" ? item.retailer : item.retailer?.name,
+      typeof item.store === "string" ? item.store : item.store?.name,
+      typeof item.vendor === "string" ? item.vendor : item.vendor?.name
+    ].map(normalizedText).find(Boolean) ||
+      (/^true$/i.test(normalizedText(item.multiple_sources)) ? "Mehrere Händler" : null);
+    return {
+      marketplace: "google-shopping",
+      id: item.product_id ?? item.position ?? null,
+      title,
+      itemPrice,
+      price: itemPrice,
+      shippingCost,
+      shippingAvailable: shippingCost !== null ? true : null,
+      total,
+      currency: "EUR",
+      url,
+      imageUrl: item.thumbnail ?? item.thumbnails?.[0] ?? null,
+      shopName,
+      delivery: normalizedText(item.delivery ?? "") || null,
+      raw: item
+    };
+  }).filter(Boolean);
+  const filtered = excludeSuspiciousLowPrices(offers, best);
+  return filtered.offers.sort((left, right) => left.total - right.total);
+}
+__name(normalizeGoogleShoppingResults, "normalizeGoogleShoppingResults");
 function normalizeStockxItems(rawItems, setNumber) {
   if (!Array.isArray(rawItems)) return [];
   return rawItems.map((item) => {
@@ -1133,6 +1194,8 @@ var TTL = Object.freeze({
   leboncoinEmpty: 20 * 60,
   stockx: 2 * 60 * 60,
   stockxEmpty: 20 * 60,
+  googleShopping: 2 * 60 * 60,
+  googleShoppingEmpty: 20 * 60,
   idealo: 2 * 60 * 60,
   idealoEmpty: 20 * 60,
   brickbank: 2 * 60 * 60,
@@ -1194,18 +1257,21 @@ var APIFY_CONFIG = Object.freeze({
     }
   }),
   kleinanzeigen: Object.freeze({
-    actorId: "memo23~kleinanzeigen-search-scraper-ppe",
-    cacheVersion: "v4",
+    actorId: "fatihtahta~ebay-kleinanzeigen-scraper",
+    cacheVersion: "v5",
     listingHost: "www.kleinanzeigen.de",
+    maxTotalChargeUsd: 1,
     normalize: normalizeKleinanzeigenApifyItems,
     buildInput(setNumber) {
       return {
-        startUrls: [{ url: `https://www.kleinanzeigen.de/s-spielzeug/sortierung:preis/lego-${setNumber}/k0c23+spielzeug.condition_s:new` }],
-        maxItems: 10,
-        maxConcurrency: 10,
-        minConcurrency: 1,
-        maxRequestRetries: 1,
-        proxy: { useApifyProxy: true, apifyProxyGroups: ["RESIDENTIAL"] }
+        queries: [`LEGO ${setNumber}`],
+        category: "23",
+        condition: ["new"],
+        offer_type: "for_sale",
+        shipping: "shipping_available",
+        enrich_data: false,
+        maximize_coverage: false,
+        limit: 10
       };
     }
   }),
@@ -1258,6 +1324,7 @@ var index_default = {
             "/vinted",
             "/leboncoin",
             "/stockx",
+            "/google-shopping",
             "/idealo",
             "/bricklink",
             "/offers/dismissals",
@@ -1307,6 +1374,9 @@ var index_default = {
       }
       if (url.pathname === "/stockx") {
         return startApifyMarketplaceJob(request, url, env, "stockx");
+      }
+      if (url.pathname === "/google-shopping") {
+        return handleGoogleShopping(request, url, env, ctx);
       }
       if (url.pathname === "/idealo") {
         return startApifyIdealoJob(request, url, env);
@@ -1628,6 +1698,67 @@ async function handleKleinanzeigenCached(request, url, env, ctx) {
     "x-bm-key-source": "worker-secret-or-cache"
   });
 }
+async function handleGoogleShopping(request, url, env, ctx) {
+  const setNumber = cleanSetNumber(url.searchParams.get("set"));
+  const ean = cleanDigits(url.searchParams.get("ean"), 8, 14);
+  if (!setNumber || !ean || !/^\d{8}$|^\d{12,14}$/.test(ean)) {
+    return json2({ error: "Gültige LEGO-Setnummer und EAN sind erforderlich." }, 400);
+  }
+  if (!env.SERPAPI_API_KEY) {
+    return json2({
+      error: "SERPAPI_API_KEY fehlt im Worker-Secret.",
+      code: "SERPAPI_API_KEY_MISSING"
+    }, 503);
+  }
+  return cachedUpstream(request, env, ctx, {
+    cacheKey: `google-shopping:v1:${setNumber}:${ean}`,
+    ttlSeconds: TTL.googleShopping,
+    rateLimitRoute: "google-shopping",
+    cacheOnly: url.searchParams.get("cache") === "only",
+    fetcher: async () => {
+      const upstreamUrl = new URL("https://serpapi.com/search.json");
+      upstreamUrl.searchParams.set("engine", "google_shopping");
+      upstreamUrl.searchParams.set("q", `LEGO ${setNumber} ${ean}`);
+      upstreamUrl.searchParams.set("google_domain", "google.de");
+      upstreamUrl.searchParams.set("gl", "de");
+      upstreamUrl.searchParams.set("hl", "de");
+      upstreamUrl.searchParams.set("location", "Germany");
+      upstreamUrl.searchParams.set("api_key", env.SERPAPI_API_KEY);
+      const response = await fetch(upstreamUrl, {
+        headers: { accept: "application/json" }
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.error) {
+        return json2({
+          error: "Google Shopping konnte nicht geladen werden.",
+          code: response.status === 429 ? "SERPAPI_LIMIT_REACHED" : "SERPAPI_REQUEST_FAILED",
+          upstreamStatus: response.status
+        }, response.status === 429 ? 429 : 502);
+      }
+      // Der Preisvergleichswert beeinflusst nicht den externen Suchlauf. So
+      // bleibt derselbe Google-Cache auch bei wechselnden Brickmerge-Preisen
+      // wiederverwendbar.
+      const offers = normalizeGoogleShoppingResults(payload, setNumber);
+      const searchUrl = String(payload?.search_metadata?.google_url ||
+        `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(`LEGO ${setNumber}`)}`);
+      return json2({
+        setNumber,
+        ean,
+        marketplace: "google-shopping",
+        found: offers.length > 0,
+        cheapest: offers[0] || null,
+        comparedOffers: offers.length,
+        offers: offers.slice(0, 10),
+        searchUrl
+      }, 200, {
+        "cache-control": `public, max-age=${offers.length > 0
+          ? TTL.googleShopping
+          : TTL.googleShoppingEmpty}`
+      });
+    }
+  });
+}
+__name(handleGoogleShopping, "handleGoogleShopping");
 async function normalizeKleinanzeigenError(response) {
   if (response.ok) return response;
   const payload = await response.clone().json().catch(() => null);
@@ -2734,6 +2865,8 @@ var __test = Object.freeze({
   normalizeVintedItems,
   normalizeLeboncoinItems,
   normalizeKleinanzeigenApifyItems,
+  parseGoogleShoppingDelivery,
+  normalizeGoogleShoppingResults,
   normalizeStockxItems,
   normalizeIdealoItems,
   extractBricklinkMinifigItemNos,
