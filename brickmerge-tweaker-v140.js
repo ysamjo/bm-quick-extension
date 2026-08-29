@@ -5524,6 +5524,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     },
                     { name: "Geizhals", url: `https://www.google.com/search?q=site%3Ageizhals.de+lego+${setNum}&btnI=1`, icon: icon("geizhals.at") },
                     { id: "btn-google-shopping", name: "Google Shopping", url: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(`LEGO ${setNum}`)}`, icon: icon("shopping.google.com") },
+                    { id: "btn-klarna", name: "Klarna", url: `https://www.klarna.com/de/shopping/?q=${encodeURIComponent(`LEGO ${setNum}`)}`, icon: icon("klarna.com") },
                     { name: "idealo DE", url: `https://www.google.com/search?q=site%3Aidealo.de+lego+${setNum}&btnI=1`, icon: icon("idealo.de") },
                     { name: "Reviews", url: `https://www.youtube.com/results?search_query=${encodeURIComponent(`lego ${setNum} review`)}`, icon: icon("youtube.com") }
                 ]
@@ -6912,7 +6913,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 const apifyMarketplaceConfigs = new Map([
                     ['vinted', { label: 'Vinted', logoDomain: 'vinted.de' }],
                     ['leboncoin', { label: 'Leboncoin', logoDomain: 'leboncoin.fr' }],
-                    ['stockx', { label: 'StockX', logoDomain: 'stockx.com' }]
+                    ['stockx', { label: 'StockX', logoDomain: 'stockx.com' }],
+                    ['klarna', { label: 'Klarna', logoDomain: 'klarna.com', manualOnly: true }]
                 ]);
                 const applyApifyMarketplaceResult = (
                     source,
@@ -6967,6 +6969,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                 logoClass: source === 'stockx'
                                     ? 'bm-stockx-logo'
                                     : '',
+                                logoCaption: candidate.shopName || '',
+                                merchantName: candidate.shopName || '',
                                 shippingStatus,
                                 shippingCost: Number.isFinite(shippingCost)
                                     ? shippingCost
@@ -7015,6 +7019,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     );
                 };
                 apifyMarketplaceConfigs.forEach((config, source) => {
+                    if (config.manualOnly) return;
                     fetchApifyMarketplaceOffer(
                         source,
                         config.label,

@@ -19,6 +19,7 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
         leboncoin: true,
         stockx: true,
         googleShopping: true,
+        klarna: true,
         idealo: true,
         smyths: true,
         mueller: true,
@@ -68,6 +69,7 @@ globalThis.BM_MARKETPLACE_REFERENCE_FILTER_SOURCES = Object.freeze([
     'leboncoin',
     'stockx',
     'google-shopping',
+    'klarna',
     'idealo'
 ]);
 globalThis.BM_getMarketplaceMinimumPrice = referencePrice => {

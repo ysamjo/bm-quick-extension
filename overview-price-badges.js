@@ -10,6 +10,7 @@
         'vinted',
         'leboncoin',
         'stockx',
+        'klarna',
         'idealo',
         'bricklink'
     ]);
@@ -20,6 +21,7 @@
         vinted: 'Vinted',
         leboncoin: 'Leboncoin',
         stockx: 'StockX',
+        klarna: 'Klarna',
         idealo: 'Idealo FR',
         bricklink: 'BrickLink'
     });

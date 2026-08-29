@@ -1132,6 +1132,29 @@ test('BrickLink-Minifiguren werden mit Namen und Menge strukturiert extrahiert',
     }
   });
 
+  test('Klarna normalisiert EAN-basierte Händlerangebote inklusive Shopnamen', () => {
+    const result = __test.normalizeKlarnaItems([
+      {
+        ean: '5702017424965',
+        name: 'LEGO Technic 42154 2022 Ford GT',
+        productUrl: 'https://www.klarna.com/de/shopping/pl/cl1/123/LEGO-42154/',
+        images: ['https://owp.klarna.com/product/123/lego.jpg'],
+        shop: {
+          Amazon: 119.99,
+          'MediaMarkt': '129,99 €'
+        }
+      }
+    ], '42154');
+    assert.deepEqual(__test.APIFY_CONFIG.klarna.buildInput('42154', '5702017424965'), {
+      startEANs: ['5702017424965']
+    });
+    assert.equal(result.length, 2);
+    assert.equal(result[0].shopName, 'Amazon');
+    assert.equal(result[0].total, 119.99);
+    assert.equal(result[1].shopName, 'MediaMarkt');
+    assert.equal(result[1].url, 'https://www.klarna.com/de/shopping/pl/cl1/123/LEGO-42154/');
+  });
+
   test('StockX übernimmt nur den lokalisierten deutschen EUR-Lowest-Ask', () => {
     const result = __test.normalizeStockxItems([
       {

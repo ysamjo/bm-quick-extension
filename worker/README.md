@@ -47,6 +47,14 @@ Worker verwendet dafür das Secret `SERPAPI_API_KEY`, fragt deutsche
 Google-Shopping-Ergebnisse ab und speichert positive Treffer zwei Stunden im
 gemeinsamen Cache. In die Offerlist gelangt nur der günstigste passende Treffer.
 
+Klarna wird über den deutschen, EAN-basierten Apify-Actor
+`m3web/german-price-comparison-actor` abgefragt. Dieser liefert Händlerangebote
+aus dem deutschen Klarna-Preisvergleich; der Händlername wird in die Offerlist
+übernommen. Der Abruf erfolgt ausschließlich über „Weitere Marktplätze
+abrufen“. Der separate Product-Offers-Actor benötigt bereits eine Klarna-
+Produkt-URL und ist deshalb für den direkten Brickmerge-EAN-Abruf nicht die
+passende Eingabe.
+
 `/ebay-minifig?itemNo=...` liefert den günstigsten passenden eBay-Sofort-Kaufen-
 Treffer für eine BrickLink-Minifiguren-ID. Wie `/price` wird die Route intern an
 `ebay-price-api` delegiert. OAuth, Secrets, eBay-Cache und Rate-Limits bleiben
@@ -75,7 +83,7 @@ Bildquelle; die Bildrechte müssen vor einer Veröffentlichung geprüft werden.
 ## Gemeinsamer Angebots-Cache
 
 - `/offers/cache?set=...&ean=...` liest eBay Deutschland, eBay Frankreich, Kleinanzeigen, Vinted,
-  Leboncoin, StockX, Idealo und BrickLink ausschließlich aus Edge/KV. Ein Cache-Fehlschlag startet
+  Leboncoin, StockX, Klarna, Idealo und BrickLink ausschließlich aus Edge/KV. Ein Cache-Fehlschlag startet
   keinen externen oder kostenpflichtigen Abruf.
 - `/offers/refresh?set=...&ean=...` aktualisiert die gewählten Quellen. Apify-
   Abfragen laufen asynchron und bleiben je Lauf auf maximal 0,05 USD begrenzt.

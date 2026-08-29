@@ -598,6 +598,71 @@ function normalizeGoogleShoppingResults(payload, setNumber, best = null) {
   return filtered.offers.sort((left, right) => left.total - right.total);
 }
 __name(normalizeGoogleShoppingResults, "normalizeGoogleShoppingResults");
+function normalizeKlarnaItems(rawItems, setNumber) {
+  if (!Array.isArray(rawItems)) return [];
+  const offers = [];
+  for (const item of rawItems) {
+    if (!item || typeof item !== "object") continue;
+    const title = normalizedText(item.name ?? item.productTitle ?? item.title ?? `LEGO ${setNumber}`);
+    if (!/\blego\b/i.test(title) || !isRelevantLegoListing(title, item.description ?? "", setNumber)) continue;
+    const productUrl = absolutizeUrl(
+      item.productUrl ?? item.product_url ?? item.url,
+      "https://www.klarna.com/de/"
+    ) || `https://www.klarna.com/de/shopping/?q=${encodeURIComponent(`LEGO ${setNumber}`)}`;
+    const imageValue = Array.isArray(item.images) ? item.images[0] : item.images ?? item.image;
+    const imageUrl = absolutizeUrl(imageValue, "https://www.klarna.com/");
+    const addOffer = (merchant, value, extra = {}) => {
+      const shopName = normalizedText(merchant);
+      const priceValue = value && typeof value === "object"
+        ? value.value ?? value.amount ?? value.price
+        : value;
+      const itemPrice = parseListingPrice(priceValue);
+      if (!shopName || itemPrice === null) return;
+      const shippingValue = extra.shippingCost && typeof extra.shippingCost === "object"
+        ? extra.shippingCost.value ?? extra.shippingCost.amount
+        : extra.shippingCost;
+      const shippingCost = parseListingPrice(shippingValue);
+      const url = absolutizeUrl(
+        extra.offerUrl ?? extra.offer_url ?? item.offerUrl ?? item.offer_url,
+        productUrl
+      ) || productUrl;
+      offers.push({
+        marketplace: "klarna",
+        id: `${item.ean ?? item.productId ?? setNumber}-${shopName}`,
+        title: normalizedText(extra.offerName ?? extra.name ?? title),
+        itemPrice,
+        price: itemPrice,
+        shippingCost,
+        shippingAvailable: shippingCost !== null ? true : null,
+        total: roundMoney(itemPrice + (shippingCost ?? 0)),
+        currency: "EUR",
+        url,
+        imageUrl,
+        shopName,
+        delivery: normalizedText(extra.delivery ?? "") || null,
+        raw: { item, merchant: shopName, value }
+      });
+    };
+    if (item.shop && typeof item.shop === "object" && !Array.isArray(item.shop)) {
+      Object.entries(item.shop).forEach(([merchant, value]) => addOffer(merchant, value));
+    }
+    if (Array.isArray(item.offers)) {
+      item.offers.forEach(offer => {
+        const merchantValue = offer?.retailer ?? offer?.merchant ?? offer?.shop ?? offer?.seller;
+        const merchant = merchantValue && typeof merchantValue === "object"
+          ? merchantValue.name ?? merchantValue.merchantName ?? merchantValue.displayName ?? merchantValue.title
+          : merchantValue;
+        addOffer(
+          merchant,
+          offer?.price ?? offer?.amount ?? offer?.value,
+          offer || {}
+        );
+      });
+    }
+  }
+  return offers.sort((left, right) => left.total - right.total);
+}
+__name(normalizeKlarnaItems, "normalizeKlarnaItems");
 function normalizeStockxItems(rawItems, setNumber) {
   if (!Array.isArray(rawItems)) return [];
   return rawItems.map((item) => {
@@ -1200,6 +1265,8 @@ var TTL = Object.freeze({
   stockxEmpty: 20 * 60,
   googleShopping: 2 * 60 * 60,
   googleShoppingEmpty: 20 * 60,
+  klarna: 2 * 60 * 60,
+  klarnaEmpty: 20 * 60,
   idealo: 2 * 60 * 60,
   idealoEmpty: 20 * 60,
   brickbank: 2 * 60 * 60,
@@ -1217,7 +1284,7 @@ var APIFY_BASE = "https://api.apify.com/v2";
 var APIFY_RUN_TIMEOUT_MS = 55 * 1000;
 var APIFY_POLL_INTERVAL_MS = 1500;
 var APIFY_JOB_TTL_SECONDS = 15 * 60;
-var APIFY_MARKETPLACES = ["vinted", "leboncoin", "kleinanzeigen", "stockx"];
+var APIFY_MARKETPLACES = ["vinted", "leboncoin", "kleinanzeigen", "stockx", "klarna"];
 var APIFY_CONFIG = Object.freeze({
   vinted: Object.freeze({
     actorId: "scrape.badger~vinted-scraper",
@@ -1301,6 +1368,16 @@ var APIFY_CONFIG = Object.freeze({
         }
       };
     }
+  }),
+  klarna: Object.freeze({
+    actorId: "m3web~german-price-comparison-actor",
+    cacheVersion: "v1",
+    listingHost: "www.klarna.com",
+    maxTotalChargeUsd: 0.05,
+    normalize: normalizeKlarnaItems,
+    buildInput(_setNumber, ean) {
+      return { startEANs: [ean] };
+    }
   })
 });
 var index_default = {
@@ -1329,6 +1406,7 @@ var index_default = {
             "/leboncoin",
             "/stockx",
             "/google-shopping",
+            "/klarna",
             "/idealo",
             "/bricklink",
             "/offers/dismissals",
@@ -1378,6 +1456,9 @@ var index_default = {
       }
       if (url.pathname === "/stockx") {
         return startApifyMarketplaceJob(request, url, env, "stockx");
+      }
+      if (url.pathname === "/klarna") {
+        return startApifyMarketplaceJob(request, url, env, "klarna");
       }
       if (url.pathname === "/google-shopping") {
         return handleGoogleShopping(request, url, env, ctx);
@@ -1541,6 +1622,7 @@ const OFFER_BUNDLE_SOURCES = Object.freeze([
   "vinted",
   "leboncoin",
   "stockx",
+  "klarna",
   "idealo",
   "bricklink"
 ]);
@@ -1642,6 +1724,12 @@ async function handleOfferBundle(request, url, env, ctx, cacheOnly) {
       makeSourceUrl("/stockx"),
       env,
       "stockx"
+    ),
+    klarna: () => startApifyMarketplaceJob(
+      request,
+      makeSourceUrl("/klarna"),
+      env,
+      "klarna"
     ),
     idealo: () => startApifyIdealoJob(
       request,
@@ -2668,7 +2756,10 @@ __name(getApifyDatasetItems, "getApifyDatasetItems");
 async function startApifyMarketplaceJob(request, url, env, marketplace) {
   const config = APIFY_CONFIG[marketplace];
   const setNumber = cleanSetNumber(url.searchParams.get("set"));
-  if (!config || !setNumber) return json2({ error: "Ungültige Marktplatz- oder Setnummer." }, 400);
+  const ean = cleanDigits(url.searchParams.get("ean"), 8, 14);
+  if (!config || !setNumber || marketplace === "klarna" && !/^\d{8}$|^\d{12,14}$/.test(ean)) {
+    return json2({ error: "Ungültige Marktplatz-, Setnummer- oder EAN-Angabe." }, 400);
+  }
   if (!env.BM_CACHE) return json2({ error: "BM_CACHE fehlt im Worker" }, 503);
   try {
     const best = normalizeMoney(url.searchParams.get("best"));
@@ -2708,7 +2799,7 @@ async function startApifyMarketplaceJob(request, url, env, marketplace) {
         code: "APIFY_TOKEN_MISSING"
       }, 503);
     }
-    const input = config.buildInput(setNumber);
+    const input = config.buildInput(setNumber, ean);
     const started = await startApifyActor(
       env,
       config.actorId,
@@ -2869,6 +2960,7 @@ var __test = Object.freeze({
   normalizeVintedItems,
   normalizeLeboncoinItems,
   normalizeKleinanzeigenApifyItems,
+  normalizeKlarnaItems,
   parseGoogleShoppingDelivery,
   normalizeGoogleShoppingResults,
   normalizeStockxItems,
