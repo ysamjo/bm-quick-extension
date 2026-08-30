@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.22/);
+    assert.match(loaderSource, /@version\s+5\.6\.23/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.22/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.23/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -310,8 +310,58 @@ test('Google Shopping and Klarna offers are deduplicated by merchant and price',
     assert.equal(offers[0].key, 'google-shopping');
     assert.equal(offers[1].merchantName, 'MediaMarkt');
     assert.equal(offers[1].candidateOffers.length, 1);
+
+    const googleAdvances = context.BM_dedupeMarketplaceOffers([
+        {
+            key: 'google-shopping',
+            candidateOffers: [
+                {
+                    key: 'google-shopping',
+                    merchantName: 'Amazon.de',
+                    dedupePrice: 99.99
+                },
+                {
+                    key: 'google-shopping',
+                    merchantName: 'Otto',
+                    dedupePrice: 102.99
+                }
+            ]
+        },
+        {
+            key: 'klarna',
+            merchantName: 'Amazon',
+            dedupePrice: 99.99
+        }
+    ]);
+    assert.equal(googleAdvances[0].merchantName, 'Otto');
+    assert.equal(googleAdvances[1].merchantName, 'Amazon');
+
+    const nativeDuplicate = context.BM_dedupeMarketplaceOffers([
+        {
+            key: 'google-shopping',
+            candidateOffers: [
+                {
+                    key: 'google-shopping',
+                    merchantName: 'MediaMarkt.de',
+                    dedupePrice: 104.99
+                },
+                {
+                    key: 'google-shopping',
+                    merchantName: 'Otto',
+                    dedupePrice: 106.99
+                }
+            ]
+        }
+    ], ['google-shopping', 'klarna'], () => true, [
+        { merchantName: 'MediaMarkt', dedupePrice: 104.99 }
+    ]);
+    assert.equal(nativeDuplicate[0].merchantName, 'Otto');
     assert.match(tweakerSource, /BM_dedupeMarketplaceOffers/);
     assert.match(tweakerSource, /dedupeMerchant:\s*shopName/);
+    assert.match(
+        tweakerSource,
+        /storeOffers\(\[\{\s*\.\.\.candidateOffers\[0\],\s*candidateOffers/
+    );
 });
 
 test('search fallback uses Google Lucky when no Brickmerge target is resolved', () => {

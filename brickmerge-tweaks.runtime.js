@@ -267,7 +267,8 @@ globalThis.BM_selectPlausibleMarketplaceOffer = (
 globalThis.BM_dedupeMarketplaceOffers = (
     offers,
     sourceOrder = ['google-shopping', 'klarna'],
-    isCandidateAvailable = () => true
+    isCandidateAvailable = () => true,
+    reservedOffers = []
 ) => {
     const normalizedOffers = Array.isArray(offers) ? offers.filter(Boolean) : [];
     const priority = new Map(sourceOrder.map((source, index) => [source, index]));
@@ -299,24 +300,45 @@ globalThis.BM_dedupeMarketplaceOffers = (
         const targetUrl = normalizeUrl(candidate?.dedupeUrl || candidate?.url);
         return [
             merchant ? `merchant:${merchant}:${priceKey}` : '',
-            targetUrl ? `url:${targetUrl}:${priceKey}` : ''
+            !merchant && targetUrl ? `url:${targetUrl}:${priceKey}` : ''
         ].filter(Boolean);
     };
     const seen = new Set();
+    (Array.isArray(reservedOffers) ? reservedOffers : []).forEach(offer => {
+        signatures(offer).forEach(key => seen.add(key));
+    });
     const dedupedBySource = new Map();
-    const comparisonOffers = normalizedOffers
-        .filter(offer => comparisonSources.has(offer.key))
-        .sort((left, right) =>
-            priority.get(left.key) - priority.get(right.key)
-        );
-
-    comparisonOffers.forEach(offer => {
+    const availableCandidates = offer => {
         const candidates = Array.isArray(offer.candidateOffers) &&
             offer.candidateOffers.length > 0
             ? offer.candidateOffers
             : [offer];
-        const uniqueCandidates = candidates.filter(candidate => {
-            if (!candidate || !isCandidateAvailable(candidate)) return false;
+        return candidates.filter(candidate =>
+            candidate && isCandidateAvailable(candidate)
+        );
+    };
+    const nextAlternativePrice = offer => {
+        const prices = availableCandidates(offer)
+            .map(candidate => Number(candidate.dedupePrice))
+            .filter(price => Number.isFinite(price) && price > 0)
+            .sort((left, right) => left - right);
+        return prices.length > 1 ? prices[1] : Number.POSITIVE_INFINITY;
+    };
+    const comparisonOffers = normalizedOffers
+        .filter(offer => comparisonSources.has(offer.key))
+        .sort((left, right) => {
+            const leftAlternative = nextAlternativePrice(left);
+            const rightAlternative = nextAlternativePrice(right);
+            if (leftAlternative !== rightAlternative) {
+                if (!Number.isFinite(leftAlternative)) return -1;
+                if (!Number.isFinite(rightAlternative)) return 1;
+                return rightAlternative - leftAlternative;
+            }
+            return priority.get(left.key) - priority.get(right.key);
+        });
+
+    comparisonOffers.forEach(offer => {
+        const uniqueCandidates = availableCandidates(offer).filter(candidate => {
             const keys = signatures(candidate);
             if (keys.some(key => seen.has(key))) return false;
             keys.forEach(key => seen.add(key));
@@ -7982,7 +8004,14 @@ globalThis.BM_isFranceEnabled = settings =>
                             const haystack = normalizeMerchantText(
                                 `${merchant} ${logo} ${tooltip}`
                             );
-                            return { priceRow, haystack };
+                            const priceSpan = priceRow.querySelector('span.price');
+                            return {
+                                priceRow,
+                                haystack,
+                                merchantName: merchant || logo,
+                                price: priceSpan ? getBaseOfferPrice(priceSpan) : null,
+                                url: link?.href || ''
+                            };
                         });
                     const chooseAvailableOffer = offer => {
                         const candidates = Array.isArray(offer?.candidateOffers) &&
@@ -8029,7 +8058,12 @@ globalThis.BM_isFranceEnabled = settings =>
                         const offers = globalThis.BM_dedupeMarketplaceOffers(
                             availableOffers,
                             ['google-shopping', 'klarna'],
-                            candidate => !isOfferDismissed(candidate.dismissIdentity)
+                            candidate => !isOfferDismissed(candidate.dismissIdentity),
+                            nativeMerchantEntries.map(entry => ({
+                                dedupeMerchant: entry.merchantName,
+                                dedupePrice: entry.price,
+                                dedupeUrl: entry.url
+                            }))
                         ).filter(offer => {
                             if (!BM_isOfferShopEnabled(offer.key)) return false;
                             if (offer.key === 'mueller-search') {
@@ -8551,68 +8585,62 @@ globalThis.BM_isFranceEnabled = settings =>
                                             );
                                             return;
                                         }
-                                        const candidate = [
-                                            ...(Array.isArray(result?.offers)
-                                                ? result.offers
-                                                : []),
-                                            result?.cheapest
-                                        ].filter(Boolean).find(entry => {
-                                            const total = Number(entry.total ?? entry.price);
-                                            return Number.isFinite(total) &&
-                                                BM_isMarketplacePricePlausible(
-                                                    'google-shopping',
-                                                    total,
-                                                    ebayReferencePrice
-                                                );
-                                        });
-                                        if (!result?.found || !candidate) return;
-                                        const itemPrice = Number(
-                                            candidate.itemPrice ?? candidate.price
+                                        const candidates = globalThis.BM_getPlausibleMarketplaceOffers(
+                                            'google-shopping',
+                                            result,
+                                            ebayReferencePrice
                                         );
-                                        const total = Number(candidate.total ?? itemPrice);
-                                        if (!Number.isFinite(itemPrice) || itemPrice <= 0 ||
-                                            !BM_isMarketplacePricePlausible(
-                                                'google-shopping',
-                                                total,
-                                                ebayReferencePrice
-                                            )) return;
-                                        const shippingCost = Number(candidate.shippingCost);
-                                        const shopName = String(
-                                            candidate.shopName || candidate.source || ''
-                                        ).trim();
-                                        const offer = createOffer(
-                                            'btn-google-shopping',
-                                            'Google Shopping',
-                                            `${formatEuroValue(itemPrice)} €`,
-                                            BM_MOBILE_CHROME.runtime.getURL('icons/logo-google-shopping.png'),
+                                        if (!result?.found || candidates.length === 0) return;
+                                        const candidateOffers = candidates.map((candidate, index) => {
+                                            const itemPrice = Number(
+                                                candidate.itemPrice ?? candidate.price
+                                            );
+                                            const total = Number(candidate.total ?? itemPrice);
+                                            if (!Number.isFinite(itemPrice) || itemPrice <= 0 ||
+                                                !Number.isFinite(total)) return null;
+                                            const shippingCost = Number(candidate.shippingCost);
+                                            const shopName = String(
+                                                candidate.shopName || candidate.source || ''
+                                            ).trim();
+                                            return createOffer(
+                                                'btn-google-shopping',
+                                                'Google Shopping',
+                                                `${formatEuroValue(itemPrice)} €`,
+                                                BM_MOBILE_CHROME.runtime.getURL('icons/logo-google-shopping.png'),
                                                 'google-shopping-worker',
-                                            `Google Shopping: günstigstes von ${result.comparedOffers} passenden Ergebnissen${shopName ? `; Händler: ${shopName}` : ''}; ${candidate.title || ''}`,
-                                            {
-                                                url: candidate.url,
-                                                searchUrl: result.searchUrl ||
-                                                    document.querySelector(
-                                                        'a[data-bmid="btn-google-shopping"]'
-                                                    )?.href || '',
-                                                logoCaption: shopName,
-                                                merchantName: shopName,
-                                                dedupeMerchant: shopName,
-                                                dedupePrice: itemPrice,
-                                                dedupeUrl: candidate.url,
-                                                logoClass: 'bm-google-shopping-logo',
-                                                shippingStatus: Number.isFinite(shippingCost)
-                                                    ? (shippingCost <= 0.004 ? 'free' : 'paid')
-                                                    : 'unknown',
-                                                shippingCost: Number.isFinite(shippingCost)
-                                                    ? shippingCost
-                                                    : null,
-                                                dismissIdentity: makeOfferDismissIdentity(
-                                                    'google-shopping-worker',
-                                                    candidate.url,
-                                                    candidate.id || `google-shopping|${total}`
-                                                )
-                                            }
-                                        );
-                                        if (offer) storeOffers([offer]);
+                                                `Google Shopping: Angebot ${index + 1} von ${result.comparedOffers} passenden Ergebnissen${shopName ? `; Händler: ${shopName}` : ''}; ${candidate.title || ''}`,
+                                                {
+                                                    url: candidate.url,
+                                                    searchUrl: result.searchUrl ||
+                                                        document.querySelector(
+                                                            'a[data-bmid="btn-google-shopping"]'
+                                                        )?.href || '',
+                                                    logoCaption: shopName,
+                                                    merchantName: shopName,
+                                                    dedupeMerchant: shopName,
+                                                    dedupePrice: itemPrice,
+                                                    dedupeUrl: candidate.url,
+                                                    logoClass: 'bm-google-shopping-logo',
+                                                    shippingStatus: Number.isFinite(shippingCost)
+                                                        ? (shippingCost <= 0.004 ? 'free' : 'paid')
+                                                        : 'unknown',
+                                                    shippingCost: Number.isFinite(shippingCost)
+                                                        ? shippingCost
+                                                        : null,
+                                                    dismissIdentity: makeOfferDismissIdentity(
+                                                        'google-shopping-worker',
+                                                        candidate.url,
+                                                        candidate.id || `google-shopping|${total}|${index}`
+                                                    )
+                                                }
+                                            );
+                                        }).filter(Boolean);
+                                        if (candidateOffers.length > 0) {
+                                            storeOffers([{
+                                                ...candidateOffers[0],
+                                                candidateOffers
+                                            }]);
+                                        }
                                     },
                                     onerror: () => console.warn(
                                         'Brickmerge Tweaker: Google-Shopping-Abfrage fehlgeschlagen.'

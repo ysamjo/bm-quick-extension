@@ -133,7 +133,8 @@ globalThis.BM_selectPlausibleMarketplaceOffer = (
 globalThis.BM_dedupeMarketplaceOffers = (
     offers,
     sourceOrder = ['google-shopping', 'klarna'],
-    isCandidateAvailable = () => true
+    isCandidateAvailable = () => true,
+    reservedOffers = []
 ) => {
     const normalizedOffers = Array.isArray(offers) ? offers.filter(Boolean) : [];
     const priority = new Map(sourceOrder.map((source, index) => [source, index]));
@@ -165,24 +166,45 @@ globalThis.BM_dedupeMarketplaceOffers = (
         const targetUrl = normalizeUrl(candidate?.dedupeUrl || candidate?.url);
         return [
             merchant ? `merchant:${merchant}:${priceKey}` : '',
-            targetUrl ? `url:${targetUrl}:${priceKey}` : ''
+            !merchant && targetUrl ? `url:${targetUrl}:${priceKey}` : ''
         ].filter(Boolean);
     };
     const seen = new Set();
+    (Array.isArray(reservedOffers) ? reservedOffers : []).forEach(offer => {
+        signatures(offer).forEach(key => seen.add(key));
+    });
     const dedupedBySource = new Map();
-    const comparisonOffers = normalizedOffers
-        .filter(offer => comparisonSources.has(offer.key))
-        .sort((left, right) =>
-            priority.get(left.key) - priority.get(right.key)
-        );
-
-    comparisonOffers.forEach(offer => {
+    const availableCandidates = offer => {
         const candidates = Array.isArray(offer.candidateOffers) &&
             offer.candidateOffers.length > 0
             ? offer.candidateOffers
             : [offer];
-        const uniqueCandidates = candidates.filter(candidate => {
-            if (!candidate || !isCandidateAvailable(candidate)) return false;
+        return candidates.filter(candidate =>
+            candidate && isCandidateAvailable(candidate)
+        );
+    };
+    const nextAlternativePrice = offer => {
+        const prices = availableCandidates(offer)
+            .map(candidate => Number(candidate.dedupePrice))
+            .filter(price => Number.isFinite(price) && price > 0)
+            .sort((left, right) => left - right);
+        return prices.length > 1 ? prices[1] : Number.POSITIVE_INFINITY;
+    };
+    const comparisonOffers = normalizedOffers
+        .filter(offer => comparisonSources.has(offer.key))
+        .sort((left, right) => {
+            const leftAlternative = nextAlternativePrice(left);
+            const rightAlternative = nextAlternativePrice(right);
+            if (leftAlternative !== rightAlternative) {
+                if (!Number.isFinite(leftAlternative)) return -1;
+                if (!Number.isFinite(rightAlternative)) return 1;
+                return rightAlternative - leftAlternative;
+            }
+            return priority.get(left.key) - priority.get(right.key);
+        });
+
+    comparisonOffers.forEach(offer => {
+        const uniqueCandidates = availableCandidates(offer).filter(candidate => {
             const keys = signatures(candidate);
             if (keys.some(key => seen.has(key))) return false;
             keys.forEach(key => seen.add(key));
