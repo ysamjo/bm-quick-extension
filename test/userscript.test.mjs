@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.21/);
+    assert.match(loaderSource, /@version\s+5\.6\.22/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.21/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.22/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -277,6 +277,43 @@ test('Google Shopping loads the best SerpApi result directly into the offer list
     assert.match(tweakerSource, /offer\.merchantName \|\| offer\.label/);
 });
 
+test('Google Shopping and Klarna offers are deduplicated by merchant and price', () => {
+    const context = vm.createContext({ URL });
+    vm.runInContext(sharedSource, context);
+    const offers = context.BM_dedupeMarketplaceOffers([
+        {
+            key: 'google-shopping',
+            merchantName: 'Amazon.de',
+            dedupePrice: 99.99,
+            url: 'https://amazon.de/dp/example'
+        },
+        {
+            key: 'klarna',
+            candidateOffers: [
+                {
+                    key: 'klarna',
+                    merchantName: 'Amazon',
+                    dedupePrice: 99.99,
+                    url: 'https://klarna.com/de/shopping/product/example'
+                },
+                {
+                    key: 'klarna',
+                    merchantName: 'MediaMarkt',
+                    dedupePrice: 104.99,
+                    url: 'https://klarna.com/de/shopping/product/example'
+                }
+            ]
+        }
+    ]);
+
+    assert.equal(offers.length, 2);
+    assert.equal(offers[0].key, 'google-shopping');
+    assert.equal(offers[1].merchantName, 'MediaMarkt');
+    assert.equal(offers[1].candidateOffers.length, 1);
+    assert.match(tweakerSource, /BM_dedupeMarketplaceOffers/);
+    assert.match(tweakerSource, /dedupeMerchant:\s*shopName/);
+});
+
 test('search fallback uses Google Lucky when no Brickmerge target is resolved', () => {
     assert.match(tweakerSource, /const googleLuckyUrl = new URL\('https:\/\/www\.google\.com\/search'\)/);
     assert.match(tweakerSource, /window\.location\.replace\(target \|\| googleLuckyUrl\.href\)/);
@@ -326,7 +363,7 @@ test('current extension marketplace and minifigure features are bundled', () => 
     assert.match(source, /getRawSharedMinifigPrice\(blItemNo, 'EU'\)/);
     assert.match(source, /bricklink-minifig-current-total-eu-v10/);
     for (const sourceName of [
-        'kleinanzeigen', 'vinted', 'leboncoin', 'stockx', 'idealo', 'bricklink'
+        'kleinanzeigen', 'vinted', 'leboncoin', 'stockx', 'klarna', 'idealo', 'bricklink'
     ]) {
         assert.match(source, new RegExp(sourceName, 'i'));
     }
@@ -411,6 +448,8 @@ test('marketplace and discount actions use the compact text toolbar', () => {
         source,
         /\.bm-detail-all-prices-refresh \.bm-refresh-label \{[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/
     );
+    assert.match(source, /bm-refresh-error-message/);
+    assert.match(source, /Bitte erneut versuchen/);
     assert.match(source, /Marktplätze werden geladen …/);
     assert.doesNotMatch(tweakerSource, /\.bm-chart-controls\.bmd-has-depot-button/);
 });

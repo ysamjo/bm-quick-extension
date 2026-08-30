@@ -6211,12 +6211,17 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         )
                     );
                 };
-                const offers = Array.from(offersByKey.entries()).map(([key, offer]) => {
+                const availableOffers = Array.from(offersByKey.entries()).map(([key, offer]) => {
                     const available = chooseAvailableOffer(offer);
                     if (available) offersByKey.set(key, available);
                     else offersByKey.delete(key);
                     return available;
-                }).filter(Boolean).filter(offer => {
+                }).filter(Boolean);
+                const offers = globalThis.BM_dedupeMarketplaceOffers(
+                    availableOffers,
+                    ['google-shopping', 'klarna'],
+                    candidate => !isOfferDismissed(candidate.dismissIdentity)
+                ).filter(offer => {
                     if (!BM_isOfferShopEnabled(offer.key)) return false;
                     if (offer.key === 'mueller-search') {
                         return !hasNativeMerchant(['müller', 'mueller']);
@@ -6781,6 +6786,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                             )?.href || '',
                                         logoCaption: shopName,
                                         merchantName: shopName,
+                                        dedupeMerchant: shopName,
+                                        dedupePrice: itemPrice,
+                                        dedupeUrl: candidate.url,
                                         logoClass: 'bm-google-shopping-logo',
                                         shippingStatus: Number.isFinite(shippingCost)
                                             ? (shippingCost <= 0.004 ? 'free' : 'paid')
@@ -6971,6 +6979,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                     : '',
                                 logoCaption: candidate.shopName || '',
                                 merchantName: candidate.shopName || '',
+                                dedupeMerchant: candidate.shopName || '',
+                                dedupePrice: Number(
+                                    candidate.itemPrice ?? candidate.price ?? total
+                                ),
+                                dedupeUrl: candidate.url,
                                 shippingStatus,
                                 shippingCost: Number.isFinite(shippingCost)
                                     ? shippingCost

@@ -477,6 +477,16 @@
                 outline: 2px solid #b00;
                 outline-offset: 2px;
             }
+            .bm-refresh-error-message {
+                display: block;
+                margin: 0 0 0.35rem;
+                padding: 0.28rem 0.4rem;
+                border-left: 3px solid #b00;
+                background: #fff4f4;
+                color: #8f0000;
+                font-size: 0.68rem;
+                line-height: 1.25;
+            }
             @media only screen and (max-width: 40em) {
                 .bm-detail-all-prices-refresh {
                     font-size: 0.68rem !important;
@@ -631,6 +641,9 @@
     const setRefreshButtonState = (button, state, error = '') => {
         button.classList.toggle('is-loading', state === 'loading');
         button.setAttribute('aria-disabled', state === 'loading' ? 'true' : 'false');
+        const visibleError = String(error || 'Preisaktualisierung fehlgeschlagen')
+            .replace(/^Error:\s*/i, '')
+            .trim();
         const label = state === 'loading'
             ? 'Marktplätze werden geladen …'
             : state === 'done'
@@ -647,6 +660,22 @@
                     ? String(error || 'Preisaktualisierung fehlgeschlagen')
                     : 'Weitere Marktplätze abrufen; kann Apify-Guthaben verbrauchen.';
         button.setAttribute('aria-label', button.title);
+        const toolbar = button.closest('.bm-offer-toolbar');
+        let errorMessage = toolbar?.nextElementSibling;
+        if (!errorMessage?.classList.contains('bm-refresh-error-message')) {
+            errorMessage = null;
+        }
+        if (state === 'error' && toolbar) {
+            if (!errorMessage) {
+                errorMessage = document.createElement('div');
+                errorMessage.className = 'bm-refresh-error-message';
+                errorMessage.setAttribute('role', 'status');
+                toolbar.insertAdjacentElement('afterend', errorMessage);
+            }
+            errorMessage.textContent = `${visibleError} Bitte erneut versuchen.`;
+        } else {
+            errorMessage?.remove();
+        }
     };
 
     const applyEffectiveCardPrice = (card, data, offers) => {

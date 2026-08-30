@@ -264,6 +264,76 @@ globalThis.BM_selectPlausibleMarketplaceOffer = (
     referencePrice,
     getPrice
 )[0] || null;
+globalThis.BM_dedupeMarketplaceOffers = (
+    offers,
+    sourceOrder = ['google-shopping', 'klarna'],
+    isCandidateAvailable = () => true
+) => {
+    const normalizedOffers = Array.isArray(offers) ? offers.filter(Boolean) : [];
+    const priority = new Map(sourceOrder.map((source, index) => [source, index]));
+    const comparisonSources = new Set(priority.keys());
+    const normalizeMerchant = value => String(value || '')
+        .toLocaleLowerCase('de')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\.(?:de|com|net|shop)\b/g, '')
+        .replace(/\b(?:gmbh|ag|kg|deutschland)\b/g, '')
+        .replace(/[^a-z0-9]+/g, '');
+    const normalizeUrl = value => {
+        try {
+            const url = new URL(String(value || ''));
+            return `${url.hostname.toLowerCase()}${url.pathname}`
+                .replace(/\/+$/, '');
+        } catch {
+            return '';
+        }
+    };
+    const signatures = candidate => {
+        const price = Number(candidate?.dedupePrice);
+        if (!Number.isFinite(price) || price <= 0) return [];
+        const priceKey = Math.round(price * 100);
+        const merchant = normalizeMerchant(
+            candidate?.dedupeMerchant || candidate?.merchantName ||
+            candidate?.logoCaption
+        );
+        const targetUrl = normalizeUrl(candidate?.dedupeUrl || candidate?.url);
+        return [
+            merchant ? `merchant:${merchant}:${priceKey}` : '',
+            targetUrl ? `url:${targetUrl}:${priceKey}` : ''
+        ].filter(Boolean);
+    };
+    const seen = new Set();
+    const dedupedBySource = new Map();
+    const comparisonOffers = normalizedOffers
+        .filter(offer => comparisonSources.has(offer.key))
+        .sort((left, right) =>
+            priority.get(left.key) - priority.get(right.key)
+        );
+
+    comparisonOffers.forEach(offer => {
+        const candidates = Array.isArray(offer.candidateOffers) &&
+            offer.candidateOffers.length > 0
+            ? offer.candidateOffers
+            : [offer];
+        const uniqueCandidates = candidates.filter(candidate => {
+            if (!candidate || !isCandidateAvailable(candidate)) return false;
+            const keys = signatures(candidate);
+            if (keys.some(key => seen.has(key))) return false;
+            keys.forEach(key => seen.add(key));
+            return true;
+        });
+        if (uniqueCandidates.length === 0) return;
+        dedupedBySource.set(offer.key, {
+            ...uniqueCandidates[0],
+            candidateOffers: uniqueCandidates
+        });
+    });
+
+    return normalizedOffers.map(offer => {
+        if (!comparisonSources.has(offer.key)) return offer;
+        return dedupedBySource.get(offer.key) || null;
+    }).filter(Boolean);
+};
 globalThis.BM_EXTENSION_STORAGE_KEYS = Object.freeze({
     workerBaseUrl: 'bm:worker-base-url-v1',
     workerClientId: 'gm:brickmerge-worker-client-id-v1'
@@ -1274,6 +1344,16 @@ globalThis.BM_isFranceEnabled = settings =>
                         outline: 2px solid #b00;
                         outline-offset: 2px;
                     }
+                    .bm-refresh-error-message {
+                        display: block;
+                        margin: 0 0 0.35rem;
+                        padding: 0.28rem 0.4rem;
+                        border-left: 3px solid #b00;
+                        background: #fff4f4;
+                        color: #8f0000;
+                        font-size: 0.68rem;
+                        line-height: 1.25;
+                    }
                     @media only screen and (max-width: 40em) {
                         .bm-detail-all-prices-refresh {
                             font-size: 0.68rem !important;
@@ -1428,6 +1508,9 @@ globalThis.BM_isFranceEnabled = settings =>
             const setRefreshButtonState = (button, state, error = '') => {
                 button.classList.toggle('is-loading', state === 'loading');
                 button.setAttribute('aria-disabled', state === 'loading' ? 'true' : 'false');
+                const visibleError = String(error || 'Preisaktualisierung fehlgeschlagen')
+                    .replace(/^Error:\s*/i, '')
+                    .trim();
                 const label = state === 'loading'
                     ? 'Marktplätze werden geladen …'
                     : state === 'done'
@@ -1444,6 +1527,22 @@ globalThis.BM_isFranceEnabled = settings =>
                             ? String(error || 'Preisaktualisierung fehlgeschlagen')
                             : 'Weitere Marktplätze abrufen; kann Apify-Guthaben verbrauchen.';
                 button.setAttribute('aria-label', button.title);
+                const toolbar = button.closest('.bm-offer-toolbar');
+                let errorMessage = toolbar?.nextElementSibling;
+                if (!errorMessage?.classList.contains('bm-refresh-error-message')) {
+                    errorMessage = null;
+                }
+                if (state === 'error' && toolbar) {
+                    if (!errorMessage) {
+                        errorMessage = document.createElement('div');
+                        errorMessage.className = 'bm-refresh-error-message';
+                        errorMessage.setAttribute('role', 'status');
+                        toolbar.insertAdjacentElement('afterend', errorMessage);
+                    }
+                    errorMessage.textContent = `${visibleError} Bitte erneut versuchen.`;
+                } else {
+                    errorMessage?.remove();
+                }
             };
 
             const applyEffectiveCardPrice = (card, data, offers) => {
@@ -7921,12 +8020,17 @@ globalThis.BM_isFranceEnabled = settings =>
                                 )
                             );
                         };
-                        const offers = Array.from(offersByKey.entries()).map(([key, offer]) => {
+                        const availableOffers = Array.from(offersByKey.entries()).map(([key, offer]) => {
                             const available = chooseAvailableOffer(offer);
                             if (available) offersByKey.set(key, available);
                             else offersByKey.delete(key);
                             return available;
-                        }).filter(Boolean).filter(offer => {
+                        }).filter(Boolean);
+                        const offers = globalThis.BM_dedupeMarketplaceOffers(
+                            availableOffers,
+                            ['google-shopping', 'klarna'],
+                            candidate => !isOfferDismissed(candidate.dismissIdentity)
+                        ).filter(offer => {
                             if (!BM_isOfferShopEnabled(offer.key)) return false;
                             if (offer.key === 'mueller-search') {
                                 return !hasNativeMerchant(['müller', 'mueller']);
@@ -8491,6 +8595,9 @@ globalThis.BM_isFranceEnabled = settings =>
                                                     )?.href || '',
                                                 logoCaption: shopName,
                                                 merchantName: shopName,
+                                                dedupeMerchant: shopName,
+                                                dedupePrice: itemPrice,
+                                                dedupeUrl: candidate.url,
                                                 logoClass: 'bm-google-shopping-logo',
                                                 shippingStatus: Number.isFinite(shippingCost)
                                                     ? (shippingCost <= 0.004 ? 'free' : 'paid')
@@ -8681,6 +8788,11 @@ globalThis.BM_isFranceEnabled = settings =>
                                             : '',
                                         logoCaption: candidate.shopName || '',
                                         merchantName: candidate.shopName || '',
+                                        dedupeMerchant: candidate.shopName || '',
+                                        dedupePrice: Number(
+                                            candidate.itemPrice ?? candidate.price ?? total
+                                        ),
+                                        dedupeUrl: candidate.url,
                                         shippingStatus,
                                         shippingCost: Number.isFinite(shippingCost)
                                             ? shippingCost
