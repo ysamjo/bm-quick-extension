@@ -169,3 +169,90 @@ test('toolbar click opens the side panel only for a detected product', () => {
     assert.match(popup, /id="open-options"/);
     assert.doesNotMatch(popup, /id="open-sidepanel"/);
 });
+
+test('toolbar search popup is activated when no LEGO set is detected', async () => {
+    const background = fs.readFileSync(
+        new URL('../background.js', import.meta.url),
+        'utf8'
+    );
+    const popup = fs.readFileSync(
+        new URL('../popup/popup.html', import.meta.url),
+        'utf8'
+    );
+    const popupCalls = [];
+    const titleCalls = [];
+    let messageListener = null;
+    const unusedEvent = { addListener() {} };
+    const backgroundContext = vm.createContext({
+        URL,
+        Headers,
+        console: { error() {} },
+        importScripts() {},
+        BM_mergeSettings(value) { return value || {}; },
+        chrome: {
+            sidePanel: {
+                async setPanelBehavior() {}
+            },
+            action: {
+                async setBadgeText() {},
+                async setBadgeBackgroundColor() {},
+                async setBadgeTextColor() {},
+                async setPopup(options) { popupCalls.push({ ...options }); },
+                async setTitle(options) { titleCalls.push({ ...options }); }
+            },
+            runtime: {
+                onInstalled: unusedEvent,
+                onStartup: unusedEvent,
+                onMessage: {
+                    addListener(listener) { messageListener = listener; }
+                }
+            },
+            storage: {
+                local: {
+                    async get() { return {}; },
+                    async set() {}
+                },
+                onChanged: unusedEvent
+            },
+            declarativeNetRequest: {
+                async updateEnabledRulesets() {}
+            },
+            tabs: {
+                onUpdated: unusedEvent,
+                onRemoved: unusedEvent
+            }
+        }
+    });
+
+    vm.runInContext(background, backgroundContext);
+    assert.equal(typeof messageListener, 'function');
+
+    messageListener(
+        {
+            type: 'bm-page-product-detected',
+            product: { setNumber: '42154', ean: '5702017424965' }
+        },
+        { tab: { id: 42 } },
+        () => {}
+    );
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(popupCalls.at(-1), { tabId: 42, popup: '' });
+
+    messageListener(
+        { type: 'bm-page-product-detected', product: null },
+        { tab: { id: 42 } },
+        () => {}
+    );
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.deepEqual(popupCalls.at(-1), {
+        tabId: 42,
+        popup: 'popup/popup.html'
+    });
+    assert.deepEqual(titleCalls.at(-1), {
+        tabId: 42,
+        title: 'Brickmerge Tools'
+    });
+    assert.match(popup, /id="query"[^>]*autofocus/);
+    assert.match(popup, /placeholder="Setnummer oder Suchbegriff"/);
+});
