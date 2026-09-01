@@ -41,11 +41,14 @@
             normalize(entry?.brand?.name || entry?.brand) + ' ' +
             normalize(entry?.name)
         )) || products[0] || {};
+        const productTitle = normalize(
+            documentValue.querySelector('#productTitle')?.textContent
+        );
         const heading = normalize(documentValue.querySelector('h1')?.textContent);
         const title = normalize(documentValue.title);
         const pageName = normalize(
-            product.name || documentValue.querySelector('h1')?.textContent ||
-            documentValue.title
+            product.name || productTitle ||
+            documentValue.querySelector('h1')?.textContent || documentValue.title
         );
         const brand = normalize(product?.brand?.name || product?.brand);
         const sourceText = `${locationValue.pathname} ${locationValue.search} ${title} ${heading}`;
@@ -69,7 +72,8 @@
                 ? locationValue.pathname.match(/\/(\d{3,7})-\d+_/)?.[1]
                 : '',
             pageLooksLikeLego
-                ? fiveDigitSet(sourceText)
+                ? fiveDigitSet(productTitle) || fiveDigitSet(title) ||
+                    fiveDigitSet(sourceText)
                 : '',
             pageLooksLikeLego || isBrickmergePage
                 ? locationValue.search.match(
@@ -140,5 +144,14 @@
     report(true);
     window.setTimeout(() => report(false), 1500);
     window.setTimeout(() => report(false), 5000);
+    window.setTimeout(() => report(false), 12000);
     window.addEventListener('pageshow', () => report(false));
+    const titleElement = document.querySelector('title');
+    if (titleElement && typeof MutationObserver !== 'undefined') {
+        new MutationObserver(() => report(false)).observe(titleElement, {
+            childList: true,
+            subtree: true,
+            characterData: true
+        });
+    }
 })();

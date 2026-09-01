@@ -143,6 +143,8 @@
                 .close:hover, .close:focus { background: #b00; color: #fff; outline: none; }
                 .content { overflow: auto; padding: 18px; background: #fff;
                     transition: opacity .18s ease, transform .18s ease; }
+                .content.is-clickable { cursor: pointer; }
+                .content.is-clickable:hover { background: #fffafa; }
                 .product-name { margin: 0 0 12px; color: #222; font-size: 16px;
                     font-weight: 750; }
                 .detail-list { display: grid; gap: 0; margin: 0; }
@@ -190,7 +192,38 @@
 
         const popup = shadow.querySelector('.popup');
         const header = shadow.querySelector('.header');
+        const titleLink = shadow.querySelector('.header a');
+        const content = shadow.querySelector('.content');
         const closeButton = shadow.querySelector('.close');
+        const openSelectedSet = event => {
+            event?.preventDefault();
+            event?.stopPropagation();
+            const setNumber = activeSetNumber;
+            if (!/^\d{5}$/.test(setNumber)) return;
+            void chrome.runtime.sendMessage({
+                type: 'bm-open-sidepanel',
+                product: {
+                    setNumber,
+                    name: `LEGO Set ${setNumber}`,
+                    url: window.location.href,
+                    hostname: window.location.hostname
+                }
+            }).then(response => {
+                if (!response?.ok) throw new Error(response?.error || 'Sidepanel-Fehler');
+                closePopup();
+            }).catch(() => {
+                showPopup(
+                    'Sidebar konnte nicht geöffnet werden. Bitte erneut versuchen.',
+                    setNumber,
+                    true
+                );
+            });
+        };
+        titleLink.addEventListener('click', openSelectedSet);
+        content.addEventListener('click', openSelectedSet);
+        content.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') openSelectedSet(event);
+        });
         closeButton.addEventListener('click', () => closePopup());
         shadow.querySelector('.backdrop').addEventListener('pointerdown', () => closePopup());
         makeDraggable(popup, header);
@@ -208,8 +241,14 @@
         const shadow = popupShadow || createHost();
         const link = shadow.querySelector('.header a');
         link.href = `${BASE_URL}/${setNumber}`;
-        link.textContent = `brickmerge: Set #${setNumber} ↗`;
+        link.textContent = `brickmerge: Set #${setNumber} in Sidebar öffnen`;
         const container = shadow.querySelector('.content');
+        container.classList.add('is-clickable');
+        container.tabIndex = 0;
+        container.setAttribute(
+            'aria-label',
+            `Brickmerge-Set ${setNumber} in der Sidebar öffnen`
+        );
         container.classList.toggle('error', isError);
         container.classList.toggle('loading', isLoading);
         if (content instanceof Node) {

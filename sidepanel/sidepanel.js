@@ -43,15 +43,15 @@
 
     const detectInTab = async tabId => {
         try {
-            const response = await chrome.tabs.sendMessage(tabId, {
-                type: 'bm-detect-page-now'
+            const response = await chrome.runtime.sendMessage({
+                type: 'bm-get-detected-set',
+                tabId
             });
             if (response?.product) return response.product;
         } catch {}
         try {
-            const response = await chrome.runtime.sendMessage({
-                type: 'bm-get-detected-set',
-                tabId
+            const response = await chrome.tabs.sendMessage(tabId, {
+                type: 'bm-detect-page-now'
             });
             return response?.product || null;
         } catch {

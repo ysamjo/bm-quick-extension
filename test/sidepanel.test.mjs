@@ -15,6 +15,9 @@ const productDocument = product => ({
     title: product.title || product.name || '',
     body: { innerText: product.body || '' },
     querySelector(selector) {
+        if (selector === '#productTitle' && product.productTitle) {
+            return { textContent: product.productTitle };
+        }
         if (selector === 'h1' && product.h1) return { textContent: product.h1 };
         return null;
     },
@@ -72,6 +75,18 @@ test('five-digit number without LEGO context is not detected', () => {
     assert.equal(product, null);
 });
 
+test('Amazon accessibility heading still detects LEGO set from product title', () => {
+    const product = detector.detect(productDocument({
+        title: 'LEGO Architecture Londres Kit de Maqueta 21034 : LEGO: Amazon.es',
+        productTitle: 'LEGO Architecture Londres Kit de Maqueta 21034',
+        h1: 'Product summary presents key product information'
+    }), new URL(
+        'https://www.amazon.es/dp/B01J41MPF8?tag=tbbaes-21&language=en_GB'
+    ));
+    assert.equal(product?.setNumber, '21034');
+    assert.equal(product?.hostname, 'www.amazon.es');
+});
+
 test('manifest registers badge detection and modifies the embedded page', () => {
     const manifest = JSON.parse(fs.readFileSync(
         new URL('../manifest.json', import.meta.url),
@@ -111,6 +126,10 @@ test('side panel embeds the responsive Brickmerge page', () => {
     assert.doesNotMatch(html, /class="app-header"/);
     assert.doesNotMatch(html, /sidepanel-core\.js/);
     assert.match(source, /chrome\.tabs\.sendMessage/);
+    assert.ok(
+        source.indexOf("type: 'bm-get-detected-set'") <
+        source.indexOf("type: 'bm-detect-page-now'")
+    );
     assert.match(source, /www\.brickmerge\.de/);
     assert.match(source, /panel-query/);
     assert.doesNotMatch(source, /chrome\.tabs\.onActivated\.addListener/);
@@ -181,6 +200,7 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
     );
     const popupCalls = [];
     const titleCalls = [];
+    const sidePanelOpenCalls = [];
     let messageListener = null;
     const unusedEvent = { addListener() {} };
     const backgroundContext = vm.createContext({
@@ -191,7 +211,8 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
         BM_mergeSettings(value) { return value || {}; },
         chrome: {
             sidePanel: {
-                async setPanelBehavior() {}
+                async setPanelBehavior() {},
+                async open(options) { sidePanelOpenCalls.push({ ...options }); }
             },
             action: {
                 async setBadgeText() {},
@@ -253,6 +274,32 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
         tabId: 42,
         title: 'Brickmerge Tools'
     });
+
+    const sidePanelResponse = await new Promise(resolve => {
+        const keepChannelOpen = messageListener(
+            {
+                type: 'bm-open-sidepanel',
+                product: { setNumber: '21034' }
+            },
+            { tab: { id: 42 } },
+            resolve
+        );
+        assert.equal(keepChannelOpen, true);
+    });
+    assert.deepEqual({ ...sidePanelResponse }, { ok: true });
+    assert.deepEqual(sidePanelOpenCalls.at(-1), { tabId: 42 });
+    assert.deepEqual(popupCalls.at(-1), { tabId: 42, popup: '' });
+
+    const selectionPopup = fs.readFileSync(
+        new URL('../selection-popup.js', import.meta.url),
+        'utf8'
+    );
+    assert.match(selectionPopup, /type:\s*'bm-open-sidepanel'/);
+    assert.match(selectionPopup, /in Sidebar öffnen/);
+    assert.match(
+        selectionPopup,
+        /content\.addEventListener\('click', openSelectedSet\)/
+    );
     assert.match(popup, /id="query"[^>]*autofocus/);
     assert.match(popup, /placeholder="Setnummer oder Suchbegriff"/);
 });

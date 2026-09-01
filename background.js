@@ -191,6 +191,28 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         });
         return false;
     }
+    if (message?.type === 'bm-open-sidepanel') {
+        const tabId = _sender.tab?.id;
+        const product = message.product;
+        if (!Number.isInteger(tabId) ||
+            (!product?.setNumber && !product?.ean)) {
+            sendResponse({ ok: false, error: 'Kein LEGO-Set erkannt.' });
+            return false;
+        }
+        // updateDetectedProduct speichert das gewählte Set synchron vor dem
+        // ersten await. Dadurch liest das Sidepanel direkt die Overlay-Auswahl.
+        const updatePromise = updateDetectedProduct(tabId, product);
+        const openPromise = chrome.sidePanel.open({ tabId });
+        void Promise.all([updatePromise, openPromise]).then(() => {
+            sendResponse({ ok: true });
+        }).catch(error => {
+            sendResponse({
+                ok: false,
+                error: error?.message || 'Sidepanel konnte nicht geöffnet werden.'
+            });
+        });
+        return true;
+    }
     if (message?.type === 'bm-fetch-text') {
         void fetchText(message.request).then(sendResponse);
         return true;
