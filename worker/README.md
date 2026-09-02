@@ -47,13 +47,13 @@ Worker verwendet dafür das Secret `SERPAPI_API_KEY`, fragt deutsche
 Google-Shopping-Ergebnisse ab und speichert positive Treffer zwei Stunden im
 gemeinsamen Cache. In die Offerlist gelangt nur der günstigste passende Treffer.
 
-Klarna wird im Pilot über die verwaltete ScrapeGraphAI-API abgefragt. Dafür muss
-das Worker-Secret `SGAI_API_KEY` gesetzt sein. Der zweistufige Abruf sucht zuerst
-die passende deutsche Klarna-Produktseite per Setnummer und EAN und extrahiert
-dort anschließend deutsche EUR-Händlerangebote inklusive Händlername. Positive
-Angebote werden zwei Stunden, die gefundene Produkt-URL sieben Tage gecacht;
-leere Ergebnisse nur 20 Minuten. Der Abruf erfolgt ausschließlich über
-„Weitere Marktplätze abrufen“. Für Klarna gibt es keinen Apify-Fallback.
+Klarna wird über den deutschen, EAN-basierten Apify-Actor
+`m3web/german-price-comparison-actor` abgefragt. Dieser liefert Händlerangebote
+aus dem deutschen Klarna-Preisvergleich; der Händlername wird in die Offerlist
+übernommen. Der Abruf erfolgt ausschließlich über „Weitere Marktplätze
+abrufen“. Der separate Product-Offers-Actor benötigt bereits eine Klarna-
+Produkt-URL und ist deshalb für den direkten Brickmerge-EAN-Abruf nicht die
+passende Eingabe.
 
 `/ebay-minifig?itemNo=...` liefert den günstigsten passenden eBay-Sofort-Kaufen-
 Treffer für eine BrickLink-Minifiguren-ID. Wie `/price` wird die Route intern an

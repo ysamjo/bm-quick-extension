@@ -8803,7 +8803,7 @@ globalThis.BM_isFranceEnabled = settings =>
                                             : source === 'stockx'
                                                 ? BM_MOBILE_CHROME.runtime.getURL('icons/logo-stockx.svg')
                                                 : icon(logoDomain),
-                                    `${source}-${source === 'klarna' ? 'scrapegraph' : 'apify'}`,
+                                    `${source}-apify`,
                                     `${label}: Angebot ${index + 1} von ${result.comparedOffers} passenden Angeboten; ${stockxCurrencyNote}Gesamtpreis${Number.isFinite(transactionFee) ? ` inklusive geschätzter Transaktionsgebühr ${formatEuroValue(transactionFee)} €` : ''}; ${candidate.title}`,
                                     {
                                         url: candidate.url,
@@ -8826,7 +8826,7 @@ globalThis.BM_isFranceEnabled = settings =>
                                             ? shippingCost
                                             : null,
                                         dismissIdentity: makeOfferDismissIdentity(
-                                            `${source}-${source === 'klarna' ? 'scrapegraph' : 'apify'}`,
+                                            `${source}-apify`,
                                             candidate.url,
                                             candidate.id || `${source}|${total}|${index}`
                                         )

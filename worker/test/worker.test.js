@@ -19,7 +19,7 @@ test('health reports version and KV binding', async () => {
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.ok, true);
-  assert.equal(body.version, '2.5.6');
+  assert.equal(body.version, '2.5.5');
   assert.equal(body.cache, 'edge+kv');
 });
 
@@ -1145,93 +1145,14 @@ test('BrickLink-Minifiguren werden mit Namen und Menge strukturiert extrahiert',
         }
       }
     ], '42154');
+    assert.deepEqual(__test.APIFY_CONFIG.klarna.buildInput('42154', '5702017424965'), {
+      startEANs: ['5702017424965']
+    });
     assert.equal(result.length, 2);
     assert.equal(result[0].shopName, 'Amazon');
     assert.equal(result[0].total, 119.99);
     assert.equal(result[1].shopName, 'MediaMarkt');
     assert.equal(result[1].url, 'https://www.klarna.com/de/shopping/pl/cl1/123/LEGO-42154/');
-  });
-
-  test('Klarna ist aus Apify entfernt und akzeptiert nur EUR-Angebote', () => {
-    assert.equal(__test.APIFY_CONFIG.klarna, undefined);
-    const result = __test.normalizeKlarnaItems([{
-      name: 'LEGO 42154 Ford GT',
-      productUrl: 'https://www.klarna.com/de/shopping/pl/cl1/123/LEGO-42154/',
-      offers: [
-        { retailer: 'DE-Shop', price: '99,99 €', currency: 'EUR', offerUrl: 'https://shop.de/42154' },
-        { retailer: 'US-Shop', price: '80 USD', currency: 'USD', offerUrl: 'https://shop.us/42154' }
-      ]
-    }], '42154');
-    assert.deepEqual(result.map(offer => offer.shopName), ['DE-Shop']);
-  });
-
-  test('Klarna ScrapeGraphAI-Job läuft über Produkt- und Angebotsphase', async () => {
-    const values = new Map();
-    const calls = [];
-    const env = {
-      SGAI_API_KEY: 'test-sgai-secret',
-      BM_CACHE: {
-        async get(key, type) {
-          const value = values.get(key);
-          return type === 'json' && value ? JSON.parse(value) : value ?? null;
-        },
-        async put(key, value) { values.set(key, value); }
-      }
-    };
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = async (input, init = {}) => {
-      calls.push({ url: String(input), body: JSON.parse(init.body), headers: new Headers(init.headers) });
-      if (calls.length === 1) {
-        return Response.json({ json: {
-          product_url: 'https://www.klarna.com/de/shopping/pl/cl1/123/LEGO-42154/',
-          title: 'LEGO Technic 42154 Ford GT',
-          image_url: 'https://images.example/42154.jpg'
-        } });
-      }
-      return Response.json({ json: { offers: [{
-        merchant: 'Deutscher Händler', title: 'LEGO Technic 42154 Ford GT', price: '89,99 €',
-        shipping: '4,99 €', currency: 'EUR', url: 'https://shop.de/42154', delivery: '2-3 Tage'
-      }] } });
-    };
-    try {
-      const start = await worker.fetch(new Request('https://getdata.example/klarna?set=42154&ean=5702017424965'), env, context);
-      assert.equal(start.status, 202);
-      const startBody = await start.json();
-      const statusUrl = new URL(`https://getdata.example${startBody.statusUrl}`);
-      const first = await worker.fetch(new Request(statusUrl), env, context);
-      assert.equal(first.status, 202);
-      const second = await worker.fetch(new Request(statusUrl), env, context);
-      assert.equal(second.status, 200);
-      const body = await second.json();
-      assert.equal(body.cheapest.shopName, 'Deutscher Händler');
-      assert.equal(body.cheapest.total, 94.98);
-      assert.equal(calls.length, 2);
-      assert.equal(calls[0].headers.get('SGAI-APIKEY'), 'test-sgai-secret');
-      assert.equal(new URL(calls[0].body.url).hostname, 'www.klarna.com');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
-  test('Klarna startet ohne SGAI-Secret keinen externen Abruf', async () => {
-    let upstreamCalls = 0;
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = async () => {
-      upstreamCalls += 1;
-      throw new Error('Kein externer Abruf erwartet');
-    };
-    try {
-      const response = await worker.fetch(
-        new Request('https://getdata.example/klarna?set=42154&ean=5702017424965'),
-        { BM_CACHE: { async get() { return null; }, async put() {} } },
-        context
-      );
-      assert.equal(response.status, 503);
-      assert.equal((await response.json()).code, 'SGAI_API_KEY_MISSING');
-      assert.equal(upstreamCalls, 0);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
   });
 
   test('StockX übernimmt nur den lokalisierten deutschen EUR-Lowest-Ask', () => {
