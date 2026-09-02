@@ -2799,7 +2799,7 @@ function normalizeScrapeGraphKlarnaOffers(data, setNumber, productUrl, imageUrl)
     .filter((offer) => {
       const merchant = normalizedText(offer?.merchant);
       const offerUrl = String(offer?.url || "").trim();
-      return merchant && /^https:\/\//i.test(offerUrl);
+      return merchant && offerUrl && !/^javascript:/i.test(offerUrl);
     });
   const item = {
     name: `LEGO ${setNumber}`,
@@ -2811,13 +2811,25 @@ function normalizeScrapeGraphKlarnaOffers(data, setNumber, productUrl, imageUrl)
       price: offer?.price,
       shippingCost: offer?.shipping,
       currency: offer?.currency,
-      offerUrl: offer?.url,
+      offerUrl: normalizeMerchantUrl(offer?.url),
       delivery: offer?.delivery
     }))
   };
   return normalizeKlarnaItems([item], setNumber);
 }
 __name(normalizeScrapeGraphKlarnaOffers, "normalizeScrapeGraphKlarnaOffers");
+function normalizeMerchantUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  try {
+    const normalized = /^https?:\/\//i.test(raw) ? raw : `https://${raw.replace(/^\/+/, "")}`;
+    const parsed = new URL(normalized);
+    return parsed.protocol === "https:" && parsed.hostname.includes(".") ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}
+__name(normalizeMerchantUrl, "normalizeMerchantUrl");
 async function startScrapeGraphKlarnaJob(request, url, env) {
   const setNumber = cleanSetNumber(url.searchParams.get("set"));
   const ean = cleanDigits(url.searchParams.get("ean"), 8, 14);
