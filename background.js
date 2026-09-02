@@ -19,12 +19,6 @@ const ALLOWED_FETCH_HOSTS = new Set([
     'duckduckgo.com'
 ]);
 
-void chrome.sidePanel.setPanelBehavior({
-    openPanelOnActionClick: true
-}).catch(error => {
-    console.error('Side Panel konnte nicht an die Toolbar-Aktion gebunden werden.', error);
-});
-
 function isAllowedFetchUrl(rawUrl) {
     try {
         const url = new URL(rawUrl);
@@ -156,6 +150,21 @@ async function updateDetectedProduct(tabId, product) {
     ]);
 }
 
+async function openProductOverlay(tabId, product) {
+    if (!Number.isInteger(tabId) || (!product?.setNumber && !product?.ean)) {
+        throw new Error('Kein LEGO-Set erkannt.');
+    }
+    await updateDetectedProduct(tabId, product);
+    const response = await chrome.tabs.sendMessage(tabId, {
+        type: 'bm-show-overlay',
+        product
+    });
+    if (!response?.ok) {
+        throw new Error(response?.error || 'Overlay konnte nicht geöffnet werden.');
+    }
+    return response;
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
     const merged = await loadAndMigrateSettings();
     await applyNetworkBlocking(merged);
@@ -180,6 +189,15 @@ chrome.tabs.onRemoved.addListener(tabId => {
     detectedProducts.delete(tabId);
 });
 
+chrome.action.onClicked.addListener(tab => {
+    const tabId = tab?.id;
+    const product = detectedProducts.get(tabId);
+    if (!Number.isInteger(tabId) || !product) return;
+    void openProductOverlay(tabId, product).catch(error => {
+        console.error('Brickmerge-Overlay konnte nicht geöffnet werden.', error);
+    });
+});
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === 'bm-page-product-detected') {
         void updateDetectedProduct(_sender.tab?.id, message.product);
@@ -191,7 +209,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         });
         return false;
     }
-    if (message?.type === 'bm-open-sidepanel') {
+    if (message?.type === 'bm-open-overlay' || message?.type === 'bm-open-sidepanel') {
         const tabId = _sender.tab?.id;
         const product = message.product;
         if (!Number.isInteger(tabId) ||
@@ -199,16 +217,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             sendResponse({ ok: false, error: 'Kein LEGO-Set erkannt.' });
             return false;
         }
-        // updateDetectedProduct speichert das gewählte Set synchron vor dem
-        // ersten await. Dadurch liest das Sidepanel direkt die Overlay-Auswahl.
-        const updatePromise = updateDetectedProduct(tabId, product);
-        const openPromise = chrome.sidePanel.open({ tabId });
-        void Promise.all([updatePromise, openPromise]).then(() => {
-            sendResponse({ ok: true });
-        }).catch(error => {
+        void openProductOverlay(tabId, product).then(sendResponse).catch(error => {
             sendResponse({
                 ok: false,
-                error: error?.message || 'Sidepanel konnte nicht geöffnet werden.'
+                error: error?.message || 'Overlay konnte nicht geöffnet werden.'
             });
         });
         return true;

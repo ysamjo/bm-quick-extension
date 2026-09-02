@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Brickmerge Tools",
-  "version": "2.6.30",
-  "description": "Brickmerge-Werkzeuge mit mobiler Detailseite im Side Panel und erkanntem LEGO-Set-Indikator.",
+  "version": "2.6.31",
+  "description": "Brickmerge-Werkzeuge mit eingeblendeter Detailseite und erkanntem LEGO-Set-Indikator.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -21,13 +21,9 @@
   "background": {
     "service_worker": "background.js"
   },
-  "side_panel": {
-    "default_path": "sidepanel/sidepanel.html"
-  },
   "permissions": [
     "storage",
     "tabs",
-    "sidePanel",
     "declarativeNetRequest"
   ],
   "host_permissions": [
@@ -99,7 +95,8 @@
         "*://chatgpt.com/*"
       ],
       "js": [
-        "page-product-detector.js"
+        "page-product-detector.js",
+        "page-overlay.js"
       ],
       "run_at": "document_idle"
     },
@@ -187,6 +184,11 @@
         "id": "brickmerge_cleanup",
         "enabled": true,
         "path": "rules/brickmerge-cleanup.json"
+      },
+      {
+        "id": "brickmerge_overlay",
+        "enabled": true,
+        "path": "rules/brickmerge-overlay.json"
       }
     ]
   }

@@ -201,7 +201,7 @@
             const setNumber = activeSetNumber;
             if (!/^\d{5}$/.test(setNumber)) return;
             void chrome.runtime.sendMessage({
-                type: 'bm-open-sidepanel',
+                type: 'bm-open-overlay',
                 product: {
                     setNumber,
                     name: `LEGO Set ${setNumber}`,
@@ -209,11 +209,11 @@
                     hostname: window.location.hostname
                 }
             }).then(response => {
-                if (!response?.ok) throw new Error(response?.error || 'Sidepanel-Fehler');
+                if (!response?.ok) throw new Error(response?.error || 'Overlay-Fehler');
                 closePopup();
             }).catch(() => {
                 showPopup(
-                    'Sidebar konnte nicht geöffnet werden. Bitte erneut versuchen.',
+                    'Overlay konnte nicht geöffnet werden. Bitte erneut versuchen.',
                     setNumber,
                     true
                 );
@@ -241,13 +241,13 @@
         const shadow = popupShadow || createHost();
         const link = shadow.querySelector('.header a');
         link.href = `${BASE_URL}/${setNumber}`;
-        link.textContent = `brickmerge: Set #${setNumber} in Sidebar öffnen`;
+        link.textContent = `brickmerge: Set #${setNumber} im Overlay öffnen`;
         const container = shadow.querySelector('.content');
         container.classList.add('is-clickable');
         container.tabIndex = 0;
         container.setAttribute(
             'aria-label',
-            `Brickmerge-Set ${setNumber} in der Sidebar öffnen`
+            `Brickmerge-Set ${setNumber} im Overlay öffnen`
         );
         container.classList.toggle('error', isError);
         container.classList.toggle('loading', isLoading);
