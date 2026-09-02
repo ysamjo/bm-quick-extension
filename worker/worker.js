@@ -2751,7 +2751,7 @@ function klarnaExtractBody(url, prompt, schema) {
     url,
     prompt,
     schema,
-    fetchConfig: { mode: "js", stealth: true, country: "de", wait: 1500 }
+    fetchConfig: { mode: "js", country: "de", wait: 500 }
   };
 }
 __name(klarnaExtractBody, "klarnaExtractBody");
