@@ -5523,6 +5523,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         secondaryIcon: icon("chatgpt.com")
                     },
                     { name: "Geizhals", url: `https://www.google.com/search?q=site%3Ageizhals.de+lego+${setNum}&btnI=1`, icon: icon("geizhals.at") },
+                    { name: "Mydealz", url: `https://www.mydealz.de/search?q=${encodeURIComponent(`lego ${setNum}`)}`, icon: icon("mydealz.de") },
                     { id: "btn-google-shopping", name: "Google Shopping", url: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(`LEGO ${setNum}`)}`, icon: icon("shopping.google.com") },
                     { id: "btn-klarna", name: "Klarna", url: `https://www.klarna.com/de/shopping/?q=${encodeURIComponent(`LEGO ${setNum}`)}`, icon: icon("klarna.com") },
                     { name: "idealo DE", url: `https://www.google.com/search?q=site%3Aidealo.de+lego+${setNum}&btnI=1`, icon: icon("idealo.de") },

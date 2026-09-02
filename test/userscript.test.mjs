@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.25/);
+    assert.match(loaderSource, /@version\s+5\.6\.26/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.25/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.26/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -275,6 +275,14 @@ test('Google Shopping loads the best SerpApi result directly into the offer list
     assert.match(resourcesSection, /btn-google-shopping/);
     assert.match(tweakerSource, /merchantName:\s*shopName/);
     assert.match(tweakerSource, /offer\.merchantName \|\| offer\.label/);
+});
+
+test('resources include a direct Mydealz search for the detected LEGO set', () => {
+    assert.match(tweakerSource, /name: "Mydealz"/);
+    assert.match(
+        tweakerSource,
+        /https:\/\/www\.mydealz\.de\/search\?q=\$\{encodeURIComponent\(`lego \$\{setNum\}`\)\}/
+    );
 });
 
 test('Google Shopping and Klarna offers are deduplicated by merchant and price', () => {
