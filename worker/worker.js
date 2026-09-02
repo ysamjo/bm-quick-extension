@@ -2738,7 +2738,8 @@ __name(klarnaSearchUrl, "klarnaSearchUrl");
 function validKlarnaProductUrl(value) {
   try {
     const parsed = new URL(String(value || ""));
-    return parsed.protocol === "https:" && /(^|\.)klarna\.com$/i.test(parsed.hostname) && /\/de\/shopping\/pl\//i.test(parsed.pathname)
+    const isKlarnaProduct = /(^|\.)klarna\.com$/i.test(parsed.hostname) && /\/de\/shopping\//i.test(parsed.pathname);
+    return parsed.protocol === "https:" && isKlarnaProduct
       ? parsed.href
       : null;
   } catch {
