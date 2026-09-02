@@ -42,7 +42,9 @@
             normalize(entry?.name)
         )) || products[0] || {};
         const productTitle = normalize(
-            documentValue.querySelector('#productTitle')?.textContent
+            documentValue.querySelector('#productTitle')?.textContent ||
+            documentValue.querySelector('#title')?.textContent ||
+            documentValue.querySelector('h1#title')?.textContent
         );
         const heading = normalize(documentValue.querySelector('h1')?.textContent);
         const title = normalize(documentValue.title);

@@ -15,7 +15,10 @@ const productDocument = product => ({
     title: product.title || product.name || '',
     body: { innerText: product.body || '' },
     querySelector(selector) {
-        if (selector === '#productTitle' && product.productTitle) {
+        if (
+            ['#productTitle', '#title', 'h1#title'].includes(selector) &&
+            product.productTitle
+        ) {
             return { textContent: product.productTitle };
         }
         if (selector === 'h1' && product.h1) return { textContent: product.h1 };
@@ -75,16 +78,18 @@ test('five-digit number without LEGO context is not detected', () => {
     assert.equal(product, null);
 });
 
-test('Amazon accessibility heading still detects LEGO set from product title', () => {
-    const product = detector.detect(productDocument({
-        title: 'LEGO Architecture Londres Kit de Maqueta 21034 : LEGO: Amazon.es',
-        productTitle: 'LEGO Architecture Londres Kit de Maqueta 21034',
-        h1: 'Product summary presents key product information'
-    }), new URL(
-        'https://www.amazon.es/dp/B01J41MPF8?tag=tbbaes-21&language=en_GB'
-    ));
-    assert.equal(product?.setNumber, '21034');
-    assert.equal(product?.hostname, 'www.amazon.es');
+test('Amazon marketplaces detect the set from the product title', () => {
+    for (const marketplace of ['es', 'it', 'de', 'fr', 'co.uk']) {
+        const product = detector.detect(productDocument({
+            title: `LEGO Architecture London 21034 : Amazon.${marketplace}`,
+            productTitle: 'LEGO Architecture London 21034',
+            h1: 'Product summary presents key product information'
+        }), new URL(
+            `https://www.amazon.${marketplace}/dp/B01J41MPF8?language=en_GB`
+        ));
+        assert.equal(product?.setNumber, '21034', marketplace);
+        assert.equal(product?.hostname, `www.amazon.${marketplace}`);
+    }
 });
 
 test('manifest registers badge detection and modifies the embedded page', () => {
