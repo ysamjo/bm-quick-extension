@@ -613,6 +613,10 @@ function normalizeKlarnaItems(rawItems, setNumber) {
     const imageUrl = absolutizeUrl(imageValue, "https://www.klarna.com/");
     const addOffer = (merchant, value, extra = {}) => {
       const shopName = normalizedText(merchant);
+      const currency = normalizedText(
+        extra.currency ?? extra.currencyCode ?? extra.price?.currency ?? "EUR"
+      ).toUpperCase();
+      if (currency && currency !== "EUR" && currency !== "€") return;
       const priceValue = value && typeof value === "object"
         ? value.value ?? value.amount ?? value.price
         : value;
@@ -1241,7 +1245,7 @@ function json(body, status = 200, extraHeaders = {}) {
 __name(json, "json");
 
 // src/index.js
-var VERSION = "2.5.5";
+var VERSION = "2.5.6";
 var CACHE_SCHEMA = "bm-central-v22";
 var OFFER_DISMISSAL_TTL_SECONDS = 180 * 24 * 60 * 60;
 var OFFER_DISMISSAL_MAX_ENTRIES = 200;
@@ -1284,7 +1288,11 @@ var APIFY_BASE = "https://api.apify.com/v2";
 var APIFY_RUN_TIMEOUT_MS = 55 * 1000;
 var APIFY_POLL_INTERVAL_MS = 1500;
 var APIFY_JOB_TTL_SECONDS = 15 * 60;
-var APIFY_MARKETPLACES = ["vinted", "leboncoin", "kleinanzeigen", "stockx", "klarna"];
+var APIFY_MARKETPLACES = ["vinted", "leboncoin", "kleinanzeigen", "stockx"];
+var SCRAPEGRAPH_BASE = "https://v2-api.scrapegraphai.com/api";
+var SCRAPEGRAPH_TIMEOUT_MS = 12 * 1000;
+var SCRAPEGRAPH_JOB_TTL_SECONDS = 15 * 60;
+var SCRAPEGRAPH_PRODUCT_TTL_SECONDS = 7 * 24 * 60 * 60;
 var APIFY_CONFIG = Object.freeze({
   vinted: Object.freeze({
     actorId: "scrape.badger~vinted-scraper",
@@ -1368,16 +1376,6 @@ var APIFY_CONFIG = Object.freeze({
         }
       };
     }
-  }),
-  klarna: Object.freeze({
-    actorId: "m3web~german-price-comparison-actor",
-    cacheVersion: "v1",
-    listingHost: "www.klarna.com",
-    maxTotalChargeUsd: 0.05,
-    normalize: normalizeKlarnaItems,
-    buildInput(_setNumber, ean) {
-      return { startEANs: [ean] };
-    }
   })
 });
 var index_default = {
@@ -1407,6 +1405,7 @@ var index_default = {
             "/stockx",
             "/google-shopping",
             "/klarna",
+            "/scrapegraph/status?job=...",
             "/idealo",
             "/bricklink",
             "/offers/dismissals",
@@ -1458,7 +1457,7 @@ var index_default = {
         return startApifyMarketplaceJob(request, url, env, "stockx");
       }
       if (url.pathname === "/klarna") {
-        return startApifyMarketplaceJob(request, url, env, "klarna");
+        return startScrapeGraphKlarnaJob(request, url, env);
       }
       if (url.pathname === "/google-shopping") {
         return handleGoogleShopping(request, url, env, ctx);
@@ -1480,6 +1479,9 @@ var index_default = {
       }
       if (url.pathname === "/apify/status") {
         return handleApifyJobStatus(request, url, env);
+      }
+      if (url.pathname === "/scrapegraph/status") {
+        return handleScrapeGraphKlarnaJobStatus(request, url, env);
       }
       if (url.pathname === "/ebay-webhook") {
         if (env.LEGACY_WORKER?.fetch) {
@@ -1725,11 +1727,10 @@ async function handleOfferBundle(request, url, env, ctx, cacheOnly) {
       env,
       "stockx"
     ),
-    klarna: () => startApifyMarketplaceJob(
+    klarna: () => startScrapeGraphKlarnaJob(
       request,
       makeSourceUrl("/klarna"),
-      env,
-      "klarna"
+      env
     ),
     idealo: () => startApifyIdealoJob(
       request,
@@ -2679,6 +2680,239 @@ async function normalizeMarketplaceItems(marketplace, rawItems, setNumber, env) 
   return config.normalize(rawItems, setNumber);
 }
 __name(normalizeMarketplaceItems, "normalizeMarketplaceItems");
+function extractScrapeGraphJson(payload) {
+  if (!payload || typeof payload !== "object") return null;
+  if (payload.json && typeof payload.json === "object") return payload.json;
+  if (payload.data?.json && typeof payload.data.json === "object") return payload.data.json;
+  if (payload.data?.json_data && typeof payload.data.json_data === "object") return payload.data.json_data;
+  if (payload.response?.json && typeof payload.response.json === "object") return payload.response.json;
+  return null;
+}
+__name(extractScrapeGraphJson, "extractScrapeGraphJson");
+async function scrapeGraphExtract(env, body) {
+  if (!env.SGAI_API_KEY) {
+    throw Object.assign(new Error("SGAI_API_KEY fehlt im Worker-Secret"), { code: "SGAI_API_KEY_MISSING" });
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SCRAPEGRAPH_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch(`${SCRAPEGRAPH_BASE}/extract`, {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "SGAI-APIKEY": env.SGAI_API_KEY
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw Object.assign(new Error("ScrapeGraphAI-Zeitüberschreitung"), { code: "SGAI_TIMEOUT" });
+    }
+    throw Object.assign(new Error("ScrapeGraphAI-Anfrage fehlgeschlagen"), { code: "SCRAPEGRAPH_REQUEST_FAILED" });
+  } finally {
+    clearTimeout(timeout);
+  }
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const code = response.status === 401 || response.status === 403
+      ? "SGAI_AUTH_FAILED"
+      : response.status === 402
+        ? "SGAI_CREDITS_EXHAUSTED"
+        : response.status === 429
+          ? "SGAI_RATE_LIMIT"
+          : "SCRAPEGRAPH_REQUEST_FAILED";
+    throw Object.assign(new Error("ScrapeGraphAI-Abruf fehlgeschlagen"), { code, upstreamStatus: response.status });
+  }
+  const data = extractScrapeGraphJson(payload);
+  if (!data) throw Object.assign(new Error("ScrapeGraphAI lieferte keine strukturierten Daten"), { code: "SGAI_INVALID_RESPONSE" });
+  return data;
+}
+__name(scrapeGraphExtract, "scrapeGraphExtract");
+function klarnaSearchUrl(setNumber, ean) {
+  return `https://www.klarna.com/de/shopping/?q=${encodeURIComponent(`LEGO ${setNumber} ${ean}`)}`;
+}
+__name(klarnaSearchUrl, "klarnaSearchUrl");
+function validKlarnaProductUrl(value) {
+  try {
+    const parsed = new URL(String(value || ""));
+    return parsed.protocol === "https:" && /(^|\.)klarna\.com$/i.test(parsed.hostname) && /\/de\/shopping\/pl\//i.test(parsed.pathname)
+      ? parsed.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+__name(validKlarnaProductUrl, "validKlarnaProductUrl");
+function klarnaExtractBody(url, prompt, schema) {
+  return {
+    url,
+    prompt,
+    schema,
+    fetchConfig: { mode: "js", stealth: true, country: "de", wait: 1500 }
+  };
+}
+__name(klarnaExtractBody, "klarnaExtractBody");
+function klarnaProductSchema() {
+  return {
+    type: "object",
+    properties: {
+      product_url: { type: "string" },
+      title: { type: "string" },
+      set_number: { type: "string" },
+      ean: { type: "string" },
+      image_url: { type: "string" }
+    },
+    required: ["product_url", "title"]
+  };
+}
+__name(klarnaProductSchema, "klarnaProductSchema");
+function klarnaOffersSchema() {
+  return {
+    type: "object",
+    properties: {
+      offers: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            merchant: { type: "string" },
+            title: { type: "string" },
+            price: { type: ["number", "string"] },
+            shipping: { type: ["number", "string", "null"] },
+            currency: { type: "string" },
+            url: { type: "string" },
+            delivery: { type: "string" }
+          },
+          required: ["merchant", "price", "url"]
+        }
+      }
+    },
+    required: ["offers"]
+  };
+}
+__name(klarnaOffersSchema, "klarnaOffersSchema");
+function normalizeScrapeGraphKlarnaOffers(data, setNumber, productUrl, imageUrl) {
+  const rawOffers = (Array.isArray(data?.offers) ? data.offers : [])
+    .filter((offer) => {
+      const merchant = normalizedText(offer?.merchant);
+      const offerUrl = String(offer?.url || "").trim();
+      return merchant && /^https:\/\//i.test(offerUrl);
+    });
+  const item = {
+    name: `LEGO ${setNumber}`,
+    productUrl,
+    image: imageUrl,
+    offers: rawOffers.map((offer) => ({
+      retailer: offer?.merchant,
+      title: offer?.title,
+      price: offer?.price,
+      shippingCost: offer?.shipping,
+      currency: offer?.currency,
+      offerUrl: offer?.url,
+      delivery: offer?.delivery
+    }))
+  };
+  return normalizeKlarnaItems([item], setNumber);
+}
+__name(normalizeScrapeGraphKlarnaOffers, "normalizeScrapeGraphKlarnaOffers");
+async function startScrapeGraphKlarnaJob(request, url, env) {
+  const setNumber = cleanSetNumber(url.searchParams.get("set"));
+  const ean = cleanDigits(url.searchParams.get("ean"), 8, 14);
+  if (!setNumber || !/^\d{8}$|^\d{12,14}$/.test(ean)) {
+    return json2({ error: "Gültige LEGO-Setnummer und EAN sind erforderlich." }, 400);
+  }
+  if (!env.BM_CACHE?.get || !env.BM_CACHE?.put) return json2({ error: "BM_CACHE fehlt im Worker" }, 503);
+  const best = normalizeMoney(url.searchParams.get("best"));
+  const offersKey = `${CACHE_SCHEMA}:scrapegraph:klarna:offers:v1:${ean}`;
+  const cachedOffers = await env.BM_CACHE.get(offersKey, "json");
+  if (Array.isArray(cachedOffers)) {
+    return json2(buildApifyMarketplaceResult("klarna", setNumber, cachedOffers, best, null), 200, { "x-worker-cache": "HIT" });
+  }
+  if (url.searchParams.get("cache") === "only") {
+    return json2({ setNumber, ean, marketplace: "klarna", found: false, cacheMiss: true }, 200, { "x-worker-cache": "MISS-ONLY" });
+  }
+  if (!env.SGAI_API_KEY) return json2({ error: "SGAI_API_KEY fehlt im Worker-Secret", code: "SGAI_API_KEY_MISSING" }, 503);
+  const cachedProduct = await env.BM_CACHE.get(`${CACHE_SCHEMA}:scrapegraph:klarna:product:v1:${ean}`, "json");
+  const jobId = crypto.randomUUID();
+  await env.BM_CACHE.put(`scrapegraph-job:${jobId}`, JSON.stringify({
+    type: "klarna",
+    phase: validKlarnaProductUrl(cachedProduct?.url) ? "offers" : "product",
+    setNumber,
+    ean,
+    best,
+    offersKey,
+    searchUrl: klarnaSearchUrl(setNumber, ean),
+    productUrl: validKlarnaProductUrl(cachedProduct?.url),
+    productTitle: normalizedText(cachedProduct?.title),
+    imageUrl: cachedProduct?.imageUrl || null,
+    createdAt: Date.now()
+  }), { expirationTtl: SCRAPEGRAPH_JOB_TTL_SECONDS });
+  return json2({ pending: true, jobId, statusUrl: `/scrapegraph/status?job=${encodeURIComponent(jobId)}`, pollAfterMs: 1500 }, 202);
+}
+__name(startScrapeGraphKlarnaJob, "startScrapeGraphKlarnaJob");
+async function handleScrapeGraphKlarnaJobStatus(request, url, env) {
+  const jobId = String(url.searchParams.get("job") || "").trim();
+  if (!jobId || !env.BM_CACHE?.get || !env.BM_CACHE?.put) return json2({ error: "Ungültige ScrapeGraphAI-Job-ID." }, 400);
+  const key = `scrapegraph-job:${jobId}`;
+  const job = await env.BM_CACHE.get(key, "json");
+  if (!job) return json2({ error: "ScrapeGraphAI-Job nicht gefunden oder abgelaufen.", code: "SGAI_JOB_NOT_FOUND" }, 404);
+  if (job.result) return json2(job.result);
+  try {
+    if (job.phase === "product") {
+      const data = await scrapeGraphExtract(env, klarnaExtractBody(
+        job.searchUrl,
+        `Finde auf dieser deutschen Klarna-Seite exakt das LEGO-Produkt mit Setnummer ${job.setNumber} und EAN ${job.ean}. Liefere nur die Produktdetail-URL, den vollständigen Produkttitel, Setnummer, EAN und Bild-URL. Keine Zubehör-, Minifiguren- oder ähnliche Treffer.`,
+        klarnaProductSchema()
+      ));
+      const productUrl = validKlarnaProductUrl(data.product_url ?? data.productUrl ?? data.url);
+      const title = normalizedText(data.title);
+      if (!productUrl || !/\blego\b/i.test(title) || !isRelevantLegoListing(title, "", job.setNumber)) {
+        const result = buildApifyMarketplaceResult("klarna", job.setNumber, [], job.best, null);
+        job.result = result;
+        job.status = "SUCCEEDED";
+        await env.BM_CACHE.put(job.offersKey, JSON.stringify([]), { expirationTtl: TTL.klarnaEmpty });
+        await env.BM_CACHE.put(key, JSON.stringify(job), { expirationTtl: SCRAPEGRAPH_JOB_TTL_SECONDS });
+        return json2(result);
+      }
+      const extractedSet = cleanSetNumber(data.set_number ?? data.setNumber);
+      const extractedEan = cleanDigits(data.ean, 8, 14);
+      if ((extractedSet && extractedSet !== job.setNumber) ||
+        (extractedEan && extractedEan !== job.ean)) {
+        const result = buildApifyMarketplaceResult("klarna", job.setNumber, [], job.best, null);
+        job.result = result;
+        job.status = "SUCCEEDED";
+        await env.BM_CACHE.put(job.offersKey, JSON.stringify([]), { expirationTtl: TTL.klarnaEmpty });
+        await env.BM_CACHE.put(key, JSON.stringify(job), { expirationTtl: SCRAPEGRAPH_JOB_TTL_SECONDS });
+        return json2(result);
+      }
+      job.phase = "offers";
+      job.productUrl = productUrl;
+      job.productTitle = title;
+      job.imageUrl = absolutizeUrl(data.image_url ?? data.imageUrl, productUrl);
+      await env.BM_CACHE.put(`${CACHE_SCHEMA}:scrapegraph:klarna:product:v1:${job.ean}`, JSON.stringify({ url: productUrl, title, imageUrl: job.imageUrl }), { expirationTtl: SCRAPEGRAPH_PRODUCT_TTL_SECONDS });
+      await env.BM_CACHE.put(key, JSON.stringify(job), { expirationTtl: SCRAPEGRAPH_JOB_TTL_SECONDS });
+      return json2({ pending: true, jobId, phase: "offers", pollAfterMs: 1500 }, 202);
+    }
+    const data = await scrapeGraphExtract(env, klarnaExtractBody(
+      job.productUrl,
+      `Extrahiere alle deutschen Händlerangebote für genau dieses LEGO-Produkt ${job.setNumber} (EAN ${job.ean}). Für jedes Angebot: Händlername, Artikeltitel, Preis, Versandkosten, Währung, direkte Händler-URL und Lieferhinweis. Nur EUR-Angebote und keine Zubehör- oder Minifiguren-Angebote.`,
+      klarnaOffersSchema()
+    ));
+    const offers = normalizeScrapeGraphKlarnaOffers(data, job.setNumber, job.productUrl, job.imageUrl);
+    const result = buildApifyMarketplaceResult("klarna", job.setNumber, offers, job.best, null);
+    await env.BM_CACHE.put(job.offersKey, JSON.stringify(offers), { expirationTtl: result.found ? TTL.klarna : TTL.klarnaEmpty });
+    job.result = result;
+    job.status = "SUCCEEDED";
+    await env.BM_CACHE.put(key, JSON.stringify(job), { expirationTtl: SCRAPEGRAPH_JOB_TTL_SECONDS });
+    return json2(result);
+  } catch (error) {
+    return json2({ error: "ScrapeGraphAI-Status konnte nicht verarbeitet werden.", code: error?.code || "SCRAPEGRAPH_REQUEST_FAILED", upstreamStatus: error?.upstreamStatus || null, jobId }, error?.code === "SGAI_RATE_LIMIT" ? 429 : error?.code === "SGAI_CREDITS_EXHAUSTED" ? 402 : error?.code === "SGAI_AUTH_FAILED" || error?.code === "SGAI_API_KEY_MISSING" ? 503 : 502);
+  }
+}
+__name(handleScrapeGraphKlarnaJobStatus, "handleScrapeGraphKlarnaJobStatus");
 function buildApifyMarketplaceResult(marketplace, setNumber, offers, best, runId = null) {
   const filtered = excludeSuspiciousLowPrices(offers, best);
   const sortedOffers = [...filtered.offers]

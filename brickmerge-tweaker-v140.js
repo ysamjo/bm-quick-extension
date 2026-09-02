@@ -6972,7 +6972,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                     : source === 'stockx'
                                         ? chrome.runtime.getURL('icons/logo-stockx.svg')
                                         : icon(logoDomain),
-                            `${source}-apify`,
+                            `${source}-${source === 'klarna' ? 'scrapegraph' : 'apify'}`,
                             `${label}: Angebot ${index + 1} von ${result.comparedOffers} passenden Angeboten; ${stockxCurrencyNote}Gesamtpreis${Number.isFinite(transactionFee) ? ` inklusive geschätzter Transaktionsgebühr ${formatEuroValue(transactionFee)} €` : ''}; ${candidate.title}`,
                             {
                                 url: candidate.url,
@@ -6995,7 +6995,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                     ? shippingCost
                                     : null,
                                 dismissIdentity: makeOfferDismissIdentity(
-                                    `${source}-apify`,
+                                    `${source}-${source === 'klarna' ? 'scrapegraph' : 'apify'}`,
                                     candidate.url,
                                     candidate.id || `${source}|${total}|${index}`
                                 )
