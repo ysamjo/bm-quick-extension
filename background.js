@@ -150,17 +150,17 @@ async function updateDetectedProduct(tabId, product) {
     ]);
 }
 
-async function openProductOverlay(tabId, product) {
+async function openProductPanel(tabId, product) {
     if (!Number.isInteger(tabId) || (!product?.setNumber && !product?.ean)) {
         throw new Error('Kein LEGO-Set erkannt.');
     }
     await updateDetectedProduct(tabId, product);
     const response = await chrome.tabs.sendMessage(tabId, {
-        type: 'bm-show-overlay',
+        type: 'bm-show-floating-sidebar',
         product
     });
     if (!response?.ok) {
-        throw new Error(response?.error || 'Overlay konnte nicht geöffnet werden.');
+        throw new Error(response?.error || 'Seitenleiste konnte nicht geöffnet werden.');
     }
     return response;
 }
@@ -193,8 +193,8 @@ chrome.action.onClicked.addListener(tab => {
     const tabId = tab?.id;
     const product = detectedProducts.get(tabId);
     if (!Number.isInteger(tabId) || !product) return;
-    void openProductOverlay(tabId, product).catch(error => {
-        console.error('Brickmerge-Overlay konnte nicht geöffnet werden.', error);
+    void openProductPanel(tabId, product).catch(error => {
+        console.error('Schwebende Brickmerge-Leiste konnte nicht geöffnet werden.', error);
     });
 });
 
@@ -209,7 +209,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         });
         return false;
     }
-    if (message?.type === 'bm-open-overlay' || message?.type === 'bm-open-sidepanel') {
+    if (
+        message?.type === 'bm-open-floating-sidebar' ||
+        message?.type === 'bm-open-overlay' ||
+        message?.type === 'bm-open-sidepanel'
+    ) {
         const tabId = _sender.tab?.id;
         const product = message.product;
         if (!Number.isInteger(tabId) ||
@@ -217,10 +221,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             sendResponse({ ok: false, error: 'Kein LEGO-Set erkannt.' });
             return false;
         }
-        void openProductOverlay(tabId, product).then(sendResponse).catch(error => {
+        void openProductPanel(tabId, product).then(sendResponse).catch(error => {
             sendResponse({
                 ok: false,
-                error: error?.message || 'Overlay konnte nicht geöffnet werden.'
+                error: error?.message || 'Seitenleiste konnte nicht geöffnet werden.'
             });
         });
         return true;

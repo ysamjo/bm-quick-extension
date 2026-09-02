@@ -92,7 +92,7 @@ test('Amazon marketplaces detect the set from the product title', () => {
     }
 });
 
-test('manifest registers badge detection and the page overlay', () => {
+test('manifest registers badge detection and the floating sidebar', () => {
     const manifest = JSON.parse(fs.readFileSync(
         new URL('../manifest.json', import.meta.url),
         'utf8'
@@ -111,7 +111,7 @@ test('manifest registers badge detection and the page overlay', () => {
     assert.equal(brickmergeScripts.every(entry => entry.all_frames === true), true);
 });
 
-test('overlay embeds Brickmerge responsively and can be closed', () => {
+test('floating sidebar embeds Brickmerge without blocking the merchant page', () => {
     const source = fs.readFileSync(
         new URL('../page-overlay.js', import.meta.url),
         'utf8'
@@ -122,11 +122,13 @@ test('overlay embeds Brickmerge responsively and can be closed', () => {
     ));
     assert.match(source, /attachShadow\(\{ mode: 'closed' \}\)/);
     assert.match(source, /<iframe title="Brickmerge Setdetails">/);
-    assert.match(source, /type !== 'bm-show-overlay'/);
+    assert.match(source, /type !== 'bm-show-floating-sidebar'/);
     assert.match(source, /www\.brickmerge\.de/);
     assert.match(source, /event\.key !== 'Escape'/);
-    assert.match(source, /event\.target === backdrop/);
-    assert.match(source, /100dvh/);
+    assert.match(source, /width: min\(460px, calc\(100vw - 24px\)\)/);
+    assert.match(source, /pointerEvents: 'none'/);
+    assert.match(source, /<aside class="panel"/);
+    assert.doesNotMatch(source, /class="backdrop"|aria-modal="true"/);
     assert.equal(rules[0].action.type, 'modifyHeaders');
     assert.deepEqual(rules[0].action.responseHeaders, [{
         header: 'x-frame-options',
@@ -154,7 +156,7 @@ test('embedded Brickmerge header is hidden only in the side panel frame', () => 
     assert.match(source, /\.content\.setdetails h1/);
 });
 
-test('toolbar click opens the overlay only for a detected product', () => {
+test('toolbar click opens the floating sidebar only for a detected product', () => {
     const background = fs.readFileSync(
         new URL('../background.js', import.meta.url),
         'utf8'
@@ -167,7 +169,7 @@ test('toolbar click opens the overlay only for a detected product', () => {
     assert.match(background, /function isBrickmergePage\(product\)/);
     assert.match(background, /text: onBrickmergePage \? '' : '✓'/);
     assert.match(background, /chrome\.action\.onClicked\.addListener/);
-    assert.match(background, /type: 'bm-show-overlay'/);
+    assert.match(background, /type: 'bm-show-floating-sidebar'/);
     assert.doesNotMatch(background, /chrome\.sidePanel/);
     assert.match(
         background,
@@ -189,7 +191,7 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
     );
     const popupCalls = [];
     const titleCalls = [];
-    const overlayMessages = [];
+    const panelMessages = [];
     let messageListener = null;
     let actionClickListener = null;
     const unusedEvent = { addListener() {} };
@@ -231,7 +233,7 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
                 onUpdated: unusedEvent,
                 onRemoved: unusedEvent,
                 async sendMessage(tabId, message) {
-                    overlayMessages.push({ tabId, message: { ...message } });
+                    panelMessages.push({ tabId, message: { ...message } });
                     return { ok: true };
                 }
             }
@@ -268,10 +270,10 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
         title: 'Brickmerge Tools'
     });
 
-    const overlayResponse = await new Promise(resolve => {
+    const panelResponse = await new Promise(resolve => {
         const keepChannelOpen = messageListener(
             {
-                type: 'bm-open-overlay',
+                type: 'bm-open-floating-sidebar',
                 product: { setNumber: '21034' }
             },
             { tab: { id: 42 } },
@@ -279,11 +281,11 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
         );
         assert.equal(keepChannelOpen, true);
     });
-    assert.deepEqual({ ...overlayResponse }, { ok: true });
-    assert.deepEqual(overlayMessages.at(-1), {
+    assert.deepEqual({ ...panelResponse }, { ok: true });
+    assert.deepEqual(panelMessages.at(-1), {
         tabId: 42,
         message: {
-            type: 'bm-show-overlay',
+            type: 'bm-show-floating-sidebar',
             product: { setNumber: '21034' }
         }
     });
@@ -292,18 +294,18 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
     assert.equal(typeof actionClickListener, 'function');
     actionClickListener({ id: 42 });
     await new Promise(resolve => setImmediate(resolve));
-    assert.equal(overlayMessages.at(-1).tabId, 42);
+    assert.equal(panelMessages.at(-1).tabId, 42);
 
     const selectionPopup = fs.readFileSync(
         new URL('../selection-popup.js', import.meta.url),
         'utf8'
     );
-    assert.match(selectionPopup, /type:\s*'bm-open-overlay'/);
-    assert.match(selectionPopup, /im Overlay öffnen/);
-    assert.match(
-        selectionPopup,
-        /content\.addEventListener\('click', openSelectedSet\)/
-    );
+    assert.match(selectionPopup, /let selectedTerm = ''/);
+    assert.match(selectionPopup, /url\.searchParams\.set\('btnI', '1'\)/);
+    assert.match(selectionPopup, /site:brickmerge\.de \$\{term\}/);
+    assert.match(selectionPopup, /class="bubble-link"/);
+    assert.match(selectionPopup, /target="_blank"/);
+    assert.doesNotMatch(selectionPopup, /bm-fetch-text|bm-open-overlay/);
     assert.match(popup, /id="query"[^>]*autofocus/);
     assert.match(popup, /placeholder="Setnummer oder Suchbegriff"/);
 });
