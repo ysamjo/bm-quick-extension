@@ -19,6 +19,14 @@ der Chrome-Extension auf Browser mit Tampermonkey- oder Violentmonkey-Unterstüt
 API-Schlüssel und Tokens sind nicht im Userscript enthalten. Sie liegen
 ausschließlich als Secrets in den Cloudflare-Workern.
 
+## Android-App
+
+Unter [`android-app`](android-app/) liegt eine eigenständige Brickmerge-App mit
+WebView, derselben gebauten Modifikations-Runtime, einer direkten Suchleiste,
+Homescreen-Suchwidget sowie Android-Zielen für geteilten Text und Produkt-URLs.
+Übergebene URLs werden nach LEGO-Setnummer oder EAN ausgewertet, bevor
+Brickmerge geöffnet wird.
+
 ## Installation als Chrome-Erweiterung
 
 Dieses Repository ist zugleich die entpackte Chrome-Erweiterung:
