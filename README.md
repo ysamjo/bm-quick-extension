@@ -41,8 +41,9 @@ vorhandenen Extension-Skripte laufen auch in diesem eingebetteten Frame, sodass
 kein zusätzliches Userscript nötig ist. Dieses Browser-Feature ist absichtlich
 nicht Teil des mobilen Userscripts.
 
-Markierter Text wird in einer kleinen Suchblase gespeichert. Ein Klick darauf
-öffnet die passende Brickmerge-Seite direkt über die Google-Lucky-Suche.
+Beim Markieren von Text erscheint keine zusätzliche Anzeige. Solange die
+Markierung besteht, öffnet ein Klick auf das Toolbar-Icon die schwebende
+Seitenleiste und sucht dort direkt nach dem ausgewählten Begriff.
 
 ## Installation auf Mobilgeräten
 

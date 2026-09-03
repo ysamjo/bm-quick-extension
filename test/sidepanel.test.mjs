@@ -173,7 +173,7 @@ test('toolbar click opens the floating sidebar only for a detected product', () 
     assert.doesNotMatch(background, /chrome\.sidePanel/);
     assert.match(
         background,
-        /chrome\.action\.setPopup\(\{ tabId, popup: DEFAULT_POPUP \}\)/
+        /chrome\.action\.setPopup\(\{ tabId, popup: hasSelection \? '' : DEFAULT_POPUP \}\)/
     );
     assert.match(popup, /id="search-form"/);
     assert.match(popup, /id="open-options"/);
@@ -189,9 +189,14 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
         new URL('../popup/popup.html', import.meta.url),
         'utf8'
     );
+    const options = fs.readFileSync(
+        new URL('../options/options.html', import.meta.url),
+        'utf8'
+    );
     const popupCalls = [];
     const titleCalls = [];
     const panelMessages = [];
+    let currentSelection = '';
     let messageListener = null;
     let actionClickListener = null;
     const unusedEvent = { addListener() {} };
@@ -233,7 +238,16 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
                 onUpdated: unusedEvent,
                 onRemoved: unusedEvent,
                 async sendMessage(tabId, message) {
-                    panelMessages.push({ tabId, message: { ...message } });
+                    if (message.type === 'bm-get-current-selection') {
+                        return { term: currentSelection };
+                    }
+                    panelMessages.push({
+                        tabId,
+                        message: {
+                            ...message,
+                            product: message.product ? { ...message.product } : undefined
+                        }
+                    });
                     return { ok: true };
                 }
             }
@@ -242,6 +256,7 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
 
     vm.runInContext(background, backgroundContext);
     assert.equal(typeof messageListener, 'function');
+    assert.equal(typeof actionClickListener, 'function');
 
     messageListener(
         {
@@ -270,6 +285,41 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
         title: 'Brickmerge Tools'
     });
 
+    currentSelection = 'LEGO Orchidee 10311';
+    messageListener(
+        { type: 'bm-page-selection-changed', term: currentSelection },
+        { tab: { id: 42 } },
+        () => {}
+    );
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(popupCalls.at(-1), { tabId: 42, popup: '' });
+
+    actionClickListener({ id: 42 });
+    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(panelMessages.at(-1), {
+        tabId: 42,
+        message: {
+            type: 'bm-show-floating-sidebar',
+            product: {
+                setNumber: 'LEGO Orchidee 10311',
+                name: 'LEGO Orchidee 10311'
+            }
+        }
+    });
+
+    currentSelection = '';
+    messageListener(
+        { type: 'bm-page-selection-changed', term: '' },
+        { tab: { id: 42 } },
+        () => {}
+    );
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(popupCalls.at(-1), {
+        tabId: 42,
+        popup: 'popup/popup.html'
+    });
+
     const panelResponse = await new Promise(resolve => {
         const keepChannelOpen = messageListener(
             {
@@ -291,7 +341,6 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
     });
     assert.deepEqual(popupCalls.at(-1), { tabId: 42, popup: '' });
 
-    assert.equal(typeof actionClickListener, 'function');
     actionClickListener({ id: 42 });
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(panelMessages.at(-1).tabId, 42);
@@ -300,12 +349,13 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
         new URL('../selection-popup.js', import.meta.url),
         'utf8'
     );
-    assert.match(selectionPopup, /let selectedTerm = ''/);
-    assert.match(selectionPopup, /url\.searchParams\.set\('btnI', '1'\)/);
-    assert.match(selectionPopup, /site:brickmerge\.de \$\{term\}/);
-    assert.match(selectionPopup, /class="bubble-link"/);
-    assert.match(selectionPopup, /target="_blank"/);
-    assert.doesNotMatch(selectionPopup, /bm-fetch-text|bm-open-overlay/);
+    assert.match(selectionPopup, /type: 'bm-page-selection-changed'/);
+    assert.match(selectionPopup, /type !== 'bm-get-current-selection'/);
+    assert.match(selectionPopup, /document\.addEventListener\('selectionchange'/);
+    assert.match(selectionPopup, /sendResponse\(\{ term \}\)/);
+    assert.doesNotMatch(selectionPopup, /attachShadow|createElement|Google Lucky|bubble/);
+    assert.match(options, /<h2>Markierungssuche<\/h2>/);
+    assert.match(options, /Zeigt beim Markieren nichts an/);
     assert.match(popup, /id="query"[^>]*autofocus/);
     assert.match(popup, /placeholder="Setnummer oder Suchbegriff"/);
 });

@@ -3,6 +3,7 @@ importScripts('shared.js');
 const CLEANUP_RULESET = 'brickmerge_cleanup';
 const DEFAULT_POPUP = 'popup/popup.html';
 const detectedProducts = new Map();
+const selectedTerms = new Map();
 const ALLOWED_FETCH_HOSTS = new Set([
     'brickmerge.de',
     'www.brickmerge.de',
@@ -119,10 +120,18 @@ function isBrickmergePage(product) {
     }
 }
 
-async function updateDetectedProduct(tabId, product) {
+function normalizeSelectedTerm(value) {
+    return String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 120);
+}
+
+async function updateActionState(tabId) {
     if (!Number.isInteger(tabId)) return;
-    if (product?.setNumber || product?.ean) {
-        detectedProducts.set(tabId, product);
+    const product = detectedProducts.get(tabId) || null;
+    const hasSelection = Boolean(selectedTerms.get(tabId));
+    if (product) {
         const onBrickmergePage = isBrickmergePage(product);
         await Promise.all([
             chrome.action.setBadgeText({ tabId, text: onBrickmergePage ? '' : '✓' }),
@@ -142,19 +151,33 @@ async function updateDetectedProduct(tabId, product) {
         }
         return;
     }
-    detectedProducts.delete(tabId);
     await Promise.all([
         chrome.action.setBadgeText({ tabId, text: '' }),
-        chrome.action.setPopup({ tabId, popup: DEFAULT_POPUP }),
+        chrome.action.setPopup({ tabId, popup: hasSelection ? '' : DEFAULT_POPUP }),
         chrome.action.setTitle({ tabId, title: 'Brickmerge Tools' })
     ]);
 }
 
-async function openProductPanel(tabId, product) {
+async function updateDetectedProduct(tabId, product) {
+    if (!Number.isInteger(tabId)) return;
+    if (product?.setNumber || product?.ean) detectedProducts.set(tabId, product);
+    else detectedProducts.delete(tabId);
+    await updateActionState(tabId);
+}
+
+async function updateSelectedTerm(tabId, value) {
+    if (!Number.isInteger(tabId)) return;
+    const term = normalizeSelectedTerm(value);
+    if (term) selectedTerms.set(tabId, term);
+    else selectedTerms.delete(tabId);
+    await updateActionState(tabId);
+}
+
+async function openProductPanel(tabId, product, rememberProduct = true) {
     if (!Number.isInteger(tabId) || (!product?.setNumber && !product?.ean)) {
         throw new Error('Kein LEGO-Set erkannt.');
     }
-    await updateDetectedProduct(tabId, product);
+    if (rememberProduct) await updateDetectedProduct(tabId, product);
     const response = await chrome.tabs.sendMessage(tabId, {
         type: 'bm-show-floating-sidebar',
         product
@@ -182,18 +205,34 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-    if (changeInfo.status === 'loading') void updateDetectedProduct(tabId, null);
+    if (changeInfo.status !== 'loading') return;
+    selectedTerms.delete(tabId);
+    void updateDetectedProduct(tabId, null);
 });
 
 chrome.tabs.onRemoved.addListener(tabId => {
     detectedProducts.delete(tabId);
+    selectedTerms.delete(tabId);
 });
 
 chrome.action.onClicked.addListener(tab => {
     const tabId = tab?.id;
-    const product = detectedProducts.get(tabId);
-    if (!Number.isInteger(tabId) || !product) return;
-    void openProductPanel(tabId, product).catch(error => {
+    if (!Number.isInteger(tabId)) return;
+    void (async () => {
+        let selectedTerm = selectedTerms.get(tabId) || '';
+        try {
+            const response = await chrome.tabs.sendMessage(tabId, {
+                type: 'bm-get-current-selection'
+            });
+            selectedTerm = normalizeSelectedTerm(response?.term);
+            await updateSelectedTerm(tabId, selectedTerm);
+        } catch {}
+        const product = selectedTerm
+            ? { setNumber: selectedTerm, name: selectedTerm }
+            : detectedProducts.get(tabId);
+        if (!product) return;
+        await openProductPanel(tabId, product, !selectedTerm);
+    })().catch(error => {
         console.error('Schwebende Brickmerge-Leiste konnte nicht geöffnet werden.', error);
     });
 });
@@ -201,6 +240,10 @@ chrome.action.onClicked.addListener(tab => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === 'bm-page-product-detected') {
         void updateDetectedProduct(_sender.tab?.id, message.product);
+        return false;
+    }
+    if (message?.type === 'bm-page-selection-changed') {
+        void updateSelectedTerm(_sender.tab?.id, message.term);
         return false;
     }
     if (message?.type === 'bm-get-detected-set') {
