@@ -16039,16 +16039,21 @@ globalThis.BM_isFranceEnabled = settings =>
                 scheduleDepotUpdate();
             }
 
+            const isDepotInventoryPage = () => {
+                const action = new URL(window.location.href).searchParams.get('a');
+                return action === 'depot' || Boolean(document.getElementById('dpWrap'));
+            };
+
+            // Brickmerge pflegt die Depot-/Bestandsseite wieder selbst. Dort darf
+            // dieses Modul weder Layout noch Werte oder Bedienelemente verändern.
+            if (isDepotInventoryPage()) return;
+
             installStyles();
             setupDetailButton();
             window.setTimeout(setupDetailButton, 0);
             window.setTimeout(setupDetailButton, 1000);
-            setupDepotGrowth();
-            setupDepotDashboardButton();
             window.addEventListener('load', () => {
                 setupDetailButton();
-                setupDepotGrowth();
-                setupDepotDashboardButton();
             }, { once: true });
         })();
 
