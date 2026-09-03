@@ -1,6 +1,1 @@
 .wrangler/
-android-app/.gradle/
-android-app/.idea/
-android-app/local.properties
-android-app/**/build/
-android-app/app/src/main/assets/brickmerge-runtime.js
