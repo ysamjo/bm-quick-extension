@@ -81,21 +81,21 @@
                 .brand {
                     display: inline-flex;
                     align-items: center;
-                    gap: 6px;
+                    justify-content: center;
+                    width: 36px;
+                    height: 36px;
                     margin: 0;
-                    color: #a90000;
-                    font-size: 15px;
-                    font-weight: 750;
-                    line-height: 1;
-                    white-space: nowrap;
+                    border-radius: 6px;
+                    text-decoration: none;
+                    cursor: pointer;
                 }
+                .brand:hover, .brand:focus { background: #e8e8ea; }
                 .brand-logo {
                     width: 28px;
                     height: 28px;
                     flex: 0 0 28px;
                     border-radius: 6px;
                 }
-                .brand-wordmark { letter-spacing: -.3px; }
                 .search { display: contents; }
                 .query {
                     min-width: 0;
@@ -136,7 +136,7 @@
                     color: #333;
                 }
                 .close:hover, .close:focus { background: #c40000; color: #fff; }
-                button:focus-visible, .external:focus-visible {
+                button:focus-visible, .external:focus-visible, .brand:focus-visible {
                     outline: 3px solid rgba(8, 105, 201, .35);
                     outline-offset: 2px;
                 }
@@ -162,14 +162,11 @@
                     .panel { inset: 0; width: 100vw; border-left: 0; border-right: 0; border-radius: 0; }
                     .toolbar { padding-top: max(9px, env(safe-area-inset-top)); }
                 }
-                @media (max-width: 380px) {
-                    .brand-wordmark { display: none; }
-                }
                 @media (prefers-reduced-motion: reduce) { .panel { animation: none; } }
             </style>
             <aside class="panel" aria-label="Schwebende Brickmerge-Seitenleiste">
                 <div class="toolbar">
-                    <p class="brand"><img class="brand-logo" src="${chrome.runtime.getURL('icons/icon32.png')}" alt=""><span class="brand-wordmark">Brickmerge</span></p>
+                    <a class="brand" href="${BASE_URL}" title="Brickmerge-Startseite" aria-label="Brickmerge-Startseite"><img class="brand-logo" src="${chrome.runtime.getURL('icons/icon32.png')}" alt=""></a>
                     <form class="search">
                         <input class="query" type="search" aria-label="Setnummer oder Suchbegriff" maxlength="100">
                         <button class="submit" type="submit" title="Suchen" aria-label="Brickmerge-Suche starten">
@@ -191,6 +188,7 @@
         `;
 
         const form = shadow.querySelector('.search');
+        const homeButton = shadow.querySelector('.brand');
         const input = shadow.querySelector('.query');
         const external = shadow.querySelector('.external');
         const closeButton = shadow.querySelector('.close');
@@ -210,9 +208,20 @@
             frame.src = url;
         };
 
+        const navigateHome = () => {
+            input.value = '';
+            external.href = BASE_URL;
+            loading.hidden = false;
+            frame.src = BASE_URL;
+        };
+
         form.addEventListener('submit', event => {
             event.preventDefault();
             navigate(input.value);
+        });
+        homeButton.addEventListener('click', event => {
+            event.preventDefault();
+            navigateHome();
         });
         frame.addEventListener('load', () => {
             loading.hidden = true;
