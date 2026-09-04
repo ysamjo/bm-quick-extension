@@ -70,33 +70,38 @@
                 }
                 .toolbar {
                     display: grid;
-                    grid-template-columns: minmax(0, 1fr) auto auto;
-                    gap: 8px;
+                    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+                    gap: 6px;
                     align-items: center;
-                    padding: 9px 10px 10px;
+                    min-height: 52px;
+                    padding: 7px 8px;
                     border-bottom: 1px solid #ddd;
                     background: #f7f7f8;
                 }
                 .brand {
-                    min-width: 0;
-                    margin: 0 4px;
-                    overflow: hidden;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    margin: 0;
                     color: #a90000;
-                    font-size: 16px;
+                    font-size: 15px;
                     font-weight: 750;
-                    text-overflow: ellipsis;
+                    line-height: 1;
                     white-space: nowrap;
                 }
-                .search {
-                    grid-column: 1 / -1;
-                    display: grid;
-                    grid-template-columns: minmax(0, 1fr) auto;
-                    gap: 7px;
+                .brand-logo {
+                    width: 28px;
+                    height: 28px;
+                    flex: 0 0 28px;
+                    border-radius: 6px;
                 }
+                .brand-wordmark { letter-spacing: -.3px; }
+                .search { display: contents; }
                 .query {
                     min-width: 0;
-                    height: 40px;
-                    padding: 0 12px;
+                    width: 100%;
+                    height: 36px;
+                    padding: 0 10px;
                     border: 1px solid #bbb;
                     border-radius: 6px;
                     background: #fff;
@@ -109,28 +114,26 @@
                     outline-offset: 1px;
                 }
                 button, .external {
-                    height: 38px;
+                    width: 36px;
+                    height: 36px;
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
                     margin: 0;
-                    padding: 0 12px;
+                    padding: 0;
                     border: 0;
                     border-radius: 6px;
-                    font: 650 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
                     text-decoration: none;
                     cursor: pointer;
                 }
-                .submit { height: 40px; background: #c40000; color: #fff; }
+                button svg, .external svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+                .submit { background: #c40000; color: #fff; }
                 .submit:hover, .submit:focus { background: #970000; }
                 .external { background: #e8e8ea; color: #333; white-space: nowrap; }
                 .external:hover, .external:focus { background: #d9d9dc; }
                 .close {
-                    width: 38px;
-                    padding: 0;
                     background: #eee;
                     color: #333;
-                    font-size: 24px;
                 }
                 .close:hover, .close:focus { background: #c40000; color: #fff; }
                 button:focus-visible, .external:focus-visible {
@@ -159,17 +162,26 @@
                     .panel { inset: 0; width: 100vw; border-left: 0; border-right: 0; border-radius: 0; }
                     .toolbar { padding-top: max(9px, env(safe-area-inset-top)); }
                 }
+                @media (max-width: 380px) {
+                    .brand-wordmark { display: none; }
+                }
                 @media (prefers-reduced-motion: reduce) { .panel { animation: none; } }
             </style>
             <aside class="panel" aria-label="Schwebende Brickmerge-Seitenleiste">
                 <div class="toolbar">
-                    <p class="brand">Brickmerge</p>
-                    <a class="external" target="_blank" rel="noopener noreferrer">Im Tab öffnen</a>
-                    <button class="close" type="button" aria-label="Seitenleiste schließen">&times;</button>
+                    <p class="brand"><img class="brand-logo" src="${chrome.runtime.getURL('icons/icon32.png')}" alt=""><span class="brand-wordmark">Brickmerge</span></p>
                     <form class="search">
                         <input class="query" type="search" aria-label="Setnummer oder Suchbegriff" maxlength="100">
-                        <button class="submit" type="submit">Suchen</button>
+                        <button class="submit" type="submit" title="Suchen" aria-label="Brickmerge-Suche starten">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.2"></circle><path d="m16 16 5 5"></path></svg>
+                        </button>
                     </form>
+                    <a class="external" target="_blank" rel="noopener noreferrer" title="In neuem Tab öffnen" aria-label="In neuem Tab öffnen">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"></path><path d="m20 4-9 9"></path><path d="M19 14v5H5V5h5"></path></svg>
+                    </a>
+                    <button class="close" type="button" title="Seitenleiste schließen" aria-label="Seitenleiste schließen">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+                    </button>
                 </div>
                 <div class="frame-wrap">
                     <div class="loading" aria-live="polite">Brickmerge wird geladen …</div>
