@@ -1,5 +1,9 @@
 # getdata Worker
 
+Dieses Verzeichnis ist die einzige aktive Quelle für den `getdata`-Worker und
+wird aus dem Brickmerge-Repository deployt. Ältere Einzelkopien liegen nur noch
+unter `Brickmerge/Archiv` und werden nicht mehr geändert.
+
 Neutral benannter Cloudflare Worker für die Datenabfragen der Chrome-Extension.
 Der separate Worker `ebay-price-api` enthält ausschließlich die eBay-Logik.
 Die eBay-Routen nutzen ihn über eine interne Service-Bindung; Secret-Werte
