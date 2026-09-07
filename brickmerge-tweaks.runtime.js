@@ -535,7 +535,7 @@ globalThis.BM_buildMinifigCrosswalk = (rebrickableEntries, brickLinkItems) => {
 
 globalThis.BM_parseBrickmergeDetailLines = values => {
     const allowedLabels = [
-        'Teile', 'Minifiguren', 'Setgewicht', 'OVP-Maße', 'Release',
+        'Teile', 'Minifiguren', 'Setgewicht', 'Box-Maße', 'Release',
         'UVP', 'bisheriger Bestpreis', 'akt. brickmerge Preis', 'POV'
     ];
     const fields = [];
@@ -6578,14 +6578,14 @@ globalThis.BM_isFranceEnabled = settings =>
                 const details = Array.from(
                     document.querySelectorAll('.content.setdetails p')
                 ).find(paragraph =>
-                    /OVP-Maße\s*:/i.test(paragraph.textContent || '') &&
+                    /Box-Maße\s*:/i.test(paragraph.textContent || '') &&
                     /Setgewicht\s*:/i.test(paragraph.textContent || '')
                 );
                 if (!details || details.querySelector('.bm-package-dimensions-link')) return;
 
                 const text = (details.textContent || '').replace(/\s+/g, ' ');
                 const dimensionsMatch = text.match(
-                    /OVP-Maße\s*:\s*([\d.,]+)\s*[x×]\s*([\d.,]+)\s*[x×]\s*([\d.,]+)\s*cm/i
+                    /Box-Maße\s*:\s*([\d.,]+)\s*[x×]\s*([\d.,]+)\s*[x×]\s*([\d.,]+)\s*cm/i
                 );
                 const weightMatch = text.match(
                     /Setgewicht\s*:\s*[≈~]?\s*([\d.,]+)\s*(kg|g)\b/i
@@ -6644,7 +6644,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     'i'
                 );
 
-                const line = findDetailsLineRange(details, /OVP-Maße\s*:/i);
+                const line = findDetailsLineRange(details, /Box-Maße\s*:/i);
                 if (!line || !dimensionTextPattern.test(line.text)) return;
 
                 const link = createDetailsLineLink(

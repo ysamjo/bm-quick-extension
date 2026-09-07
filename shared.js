@@ -401,7 +401,7 @@ globalThis.BM_buildMinifigCrosswalk = (rebrickableEntries, brickLinkItems) => {
 
 globalThis.BM_parseBrickmergeDetailLines = values => {
     const allowedLabels = [
-        'Teile', 'Minifiguren', 'Setgewicht', 'OVP-Maße', 'Release',
+        'Teile', 'Minifiguren', 'Setgewicht', 'Box-Maße', 'Release',
         'UVP', 'bisheriger Bestpreis', 'akt. brickmerge Preis', 'POV'
     ];
     const fields = [];
