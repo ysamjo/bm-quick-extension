@@ -4824,7 +4824,55 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         );
         link.appendChild(line.range.extractContents());
         line.range.insertNode(link);
+
+        if (details.querySelector('.bm-volume-line')) return;
+        const volumeLiters = width * length * height / 1000;
+        if (!Number.isFinite(volumeLiters) || volumeLiters <= 0) return;
+        const bestPrice = readBrickmergeBestPriceFromDom();
+        const volumeLine = document.createElement('span');
+        volumeLine.className = 'bm-volume-line bm-detail-line-link';
+        volumeLine.textContent = `Volumen: ${formatVolumeLiters(volumeLiters)} L` +
+            (bestPrice === null
+                ? ''
+                : ` · ${formatEuroPerLiter(bestPrice, volumeLiters)} €/L`);
+        volumeLine.title = bestPrice === null
+            ? 'Volumen aus Box-Maße berechnet'
+            : `Volumen aus Box-Maße berechnet, €/Liter aus Brickmerge-Bestpreis`;
+        const lineBreak = document.createElement('br');
+        link.parentNode?.insertBefore(lineBreak, link.nextSibling);
+        lineBreak.after(volumeLine);
     }
+
+    function readBrickmergeBestPriceFromDom() {
+        const prices = Array.from(document.querySelectorAll(
+            '#offerlist .medium-4.small-9.columns.pricerow' +
+            ':not([data-bm-marketplace="true"])'
+        )).filter(priceRow =>
+            !priceRow.closest('#soldOut') &&
+            priceRow.dataset.bmSoldOut !== 'true'
+        ).map(priceRow => {
+            const priceSpan = priceRow.querySelector('span.price');
+            return priceSpan ? getBaseOfferPrice(priceSpan) : null;
+        }).filter(price => Number.isFinite(price) && price > 0);
+        return prices.length > 0 ? Math.min(...prices) : null;
+    }
+    __name(readBrickmergeBestPriceFromDom, "readBrickmergeBestPriceFromDom");
+
+    function formatVolumeLiters(value) {
+        if (value >= 100) return Math.round(value).toString();
+        if (value >= 10) return value.toFixed(1).replace(/\.0$/, '');
+        return value.toFixed(2).replace(/\.?0+$/, '');
+    }
+    __name(formatVolumeLiters, "formatVolumeLiters");
+
+    function formatEuroPerLiter(price, volumeLiters) {
+        if (!Number.isFinite(price) || !Number.isFinite(volumeLiters) ||
+            volumeLiters <= 0) return '';
+        const perLiter = price / volumeLiters;
+        return perLiter.toFixed(2).replace(/\.00$/, '.--')
+            .replace(/(\.\d)0$/, '$1');
+    }
+    __name(formatEuroPerLiter, "formatEuroPerLiter");
 
     function compactSetFooter() {
         const footer = document.getElementById('footer');
