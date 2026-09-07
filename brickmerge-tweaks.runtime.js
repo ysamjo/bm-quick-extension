@@ -5725,6 +5725,12 @@ globalThis.BM_isFranceEnabled = settings =>
             // überführt: links Bild/Chart und direkt darunter die Offerlist, rechts
             // Produktdaten, EAN, Bauanleitungen und Einzelteilelisten.
             function setupDesktopDetailGrid() {
+                // Die normale Brickmerge-Seite soll ihre eigene Desktop-Struktur
+                // behalten. Der Umbau ist nur für einen eingebetteten Sidepanel-Frame
+                // vorgesehen; dort greifen die nachfolgenden Frame-Regeln separat.
+                if (!document.documentElement?.classList.contains('bm-sidepanel-frame')) {
+                    return;
+                }
                 if (!window.matchMedia('(min-width: 1025px)').matches) return;
 
                 const container = document.querySelector('.content.setdetails');
@@ -5802,6 +5808,9 @@ globalThis.BM_isFranceEnabled = settings =>
             // Preisdiagramm. Die zusätzlichen Bilder beginnen links direkt unter dem
             // großen Produktbild und beeinflussen die Offerlist-Höhe nicht.
             function setupDesktopOfferGallery() {
+                if (!document.documentElement?.classList.contains('bm-sidepanel-frame')) {
+                    return;
+                }
                 if (!window.matchMedia('(min-width: 1025px)').matches) return;
 
                 const offerList = document.getElementById('offerlist');
@@ -6216,6 +6225,9 @@ globalThis.BM_isFranceEnabled = settings =>
             // Die Anleitungen stehen auf Desktop oberhalb der Einzelteilelisten.
             // Die Originale bleiben für die Mobilansicht erhalten.
             function setupDesktopSidebarInstructions() {
+                if (!document.documentElement?.classList.contains('bm-sidepanel-frame')) {
+                    return;
+                }
                 const offerColumn = document.getElementById('ol1st');
                 const sideColumn = document.getElementById('ol2nd');
                 if (!offerColumn || !sideColumn || sideColumn.querySelector('.bm-sidebar-instructions')) {
@@ -6300,6 +6312,9 @@ globalThis.BM_isFranceEnabled = settings =>
             // Die Einzelteilelinks werden auf Desktop ebenfalls in der rechten Spalte
             // angezeigt. Auf kleinen Bildschirmen bleibt der Originalblock erhalten.
             function setupDesktopSidebarParts() {
+                if (!document.documentElement?.classList.contains('bm-sidepanel-frame')) {
+                    return;
+                }
                 const offerColumn = document.getElementById('ol1st');
                 const sideColumn = document.getElementById('ol2nd');
                 if (!offerColumn || !sideColumn || sideColumn.querySelector('.bm-sidebar-parts')) {
