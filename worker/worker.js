@@ -373,17 +373,28 @@ function dedupeByListingIdOrUrl(listings) {
   return result;
 }
 __name(dedupeByListingIdOrUrl, "dedupeByListingIdOrUrl");
-function isRelevantLegoListing(title, description, setNumber) {
+const MINIFIGURE_TITLE_SIGNAL_PATTERN =
+  /\b(?:minifig(?:ur(?:e|en)?|ure?s?)|figuren?)\b/i;
+function hasMinifigureSignalNotInOfficialTitle(title, officialSetTitle) {
+  const titleText = normalizedText(title);
+  const officialText = normalizedText(officialSetTitle);
+  if (!titleText || !officialText) return false;
+  if (!MINIFIGURE_TITLE_SIGNAL_PATTERN.test(titleText)) return false;
+  return !MINIFIGURE_TITLE_SIGNAL_PATTERN.test(officialText);
+}
+__name(hasMinifigureSignalNotInOfficialTitle, "hasMinifigureSignalNotInOfficialTitle");
+function isRelevantLegoListing(title, description, setNumber, officialSetTitle = null) {
   const titleText = normalizedText(title);
   const descriptionText = normalizedText(description);
   if (!titleText || !setNumber) return false;
   if (!isCompleteEbaySetTitle(titleText, setNumber)) return false;
   if (hasIncompleteSetSignal(titleText, descriptionText)) return false;
   if (hasMissingMinifigureSignal(`${titleText} ${descriptionText}`)) return false;
+  if (hasMinifigureSignalNotInOfficialTitle(titleText, officialSetTitle)) return false;
   return true;
 }
 __name(isRelevantLegoListing, "isRelevantLegoListing");
-function normalizeVintedItems(rawItems, setNumber) {
+function normalizeVintedItems(rawItems, setNumber, officialSetTitle = null) {
   if (!Array.isArray(rawItems)) return [];
   return rawItems.map((item) => {
     if (!item || typeof item !== "object") return null;
@@ -391,7 +402,7 @@ function normalizeVintedItems(rawItems, setNumber) {
       item.title ?? item.name ?? item.brandTitle ?? item.item_title ?? item.catalogTitle
     );
     const description = normalizedText(item.description ?? item.item_description ?? "");
-    if (!isRelevantLegoListing(title, description, setNumber)) return null;
+    if (!isRelevantLegoListing(title, description, setNumber, officialSetTitle)) return null;
     const price = parseListingPrice(item.totalPrice ?? item.total_item_price ?? item.price);
     if (price === null) return null;
     const total = computeTotalCost(item) ?? price;
@@ -426,7 +437,7 @@ function normalizeVintedItems(rawItems, setNumber) {
   }).filter(Boolean);
 }
 __name(normalizeVintedItems, "normalizeVintedItems");
-function normalizeLeboncoinItems(rawItems, setNumber) {
+function normalizeLeboncoinItems(rawItems, setNumber, officialSetTitle = null) {
   if (!Array.isArray(rawItems)) return [];
   return rawItems.map((item) => {
     if (!item || typeof item !== "object") return null;
@@ -438,7 +449,7 @@ function normalizeLeboncoinItems(rawItems, setNumber) {
       item.attributes?.games_and_toys_brand ?? item.brand ?? item.brandName ?? ""
     );
     if (!/\blego\b/i.test(title) && !/^lego$/i.test(brand)) return null;
-    if (!isRelevantLegoListing(title, description, setNumber)) return null;
+    if (!isRelevantLegoListing(title, description, setNumber, officialSetTitle)) return null;
     const frenchAccessoryPattern = /\b(?:support\s+mural|bo[iî]te\s+(?:lego\s+)?vide|bo[iî]te\s+seule|notice|manuel|instructions?|sans\s+(?:figurines?|pi[eè]ces?)|pi[eè]ces?\s+d[eé]tach[eé]es?|vitrine|[eé]clairage)\b/i;
     if (frenchAccessoryPattern.test(`${title} ${description}`)) return null;
     const condition = item.attributes ? extractLeboncoinCondition(item.attributes) : null;
@@ -493,7 +504,7 @@ function normalizeLeboncoinItems(rawItems, setNumber) {
   }).filter(Boolean);
 }
 __name(normalizeLeboncoinItems, "normalizeLeboncoinItems");
-function normalizeKleinanzeigenApifyItems(rawItems, setNumber) {
+function normalizeKleinanzeigenApifyItems(rawItems, setNumber, officialSetTitle = null) {
   if (!Array.isArray(rawItems)) return [];
   return rawItems.map((item) => {
     if (!item || typeof item !== "object") return null;
@@ -501,7 +512,7 @@ function normalizeKleinanzeigenApifyItems(rawItems, setNumber) {
     const description = normalizedText(item.description ?? item.body ?? item.product?.description ?? "");
     const condition = normalizedText(item.condition ?? item.zustand ?? item.itemCondition ?? item.offer?.condition ?? item.product?.attributes?.Zustand ?? item.attributes?.listing_attributes?.Zustand ?? item.specifications?.Zustand ?? "");
     const brand = normalizedText(item.brand ?? item.manufacturer ?? item.marke ?? "");
-    if ((!/\blego\b/i.test(title) && !/^lego$/i.test(brand)) || !isRelevantLegoListing(title, description, setNumber)) return null;
+    if ((!/\blego\b/i.test(title) && !/^lego$/i.test(brand)) || !isRelevantLegoListing(title, description, setNumber, officialSetTitle)) return null;
     // Die Kleinanzeigen-Such-URL enthält zwar den Neu-Filter, der Apify-Actor
     // liefert aber teils trotzdem gebrauchte Anzeigen zurück. Nur ein explizit
     // als "Neu" gekennzeichneter Zustand darf in die Offerlist gelangen.
@@ -548,7 +559,7 @@ function parseGoogleShoppingDelivery(value) {
   return parseListingPrice(text);
 }
 __name(parseGoogleShoppingDelivery, "parseGoogleShoppingDelivery");
-function normalizeGoogleShoppingResults(payload, setNumber, best = null) {
+function normalizeGoogleShoppingResults(payload, setNumber, best = null, officialSetTitle = null) {
   const items = Array.isArray(payload?.shopping_results)
     ? payload.shopping_results
     : [];
@@ -556,7 +567,7 @@ function normalizeGoogleShoppingResults(payload, setNumber, best = null) {
     if (!item || typeof item !== "object") return null;
     const title = normalizedText(item.title ?? item.name ?? "");
     if (!/\blego\b/i.test(title) ||
-      !isRelevantLegoListing(title, item.snippet ?? "", setNumber)) return null;
+      !isRelevantLegoListing(title, item.snippet ?? "", setNumber, officialSetTitle)) return null;
     if (normalizedText(item.second_hand_condition)) return null;
     if (/[£$]|\bCHF\b/i.test(normalizedText(item.price ?? ""))) return null;
     const itemPrice = parseListingPrice(item.extracted_price ?? item.price);
@@ -598,13 +609,13 @@ function normalizeGoogleShoppingResults(payload, setNumber, best = null) {
   return filtered.offers.sort((left, right) => left.total - right.total);
 }
 __name(normalizeGoogleShoppingResults, "normalizeGoogleShoppingResults");
-function normalizeKlarnaItems(rawItems, setNumber) {
+function normalizeKlarnaItems(rawItems, setNumber, officialSetTitle = null) {
   if (!Array.isArray(rawItems)) return [];
   const offers = [];
   for (const item of rawItems) {
     if (!item || typeof item !== "object") continue;
     const title = normalizedText(item.name ?? item.productTitle ?? item.title ?? `LEGO ${setNumber}`);
-    if (!/\blego\b/i.test(title) || !isRelevantLegoListing(title, item.description ?? "", setNumber)) continue;
+    if (!/\blego\b/i.test(title) || !isRelevantLegoListing(title, item.description ?? "", setNumber, officialSetTitle)) continue;
     const productUrl = absolutizeUrl(
       item.productUrl ?? item.product_url ?? item.url,
       "https://www.klarna.com/de/"
@@ -663,14 +674,14 @@ function normalizeKlarnaItems(rawItems, setNumber) {
   return offers.sort((left, right) => left.total - right.total);
 }
 __name(normalizeKlarnaItems, "normalizeKlarnaItems");
-function normalizeStockxItems(rawItems, setNumber) {
+function normalizeStockxItems(rawItems, setNumber, officialSetTitle = null) {
   if (!Array.isArray(rawItems)) return [];
   return rawItems.map((item) => {
     if (!item || typeof item !== "object") return null;
     const title = normalizedText(item.title ?? item.name ?? item.model ?? "");
     const description = normalizedText(item.description ?? "");
     if (!/\blego\b/i.test(title) ||
-      !isRelevantLegoListing(title, description, setNumber)) return null;
+      !isRelevantLegoListing(title, description, setNumber, officialSetTitle)) return null;
     const nativePrice = parseListingPrice(
       item.lowestAsk ?? item.lowest_ask ?? item.market?.lowestAsk
     );
@@ -1793,6 +1804,7 @@ async function handleKleinanzeigenCached(request, url, env, ctx) {
 async function handleGoogleShopping(request, url, env, ctx) {
   const setNumber = cleanSetNumber(url.searchParams.get("set"));
   const ean = cleanDigits(url.searchParams.get("ean"), 8, 14);
+  const officialSetTitle = cleanSetTitle(url.searchParams.get("setTitle"));
   if (!setNumber || !ean || !/^\d{8}$|^\d{12,14}$/.test(ean)) {
     return json2({ error: "Gültige LEGO-Setnummer und EAN sind erforderlich." }, 400);
   }
@@ -1803,7 +1815,7 @@ async function handleGoogleShopping(request, url, env, ctx) {
     }, 503);
   }
   return cachedUpstream(request, env, ctx, {
-    cacheKey: `google-shopping:v1:${setNumber}:${ean}`,
+    cacheKey: `google-shopping:v1:${setNumber}:${ean}:${officialSetTitle ? "t" : "x"}`,
     ttlSeconds: TTL.googleShopping,
     rateLimitRoute: "google-shopping",
     cacheOnly: url.searchParams.get("cache") === "only",
@@ -1830,7 +1842,7 @@ async function handleGoogleShopping(request, url, env, ctx) {
       // Der Preisvergleichswert beeinflusst nicht den externen Suchlauf. So
       // bleibt derselbe Google-Cache auch bei wechselnden Brickmerge-Preisen
       // wiederverwendbar.
-      const offers = normalizeGoogleShoppingResults(payload, setNumber);
+      const offers = normalizeGoogleShoppingResults(payload, setNumber, null, officialSetTitle);
       const searchUrl = String(payload?.search_metadata?.google_url ||
         `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(`LEGO ${setNumber}`)}`);
       return json2({
@@ -2546,6 +2558,13 @@ function cleanCatalogItem(value) {
   const normalized = String(value || "").trim();
   return /^[A-Za-z0-9._-]{1,80}$/.test(normalized) ? normalized : "";
 }
+function cleanSetTitle(value) {
+  const normalized = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+  return normalized || "";
+}
 function normalizeMoney(value) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 && number <= 1e4 ? Math.round(number * 100) / 100 : null;
@@ -2674,9 +2693,9 @@ function json2(body, status = 200, extraHeaders = {}) {
     headers: { ...JSON_HEADERS2, "cache-control": "no-store", ...extraHeaders }
   });
 }
-async function normalizeMarketplaceItems(marketplace, rawItems, setNumber, env) {
+async function normalizeMarketplaceItems(marketplace, rawItems, setNumber, env, officialSetTitle = null) {
   const config = APIFY_CONFIG[marketplace];
-  return config.normalize(rawItems, setNumber);
+  return config.normalize(rawItems, setNumber, officialSetTitle);
 }
 __name(normalizeMarketplaceItems, "normalizeMarketplaceItems");
 function buildApifyMarketplaceResult(marketplace, setNumber, offers, best, runId = null) {
@@ -2757,6 +2776,7 @@ async function startApifyMarketplaceJob(request, url, env, marketplace) {
   const config = APIFY_CONFIG[marketplace];
   const setNumber = cleanSetNumber(url.searchParams.get("set"));
   const ean = cleanDigits(url.searchParams.get("ean"), 8, 14);
+  const officialSetTitle = cleanSetTitle(url.searchParams.get("setTitle"));
   if (!config || !setNumber || marketplace === "klarna" && !/^\d{8}$|^\d{12,14}$/.test(ean)) {
     return json2({ error: "Ungültige Marktplatz-, Setnummer- oder EAN-Angabe." }, 400);
   }
@@ -2769,10 +2789,15 @@ async function startApifyMarketplaceJob(request, url, env, marketplace) {
     if (rawResultCacheKey) {
       const cachedRawResult = await env.BM_CACHE.get(rawResultCacheKey, "json");
       if (Array.isArray(cachedRawResult?.offers)) {
+        const filteredOffers = officialSetTitle
+          ? cachedRawResult.offers.filter((offer) =>
+            !hasMinifigureSignalNotInOfficialTitle(offer?.title, officialSetTitle)
+          )
+          : cachedRawResult.offers;
         return json2(buildApifyMarketplaceResult(
           marketplace,
           setNumber,
-          cachedRawResult.offers,
+          filteredOffers,
           best,
           cachedRawResult.runId || null
         ), 200, { "x-worker-cache": "HIT" });
@@ -2811,6 +2836,7 @@ async function startApifyMarketplaceJob(request, url, env, marketplace) {
       type: "marketplace", marketplace, setNumber, best, actorId: config.actorId,
       input, resultCacheKey, rawResultCacheKey, runId: started.runId,
       status: started.status,
+      officialSetTitle: officialSetTitle || null,
       createdAt: Date.now()
     }), { expirationTtl: APIFY_JOB_TTL_SECONDS });
     return json2({ pending: true, jobId, statusUrl: `/apify/status?job=${encodeURIComponent(jobId)}`, pollAfterMs: 1500 }, 202);
@@ -2894,7 +2920,8 @@ async function handleApifyJobStatus(request, url, env) {
         job.marketplace,
         items,
         job.setNumber,
-        env
+        env,
+        job.officialSetTitle || null
       );
       const deduped = dedupeByListingIdOrUrl(normalized);
       result = buildApifyMarketplaceResult(

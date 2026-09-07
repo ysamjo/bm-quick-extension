@@ -6586,6 +6586,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             }).filter(Boolean);
 
             void getWorkerClientId().then(workerClientId => {
+                const setTitle = getSetTitle();
                 const ean = document.querySelector(
                     '.bm-ean-line-link[data-ean]'
                 )?.dataset.ean || Array.from(
@@ -6729,7 +6730,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         'google-shopping',
                         makeApiCacheKey(
                             'google-shopping-serpapi-v1',
-                            `${ean}:${setNumber}:${ebayReferenceCachePart}`
+                            `${ean}:${setNumber}:${ebayReferenceCachePart}:${setTitle ? 't' : 'x'}`
                         ),
                         KLAZ_CLIENT_CACHE_TTL,
                         {
@@ -6737,6 +6738,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                             url:
                                 `${BM_WORKER_URL}/google-shopping?ean=${encodeURIComponent(ean)}` +
                                 `&set=${encodeURIComponent(setNumber)}` +
+                                (setTitle
+                                    ? `&setTitle=${encodeURIComponent(setTitle)}`
+                                    : '') +
                                 (ebayReferencePrice === null
                                     ? ''
                                     : `&best=${encodeURIComponent(ebayReferenceCachePart)}`),
@@ -7016,6 +7020,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     const requestUrl = new URL(`${BM_WORKER_URL}/${source}`);
                     requestUrl.searchParams.set('set', setNumber);
                     requestUrl.searchParams.set('cache', 'only');
+                    if (setTitle) {
+                        requestUrl.searchParams.set('setTitle', setTitle);
+                    }
                     if (brickmergeBestPrice !== null) {
                         requestUrl.searchParams.set('best', brickmergeBestPrice.toFixed(2));
                     }
@@ -7053,6 +7060,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     const requestUrl = new URL(`${BM_WORKER_URL}/idealo`);
                     requestUrl.searchParams.set('ean', ean);
                     requestUrl.searchParams.set('cache', 'only');
+                    if (setTitle) {
+                        requestUrl.searchParams.set('setTitle', setTitle);
+                    }
                     if (brickmergeBestPrice !== null) {
                         requestUrl.searchParams.set('best', brickmergeBestPrice.toFixed(2));
                     }
@@ -7291,6 +7301,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         `${BM_WORKER_URL}/kleinanzeigen`
                     );
                     kleinanzeigenUrl.searchParams.set('set', setNumber);
+                    if (setTitle) {
+                        kleinanzeigenUrl.searchParams.set('setTitle', setTitle);
+                    }
                     if (brickmergeBestPrice !== null) {
                         kleinanzeigenUrl.searchParams.set(
                             'best',
@@ -12419,6 +12432,30 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         return globalThis.BM_getBrickmergeSetNumber?.(window.location.href) ||
             window.location.pathname.match(/\/(\d{4,7})-\d+_[^/]+\/?$/)?.[1] ||
             null;
+    }
+
+    function getSetTitle() {
+        try {
+            const heading = document.querySelector(
+                '.content.setdetails h1, #productTitle, h1#title'
+            );
+            const headingText = String(heading?.textContent || '').replace(/\s+/g, ' ').trim();
+            if (headingText) return headingText.slice(0, 200);
+            const jsonLd = Array.from(
+                document.querySelectorAll('script[type="application/ld+json"]')
+            ).map(script => {
+                    try { return JSON.parse(script.textContent); } catch { return null; }
+                }).find(payload => {
+                    const types = Array.isArray(payload?.['@type'])
+                        ? payload['@type']
+                        : [payload?.['@type']];
+                    return types.includes('Product');
+                });
+            const ldName = String(jsonLd?.name || '').replace(/\s+/g, ' ').trim();
+            return ldName ? ldName.slice(0, 200) : '';
+        } catch {
+            return '';
+        }
     }
 
     function today() {

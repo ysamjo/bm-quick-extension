@@ -1132,6 +1132,136 @@ test('BrickLink-Minifiguren werden mit Namen und Menge strukturiert extrahiert',
     }
   });
 
+  test('Google-Shopping verwirft Angebote mit "Figur", wenn der offizielle Set-Titel keine Minifigur nennt', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async input => {
+      void input;
+      return Response.json({
+        search_metadata: {},
+        shopping_results: [
+          {
+            product_id: 'fig1',
+            title: 'LEGO 71426 mit 11 Figuren komplett',
+            price: '49,99 €',
+            extracted_price: 49.99,
+            delivery: 'Kostenlose Lieferung',
+            source: 'Deutscher H',
+            product_link: 'https://www.google.com/shopping/product/fig1'
+          },
+          {
+            product_id: 'fig2',
+            title: 'LEGO 71426 Piranha-Pflanze',
+            price: '52,99 €',
+            extracted_price: 52.99,
+            delivery: 'Kostenlose Lieferung',
+            source: 'Deutscher H',
+            product_link: 'https://www.google.com/shopping/product/fig2'
+          }
+        ]
+      });
+    };
+    try {
+      const response = await worker.fetch(
+        new Request(
+          'https://getdata.example/google-shopping?set=71426&ean=5702017424965' +
+          '&setTitle=LEGO%20Piranha-Pflanze%2071426'
+        ),
+        {
+          SERPAPI_API_KEY: 'test-secret',
+          BM_CACHE: { async get() { return null; }, async put() {} }
+        },
+        context
+      );
+      assert.equal(response.status, 200);
+      const body = await response.json();
+      assert.equal(body.found, true);
+      assert.equal(body.cheapest.id, 'fig2');
+      assert.equal(
+        body.offers.every(offer => !/figur/i.test(offer.title)),
+        true
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('Google-Shopping behält "Figur" im Titel, wenn der offizielle Set-Titel sie erwähnt', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async input => {
+      void input;
+      return Response.json({
+        search_metadata: {},
+        shopping_results: [
+          {
+            product_id: 'min1',
+            title: 'LEGO 10333 Barad-dûr mit 11 Minifiguren Neu OVP',
+            price: '499,00 €',
+            extracted_price: 499,
+            delivery: 'Kostenlose Lieferung',
+            source: 'Deutscher H',
+            product_link: 'https://www.google.com/shopping/product/min1'
+          }
+        ]
+      });
+    };
+    try {
+      const response = await worker.fetch(
+        new Request(
+          'https://getdata.example/google-shopping?set=10333&ean=5702017424965' +
+          '&setTitle=LEGO%20Icons%20Barad-d%C3%BBr%20mit%2011%20Minifiguren'
+        ),
+        {
+          SERPAPI_API_KEY: 'test-secret',
+          BM_CACHE: { async get() { return null; }, async put() {} }
+        },
+        context
+      );
+      assert.equal(response.status, 200);
+      const body = await response.json();
+      assert.equal(body.found, true);
+      assert.equal(body.cheapest.id, 'min1');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('Google-Shopping verlässt sich ohne setTitle auf den bestehenden Filter', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async input => {
+      void input;
+      return Response.json({
+        search_metadata: {},
+        shopping_results: [
+          {
+            product_id: 'open1',
+            title: 'LEGO 71426 Piranha-Pflanze',
+            price: '52,99 €',
+            extracted_price: 52.99,
+            delivery: 'Kostenlose Lieferung',
+            source: 'Deutscher H',
+            product_link: 'https://www.google.com/shopping/product/open1'
+          }
+        ]
+      });
+    };
+    try {
+      const response = await worker.fetch(
+        new Request('https://getdata.example/google-shopping?set=71426&ean=5702017424965'),
+        {
+          SERPAPI_API_KEY: 'test-secret',
+          BM_CACHE: { async get() { return null; }, async put() {} }
+        },
+        context
+      );
+      assert.equal(response.status, 200);
+      const body = await response.json();
+      assert.equal(body.found, true);
+      assert.equal(body.cheapest.id, 'open1');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test('Klarna normalisiert EAN-basierte Händlerangebote inklusive Shopnamen', () => {
     const result = __test.normalizeKlarnaItems([
       {
