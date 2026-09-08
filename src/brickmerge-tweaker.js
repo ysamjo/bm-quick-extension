@@ -1596,6 +1596,38 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             padding: 0.1rem 0.35rem;
             border-radius: 3px;
         }
+        .bm-copy-btn {
+            cursor: pointer;
+            margin-left: 0.28em;
+            padding: 0;
+            width: 13px;
+            height: 13px;
+            border: 0;
+            background: none !important;
+            color: inherit;
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 0;
+            vertical-align: middle;
+            position: static;
+            transform: none;
+            opacity: 0.82;
+            box-sizing: border-box;
+            transition: opacity 0.15s ease, color 0.15s ease;
+        }
+        .bm-copy-btn:hover,
+        .bm-copy-btn:focus-visible {
+            opacity: 1;
+            outline: none;
+        }
+        .bm-copy-btn svg {
+            display: block;
+            width: 13px;
+            height: 13px;
+            flex-shrink: 0;
+        }
         .bm-price-basis-toggle {
             cursor: pointer;
             margin-left: 0.28em;
@@ -1634,6 +1666,24 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             width: 13px;
             height: 13px;
             flex-shrink: 0;
+        }
+        h1 .bm-copy-btn {
+            width: 18px;
+            height: 18px;
+            margin-left: 0.35em;
+        }
+        h1 .bm-copy-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+        h1 .bm-price-basis-toggle {
+            width: 18px;
+            height: 18px;
+            margin-left: 0.35em;
+        }
+        h1 .bm-price-basis-toggle svg {
+            width: 18px;
+            height: 18px;
         }
         .bm-offer-row-highlight {
             animation: bm-highlight-flash 1.6s ease-out;
@@ -5432,18 +5482,20 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
     function getBestOfferPrices() {
         const offerlist = document.getElementById('offerlist');
+        const fallbackRetailer = readBrickmergeBestPriceFromDom();
         if (!offerlist) {
             return {
-                retailerBest: null,
+                retailerBest: fallbackRetailer,
                 marketplaceBest: null,
-                overallBest: null,
+                overallBest: fallbackRetailer,
                 isMarketplaceCheaper: false
             };
         }
 
         const retailerPriceRows = Array.from(offerlist.querySelectorAll(
-            '.medium-4.small-9.columns.pricerow:not([data-bm-marketplace="true"])'
+            '.pricerow:not([data-bm-marketplace="true"])'
         )).filter(priceRow =>
+            priceRow.querySelector('span.price') &&
             !priceRow.closest('#soldOut') &&
             priceRow.dataset.bmSoldOut !== 'true'
         );
@@ -5451,11 +5503,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             const priceSpan = priceRow.querySelector('span.price');
             return getOfferRowPrice(priceRow, priceSpan);
         }).filter(price => Number.isFinite(price) && price > 0);
-        const retailerBest = retailerPrices.length > 0 ? Math.min(...retailerPrices) : null;
+        const retailerBest = retailerPrices.length > 0
+            ? Math.min(...retailerPrices)
+            : fallbackRetailer;
 
         const marketplaceRows = Array.from(offerlist.querySelectorAll(
-            '.medium-4.small-9.columns.pricerow[data-bm-marketplace="true"]'
+            '.pricerow[data-bm-marketplace="true"]'
         )).filter(priceRow =>
+            priceRow.querySelector('span.price') &&
             !priceRow.closest('#soldOut') &&
             priceRow.dataset.bmSoldOut !== 'true'
         );
@@ -5528,18 +5583,83 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         return prices.overallBest ?? prices.retailerBest;
     }
 
+    function createNameCopyButton(textGetter, title = 'Setnamen kopieren') {
+        const copyBtn = document.createElement('span');
+        copyBtn.className = 'bm-copy-btn';
+        copyBtn.title = title;
+        copyBtn.setAttribute('role', 'button');
+        copyBtn.tabIndex = 0;
+        copyBtn.setAttribute('aria-label', title);
+        const normalSvg = `
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="currentColor" fill="none" stroke-width="1.1"/>
+                <rect x="6.5" y="0.5" width="6" height="9" rx="2" stroke="currentColor" fill="none" stroke-width="1.1" opacity="0.55"/>
+            </svg>`.trim();
+        const successSvg = `
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="#2eb866" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="#2eb866" fill="none" stroke-width="1.5"/>
+                <path d="M5 10 l2 2 4-4" stroke="#2eb866" stroke-width="1.5" fill="none"/>
+            </svg>`.trim();
+        copyBtn.innerHTML = normalSvg;
+        copyBtn.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const cleaned = textGetter();
+            if (typeof GM_setClipboard !== "undefined") {
+                GM_setClipboard(cleaned);
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(cleaned);
+            }
+            copyBtn.innerHTML = successSvg;
+            setTimeout(() => {
+                copyBtn.innerHTML = normalSvg;
+            }, 900);
+        });
+        copyBtn.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            copyBtn.click();
+        });
+        return copyBtn;
+    }
+
+    function ensureH1CopyButton(h1) {
+        if (!h1) return null;
+        let copyBtn = h1.querySelector('.bm-copy-btn');
+        if (copyBtn) return copyBtn;
+        copyBtn = createNameCopyButton(() => {
+            const clone = h1.cloneNode(true);
+            clone.querySelectorAll('.bm-copy-btn, .bm-price-basis-toggle').forEach(el => el.remove());
+            return clone.textContent
+                .replace(/[\u00AE\u2122]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }, 'Setnamen kopieren');
+        h1.appendChild(copyBtn);
+        return copyBtn;
+    }
+
     function syncGlobalPriceBasisToggle() {
-        const titleCopyBtn = document.querySelector(
-            '.content.setdetails .productprice .bm-copy-btn, h1 .bm-copy-btn'
+        const h1 = document.querySelector('.content.setdetails h1, h1');
+        let h1CopyBtn = h1?.querySelector('.bm-copy-btn');
+        if (h1 && !h1CopyBtn && BM_SETTINGS.copyAndMinifigures) {
+            h1CopyBtn = ensureH1CopyButton(h1);
+        }
+
+        const fallbackCopyBtn = document.querySelector(
+            '.content.setdetails .productprice .bm-copy-btn'
         );
-        const nameElement = titleCopyBtn?.parentElement ||
-            document.querySelector('.content.setdetails .productprice strong, .content.setdetails .productprice b, h1');
+        const fallbackTarget = fallbackCopyBtn?.parentElement ||
+            document.querySelector('.content.setdetails .productprice strong, .content.setdetails .productprice b');
+
+        const targetContainer = h1 || fallbackTarget;
+        const copyAnchor = (h1 && h1CopyBtn) ? h1CopyBtn : (fallbackCopyBtn || targetContainer?.querySelector('.bm-copy-btn'));
         let toggle = document.querySelector('.bm-price-basis-toggle');
 
         const prices = getBestOfferPrices();
         const hasAlternative = Boolean(prices.isMarketplaceCheaper);
 
-        if (!hasAlternative || !nameElement) {
+        if (!hasAlternative || !targetContainer) {
             toggle?.remove();
             return;
         }
@@ -5551,7 +5671,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             toggle.setAttribute('role', 'button');
             toggle.tabIndex = 0;
             toggle.innerHTML = `
-                <svg class="bm-price-basis-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <svg class="bm-price-basis-icon" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M4.5 12V4m0 0L2 6.5m2.5-2.5L7 6.5m4.5-2.5v8m0 0l2.5-2.5m-2.5 2.5L9 9.5"/>
                 </svg>
             `.trim();
@@ -5568,13 +5688,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 if (event.key !== 'Enter' && event.key !== ' ') return;
                 toggleHandler(event);
             });
-            if (titleCopyBtn && titleCopyBtn.parentNode === nameElement) {
-                titleCopyBtn.after(toggle);
-            } else {
-                nameElement.appendChild(toggle);
+        }
+
+        if (copyAnchor && copyAnchor.parentElement === targetContainer) {
+            if (copyAnchor.nextElementSibling !== toggle) {
+                copyAnchor.after(toggle);
             }
-        } else if (titleCopyBtn && toggle.previousElementSibling !== titleCopyBtn && titleCopyBtn.parentNode === nameElement) {
-            titleCopyBtn.after(toggle);
+        } else if (toggle.parentElement !== targetContainer) {
+            targetContainer.appendChild(toggle);
         }
 
         const currentBasis = mode === 'retailer' ? 'Händler-Bestpreis' : 'Echter Bestpreis (inkl. Marktplatz)';
@@ -5625,16 +5746,25 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
     function readBrickmergeBestPriceFromDom() {
         const prices = Array.from(document.querySelectorAll(
-            '#offerlist .medium-4.small-9.columns.pricerow' +
-            ':not([data-bm-marketplace="true"])'
+            '#offerlist .pricerow:not([data-bm-marketplace="true"])'
         )).filter(priceRow =>
+            priceRow.querySelector('span.price') &&
             !priceRow.closest('#soldOut') &&
             priceRow.dataset.bmSoldOut !== 'true'
         ).map(priceRow => {
             const priceSpan = priceRow.querySelector('span.price');
             return priceSpan ? getBaseOfferPrice(priceSpan) : null;
         }).filter(price => Number.isFinite(price) && price > 0);
-        return prices.length > 0 ? Math.min(...prices) : null;
+        if (prices.length > 0) return Math.min(...prices);
+
+        const topPriceEl = document.querySelector(
+            '.content.setdetails .topprice:not(.bm-overall-bestprice)'
+        );
+        if (topPriceEl) {
+            const parsed = parseEuroValue(topPriceEl.textContent);
+            if (Number.isFinite(parsed) && parsed > 0) return parsed;
+        }
+        return null;
     }
 
     function formatVolumeLiters(value) {
@@ -6360,7 +6490,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         secondaryIcon: icon("chatgpt.com")
                     },
                     { name: "Geizhals", url: `https://www.google.com/search?q=site%3Ageizhals.de+lego+${setNum}&btnI=1`, icon: icon("geizhals.at") },
-                    { name: "Mydealz", url: `https://www.mydealz.de/search?q=${encodeURIComponent(`lego ${setNum}`)}`, icon: icon("mydealz.de") },
+                    { name: "Mydealz", url: `https://www.mydealz.de/search?q=${encodeURIComponent(`"${setNum}"`)}`, icon: icon("mydealz.de") },
                     { id: "btn-google-shopping", name: "Google Shopping", url: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(`LEGO ${setNum}`)}`, icon: icon("shopping.google.com") },
                     { id: "btn-klarna", name: "Klarna", url: `https://www.klarna.com/de/shopping/?q=${encodeURIComponent(`LEGO ${setNum}`)}`, icon: icon("klarna.com") },
                     { name: "idealo DE", url: `https://www.google.com/search?q=site%3Aidealo.de+lego+${setNum}&btnI=1`, icon: icon("idealo.de") },
@@ -8928,10 +9058,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     if (setNum && BM_SETTINGS.copyAndMinifigures) {
         try {
             (function detailsNameCopyButton() {
-                document.querySelectorAll('h1 .bm-copy-btn').forEach(button => button.remove());
+                const h1 = document.querySelector('.content.setdetails h1, h1');
+                ensureH1CopyButton(h1);
 
                 const details = document.querySelector('.content.setdetails .productprice');
-                const pageTitle = document.querySelector('h1')?.textContent
+                const pageTitle = h1?.textContent
                     .replace(/[\u00AE\u2122]/g, '')
                     .replace(/\s+/g, ' ')
                     .trim() || '';
@@ -8947,45 +9078,17 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         !/Artikel-Nr\s*:|€/.test(text) &&
                         (!pageTitle || pageTitle.includes(text) || text.includes(pageTitle));
                 });
-                if (!nameElement || nameElement.querySelector('.bm-copy-btn')) return;
-
-                const copyBtn = document.createElement('span');
-                copyBtn.className = 'bm-copy-btn';
-                copyBtn.title = 'Setnamen kopieren';
-                copyBtn.setAttribute('role', 'button');
-                copyBtn.tabIndex = 0;
-                copyBtn.setAttribute('aria-label', 'Setnamen kopieren');
-                copyBtn.style.cssText = 'cursor:pointer;margin-left:0.18em;padding:0;width:13px;height:13px;border:0;background:none;color:inherit;user-select:none;display:inline-flex;align-items:center;justify-content:center;line-height:0;vertical-align:middle;position:static;transform:none;opacity:0.82;';
-                copyBtn.innerHTML = `
-            <svg viewBox="0 0 16 16" width="13" height="13" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="currentColor" fill="none" stroke-width="0.9"/>
-            <rect x="6.5" y="0.5" width="6" height="9" rx="2" stroke="currentColor" fill="none" stroke-width="0.9" opacity="0.55"/>
-            </svg>`;
-                copyBtn.addEventListener('click', event => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    const nameClone = nameElement.cloneNode(true);
-                    nameClone.querySelectorAll('.bm-copy-btn, .bm-price-basis-toggle').forEach(el => el.remove());
-                    const cleaned = nameClone.textContent
-                        .replace(/[\u00AE\u2122]/g, '')
-                        .replace(/\s+/g, ' ')
-                        .trim();
-                    if (typeof GM_setClipboard !== "undefined") {
-                        GM_setClipboard(cleaned);
-                    } else if (navigator.clipboard) {
-                        navigator.clipboard.writeText(cleaned);
-                    }
-                    copyBtn.innerHTML = `<svg viewBox="0 0 16 16" width="13" height="13" fill="#2eb866" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="#2eb866" fill="none" stroke-width="1.5"/><path d="M5 10 l2 2 4-4" stroke="#2eb866" stroke-width="1.5" fill="none"/></svg>`;
-                    setTimeout(() => {
-                        copyBtn.innerHTML = `<svg viewBox="0 0 16 16" width="13" height="13" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="3.5" width="9" height="10" rx="2" stroke="currentColor" fill="none" stroke-width="0.9"/><rect x="6.5" y="0.5" width="6" height="9" rx="2" stroke="currentColor" fill="none" stroke-width="0.9" opacity="0.55"/></svg>`;
-                    }, 900);
-                });
-                copyBtn.addEventListener('keydown', event => {
-                    if (event.key !== 'Enter' && event.key !== ' ') return;
-                    event.preventDefault();
-                    copyBtn.click();
-                });
-                nameElement.appendChild(copyBtn);
+                if (nameElement && !nameElement.querySelector('.bm-copy-btn')) {
+                    const copyBtn = createNameCopyButton(() => {
+                        const nameClone = nameElement.cloneNode(true);
+                        nameClone.querySelectorAll('.bm-copy-btn, .bm-price-basis-toggle').forEach(el => el.remove());
+                        return nameClone.textContent
+                            .replace(/[\u00AE\u2122]/g, '')
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                    }, 'Setnamen kopieren');
+                    nameElement.appendChild(copyBtn);
+                }
                 syncGlobalPriceBasisToggle();
             })();
         } catch (error) {
@@ -12055,6 +12158,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (!productPrice || !retailerTopPrice) {
             bestPriceLabel?.remove();
             bestPriceBox?.remove();
+            syncGlobalPriceBasisToggle();
             return;
         }
 
@@ -12078,6 +12182,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (!prices.isMarketplaceCheaper || !prices.marketplaceBest) {
             bestPriceLabel?.remove();
             bestPriceBox?.remove();
+            syncGlobalPriceBasisToggle();
             return;
         }
 
@@ -12170,6 +12275,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 }
             };
         }
+        syncGlobalPriceBasisToggle();
     }
 
     function syncMarketplaceDealBadge() {
@@ -12281,7 +12387,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     function injectMarketplaceOffers(offers) {
         const offerlist = document.getElementById('offerlist');
         const firstPriceRow = offerlist?.querySelector(
-            '.medium-4.small-9.columns.pricerow:not([data-bm-marketplace="true"])'
+            '.pricerow:not([data-bm-marketplace="true"])'
         );
         const parent = firstPriceRow?.closest('.row.collapse')?.parentElement;
         if (!offerlist || !parent) {

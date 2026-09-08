@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.41/);
+    assert.match(loaderSource, /@version\s+5\.6\.42/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.41/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.42/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -281,7 +281,7 @@ test('resources include a direct Mydealz search for the detected LEGO set', () =
     assert.match(tweakerSource, /name: "Mydealz"/);
     assert.match(
         tweakerSource,
-        /https:\/\/www\.mydealz\.de\/search\?q=\$\{encodeURIComponent\(`lego \$\{setNum\}`\)\}/
+        /https:\/\/www\.mydealz\.de\/search\?q=\$\{encodeURIComponent\(`"\$\{setNum\}"`\)\}/
     );
 });
 
@@ -900,6 +900,10 @@ test('calculation price basis defaults to overall best price and supports toggle
     assert.match(tweakerSource, /isMarketplaceCheaper/);
     assert.match(tweakerSource, /syncPriceBasisCalculations/);
     assert.match(tweakerSource, /function syncMarketplaceDealBadge/);
+    assert.match(tweakerSource, /function ensureH1CopyButton\(/);
+    assert.match(tweakerSource, /function createNameCopyButton\(/);
+    assert.match(tweakerSource, /h1 \.bm-copy-btn/);
+    assert.match(tweakerSource, /h1 \.bm-price-basis-toggle/);
 });
 
 test('all-time best difference calculation uses calculation price basis and removes green styling', () => {

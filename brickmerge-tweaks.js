@@ -2,7 +2,7 @@
 // @name         Brickmerge Tweaker
 // @namespace    https://brickmerge.de/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=brickmerge.de
-// @version      5.6.41
+// @version      5.6.42
 // @description  Brickmerge Tools für Desktop und Mobilgeräte mit gemeinsamem Marktplatz-Cache.
 // @match        https://www.brickmerge.de/*
 // @match        https://brickmerge.de/*
@@ -40,7 +40,7 @@
 (() => {
     'use strict';
 
-    const CACHE_KEY = "brickmerge-loader-runtime-v8";
+    const CACHE_KEY = "brickmerge-loader-runtime-v9";
     const MANIFEST_URL = "https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/package.json";
     const RUNTIME_URL = "https://raw.githubusercontent.com/ysamjo/bm-quick-extension/refs/heads/main/brickmerge-tweaks.runtime.js";
     const LABEL = "Brickmerge Loader";
