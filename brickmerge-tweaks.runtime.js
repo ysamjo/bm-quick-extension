@@ -5613,21 +5613,28 @@ globalThis.BM_formatEuro = price => {
             function formatHistoricalBestPriceSuffix(detailSuffix) {
                 let suffix = String(detailSuffix || '').replace(/\s+/g, ' ').trim();
                 if (!suffix) return '';
-                if (/^\([^)]+\)$/.test(suffix)) return suffix;
 
                 suffix = suffix
                     .replace(/(?:^|\s)vor\s+\d+\s+Tagen\b/gi, '')
                     .replace(/(?:^|\s)(?:heute|gestern)\s*!?/gi, '')
                     .trim();
 
+                const formatDate = (day, month, shortYear) => {
+                    const dd = day.padStart(2, '0');
+                    const mm = month.padStart(2, '0');
+                    return `am ${dd}.${mm}.${shortYear}`;
+                };
+
                 suffix = suffix.replace(
-                    /\bam\s+(\d{1,2}\.\d{1,2}\.)(?:19|20)?(\d{2})\s+bei\s+([^\s()|]+(?:\s+[^\s()|]+)*?)(?:\.+|\b)(?=\s*[<|]|$)/i,
-                    (full, dayMonth, shortYear, merchant) => {
-                        let cleanMerchant = merchant.replace(/\.+$/, '').trim();
-                        cleanMerchant = cleanMerchant.replace(/\.(?:de|com|at|ch|fr|nl|es|it|eu|org|net)$/i, '');
-                        return `(${dayMonth}${shortYear}, ${cleanMerchant})`;
-                    }
+                    /\((\d{1,2})\.(\d{1,2})\.(?:19|20)?(\d{2})(?:,\s*[^)]+)?\)/gi,
+                    (_, day, month, shortYear) => formatDate(day, month, shortYear)
                 );
+
+                suffix = suffix.replace(
+                    /\bam\s+(\d{1,2})\.(\d{1,2})\.(?:19|20)?(\d{2})(?:\s+bei\s+[^\s()|]+(?:\s+[^\s()|]+)*?)?(?:\.+|\b)(?=\s*[<|]|$)/gi,
+                    (_, day, month, shortYear) => formatDate(day, month, shortYear)
+                );
+
                 return suffix;
             }
 
@@ -5715,23 +5722,46 @@ globalThis.BM_formatEuro = price => {
                     }
                 });
 
+                // Ensure price in ATB line has no space before € (e.g. 18,51€ instead of 18,51 €)
+                const atbAnchor = root.querySelector('.bm-atb-abbr')?.nextElementSibling;
+                if (atbAnchor && atbAnchor.tagName === 'A') {
+                    const pWalker = document.createTreeWalker(atbAnchor, NodeFilter.SHOW_TEXT);
+                    let pNode;
+                    const pNodes = [];
+                    while (pNode = pWalker.nextNode()) {
+                        if (/€/.test(pNode.nodeValue || '')) pNodes.push(pNode);
+                    }
+                    pNodes.forEach(node => {
+                        node.nodeValue = node.nodeValue.replace(/(\d+[\d.,]*)(?:[\s\u00A0]|&nbsp;)+€/g, '$1€');
+                    });
+                }
+
                 const dateWalker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
                 const dateNodes = [];
                 let dNode;
                 while (dNode = dateWalker.nextNode()) {
-                    if (/\bam\s+\d{1,2}\.\d{1,2}\.\d{2,4}\s+bei\b/i.test(dNode.nodeValue || '')) {
+                    if (/(?:\bam\s+\d{1,2}\.\d{1,2}\.\d{2,4}|\(\d{1,2}\.\d{1,2}\.\d{2}(?:,\s*[^)]+)?\))/i.test(dNode.nodeValue || '')) {
                         dateNodes.push(dNode);
                     }
                 }
                 dateNodes.forEach(textNode => {
-                    textNode.nodeValue = textNode.nodeValue.replace(
-                        /\bam\s+(\d{1,2}\.\d{1,2}\.)(?:19|20)?(\d{2})\s+bei\s+([^\s()|]+(?:\s+[^\s()|]+)*?)(?:\.+|\b)(?=\s*[<|]|$)/gi,
-                        (full, dayMonth, shortYear, merchant) => {
-                            let cleanMerchant = merchant.replace(/\.+$/, '').trim();
-                            cleanMerchant = cleanMerchant.replace(/\.(?:de|com|at|ch|fr|nl|es|it|eu|org|net)$/i, '');
-                            return `(${dayMonth}${shortYear}, ${cleanMerchant})`;
-                        }
-                    );
+                    textNode.nodeValue = textNode.nodeValue
+                        .replace(
+                            /\((\d{1,2})\.(\d{1,2})\.(?:19|20)?(\d{2})(?:,\s*[^)]+)?\)/gi,
+                            (full, day, month, shortYear) => {
+                                const dd = day.padStart(2, '0');
+                                const mm = month.padStart(2, '0');
+                                return `am ${dd}.${mm}.${shortYear}`;
+                            }
+                        )
+                        .replace(
+                            /\bam\s+(\d{1,2})\.(\d{1,2})\.(?:19|20)?(\d{2})(?:\s+bei\s+[^\s()|]+(?:\s+[^\s()|]+)*?)?(?:\.+|\b)(?=\s*[<|]|$)/gi,
+                            (full, day, month, shortYear) => {
+                                const dd = day.padStart(2, '0');
+                                const mm = month.padStart(2, '0');
+                                return `am ${dd}.${mm}.${shortYear}`;
+                            }
+                        );
                 });
 
                 root.querySelectorAll('.bm-historical-bestprice-detail').forEach(el => {
@@ -5771,6 +5801,41 @@ globalThis.BM_formatEuro = price => {
                         current.nextSibling.nodeValue = '\u00A0';
                     }
                 }
+            }
+
+            function shortenDealScoreLabel() {
+                const roots = [
+                    document.querySelector('.content.setdetails .productprice'),
+                    document.querySelector('.content.setdetails'),
+                    document.getElementById('ol1st'),
+                    document.getElementById('ol2nd')
+                ].filter(Boolean);
+
+                roots.forEach(root => {
+                    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+                    const nodes = [];
+                    let node;
+                    while (node = walker.nextNode()) {
+                        if (/brickmerge\s+LEGO\s+Deal-Score/i.test(node.nodeValue || '')) {
+                            nodes.push(node);
+                        }
+                    }
+                    nodes.forEach(textNode => {
+                        textNode.nodeValue = textNode.nodeValue.replace(
+                            /brickmerge\s+LEGO\s+Deal-Score/gi,
+                            'Deal-Score'
+                        );
+                    });
+                });
+
+                document.querySelectorAll('a[href*="LEGO-Deal-Score"]').forEach(link => {
+                    if (/brickmerge\s+LEGO\s+Deal-Score/i.test(link.textContent || '')) {
+                        link.textContent = link.textContent.replace(
+                            /brickmerge\s+LEGO\s+Deal-Score/gi,
+                            'Deal-Score'
+                        );
+                    }
+                });
             }
 
             let nativeChartHistoricalBestPriceInfo = null;
@@ -5875,7 +5940,7 @@ globalThis.BM_formatEuro = price => {
 
             function writeHistoricalBestPriceDetailToSidebar(detailSuffix, seedElement = null) {
                 const formattedSuffix = formatHistoricalBestPriceSuffix(detailSuffix);
-                const suffix = String(formattedSuffix || '').replace(/\s+/g, ' ').trim();
+                let suffix = String(formattedSuffix || '').replace(/\s+/g, ' ').trim();
                 const existingDetails = Array.from(document.querySelectorAll(
                     '.bm-historical-bestprice-detail'
                 ));
@@ -5891,6 +5956,11 @@ globalThis.BM_formatEuro = price => {
                     parent = parent.parentElement;
                 }
                 removeRelativeDayLabelsFromBestPriceLines(parent);
+
+                // Strip discount percentage if already present in parent
+                if (/%\s*$/.test(parent.textContent || '') || /%\s*am/i.test(parent.textContent || '')) {
+                    suffix = suffix.replace(/^\/?\s*\d+\s*%\s*/, '');
+                }
 
                 const expectedText = ` ${suffix}`;
                 const existing = existingDetails.find(element =>
@@ -6246,6 +6316,7 @@ globalThis.BM_formatEuro = price => {
                         label.classList.add('bm-retailer-bestprice-label');
                     }
                 });
+                shortenDealScoreLabel();
 
                 const offerlist = document.getElementById('offerlist');
                 if (offerlist) {
@@ -7008,26 +7079,42 @@ globalThis.BM_formatEuro = price => {
                     }
                 }
 
-                // B. Bauanleitungen im Inhaltsbereich (#ol1st, relevant für Mobilansicht)
-                if (sourceSection) {
-                    const existingMobileDetail = document.querySelector('.bm-detail-warning');
-                    if (existingMobileDetail) existingMobileDetail.remove();
-                    if (!sourceSection.querySelector('.bm-safety-warning-block')) {
-                        const mobileBlock = createSafetyWarningBlock(warningText);
-                        sourceSection.appendChild(mobileBlock);
-                    }
-                } else {
-                    // Wenn im Hauptbereich keine Bauanleitungen existieren (z. B. Mobilansicht ohne Bauanleitung):
-                    const container = document.querySelector('.content.setdetails');
-                    if (container && !container.querySelector('.bm-detail-warning')) {
-                        const detailWarning = document.createElement('div');
-                        detailWarning.className = 'bm-detail-warning';
-                        detailWarning.appendChild(createSafetyWarningBlock(warningText));
-                        const target = container.querySelector('.productprice') ||
-                            container.querySelector('p');
-                        if (target) target.insertAdjacentElement('afterend', detailWarning);
-                        else container.appendChild(detailWarning);
-                    }
+                // B. Mobilansicht: Warnhinweis NACH den Bauanleitungen bzw. nach „Zum Bestand hinzufügen“
+                // Keinesfalls IN die Bauanleitungs-Section einhängen, damit er nicht zwischen den Anleitungen landet.
+                const existingInInstructions = document.querySelectorAll(
+                    '#ol1st .bm-instruction-source .bm-safety-warning-block, #ol1st .bm-instruction-section .bm-safety-warning-block'
+                );
+                existingInInstructions.forEach(el => el.remove());
+
+                const mobileStockWrap = document.querySelector('.bm-mobile-parts-stock-wrap');
+                const sourcePartsHeading = Array.from(document.querySelectorAll(
+                    '#ol1st h3, .content.setdetails h3'
+                )).find(heading => /Einzelteilelisten/i.test(heading.textContent || ''));
+                const partsSection = sourcePartsHeading?.closest('section') ||
+                    document.querySelector('#ol1st .bm-parts-source');
+                const moreAnchor = document.querySelector(
+                    '#ol1st a[href*="/service/buildinginstructions/"]'
+                );
+                const moreParagraph = moreAnchor?.closest('p');
+                const instructionSection = document.querySelector(
+                    '#ol1st .bm-instruction-section, #ol1st .bm-instruction-source'
+                ) || document.querySelector(
+                    '#ol1st img[src*="/img/instructions/"]'
+                )?.closest('section');
+                const fallbackTarget = document.querySelector('.content.setdetails .productprice') ||
+                    document.querySelector('.content.setdetails p');
+
+                const mobileTarget = mobileStockWrap || partsSection || moreParagraph || instructionSection || fallbackTarget;
+
+                let detailWarning = document.querySelector('.bm-detail-warning');
+                if (!detailWarning) {
+                    detailWarning = document.createElement('div');
+                    detailWarning.className = 'bm-detail-warning';
+                    detailWarning.appendChild(createSafetyWarningBlock(warningText));
+                }
+
+                if (mobileTarget && detailWarning.previousElementSibling !== mobileTarget) {
+                    mobileTarget.insertAdjacentElement('afterend', detailWarning);
                 }
             }
 
@@ -8102,6 +8189,7 @@ globalThis.BM_formatEuro = price => {
                     linkPackageDimensionsCalculator,
                     renameHistoricalBestPriceLabel,
                     renameAktBrickmergePreisLabel,
+                    shortenDealScoreLabel,
                     createDiscountSettingsUI,
                     syncGlobalPriceBasisToggle,
                     removeCorrectionReportButtons,
@@ -8450,13 +8538,13 @@ globalThis.BM_formatEuro = price => {
                     }
                 };
 
-                let chartCustomizeFrame = 0;
+                let chartCustomizeTimer = null;
                 const scheduleNativeChartCustomization = () => {
-                    if (chartCustomizeFrame) return;
-                    chartCustomizeFrame = window.requestAnimationFrame(() => {
-                        chartCustomizeFrame = 0;
+                    if (chartCustomizeTimer) return;
+                    chartCustomizeTimer = window.setTimeout(() => {
+                        chartCustomizeTimer = null;
                         customizeNativeChart();
-                    });
+                    }, 0);
                 };
                 const chartObserver = new MutationObserver(
                     scheduleNativeChartCustomization
@@ -11344,6 +11432,7 @@ globalThis.BM_formatEuro = price => {
                     [BM_SETTINGS.detailLayout, decoratePriceHistoryLinks],
                     [BM_SETTINGS.priceCalculations, renameHistoricalBestPriceLabel],
                     [BM_SETTINGS.priceCalculations, renameAktBrickmergePreisLabel],
+                    [BM_SETTINGS.detailLayout, shortenDealScoreLabel],
                     [BM_SETTINGS.priceCalculations, createDiscountSettingsUI],
                     [BM_SETTINGS.shippingAndSorting, disableOfferListTooltips]
                 ].filter(([enabled]) => enabled).map(([, step]) => step).forEach(step => {
@@ -16967,6 +17056,10 @@ globalThis.BM_formatEuro = price => {
                         mobileHost = document.createElement('div');
                         mobileHost.className = 'bm-mobile-parts-stock-wrap';
                         sourceSection.insertAdjacentElement('afterend', mobileHost);
+                    }
+                    const detailWarning = document.querySelector('.bm-detail-warning');
+                    if (detailWarning && detailWarning.previousElementSibling !== mobileHost) {
+                        mobileHost.insertAdjacentElement('afterend', detailWarning);
                     }
                 }
 

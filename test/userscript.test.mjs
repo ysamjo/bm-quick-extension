@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.53/);
+    assert.match(loaderSource, /@version\s+5\.6\.55/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.53/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.55/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -969,10 +969,11 @@ test('historical best price is abbreviated to ATB with tooltip and formatted suf
     const formatSuffixMatch = tweakerSource.match(/function formatHistoricalBestPriceSuffix\([\s\S]*?\n    \}/);
     assert.ok(formatSuffixMatch, 'formatHistoricalBestPriceSuffix function found');
     const fn = new Function('detailSuffix', `${formatSuffixMatch[0]}; return formatHistoricalBestPriceSuffix(detailSuffix);`);
-    assert.equal(fn('am 27.08.2026 bei eBay.de.'), '(27.08.26, eBay)');
-    assert.equal(fn('am 05.12.2023 bei Proshop.de'), '(05.12.23, Proshop)');
-    assert.equal(fn('/ 45% am 27.08.2026 bei LEGO.com.'), '/ 45% (27.08.26, LEGO)');
-    assert.equal(fn('(27.08.26, eBay)'), '(27.08.26, eBay)');
+    assert.equal(fn('am 27.08.2026 bei eBay.de.'), 'am 27.08.26');
+    assert.equal(fn('am 05.12.2023 bei Proshop.de'), 'am 05.12.23');
+    assert.equal(fn('/ 45% am 27.08.2026 bei LEGO.com.'), '/ 45% am 27.08.26');
+    assert.equal(fn('(27.08.26, eBay)'), 'am 27.08.26');
+    assert.equal(fn('am 21.04.2026 bei eBay.de.'), 'am 21.04.26');
 });
 
 test('collectible minifigures detection and set number parsing support -x suffixes', () => {
@@ -1084,19 +1085,38 @@ test('ATB abbreviation is placed outside anchor tag and not linked to price comp
     assert.ok(isPriceHistoryLinkMatch);
     const isPriceHistoryLink = new Function('link', `${isPriceHistoryLinkMatch[0]}; return isPriceHistoryLink(link);`);
 
+    assert.match(tweakerSource, /\$1€/);
+    assert.match(tweakerSource, /am \$\{dd\}\.\$\{mm\}\.\$\{shortYear\}/);
+
     assert.equal(isPriceHistoryLink({
         classList: { contains: cls => cls === 'bm-price-history-link' },
-        textContent: '14,93 € / 47% (30.04.26, eBay)'
+        textContent: '18,51€ / 54% am 21.04.26'
     }), true);
 
     assert.equal(isPriceHistoryLink({
         previousElementSibling: { classList: { contains: cls => cls === 'bm-atb-abbr' } },
-        textContent: '14,93 € / 47% (30.04.26, eBay)'
+        textContent: '18,51€ / 54% am 21.04.26'
     }), true);
 
     assert.equal(isPriceHistoryLink({
         textContent: 'Zum Shop'
     }), false);
+});
+
+test('brickmerge LEGO Deal-Score is shortened to Deal-Score', () => {
+    assert.match(tweakerSource, /function shortenDealScoreLabel\(/);
+    assert.match(tweakerSource, /brickmerge\\s\+LEGO\\s\+Deal-Score/);
+    assert.match(tweakerSource, /'Deal-Score'/);
+
+    const shortenDealScoreLabelMatch = tweakerSource.match(/function shortenDealScoreLabel\(\) \{[\s\S]*?\n    \}/);
+    assert.ok(shortenDealScoreLabelMatch);
+});
+
+test('mobile safety warning is placed after instructions or after Zum Bestand hinzufügen and not inside instructions', () => {
+    assert.match(tweakerSource, /#ol1st \.bm-instruction-source \.bm-safety-warning-block/);
+    assert.match(tweakerSource, /bm-mobile-parts-stock-wrap/);
+    assert.match(tweakerSource, /detailWarning\.previousElementSibling !== mobileTarget/);
+    assert.match(tweakerSource, /mobileTarget\.insertAdjacentElement\('afterend', detailWarning\)/);
 });
 
 
