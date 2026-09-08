@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 const projectDir = path.dirname(fileURLToPath(import.meta.url));
 const extensionDir = projectDir;
+const externalExtensionDir = path.resolve(projectDir, '../Extension');
+const quickExtensionDir = path.resolve(projectDir, '../Quick-Extension');
 const sourceDir = path.join(projectDir, 'src');
 const packageJson = JSON.parse(
     await fs.readFile(path.join(projectDir, 'package.json'), 'utf8')
@@ -323,6 +325,70 @@ await Promise.all([
         metaGptLoaderOutput
     )
 ]);
+
+// Sync source files to root files within projectDir
+for (const [extensionName, localName] of sourceFiles) {
+    await copyFileWithRetry(
+        path.join(sourceDir, localName),
+        path.join(projectDir, extensionName)
+    );
+}
+await copyFileWithRetry(
+    path.join(sourceDir, 'meta-gpt-bridge.js'),
+    path.join(projectDir, 'meta-gpt-bridge.js')
+);
+
+// Sync to external Extension directory if present
+const hasExternalExtension = await fs.stat(externalExtensionDir)
+    .then(s => s.isDirectory())
+    .catch(() => false);
+if (hasExternalExtension) {
+    const extensionSyncFiles = [
+        'brickmerge-tweaker-v140.js',
+        'brickmerge-tweaks.runtime.js',
+        'brickmerge-tweaks.js',
+        'brickmerge-meta-gpt.user.js',
+        'brickmerge-meta-gpt.runtime.js',
+        'shared.js',
+        'overview-price-badges.js',
+        'worker-api-bridge.js',
+        'preclean.js',
+        'meta-gpt-bridge.js',
+        'background.js',
+        'page-overlay.js',
+        'page-product-detector.js',
+        'platform-config.js',
+        'gm-compat.js',
+        'selection-popup.js',
+        'manifest.json',
+        'package.json'
+    ];
+    for (const file of extensionSyncFiles) {
+        const srcFile = path.join(projectDir, file);
+        const dstFile = path.join(externalExtensionDir, file);
+        if (await fs.stat(srcFile).then(s => s.isFile()).catch(() => false)) {
+            await copyFileWithRetry(srcFile, dstFile);
+        }
+    }
+    const orphanedFiles = [
+        path.join(externalExtensionDir, 'options', 'shared.js'),
+        path.join(externalExtensionDir, 'options.html')
+    ];
+    for (const orphan of orphanedFiles) {
+        await fs.unlink(orphan).catch(() => {});
+    }
+}
+
+// Sync to Quick-Extension directory if present
+const hasQuickExtension = await fs.stat(quickExtensionDir)
+    .then(s => s.isDirectory())
+    .catch(() => false);
+if (hasQuickExtension) {
+    await copyFileWithRetry(
+        path.join(projectDir, 'brickmerge-tweaks.js'),
+        path.join(quickExtensionDir, 'brickmerge-tweaks.js')
+    );
+}
 
 console.log(
     `Built Brickmerge loaders ${version}: ` +

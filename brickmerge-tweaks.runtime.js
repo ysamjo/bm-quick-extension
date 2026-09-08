@@ -657,6 +657,26 @@ globalThis.BM_formatEuro = price => {
     });
 };
 
+globalThis.BM_normalizeEbaySellerAccountType = value => {
+    const normalized = String(value || '')
+        .trim()
+        .toUpperCase()
+        .replace(/[\s-]+/g, '_');
+    if ([
+        'INDIVIDUAL', 'PRIVATE', 'PERSONAL', 'NON_BUSINESS',
+        'PRIVATE_SELLER', 'INDIVIDUAL_SELLER', 'PERSONAL_SELLER'
+    ].includes(normalized)) {
+        return 'INDIVIDUAL';
+    }
+    if ([
+        'BUSINESS', 'COMMERCIAL', 'PROFESSIONAL',
+        'BUSINESS_SELLER', 'COMMERCIAL_SELLER', 'PROFESSIONAL_SELLER'
+    ].includes(normalized)) {
+        return 'BUSINESS';
+    }
+    return '';
+};
+
 (() => {
     'use strict';
 
@@ -1009,31 +1029,32 @@ globalThis.BM_formatEuro = price => {
                     : '';
             };
 
-            const parsePrice = value => {
-                if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-                const text = String(value || '').replace(/\s/g, '');
-                const match = text.match(/\d[\d.,]*/);
-                if (!match) return null;
-                const raw = match[0];
-                const comma = raw.lastIndexOf(',');
-                const dot = raw.lastIndexOf('.');
-                const normalized = comma > dot
-                    ? raw.replace(/\./g, '').replace(',', '.')
-                    : raw.replace(/,/g, '');
-                const number = Number(normalized);
-                return Number.isFinite(number) && number > 0 ? number : null;
-            };
+            const parsePrice = value => (typeof globalThis.BM_parsePrice === 'function')
+                ? globalThis.BM_parsePrice(value)
+                : (() => {
+                    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+                    const text = String(value || '').replace(/\s/g, '');
+                    const match = text.match(/\d[\d.,]*/);
+                    if (!match) return null;
+                    const raw = match[0];
+                    const comma = raw.lastIndexOf(',');
+                    const dot = raw.lastIndexOf('.');
+                    const normalized = comma > dot
+                        ? raw.replace(/\./g, '').replace(',', '.')
+                        : raw.replace(/,/g, '');
+                    const number = Number(normalized);
+                    return Number.isFinite(number) && number > 0 ? number : null;
+                })();
 
-            const normalizeEbaySellerAccountType = value => {
-                const normalized = String(value || '').trim().toUpperCase();
-                if (normalized === 'BUSINESS' || normalized === 'COMMERCIAL') {
-                    return 'BUSINESS';
-                }
-                if (normalized === 'INDIVIDUAL' || normalized === 'PRIVATE') {
-                    return 'INDIVIDUAL';
-                }
-                return '';
-            };
+            const normalizeEbaySellerAccountType = value =>
+                (typeof globalThis.BM_normalizeEbaySellerAccountType === 'function')
+                    ? globalThis.BM_normalizeEbaySellerAccountType(value)
+                    : (() => {
+                        const normalized = String(value || '').trim().toUpperCase();
+                        if (normalized === 'BUSINESS' || normalized === 'COMMERCIAL') return 'BUSINESS';
+                        if (normalized === 'INDIVIDUAL' || normalized === 'PRIVATE') return 'INDIVIDUAL';
+                        return '';
+                    })();
 
             const extractCardData = card => {
                 if (!card?.querySelector) return null;
@@ -3530,9 +3551,9 @@ globalThis.BM_formatEuro = price => {
                     margin-left: 0.25rem;
                 }
                 .content.setdetails .topprice .bm-effective-info {
-                    color: #ffeb3b !important;
+                    color: #ffffff !important;
                     font-size: 0.85rem !important;
-                    font-weight: 600;
+                    font-weight: 400;
                     margin-left: 0.35rem;
                     white-space: nowrap;
                     vertical-align: baseline;
@@ -5080,6 +5101,8 @@ globalThis.BM_formatEuro = price => {
             const DISMISSED_OFFERS_KEY = 'brickmerge-tools-dismissed-offers-v1';
             const VISITED_OFFERS_KEY = 'brickmerge-tools-visited-offers-v1';
             const DISMISSED_OFFER_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
+            let lastMinifigTotalValue = null;
+            let lastMinifigPriceSnapshot = null;
 
             function normalizedOfferUrl(value) {
                 try {
@@ -8304,11 +8327,9 @@ globalThis.BM_formatEuro = price => {
                         }
                     }
                 }
-                try {
-                    if (lastMinifigTotalValue !== null) {
-                        updateMinifigureValueInDataBox(lastMinifigTotalValue, false, lastMinifigPriceSnapshot);
-                    }
-                } catch (_) {}
+                if (lastMinifigTotalValue !== null) {
+                    updateMinifigureValueInDataBox(lastMinifigTotalValue, false, lastMinifigPriceSnapshot);
+                }
                 const historicalData = findAllTimeBestPrice();
                 if (historicalData) {
                     const bestPrice = getCalculationBestPrice();
@@ -12179,9 +12200,6 @@ globalThis.BM_formatEuro = price => {
                         'EU'
                     ));
                 }
-
-                let lastMinifigTotalValue = null;
-                let lastMinifigPriceSnapshot = null;
 
                 function updateMinifigureValueInDataBox(
                     totalValue,
@@ -16644,30 +16662,6 @@ globalThis.BM_formatEuro = price => {
                 return globalThis.BM_getBrickmergeSetNumber?.(window.location.href) ||
                     window.location.pathname.match(/\/(\d{4,7})-[\da-z]+_[^/]+\/?$/i)?.[1] ||
                     null;
-            }
-
-            function getSetTitle() {
-                try {
-                    const heading = document.querySelector(
-                        '.content.setdetails h1, #productTitle, h1#title'
-                    );
-                    const headingText = String(heading?.textContent || '').replace(/\s+/g, ' ').trim();
-                    if (headingText) return headingText.slice(0, 200);
-                    const jsonLd = Array.from(
-                        document.querySelectorAll('script[type="application/ld+json"]')
-                    ).map(script => {
-                            try { return JSON.parse(script.textContent); } catch { return null; }
-                        }).find(payload => {
-                            const types = Array.isArray(payload?.['@type'])
-                                ? payload['@type']
-                                : [payload?.['@type']];
-                            return types.includes('Product');
-                        });
-                    const ldName = String(jsonLd?.name || '').replace(/\s+/g, ' ').trim();
-                    return ldName ? ldName.slice(0, 200) : '';
-                } catch {
-                    return '';
-                }
             }
 
             function today() {

@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.59/);
+    assert.match(loaderSource, /@version\s+5\.6\.60/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.59/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.60/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -1080,7 +1080,8 @@ test('effective prices from personal retailer discounts are visible in topprice 
     assert.match(tweakerSource, /function ensureTopPriceOriginalPriceElement\(/);
     assert.match(tweakerSource, /\[BM_SETTINGS\.priceCalculations, syncTopPriceEffectiveValues\]/);
     assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-effective-info\s*\{/);
-    assert.match(tweakerSource, /color:\s*#ffeb3b\s*!important;/);
+    assert.match(tweakerSource, /color:\s*#ffffff\s*!important;/);
+    assert.match(tweakerSource, /font-weight:\s*400;/);
     assert.match(tweakerSource, /padding-right:\s*5\.5rem\s*!important;/);
     assert.match(tweakerSource, /retailerBestOffer/);
     assert.match(tweakerSource, /bm-topprice-effective-info/);

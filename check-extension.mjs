@@ -84,6 +84,22 @@ if (differences.length) {
     );
 }
 
+const externalExtensionDir = path.resolve(projectDir, '../Extension');
+if (fs.existsSync(externalExtensionDir)) {
+    const externalDifferences = commonFiles.filter(([extensionFile]) => {
+        const localPath = path.join(projectDir, extensionFile);
+        const extPath = path.join(externalExtensionDir, extensionFile);
+        return !fs.existsSync(extPath) || !fs.readFileSync(localPath).equals(fs.readFileSync(extPath));
+    });
+    if (externalDifferences.length) {
+        throw new Error(
+            `Extension/ ist nicht synchron mit Userscript/: ${externalDifferences
+                .map(([file]) => file)
+                .join(', ')}`
+        );
+    }
+}
+
 console.log(
     `Chrome-Manifest ${manifest.version}: ${referencedFiles.size} Dateien vorhanden.`
 );

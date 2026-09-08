@@ -522,3 +522,23 @@ globalThis.BM_formatEuro = price => {
         maximumFractionDigits: 2
     });
 };
+
+globalThis.BM_normalizeEbaySellerAccountType = value => {
+    const normalized = String(value || '')
+        .trim()
+        .toUpperCase()
+        .replace(/[\s-]+/g, '_');
+    if ([
+        'INDIVIDUAL', 'PRIVATE', 'PERSONAL', 'NON_BUSINESS',
+        'PRIVATE_SELLER', 'INDIVIDUAL_SELLER', 'PERSONAL_SELLER'
+    ].includes(normalized)) {
+        return 'INDIVIDUAL';
+    }
+    if ([
+        'BUSINESS', 'COMMERCIAL', 'PROFESSIONAL',
+        'BUSINESS_SELLER', 'COMMERCIAL_SELLER', 'PROFESSIONAL_SELLER'
+    ].includes(normalized)) {
+        return 'BUSINESS';
+    }
+    return '';
+};

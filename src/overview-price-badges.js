@@ -36,31 +36,32 @@
             : '';
     };
 
-    const parsePrice = value => {
-        if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-        const text = String(value || '').replace(/\s/g, '');
-        const match = text.match(/\d[\d.,]*/);
-        if (!match) return null;
-        const raw = match[0];
-        const comma = raw.lastIndexOf(',');
-        const dot = raw.lastIndexOf('.');
-        const normalized = comma > dot
-            ? raw.replace(/\./g, '').replace(',', '.')
-            : raw.replace(/,/g, '');
-        const number = Number(normalized);
-        return Number.isFinite(number) && number > 0 ? number : null;
-    };
+    const parsePrice = value => (typeof globalThis.BM_parsePrice === 'function')
+        ? globalThis.BM_parsePrice(value)
+        : (() => {
+            if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+            const text = String(value || '').replace(/\s/g, '');
+            const match = text.match(/\d[\d.,]*/);
+            if (!match) return null;
+            const raw = match[0];
+            const comma = raw.lastIndexOf(',');
+            const dot = raw.lastIndexOf('.');
+            const normalized = comma > dot
+                ? raw.replace(/\./g, '').replace(',', '.')
+                : raw.replace(/,/g, '');
+            const number = Number(normalized);
+            return Number.isFinite(number) && number > 0 ? number : null;
+        })();
 
-    const normalizeEbaySellerAccountType = value => {
-        const normalized = String(value || '').trim().toUpperCase();
-        if (normalized === 'BUSINESS' || normalized === 'COMMERCIAL') {
-            return 'BUSINESS';
-        }
-        if (normalized === 'INDIVIDUAL' || normalized === 'PRIVATE') {
-            return 'INDIVIDUAL';
-        }
-        return '';
-    };
+    const normalizeEbaySellerAccountType = value =>
+        (typeof globalThis.BM_normalizeEbaySellerAccountType === 'function')
+            ? globalThis.BM_normalizeEbaySellerAccountType(value)
+            : (() => {
+                const normalized = String(value || '').trim().toUpperCase();
+                if (normalized === 'BUSINESS' || normalized === 'COMMERCIAL') return 'BUSINESS';
+                if (normalized === 'INDIVIDUAL' || normalized === 'PRIVATE') return 'INDIVIDUAL';
+                return '';
+            })();
 
     const extractCardData = card => {
         if (!card?.querySelector) return null;

@@ -1615,9 +1615,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             margin-left: 0.25rem;
         }
         .content.setdetails .topprice .bm-effective-info {
-            color: #ffeb3b !important;
+            color: #ffffff !important;
             font-size: 0.85rem !important;
-            font-weight: 600;
+            font-weight: 400;
             margin-left: 0.35rem;
             white-space: nowrap;
             vertical-align: baseline;
@@ -3165,6 +3165,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     const DISMISSED_OFFERS_KEY = 'brickmerge-tools-dismissed-offers-v1';
     const VISITED_OFFERS_KEY = 'brickmerge-tools-visited-offers-v1';
     const DISMISSED_OFFER_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
+    let lastMinifigTotalValue = null;
+    let lastMinifigPriceSnapshot = null;
 
     function normalizedOfferUrl(value) {
         try {
@@ -6389,11 +6391,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 }
             }
         }
-        try {
-            if (lastMinifigTotalValue !== null) {
-                updateMinifigureValueInDataBox(lastMinifigTotalValue, false, lastMinifigPriceSnapshot);
-            }
-        } catch (_) {}
+        if (lastMinifigTotalValue !== null) {
+            updateMinifigureValueInDataBox(lastMinifigTotalValue, false, lastMinifigPriceSnapshot);
+        }
         const historicalData = findAllTimeBestPrice();
         if (historicalData) {
             const bestPrice = getCalculationBestPrice();
@@ -10264,9 +10264,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 'EU'
             ));
         }
-
-        let lastMinifigTotalValue = null;
-        let lastMinifigPriceSnapshot = null;
 
         function updateMinifigureValueInDataBox(
             totalValue,
@@ -14729,30 +14726,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         return globalThis.BM_getBrickmergeSetNumber?.(window.location.href) ||
             window.location.pathname.match(/\/(\d{4,7})-[\da-z]+_[^/]+\/?$/i)?.[1] ||
             null;
-    }
-
-    function getSetTitle() {
-        try {
-            const heading = document.querySelector(
-                '.content.setdetails h1, #productTitle, h1#title'
-            );
-            const headingText = String(heading?.textContent || '').replace(/\s+/g, ' ').trim();
-            if (headingText) return headingText.slice(0, 200);
-            const jsonLd = Array.from(
-                document.querySelectorAll('script[type="application/ld+json"]')
-            ).map(script => {
-                    try { return JSON.parse(script.textContent); } catch { return null; }
-                }).find(payload => {
-                    const types = Array.isArray(payload?.['@type'])
-                        ? payload['@type']
-                        : [payload?.['@type']];
-                    return types.includes('Product');
-                });
-            const ldName = String(jsonLd?.name || '').replace(/\s+/g, ' ').trim();
-            return ldName ? ldName.slice(0, 200) : '';
-        } catch {
-            return '';
-        }
     }
 
     function today() {
