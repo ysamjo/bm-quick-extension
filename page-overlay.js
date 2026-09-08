@@ -3,6 +3,7 @@
 
     const HOST_ID = 'brickmerge-extension-floating-sidebar';
     const BASE_URL = 'https://www.brickmerge.de/';
+    const COLLAPSE_TRANSITION_MS = 240;
     let host = null;
     let escapeHandler = null;
 
@@ -56,6 +57,22 @@
                     bottom: 12px;
                     width: min(460px, calc(100vw - 24px));
                     display: flex;
+                    pointer-events: none;
+                    animation: bm-panel-in .2s ease-out;
+                    transition: transform ${COLLAPSE_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1);
+                    will-change: transform;
+                    z-index: 2147483647;
+                }
+                .panel.is-collapsed {
+                    transform: translateX(calc(100% + 12px));
+                }
+                .panel-card {
+                    position: relative;
+                    flex: 1 1 auto;
+                    width: 100%;
+                    height: 100%;
+                    min-width: 0;
+                    display: flex;
                     flex-direction: column;
                     overflow: hidden;
                     border: 1px solid rgba(0, 0, 0, .2);
@@ -66,7 +83,73 @@
                     color: #222;
                     font: 15px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
                     pointer-events: auto;
-                    animation: bm-panel-in .2s ease-out;
+                }
+                .panel.is-collapsed .panel-card {
+                    pointer-events: none;
+                }
+                .toggle-tab {
+                    position: absolute;
+                    top: 50%;
+                    right: 100%;
+                    transform: translateY(-50%);
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                    width: 36px;
+                    padding: 10px 0;
+                    margin-right: -1px;
+                    border: 1px solid rgba(0, 0, 0, .22);
+                    border-right: none;
+                    border-radius: 9px 0 0 9px;
+                    background: #c40000;
+                    color: #fff;
+                    box-shadow: -4px 4px 14px rgba(0, 0, 0, .22);
+                    cursor: pointer;
+                    pointer-events: auto;
+                    user-select: none;
+                    -webkit-user-select: none;
+                    transition: background .15s ease, transform .15s ease;
+                }
+                .toggle-tab:hover, .toggle-tab:focus {
+                    background: #970000;
+                    outline: none;
+                }
+                .panel:not(.is-collapsed) .toggle-tab:hover {
+                    transform: translateY(-50%) translateX(-3px);
+                }
+                .panel.is-collapsed .toggle-tab:hover {
+                    transform: translateY(-50%) translateX(-4px);
+                }
+                .toggle-tab:active {
+                    background: #7a0000;
+                }
+                .toggle-tab:focus-visible {
+                    outline: 3px solid rgba(8, 105, 201, .45);
+                    outline-offset: 2px;
+                }
+                .tab-logo {
+                    width: 20px;
+                    height: 20px;
+                    flex: 0 0 20px;
+                    border-radius: 4px;
+                    pointer-events: none;
+                }
+                .tab-arrow {
+                    width: 18px;
+                    height: 18px;
+                    flex: 0 0 18px;
+                    fill: none;
+                    stroke: #fff;
+                    stroke-width: 2.6;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    transition: transform ${COLLAPSE_TRANSITION_MS}ms ease;
+                    pointer-events: none;
+                }
+                .panel.is-collapsed .tab-arrow {
+                    transform: rotate(180deg);
                 }
                 .toolbar {
                     display: grid;
@@ -159,30 +242,42 @@
                     to { opacity: 1; transform: none; }
                 }
                 @media (max-width: 520px) {
-                    .panel { inset: 0; width: 100vw; border-left: 0; border-right: 0; border-radius: 0; }
+                    .panel { inset: 0; width: 100vw; }
+                    .panel.is-collapsed { transform: translateX(100%); }
+                    .panel-card { border-left: 0; border-right: 0; border-radius: 0; }
                     .toolbar { padding-top: max(9px, env(safe-area-inset-top)); }
+                    .toggle-tab { display: none; }
                 }
-                @media (prefers-reduced-motion: reduce) { .panel { animation: none; } }
+                @media (prefers-reduced-motion: reduce) {
+                    .panel { animation: none; transition: none; }
+                    .tab-arrow { transition: none; }
+                }
             </style>
             <aside class="panel" aria-label="Schwebende Brickmerge-Seitenleiste">
-                <div class="toolbar">
-                    <a class="brand" href="${BASE_URL}" title="Brickmerge-Startseite" aria-label="Brickmerge-Startseite"><img class="brand-logo" src="${chrome.runtime.getURL('icons/icon32.png')}" alt=""></a>
-                    <form class="search">
-                        <input class="query" type="search" aria-label="Setnummer oder Suchbegriff" maxlength="100">
-                        <button class="submit" type="submit" title="Suchen" aria-label="Brickmerge-Suche starten">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.2"></circle><path d="m16 16 5 5"></path></svg>
+                <button class="toggle-tab" type="button" title="Seitenleiste ausblenden" aria-label="Seitenleiste ausblenden" aria-expanded="true">
+                    <img class="tab-logo" src="${chrome.runtime.getURL('icons/icon32.png')}" alt="">
+                    <svg class="tab-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+                </button>
+                <div class="panel-card">
+                    <div class="toolbar">
+                        <a class="brand" href="${BASE_URL}" title="Brickmerge-Startseite" aria-label="Brickmerge-Startseite"><img class="brand-logo" src="${chrome.runtime.getURL('icons/icon32.png')}" alt=""></a>
+                        <form class="search">
+                            <input class="query" type="search" aria-label="Setnummer oder Suchbegriff" maxlength="100">
+                            <button class="submit" type="submit" title="Suchen" aria-label="Brickmerge-Suche starten">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.2"></circle><path d="m16 16 5 5"></path></svg>
+                            </button>
+                        </form>
+                        <a class="external" target="_blank" rel="noopener noreferrer" title="In neuem Tab öffnen" aria-label="In neuem Tab öffnen">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"></path><path d="m20 4-9 9"></path><path d="M19 14v5H5V5h5"></path></svg>
+                        </a>
+                        <button class="close" type="button" title="Seitenleiste schließen" aria-label="Seitenleiste schließen">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
                         </button>
-                    </form>
-                    <a class="external" target="_blank" rel="noopener noreferrer" title="In neuem Tab öffnen" aria-label="In neuem Tab öffnen">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"></path><path d="m20 4-9 9"></path><path d="M19 14v5H5V5h5"></path></svg>
-                    </a>
-                    <button class="close" type="button" title="Seitenleiste schließen" aria-label="Seitenleiste schließen">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
-                    </button>
-                </div>
-                <div class="frame-wrap">
-                    <div class="loading" aria-live="polite">Brickmerge wird geladen …</div>
-                    <iframe title="Brickmerge Setdetails"></iframe>
+                    </div>
+                    <div class="frame-wrap">
+                        <div class="loading" aria-live="polite">Brickmerge wird geladen …</div>
+                        <iframe title="Brickmerge Setdetails"></iframe>
+                    </div>
                 </div>
             </aside>
         `;
@@ -192,8 +287,23 @@
         const input = shadow.querySelector('.query');
         const external = shadow.querySelector('.external');
         const closeButton = shadow.querySelector('.close');
+        const toggleTab = shadow.querySelector('.toggle-tab');
         const loading = shadow.querySelector('.loading');
         const frame = shadow.querySelector('iframe');
+        const panel = shadow.querySelector('.panel');
+
+        const setCollapsed = collapsed => {
+            panel.classList.toggle('is-collapsed', collapsed);
+            toggleTab.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            toggleTab.setAttribute(
+                'title',
+                collapsed ? 'Brickmerge-Seitenleiste einblenden' : 'Seitenleiste ausblenden'
+            );
+            toggleTab.setAttribute(
+                'aria-label',
+                collapsed ? 'Brickmerge-Seitenleiste einblenden' : 'Seitenleiste ausblenden'
+            );
+        };
 
         const navigate = nextQuery => {
             const cleanQuery = String(nextQuery || '')
@@ -227,12 +337,28 @@
             loading.hidden = true;
         });
         closeButton.addEventListener('click', closePanel);
+        toggleTab.addEventListener('click', event => {
+            event.stopPropagation();
+            event.preventDefault();
+            const isCurrentlyCollapsed = panel.classList.contains('is-collapsed');
+            setCollapsed(!isCurrentlyCollapsed);
+            if (isCurrentlyCollapsed) {
+                window.setTimeout(() => input.focus(), 0);
+            }
+        });
         escapeHandler = event => {
             if (event.key !== 'Escape') return;
+            if (window.matchMedia('(max-width: 520px)').matches) {
+                closePanel();
+                return;
+            }
+            if (panel.classList.contains('is-collapsed')) return;
             event.preventDefault();
-            closePanel();
+            setCollapsed(true);
+            toggleTab.focus();
         };
         document.addEventListener('keydown', escapeHandler, true);
+        setCollapsed(false);
         navigate(query);
         window.setTimeout(() => closeButton.focus(), 0);
     }
