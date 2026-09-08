@@ -406,32 +406,38 @@ globalThis.BM_isCollectibleMinifigures = (
 ) => {
     try {
         const url = new URL(urlValue, 'https://www.brickmerge.de/');
-        if (/(?:collectable|collectible)[-_ ]minifigures/i.test(url.pathname)) {
+        const pathname = decodeURIComponent(url.pathname);
+        if (/^\/LEGO-Collectable(?:%20|\s+)Minifigures\b/i.test(url.pathname) ||
+            /^\/LEGO-Collectable(?:%20|\s+)Minifigures\b/i.test(pathname) ||
+            /\b\d{5}[-_a-z0-9]*[-_]lego[-_]collectable[-_]minifigures\b/i.test(url.pathname)) {
             return true;
         }
     } catch {}
 
-    if (/(?:collectable|collectible)\s*minifigures/i.test(doc?.title || '')) {
+    if (/^LEGO®?\s+Collectable\s+Minifigures\b/i.test(doc?.title || '')) {
         return true;
     }
 
+    // 1. Breadcrumb navigation
+    const breadcrumbLink = doc?.querySelector?.(
+        '[itemtype*="BreadcrumbList"] a[href*="LEGO-Collectable"], ' +
+        '.breadcrumb a[href*="LEGO-Collectable"], ' +
+        'nav[aria-label="breadcrumb"] a[href*="LEGO-Collectable"]'
+    );
+    if (breadcrumbLink) {
+        return true;
+    }
+
+    // 2. Direct theme link on page (https://www.brickmerge.de/LEGO-Collectable%20Minifigures)
     if (doc?.querySelector?.(
-        'a[href*="Collectable%20Minifigures"], ' +
-        'a[href*="collectable-minifigures"], ' +
-        'a[href*="collectable_minifigures"], ' +
-        'a[href*="Collectable-Minifigures"], ' +
-        'a[href*="LEGO-Collectable"]'
+        'a[href*="/LEGO-Collectable%20Minifigures"], ' +
+        'a[href*="/LEGO-Collectable Minifigures"], ' +
+        'a[href*="/LEGO-Collectable-Minifigures"], ' +
+        'a[href*="brickmerge.de/LEGO-Collectable%20Minifigures"], ' +
+        'a[href*="brickmerge.de/LEGO-Collectable Minifigures"], ' +
+        'a[href*="LEGO-Collectable%20Minifigures"], ' +
+        'a[href*="LEGO-Collectable Minifigures"]'
     )) {
-        return true;
-    }
-
-    const description = doc?.querySelector?.('meta[name="description"]')?.getAttribute('content') || '';
-    if (/(?:collectable|collectible)\s*minifigures/i.test(description)) {
-        return true;
-    }
-
-    const detailsBox = doc?.querySelector?.('.content.setdetails, #productdetails, .setdetailtags')?.textContent || '';
-    if (/(?:collectable|collectible)\s*minifigures/i.test(detailsBox)) {
         return true;
     }
 

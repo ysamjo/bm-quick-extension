@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.58/);
+    assert.match(loaderSource, /@version\s+5\.6\.59/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.58/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.59/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -1032,11 +1032,21 @@ test('collectible minifigures detection and set number parsing support -x suffix
     assert.equal(
         context.BM_isCollectibleMinifigures(
             {
-                querySelector: selector => selector.includes('Collectable%20Minifigures') ? {} : null
+                querySelector: selector => selector.includes('LEGO-Collectable%20Minifigures') ? {} : null
             },
             'https://www.brickmerge.de/71047'
         ),
         true
+    );
+    // Footer link (?find=Collectable%20Minifigures%202026) must NOT trigger CMF
+    assert.equal(
+        context.BM_isCollectibleMinifigures(
+            {
+                querySelector: selector => selector.includes('find=Collectable') ? {} : null
+            },
+            'https://www.brickmerge.de/72038-1_lego-super-mario-mario-kart-wario-und-waluigi'
+        ),
+        false
     );
 });
 
