@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.39/);
+    assert.match(loaderSource, /@version\s+5\.6\.40/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.39/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.40/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -836,7 +836,7 @@ test('volume detail line matches native Brickmerge formatting without hover', ()
     assert.match(tweakerSource, /volumeLine\.className = 'bm-volume-line';/);
     assert.doesNotMatch(tweakerSource, /volumeLine\.className = 'bm-volume-line bm-detail-line-link'/);
     assert.doesNotMatch(tweakerSource, /volumeLine\.title/);
-    assert.match(tweakerSource, /document\.createTextNode\('\| Volumen: '\)/);
+    assert.match(tweakerSource, /document\.createTextNode\('\\u00A0\| Volumen: '\)/);
     assert.match(tweakerSource, /boldValue\.textContent = `\${formattedVolume} l\${pricePerLiter}`;/);
     assert.match(tweakerSource, /` \| \${formatEuroPerLiter\(bestPrice, volumeLiters\)}`/);
     assert.match(tweakerSource, /formatted\.replace\('\.', ','\)/);
@@ -856,6 +856,8 @@ test('box dimensions renamed to Maße and Abmessungen line is collapsible via ic
     assert.match(tweakerSource, /bmDimensionsSlideUp/);
     assert.match(tweakerSource, /Modell-Abmessungen einblenden/);
     assert.match(tweakerSource, /Modell-Abmessungen ausblenden/);
+    assert.match(tweakerSource, /toggleBtn\.after\(dimensionsWrapper\);/);
+    assert.match(tweakerSource, /const targetAnchor = dimensionsWrapper \|\| toggleBtn \|\| link;/);
 });
 
 test('safety warning is replaced with EN 71 pictograms under instructions', () => {

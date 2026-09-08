@@ -1794,33 +1794,27 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             display: inline;
         }
         .bm-model-dimensions-wrapper.bm-expanded .bm-model-dimensions-line {
-            display: inline-block;
-            vertical-align: middle;
-            animation: bmDimensionsSlideDown 0.22s ease-out forwards;
+            display: inline;
+            animation: bmDimensionsSlideDown 0.18s ease-out forwards;
         }
         .bm-model-dimensions-wrapper.bm-collapsing .bm-model-dimensions-line {
-            display: inline-block;
-            vertical-align: middle;
-            animation: bmDimensionsSlideUp 0.18s ease-in forwards;
+            display: inline;
+            animation: bmDimensionsSlideUp 0.15s ease-in forwards;
         }
         @keyframes bmDimensionsSlideDown {
             0% {
                 opacity: 0;
-                transform: translateY(-4px);
             }
             100% {
                 opacity: 1;
-                transform: translateY(0);
             }
         }
         @keyframes bmDimensionsSlideUp {
             0% {
                 opacity: 1;
-                transform: translateY(0);
             }
             100% {
                 opacity: 0;
-                transform: translateY(-4px);
             }
         }
         .bm-minifig-count-link {
@@ -5255,6 +5249,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         line.range.insertNode(link);
 
         let toggleBtn = null;
+        let dimensionsWrapper = null;
         const dimensionsLine = findDetailsLineRange(
             details,
             /Abmessungen(?:\s*\([^)]+\))?\s*:/i,
@@ -5262,9 +5257,24 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         );
         if (dimensionsLine && !details.querySelector('.bm-dimensions-toggle-btn')) {
             const extractedDimensions = dimensionsLine.range.extractContents();
-            dimensionsLine.previousBreak?.remove();
+            if (dimensionsLine.followingBreak && dimensionsLine.followingBreak.parentNode) {
+                dimensionsLine.followingBreak.remove();
+            } else if (dimensionsLine.previousBreak && dimensionsLine.previousBreak.parentNode) {
+                dimensionsLine.previousBreak.remove();
+            }
 
-            const dimensionsWrapper = document.createElement('span');
+            const firstDimText = document.createTreeWalker(
+                extractedDimensions,
+                NodeFilter.SHOW_TEXT
+            ).nextNode();
+            if (firstDimText) {
+                firstDimText.nodeValue = firstDimText.nodeValue.replace(
+                    /^[\s\u00a0]*\|?[\s\u00a0]*/,
+                    '\u00A0| '
+                );
+            }
+
+            dimensionsWrapper = document.createElement('span');
             dimensionsWrapper.className = 'bm-model-dimensions-wrapper';
             dimensionsWrapper.style.display = 'none';
 
@@ -5273,15 +5283,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             dimInnerLine.className = 'bm-model-dimensions-line';
             dimInnerLine.appendChild(extractedDimensions);
             dimensionsWrapper.append(dimLineBreak, dimInnerLine);
-
-            if (dimensionsLine.followingBreak?.parentNode) {
-                dimensionsLine.followingBreak.parentNode.insertBefore(
-                    dimensionsWrapper,
-                    dimensionsLine.followingBreak
-                );
-            } else {
-                details.appendChild(dimensionsWrapper);
-            }
 
             toggleBtn = document.createElement('span');
             toggleBtn.className = 'bm-dimensions-toggle-btn';
@@ -5321,7 +5322,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         dimensionsWrapper.classList.remove('bm-collapsing');
                         dimensionsWrapper.style.display = 'none';
                         collapseTimeout = null;
-                    }, 180);
+                    }, 150);
                 } else {
                     dimensionsWrapper.style.display = 'inline';
                     dimensionsWrapper.classList.remove('bm-collapsing');
@@ -5339,6 +5340,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             });
 
             link.after(toggleBtn);
+            toggleBtn.after(dimensionsWrapper);
+        } else {
+            dimensionsWrapper = details.querySelector('.bm-model-dimensions-wrapper');
+            toggleBtn = details.querySelector('.bm-dimensions-toggle-btn');
         }
 
         const existingVolumeLine = details.querySelector('.bm-volume-line');
@@ -5371,11 +5376,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         volumeLine.dataset.bmVolumeLiters = String(volumeLiters);
         const boldValue = document.createElement('b');
         boldValue.textContent = `${formattedVolume} l${pricePerLiter}`;
-        volumeLine.append(document.createTextNode('| Volumen: '), boldValue);
+        volumeLine.append(document.createTextNode('\u00A0| Volumen: '), boldValue);
 
-        const targetAnchor = toggleBtn || link;
+        const targetAnchor = dimensionsWrapper || toggleBtn || link;
         const lineBreak = document.createElement('br');
-        targetAnchor.parentNode?.insertBefore(lineBreak, targetAnchor.nextSibling);
+        targetAnchor.after(lineBreak);
         lineBreak.after(volumeLine);
 
         syncGlobalPriceBasisToggle();
