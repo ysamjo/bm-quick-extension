@@ -4832,7 +4832,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         const formattedVolume = formatVolumeLiters(volumeLiters);
         const pricePerLiter = bestPrice === null
             ? ''
-            : ` · ${formatEuroPerLiter(bestPrice, volumeLiters)}`;
+            : ` | ${formatEuroPerLiter(bestPrice, volumeLiters)}`;
 
         if (existingVolumeLine) {
             if (bestPrice !== null && !existingVolumeLine.dataset.bmPricePerLiter) {
