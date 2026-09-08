@@ -60,7 +60,7 @@
                     top: 12px;
                     right: 12px;
                     bottom: 12px;
-                    width: min(460px, calc(100vw - 24px));
+                    width: min(400px, calc(100vw - 24px));
                     display: flex;
                     pointer-events: none;
                     animation: bm-panel-in .2s ease-out;

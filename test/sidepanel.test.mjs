@@ -125,7 +125,7 @@ test('floating sidebar embeds Brickmerge without blocking the merchant page', ()
     assert.match(source, /type !== 'bm-show-floating-sidebar'/);
     assert.match(source, /www\.brickmerge\.de/);
     assert.match(source, /event\.key !== 'Escape'/);
-    assert.match(source, /width: min\(460px, calc\(100vw - 24px\)\)/);
+    assert.match(source, /width: min\(400px, calc\(100vw - 24px\)\)/);
     assert.match(source, /pointerEvents: 'none'/);
     assert.match(source, /<aside class="panel"/);
     assert.match(source, /grid-template-columns: auto minmax\(0, 1fr\) auto auto auto/);
