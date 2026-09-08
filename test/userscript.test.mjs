@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.50/);
+    assert.match(loaderSource, /@version\s+5\.6\.51/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.50/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.51/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -910,10 +910,12 @@ test('calculation price basis defaults to overall best price and supports toggle
     assert.match(tweakerSource, /isMarketplaceCheaper/);
     assert.match(tweakerSource, /syncPriceBasisCalculations/);
     assert.match(tweakerSource, /function syncMarketplaceDealBadge/);
+    assert.match(tweakerSource, /function getDetailsNameElement\(/);
+    assert.match(tweakerSource, /function ensureH1CopyButton\(/);
     assert.match(tweakerSource, /function ensureDetailsNameCopyButton\(/);
     assert.match(tweakerSource, /function createNameCopyButton\(/);
-    assert.match(tweakerSource, /copyBtn\.after\(toggle\)/);
-    assert.match(tweakerSource, /h1 \.bm-copy-btn, h1 \.bm-price-basis-toggle/);
+    assert.match(tweakerSource, /copyBtn\.classList\.add\('bm-name-copy-btn'\);/);
+    assert.match(tweakerSource, /anchor\.after\(toggle\)/);
     assert.match(tweakerSource, /productPrice\.querySelector\('\.bm-price-basis-switch-row'\)\?\.remove\(\)/);
 });
 
@@ -1045,5 +1047,16 @@ test('resources group places CMF Scanner link at the front for collectible minif
     )?.[0] || '';
     assert.match(resourcesSection, /btn-cmf-scanner/);
     assert.match(resourcesSection, /isCmf/);
+});
+
+test('tap hand overlay on product images is hidden via CSS and removed from DOM', () => {
+    const precleanSource = fs.readFileSync(
+        new URL('../src/preclean.js', import.meta.url),
+        'utf8'
+    );
+    assert.match(precleanSource, /span\.tap,\s*\.tap\s*\{[\s\S]*?display:\s*none\s*!important/);
+    assert.match(precleanSource, /background-image:\s*none\s*!important/);
+    assert.match(tweakerSource, /span\.tap,\s*\.tap\s*\{[\s\S]*?display:\s*none\s*!important/);
+    assert.match(tweakerSource, /document\.querySelectorAll\('span\.tap, \.tap'\)\.forEach/);
 });
 

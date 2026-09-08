@@ -25,8 +25,14 @@
         html.bm-extension-cleaner-enabled .content.setdetails div.offerbox,
         html.bm-extension-cleaner-enabled #offerlist .goto.medium-7,
         html.bm-extension-cleaner-enabled #offerlist span.showmore,
-        html.bm-extension-cleaner-enabled form[name="sctoggle"] {
+        html.bm-extension-cleaner-enabled form[name="sctoggle"],
+        span.tap,
+        .tap {
             display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            background-image: none !important;
         }
         html.bm-sidepanel-frame #filterrow,
         html.bm-sidepanel-frame .top-tab,

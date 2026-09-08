@@ -678,8 +678,14 @@ globalThis.BM_formatEuro = price => {
         html.bm-extension-cleaner-enabled .content.setdetails div.offerbox,
         html.bm-extension-cleaner-enabled #offerlist .goto.medium-7,
         html.bm-extension-cleaner-enabled #offerlist span.showmore,
-        html.bm-extension-cleaner-enabled form[name="sctoggle"] {
+        html.bm-extension-cleaner-enabled form[name="sctoggle"],
+        span.tap,
+        .tap {
             display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            background-image: none !important;
         }
         html.bm-sidepanel-frame #filterrow,
         html.bm-sidepanel-frame .top-tab,
@@ -5029,6 +5035,14 @@ globalThis.BM_formatEuro = price => {
                         width: 4rem;
                     }
                 }
+                span.tap,
+                .tap {
+                    display: none !important;
+                    opacity: 0 !important;
+                    visibility: hidden !important;
+                    pointer-events: none !important;
+                    background-image: none !important;
+                }
             `;
             const globalStyle = document.createElement("style");
             globalStyle.textContent = globalCss;
@@ -6069,8 +6083,12 @@ globalThis.BM_formatEuro = price => {
                 });
             }
 
+            // Tap-Overlay / "komische Hand" auf Produktbildern entfernen (läuft auf ALLEN Seiten)
+            document.querySelectorAll('span.tap, .tap').forEach(el => el.remove());
+
             // 1b. Cleaner (nur auf Detailseiten)
             function cleaner() {
+                document.querySelectorAll('span.tap, .tap').forEach(el => el.remove());
                 const short = document.getElementById('short'); if (short) short.remove();
                 document.querySelectorAll('section').forEach(section => {
                     const p = section.querySelector('p');
@@ -7710,20 +7728,16 @@ globalThis.BM_formatEuro = price => {
                 return copyBtn;
             }
 
-            function ensureDetailsNameCopyButton() {
-                document.querySelectorAll('h1 .bm-copy-btn, h1 .bm-price-basis-toggle').forEach(el => el.remove());
+            function getDetailsNameElement() {
                 const details = document.querySelector('.content.setdetails .productprice');
-                let copyBtn = details?.querySelector('.bm-copy-btn');
-                if (copyBtn) return copyBtn;
-                if (!setNum || !BM_SETTINGS.copyAndMinifigures) return null;
-
+                if (!details) return null;
                 const h1 = document.querySelector('.content.setdetails h1, h1');
                 const pageTitle = h1?.textContent
                     .replace(/[\u00AE\u2122]/g, '')
                     .replace(/\s+/g, ' ')
                     .trim() || '';
-                const nameElement = Array.from(
-                    details?.querySelectorAll('strong, b') || []
+                return Array.from(
+                    details.querySelectorAll('strong, b')
                 ).find(element => {
                     const text = element.textContent
                         .replace(/[\u00AE\u2122]/g, '')
@@ -7733,8 +7747,35 @@ globalThis.BM_formatEuro = price => {
                         text.length > String(setNum).length + 4 &&
                         !/Artikel-Nr\s*:|€/.test(text) &&
                         (!pageTitle || pageTitle.includes(text) || text.includes(pageTitle));
-                });
+                }) || null;
+            }
+
+            function ensureH1CopyButton(h1) {
+                if (!h1) return null;
+                let copyBtn = h1.querySelector('.bm-copy-btn:not(.bm-ean-copy-btn)');
+                if (copyBtn) return copyBtn;
+                if (!setNum || !BM_SETTINGS.copyAndMinifigures) return null;
+
+                copyBtn = createNameCopyButton(() => {
+                    const clone = h1.cloneNode(true);
+                    clone.querySelectorAll('.bm-copy-btn, .bm-price-basis-toggle').forEach(el => el.remove());
+                    return clone.textContent
+                        .replace(/[\u00AE\u2122]/g, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                }, 'Setnamen kopieren');
+                copyBtn.classList.add('bm-name-copy-btn');
+                h1.appendChild(copyBtn);
+                return copyBtn;
+            }
+
+            function ensureDetailsNameCopyButton() {
+                if (!setNum || !BM_SETTINGS.copyAndMinifigures) return null;
+                const nameElement = getDetailsNameElement();
                 if (!nameElement) return null;
+
+                let copyBtn = nameElement.querySelector('.bm-copy-btn:not(.bm-ean-copy-btn)');
+                if (copyBtn) return copyBtn;
 
                 copyBtn = createNameCopyButton(() => {
                     const nameClone = nameElement.cloneNode(true);
@@ -7744,70 +7785,91 @@ globalThis.BM_formatEuro = price => {
                         .replace(/\s+/g, ' ')
                         .trim();
                 }, 'Setnamen kopieren');
+                copyBtn.classList.add('bm-name-copy-btn');
                 nameElement.appendChild(copyBtn);
                 return copyBtn;
             }
 
+            function createPriceBasisToggle() {
+                const toggle = document.createElement('span');
+                toggle.className = 'bm-price-basis-toggle bm-global-price-basis-toggle';
+                toggle.setAttribute('role', 'button');
+                toggle.tabIndex = 0;
+                toggle.innerHTML = `
+                    <svg class="bm-price-basis-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4.5 12V4m0 0L2 6.5m2.5-2.5L7 6.5m4.5-2.5v8m0 0l2.5-2.5m-2.5 2.5L9 9.5"/>
+                    </svg>
+                `.trim();
+                const toggleHandler = event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const currentMode = getPriceBasisMode();
+                    const nextMode = currentMode === 'retailer' ? 'overall' : 'retailer';
+                    setPriceBasisMode(nextMode);
+                    syncPriceBasisCalculations();
+                };
+                toggle.addEventListener('click', toggleHandler);
+                toggle.addEventListener('keydown', event => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    toggleHandler(event);
+                });
+                return toggle;
+            }
+
             function syncGlobalPriceBasisToggle() {
-                document.querySelectorAll('h1 .bm-copy-btn, h1 .bm-price-basis-toggle').forEach(el => el.remove());
-
-                const copyBtn = ensureDetailsNameCopyButton() ||
-                    document.querySelector('.content.setdetails .productprice .bm-copy-btn');
-                const fallbackTarget = document.querySelector(
-                    '.content.setdetails .productprice strong, .content.setdetails .productprice b'
-                );
-                const anchor = copyBtn || fallbackTarget;
-                let toggle = document.querySelector('.bm-price-basis-toggle');
-
-                const prices = getBestOfferPrices();
-                const hasAlternative = Boolean(prices.isMarketplaceCheaper);
-
-                if (!hasAlternative || !anchor) {
-                    toggle?.remove();
+                if (!setNum || !BM_SETTINGS.priceCalculations) {
+                    document.querySelectorAll('.bm-price-basis-toggle').forEach(el => el.remove());
                     return;
                 }
 
-                const mode = getPriceBasisMode();
-                if (!toggle) {
-                    toggle = document.createElement('span');
-                    toggle.className = 'bm-price-basis-toggle bm-global-price-basis-toggle';
-                    toggle.setAttribute('role', 'button');
-                    toggle.tabIndex = 0;
-                    toggle.innerHTML = `
-                        <svg class="bm-price-basis-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M4.5 12V4m0 0L2 6.5m2.5-2.5L7 6.5m4.5-2.5v8m0 0l2.5-2.5m-2.5 2.5L9 9.5"/>
-                        </svg>
-                    `.trim();
-                    const toggleHandler = event => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        const currentMode = getPriceBasisMode();
-                        const nextMode = currentMode === 'retailer' ? 'overall' : 'retailer';
-                        setPriceBasisMode(nextMode);
-                        syncPriceBasisCalculations();
-                    };
-                    toggle.addEventListener('click', toggleHandler);
-                    toggle.addEventListener('keydown', event => {
-                        if (event.key !== 'Enter' && event.key !== ' ') return;
-                        toggleHandler(event);
+                const h1 = document.querySelector('.content.setdetails h1, h1');
+                const h1CopyBtn = (h1 && BM_SETTINGS.copyAndMinifigures) ? ensureH1CopyButton(h1) : null;
+                const detailsCopyBtn = BM_SETTINGS.copyAndMinifigures ? ensureDetailsNameCopyButton() : null;
+                const detailsNameElement = detailsCopyBtn?.parentElement || getDetailsNameElement();
+
+                const targets = [];
+                if (h1) {
+                    targets.push({
+                        container: h1,
+                        anchor: h1CopyBtn || h1.querySelector('.bm-copy-btn:not(.bm-ean-copy-btn)')
+                    });
+                }
+                if (detailsNameElement) {
+                    targets.push({
+                        container: detailsNameElement,
+                        anchor: detailsCopyBtn || detailsNameElement.querySelector('.bm-copy-btn:not(.bm-ean-copy-btn)')
                     });
                 }
 
-                if (copyBtn) {
-                    if (copyBtn.nextElementSibling !== toggle) {
-                        copyBtn.after(toggle);
+                targets.forEach(({ container, anchor }) => {
+                    let toggle = container.querySelector(':scope > .bm-price-basis-toggle, .bm-price-basis-toggle');
+                    if (!toggle && anchor && anchor.nextElementSibling?.classList.contains('bm-price-basis-toggle')) {
+                        toggle = anchor.nextElementSibling;
                     }
-                } else if (fallbackTarget && !fallbackTarget.contains(toggle)) {
-                    fallbackTarget.appendChild(toggle);
-                }
+                    if (!toggle) {
+                        toggle = createPriceBasisToggle();
+                        if (anchor) {
+                            anchor.after(toggle);
+                        } else {
+                            container.appendChild(toggle);
+                        }
+                    } else if (anchor && anchor.nextElementSibling !== toggle) {
+                        anchor.after(toggle);
+                    }
+                });
 
+                const prices = getBestOfferPrices();
+                const mode = getPriceBasisMode();
                 const currentBasis = mode === 'retailer' ? 'Händler-Bestpreis' : 'Echter Bestpreis (inkl. Marktplatz)';
                 const nextBasis = mode === 'retailer' ? 'Echter Bestpreis (inkl. Marktplatz)' : 'Händler-Bestpreis';
                 const nextPrice = mode === 'retailer' ? prices.overallBest : prices.retailerBest;
                 const tooltip = `Berechnungsgrundlage: ${currentBasis}. Klick zum Umschalten auf ${nextBasis}${nextPrice !== null ? ` (${formatEuroValue(nextPrice)} €)` : ''}.`;
-                toggle.title = tooltip;
-                toggle.setAttribute('aria-label', tooltip);
-                toggle.dataset.bmMode = mode;
+
+                document.querySelectorAll('.bm-price-basis-toggle').forEach(toggle => {
+                    toggle.title = tooltip;
+                    toggle.setAttribute('aria-label', tooltip);
+                    toggle.dataset.bmMode = mode;
+                });
             }
 
             function syncPriceBasisCalculations() {
@@ -7937,6 +7999,7 @@ globalThis.BM_formatEuro = price => {
                     renameHistoricalBestPriceLabel,
                     renameAktBrickmergePreisLabel,
                     createDiscountSettingsUI,
+                    syncGlobalPriceBasisToggle,
                     removeCorrectionReportButtons,
                     compactSetFooter
                 ].forEach(initializer => {
@@ -11181,15 +11244,17 @@ globalThis.BM_formatEuro = price => {
                 });
             }
 
-            if (setNum && BM_SETTINGS.copyAndMinifigures) {
+            if (setNum && (BM_SETTINGS.copyAndMinifigures || BM_SETTINGS.priceCalculations)) {
                 try {
                     (function detailsNameCopyButton() {
-                        ensureDetailsNameCopyButton();
+                        const h1 = document.querySelector('.content.setdetails h1, h1');
+                        if (h1 && BM_SETTINGS.copyAndMinifigures) ensureH1CopyButton(h1);
+                        if (BM_SETTINGS.copyAndMinifigures) ensureDetailsNameCopyButton();
                         syncGlobalPriceBasisToggle();
                     })();
                 } catch (error) {
                     console.error(
-                        'Brickmerge Tweaker: Setnamen-Kopierfunktion konnte nicht initialisiert werden.',
+                        'Brickmerge Tweaker: Setnamen-Kopierfunktion / Umschalter konnte nicht initialisiert werden.',
                         error
                     );
                 }
