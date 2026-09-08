@@ -7654,14 +7654,8 @@ globalThis.BM_formatEuro = price => {
 
             function formatVolumeLiters(value) {
                 if (!Number.isFinite(value) || value <= 0) return '';
-                let formatted;
-                if (value >= 100) {
-                    formatted = Math.round(value).toString();
-                } else if (value >= 10) {
-                    formatted = value.toFixed(1).replace(/\.0$/, '');
-                } else {
-                    formatted = value.toFixed(2).replace(/\.?0+$/, '');
-                }
+                const safeValue = Math.max(0.1, value);
+                const formatted = safeValue.toFixed(1);
                 return formatted.replace('.', ',');
             }
 
