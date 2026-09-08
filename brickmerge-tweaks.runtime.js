@@ -2669,25 +2669,59 @@ globalThis.BM_formatEuro = price => {
                 }
                 #offerlist .row.collapse.bm-sold-out-offer {
                     position: relative;
-                    box-shadow: inset 3px 0 0 #777;
                 }
+                #offerlist .row.collapse.bm-sold-out-offer::before {
+                    content: "";
+                    position: absolute;
+                    inset: 0 auto 0 0;
+                    z-index: 10;
+                    width: 4px;
+                    background: #777;
+                    pointer-events: none;
+                }
+                #offerlist .row.collapse.bm-sold-out-offer,
+                #offerlist .row.collapse.bm-sold-out-offer > .goto,
                 #offerlist .row.collapse.bm-sold-out-offer > .goto.small-3.columns,
-                #offerlist .row.collapse.bm-sold-out-offer
-                    > .goto.small-3.columns > .pricerow,
-                #offerlist .row.collapse.bm-sold-out-offer
-                    > .medium-4.small-9.columns.pricerow {
+                #offerlist .row.collapse.bm-sold-out-offer > .goto > .pricerow,
+                #offerlist .row.collapse.bm-sold-out-offer > .goto.small-3.columns > .pricerow,
+                #offerlist .row.collapse.bm-sold-out-offer > .medium-4.small-9.columns.pricerow,
+                #offerlist .row.collapse.bm-sold-out-offer .bm-marketplace-logo-column,
+                #offerlist .row.collapse.bm-sold-out-offer .bm-marketplace-logo-cell,
+                #offerlist .row.collapse.bm-sold-out-offer .bm-marketplace-logo-link,
+                #offerlist .row.collapse.bm-sold-out-offer .bm-marketplace-logo-stage,
+                #offerlist .row.collapse.bm-sold-out-offer .bm-marketplace-logo-meta,
+                #offerlist .row.collapse.bm-sold-out-offer:hover > .goto,
+                #offerlist .row.collapse.bm-sold-out-offer:hover > .goto.small-3.columns,
+                #offerlist .row.collapse.bm-sold-out-offer:hover > .goto > .pricerow,
+                #offerlist .row.collapse.bm-sold-out-offer:hover > .goto.small-3.columns > .pricerow,
+                #offerlist .row.collapse.bm-sold-out-offer:hover > .medium-4.small-9.columns.pricerow,
+                #offerlist .row.collapse.bm-sold-out-offer:hover .bm-marketplace-logo-column,
+                #offerlist .row.collapse.bm-sold-out-offer:hover .bm-marketplace-logo-cell,
+                #offerlist .row.collapse.bm-sold-out-offer:hover .bm-marketplace-logo-link,
+                #offerlist .row.collapse.bm-sold-out-offer:hover .bm-marketplace-logo-stage,
+                #offerlist .row.collapse.bm-sold-out-offer:hover .bm-marketplace-logo-meta,
+                #offerlist .row.collapse.bm-sold-out-offer .bm-marketplace-logo-link:hover,
+                #offerlist .row.collapse.bm-sold-out-offer .bm-marketplace-logo-link:focus-visible {
+                    background: #dedede !important;
                     background-color: #dedede !important;
+                    box-shadow: none !important;
+                    transform: none !important;
+                }
+                #offerlist .row.collapse.bm-sold-out-offer .bm-marketplace-logo-link:hover .bm-marketplace-logo-stage,
+                #offerlist .row.collapse.bm-sold-out-offer .bm-marketplace-logo-link:focus-visible .bm-marketplace-logo-stage {
+                    transform: none !important;
+                    filter: none !important;
                 }
                 #offerlist .bm-sold-out-overlay {
                     position: absolute;
                     inset: 0;
-                    z-index: 5;
-                    background: rgba(95, 95, 95, 0.24);
+                    z-index: 8;
+                    background: rgba(95, 95, 95, 0.18);
                     pointer-events: none;
                 }
                 #offerlist .bm-sold-out-badge {
                     position: relative;
-                    z-index: 6;
+                    z-index: 9;
                     display: inline-flex;
                     align-items: center;
                     margin-left: 0.45rem;
@@ -2700,6 +2734,14 @@ globalThis.BM_formatEuro = price => {
                     line-height: 1.15;
                     vertical-align: middle;
                     white-space: nowrap;
+                }
+                #offerlist .row.collapse.bm-sold-out-offer:hover span.price,
+                #offerlist .row.collapse.bm-sold-out-offer:hover span.price > .merchant,
+                #offerlist .row.collapse.bm-sold-out-offer:hover span.price > .merchant *,
+                #offerlist .row.collapse.bm-sold-out-offer:hover .bm-original-price,
+                #offerlist .row.collapse.bm-sold-out-offer:hover .bm-shipping-info,
+                #offerlist .row.collapse.bm-sold-out-offer:hover .bm-shipping-unknown {
+                    color: inherit !important;
                 }
                 #offerlist .pricerow:hover span.price,
                 #offerlist .pricerow:hover span.price > .merchant,
@@ -4598,8 +4640,11 @@ globalThis.BM_formatEuro = price => {
                 }
                 #offerlist .bm-marketplace-offer.bm-offer-entering {
                     overflow: hidden;
-                    animation: bm-offer-enter 0.24s ease-out both;
+                    animation: bm-offer-enter 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
                     transform-origin: top center;
+                }
+                #offerlist .bm-marketplace-offer.bm-offer-entering .pricerow {
+                    animation: bm-offer-highlight 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
                 }
                 #offerlist .row.collapse.bm-offer-reordering {
                     position: relative;
@@ -4614,12 +4659,20 @@ globalThis.BM_formatEuro = price => {
                     from {
                         max-height: 0;
                         opacity: 0;
-                        transform: translateY(-5px);
+                        transform: translateY(-8px);
                     }
                     to {
-                        max-height: 100px;
+                        max-height: 72px;
                         opacity: 1;
                         transform: translateY(0);
+                    }
+                }
+                @keyframes bm-offer-highlight {
+                    from {
+                        box-shadow: inset 0 0 0 100px rgba(248, 220, 98, 0.28);
+                    }
+                    to {
+                        box-shadow: inset 0 0 0 100px rgba(248, 220, 98, 0);
                     }
                 }
                 @keyframes bm-shortcut-leave {
@@ -4634,6 +4687,7 @@ globalThis.BM_formatEuro = price => {
                 }
                 @media (prefers-reduced-motion: reduce) {
                     #offerlist .bm-marketplace-offer.bm-offer-entering,
+                    #offerlist .bm-marketplace-offer.bm-offer-entering .pricerow,
                     #offerlist .row.collapse.bm-offer-reordering,
                     .bm-link.bm-shortcut-leaving {
                         animation: none;
@@ -7769,7 +7823,19 @@ globalThis.BM_formatEuro = price => {
                     const priceRow = wrapper.querySelector(
                         '.medium-4.small-9.columns.pricerow[data-mid]'
                     );
-                    if (priceRow) priceRow.dataset.bmSoldOut = 'true';
+                    if (priceRow) {
+                        priceRow.dataset.bmSoldOut = 'true';
+                        delete priceRow.dataset.bmDiscountApplied;
+                        delete priceRow.dataset.bmRetailerRate;
+                        delete priceRow.dataset.bmRetailerDomain;
+                        delete priceRow.dataset.bmEffectivePrice;
+                        delete priceRow.dataset.bmEffectiveDiscount;
+                        priceRow.classList.remove('bm-has-retailer-discount');
+                    }
+
+                    wrapper.querySelectorAll(
+                        '.bm-offer-discount-bubble, .bm-total-discount-bubble, .bm-effective-info'
+                    ).forEach(el => el.remove());
 
                     const priceSpan = priceRow?.querySelector('span.price');
                     if (priceSpan && !priceSpan.querySelector('.bm-sold-out-badge')) {
@@ -13739,6 +13805,27 @@ globalThis.BM_formatEuro = price => {
 
                 offerlist.querySelectorAll('span.price').forEach(priceSpan => {
                     const discountRow = priceSpan.closest('.pricerow');
+                    if (
+                        discountRow?.dataset.bmSoldOut === 'true' ||
+                        discountRow?.closest('.bm-sold-out-offer') ||
+                        discountRow?.closest('#soldOut')
+                    ) {
+                        if (discountRow) {
+                            delete discountRow.dataset.bmDiscountApplied;
+                            delete discountRow.dataset.bmRetailerRate;
+                            delete discountRow.dataset.bmRetailerDomain;
+                            delete discountRow.dataset.bmEffectivePrice;
+                            delete discountRow.dataset.bmEffectiveDiscount;
+                            discountRow.classList.remove('bm-has-retailer-discount');
+                            const offerLink = priceSpan.closest('a');
+                            if (offerLink && offerLink.dataset.bmOriginalTooltip) {
+                                offerLink.setAttribute('title', offerLink.dataset.bmOriginalTooltip);
+                                delete offerLink.dataset.bmTooltip;
+                            }
+                        }
+                        return;
+                    }
+
                     const candidates = extractMerchantCandidates(priceSpan);
                     const match = matchRetailerDiscount(priceSpan, candidates);
                     if (!match) {
@@ -14522,7 +14609,7 @@ globalThis.BM_formatEuro = price => {
                     if (animateEntry) {
                         window.setTimeout(
                             () => wrapper.classList.remove('bm-offer-entering'),
-                            280
+                            520
                         );
                     }
                 });
@@ -14840,7 +14927,13 @@ globalThis.BM_formatEuro = price => {
                     const shipping = priceSpan.querySelector(':scope > .bm-shipping-info');
                     const merchant = priceSpan.querySelector(':scope > .merchant');
 
-                    if (!priceRow || retailerRate <= 0) {
+                    if (
+                        !priceRow ||
+                        retailerRate <= 0 ||
+                        priceRow.dataset.bmSoldOut === 'true' ||
+                        priceRow.closest('.bm-sold-out-offer') ||
+                        priceRow.closest('#soldOut')
+                    ) {
                         info?.remove();
                         if (originalPrice) {
                             originalPrice.classList.remove('bm-original-secondary');
@@ -14907,6 +15000,17 @@ globalThis.BM_formatEuro = price => {
                 const priceReference = getDiscountPriceReference();
                 offerlist.querySelectorAll('span.price').forEach(priceSpan => {
                     const priceRow = priceSpan.closest('.pricerow');
+                    if (
+                        priceRow?.dataset.bmSoldOut === 'true' ||
+                        priceRow?.closest('.bm-sold-out-offer') ||
+                        priceRow?.closest('#soldOut')
+                    ) {
+                        priceSpan.querySelectorAll(
+                            ':scope > .bm-offer-discount-bubble, :scope > .bm-total-discount-bubble'
+                        ).forEach(bubble => bubble.remove());
+                        return;
+                    }
+
                     const basePrice = getBaseOfferPrice(priceSpan);
                     const retailerRate = Number(priceRow?.dataset.bmRetailerRate || 0);
                     const comparedPrice = basePrice === null
@@ -15057,6 +15161,17 @@ globalThis.BM_formatEuro = price => {
                     );
                     const insertionAnchor = originalOrder[originalOrder.length - 1]?.nextSibling || null;
                     group.sort((a, b) => {
+                        const aSoldOut = Boolean(
+                            a.priceRow?.dataset.bmSoldOut === 'true' ||
+                            a.wrapper?.classList.contains('bm-sold-out-offer')
+                        );
+                        const bSoldOut = Boolean(
+                            b.priceRow?.dataset.bmSoldOut === 'true' ||
+                            b.wrapper?.classList.contains('bm-sold-out-offer')
+                        );
+                        if (aSoldOut !== bSoldOut) {
+                            return aSoldOut ? 1 : -1;
+                        }
                         if (a.price === null && b.price === null) return a.originalIndex - b.originalIndex;
                         if (a.price === null) return 1;
                         if (b.price === null) return -1;
@@ -15090,6 +15205,7 @@ globalThis.BM_formatEuro = price => {
 
                         if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                             group.forEach(offer => {
+                                if (offer.wrapper.classList.contains('bm-offer-entering')) return;
                                 const before = originalPositions.get(offer.wrapper);
                                 const after = offer.wrapper.getBoundingClientRect();
                                 const deltaX = before ? before.left - after.left : 0;
@@ -15101,8 +15217,8 @@ globalThis.BM_formatEuro = price => {
                                     { transform: `translate(${deltaX}px, ${deltaY}px)` },
                                     { transform: 'translate(0, 0)' }
                                 ], {
-                                    duration: 380,
-                                    easing: 'cubic-bezier(.22, .8, .25, 1)'
+                                    duration: 480,
+                                    easing: 'cubic-bezier(0.16, 1, 0.3, 1)'
                                 });
                                 if (!animation) {
                                     offer.wrapper.classList.remove('bm-offer-reordering');
