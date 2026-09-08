@@ -260,12 +260,12 @@
             </style>
             <aside class="panel" aria-label="Schwebende Brickmerge-Seitenleiste">
                 <button class="toggle-tab" type="button" title="Seitenleiste ausblenden" aria-label="Seitenleiste ausblenden" aria-expanded="true">
-                    <img class="tab-logo" src="${chrome.runtime.getURL('icons/icon32.png')}" alt="">
+                    <img class="tab-logo" src="${chrome.runtime.getURL('icons/icon128.png')}" alt="">
                     <svg class="tab-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
                 </button>
                 <div class="panel-card">
                     <div class="toolbar">
-                        <a class="brand" href="${BASE_URL}" title="Brickmerge-Startseite" aria-label="Brickmerge-Startseite"><img class="brand-logo" src="${chrome.runtime.getURL('icons/icon32.png')}" alt=""></a>
+                        <a class="brand" href="${BASE_URL}" title="Brickmerge-Startseite" aria-label="Brickmerge-Startseite"><img class="brand-logo" src="${chrome.runtime.getURL('icons/icon128.png')}" alt=""></a>
                         <form class="search">
                             <input class="query" type="search" aria-label="Setnummer oder Suchbegriff" maxlength="100">
                             <button class="submit" type="submit" title="Suchen" aria-label="Brickmerge-Suche starten">

@@ -129,7 +129,7 @@ test('floating sidebar embeds Brickmerge without blocking the merchant page', ()
     assert.match(source, /pointerEvents: 'none'/);
     assert.match(source, /<aside class="panel"/);
     assert.match(source, /grid-template-columns: auto minmax\(0, 1fr\) auto auto auto/);
-    assert.match(source, /class="brand-logo" src="\$\{chrome\.runtime\.getURL\('icons\/icon32\.png'\)\}"/);
+    assert.match(source, /class="brand-logo" src="\$\{chrome\.runtime\.getURL\('icons\/icon128\.png'\)\}"/);
     assert.match(source, /aria-label="Brickmerge-Startseite"/);
     assert.match(source, /const navigateHome = \(\) => \{/);
     assert.match(source, /homeButton\.addEventListener\('click'/);
