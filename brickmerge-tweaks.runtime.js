@@ -535,7 +535,7 @@ globalThis.BM_buildMinifigCrosswalk = (rebrickableEntries, brickLinkItems) => {
 
 globalThis.BM_parseBrickmergeDetailLines = values => {
     const allowedLabels = [
-        'Teile', 'Minifiguren', 'Setgewicht', 'Box-Maße', 'Release',
+        'Teile', 'Minifiguren', 'Setgewicht', 'Box-Maße', 'Volumen', 'Release',
         'UVP', 'bisheriger Bestpreis', 'akt. brickmerge Preis', 'POV'
     ];
     const fields = [];
@@ -6656,19 +6656,35 @@ globalThis.BM_isFranceEnabled = settings =>
                 link.appendChild(line.range.extractContents());
                 line.range.insertNode(link);
 
-                if (details.querySelector('.bm-volume-line')) return;
+                const existingVolumeLine = details.querySelector('.bm-volume-line');
                 const volumeLiters = width * length * height / 1000;
                 if (!Number.isFinite(volumeLiters) || volumeLiters <= 0) return;
                 const bestPrice = readBrickmergeBestPriceFromDom();
+                const formattedVolume = formatVolumeLiters(volumeLiters);
+                const pricePerLiter = bestPrice === null
+                    ? ''
+                    : ` · ${formatEuroPerLiter(bestPrice, volumeLiters)}`;
+
+                if (existingVolumeLine) {
+                    if (bestPrice !== null && !existingVolumeLine.dataset.bmPricePerLiter) {
+                        existingVolumeLine.dataset.bmPricePerLiter = 'true';
+                        const boldValue = existingVolumeLine.querySelector('b');
+                        if (boldValue) {
+                            boldValue.textContent = `${formattedVolume} l${pricePerLiter}`;
+                        }
+                    }
+                    return;
+                }
+
                 const volumeLine = document.createElement('span');
-                volumeLine.className = 'bm-volume-line bm-detail-line-link';
-                volumeLine.textContent = `Volumen: ${formatVolumeLiters(volumeLiters)} L` +
-                    (bestPrice === null
-                        ? ''
-                        : ` · ${formatEuroPerLiter(bestPrice, volumeLiters)} €/L`);
-                volumeLine.title = bestPrice === null
-                    ? 'Volumen aus Box-Maße berechnet'
-                    : `Volumen aus Box-Maße berechnet, €/Liter aus Brickmerge-Bestpreis`;
+                volumeLine.className = 'bm-volume-line';
+                if (bestPrice !== null) {
+                    volumeLine.dataset.bmPricePerLiter = 'true';
+                }
+                const boldValue = document.createElement('b');
+                boldValue.textContent = `${formattedVolume} l${pricePerLiter}`;
+                volumeLine.append(document.createTextNode('| Volumen: '), boldValue);
+
                 const lineBreak = document.createElement('br');
                 link.parentNode?.insertBefore(lineBreak, link.nextSibling);
                 lineBreak.after(volumeLine);
@@ -6689,17 +6705,28 @@ globalThis.BM_isFranceEnabled = settings =>
             }
 
             function formatVolumeLiters(value) {
-                if (value >= 100) return Math.round(value).toString();
-                if (value >= 10) return value.toFixed(1).replace(/\.0$/, '');
-                return value.toFixed(2).replace(/\.?0+$/, '');
+                if (!Number.isFinite(value) || value <= 0) return '';
+                let formatted;
+                if (value >= 100) {
+                    formatted = Math.round(value).toString();
+                } else if (value >= 10) {
+                    formatted = value.toFixed(1).replace(/\.0$/, '');
+                } else {
+                    formatted = value.toFixed(2).replace(/\.?0+$/, '');
+                }
+                return formatted.replace('.', ',');
             }
 
             function formatEuroPerLiter(price, volumeLiters) {
                 if (!Number.isFinite(price) || !Number.isFinite(volumeLiters) ||
                     volumeLiters <= 0) return '';
                 const perLiter = price / volumeLiters;
-                return perLiter.toFixed(2).replace(/\.00$/, '.--')
-                    .replace(/(\.\d)0$/, '$1');
+                const formattedPrice = perLiter.toLocaleString('de-DE', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                    useGrouping: false
+                });
+                return `${formattedPrice} €/l`;
             }
 
             function compactSetFooter() {

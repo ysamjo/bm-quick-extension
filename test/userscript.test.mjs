@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.32/);
+    assert.match(loaderSource, /@version\s+5\.6\.33/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.32/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.33/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -830,4 +830,16 @@ test('historical best price replaces duplicate relative date labels', () => {
             ".replace(/(?:^|\\s)(?:heute|gestern)\\s*!?/gi, '')"
         )
     );
+});
+
+test('volume detail line matches native Brickmerge formatting without hover', () => {
+    assert.match(tweakerSource, /volumeLine\.className = 'bm-volume-line';/);
+    assert.doesNotMatch(tweakerSource, /volumeLine\.className = 'bm-volume-line bm-detail-line-link'/);
+    assert.doesNotMatch(tweakerSource, /volumeLine\.title/);
+    assert.match(tweakerSource, /document\.createTextNode\('\| Volumen: '\)/);
+    assert.match(tweakerSource, /boldValue\.textContent = `\${formattedVolume} l\${pricePerLiter}`;/);
+    assert.match(tweakerSource, /formatted\.replace\('\.', ','\)/);
+    assert.match(tweakerSource, /toLocaleString\('de-DE'/);
+    assert.match(tweakerSource, /`\${formattedPrice} €\/l`/);
+    assert.match(sharedSource, /'Box-Maße',\s*'Volumen',\s*'Release'/);
 });
