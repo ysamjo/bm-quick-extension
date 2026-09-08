@@ -955,3 +955,22 @@ test('sold out offers have uniform background, left indicator bar, and remain so
     assert.doesNotMatch(tweakerSource, /aSoldOut !== bSoldOut/);
 });
 
+test('historical best price is abbreviated to ATB with tooltip and formatted suffix, and akt. brickmerge Preis is shortened', () => {
+    assert.match(tweakerSource, /function formatHistoricalBestPriceSuffix\(/);
+    assert.match(tweakerSource, /function renameHistoricalBestPriceLabel\(/);
+    assert.match(tweakerSource, /function renameAktBrickmergePreisLabel\(/);
+    assert.match(tweakerSource, /bm-atb-abbr/);
+    assert.match(tweakerSource, /title = 'All-Time-Bestpreis'/);
+    assert.match(tweakerSource, /textContent = 'ATB'/);
+    assert.match(tweakerSource, /akt\. Bestpreis/);
+    assert.match(sharedSource, /'All-Time-Bestpreis',\s*'ATB',\s*'akt\. brickmerge Preis',\s*'akt\. Bestpreis'/);
+
+    const formatSuffixMatch = tweakerSource.match(/function formatHistoricalBestPriceSuffix\([\s\S]*?\n    \}/);
+    assert.ok(formatSuffixMatch, 'formatHistoricalBestPriceSuffix function found');
+    const fn = new Function('detailSuffix', `${formatSuffixMatch[0]}; return formatHistoricalBestPriceSuffix(detailSuffix);`);
+    assert.equal(fn('am 27.08.2026 bei eBay.de.'), '(27.08.26, eBay)');
+    assert.equal(fn('am 05.12.2023 bei Proshop.de'), '(05.12.23, Proshop)');
+    assert.equal(fn('/ 45% am 27.08.2026 bei LEGO.com.'), '/ 45% (27.08.26, LEGO)');
+    assert.equal(fn('(27.08.26, eBay)'), '(27.08.26, eBay)');
+});
+

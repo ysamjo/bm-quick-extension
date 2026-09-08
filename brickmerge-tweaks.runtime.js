@@ -536,7 +536,7 @@ globalThis.BM_buildMinifigCrosswalk = (rebrickableEntries, brickLinkItems) => {
 globalThis.BM_parseBrickmergeDetailLines = values => {
     const allowedLabels = [
         'Teile', 'Minifiguren', 'Setgewicht', 'Box-Maße', 'Maße', 'Volumen', 'Release',
-        'UVP', 'bisheriger Bestpreis', 'akt. brickmerge Preis', 'POV'
+        'UVP', 'bisheriger Bestpreis', 'All-Time-Bestpreis', 'ATB', 'akt. brickmerge Preis', 'akt. Bestpreis', 'POV'
     ];
     const fields = [];
     for (const rawValue of values || []) {
@@ -5578,7 +5578,7 @@ globalThis.BM_formatEuro = price => {
 
             function parseHistoricalBestPriceText(rawText) {
                 const text = String(rawText || '').replace(/\s+/g, ' ').trim();
-                if (!/(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(text)) return null;
+                if (!/(?:bisheriger\s+bestpreis|all-time-bestpreis|\batb\b)/i.test(text)) return null;
 
                 const priceMatch = text.match(/(\d+[\d\s.,]*)\s*€/i);
                 if (!priceMatch) return null;
@@ -5604,6 +5604,27 @@ globalThis.BM_formatEuro = price => {
                 };
             }
 
+            function formatHistoricalBestPriceSuffix(detailSuffix) {
+                let suffix = String(detailSuffix || '').replace(/\s+/g, ' ').trim();
+                if (!suffix) return '';
+                if (/^\([^)]+\)$/.test(suffix)) return suffix;
+
+                suffix = suffix
+                    .replace(/(?:^|\s)vor\s+\d+\s+Tagen\b/gi, '')
+                    .replace(/(?:^|\s)(?:heute|gestern)\s*!?/gi, '')
+                    .trim();
+
+                suffix = suffix.replace(
+                    /\bam\s+(\d{1,2}\.\d{1,2}\.)(?:19|20)?(\d{2})\s+bei\s+([^\s()|]+(?:\s+[^\s()|]+)*?)(?:\.+|\b)(?=\s*[<|]|$)/i,
+                    (full, dayMonth, shortYear, merchant) => {
+                        let cleanMerchant = merchant.replace(/\.+$/, '').trim();
+                        cleanMerchant = cleanMerchant.replace(/\.(?:de|com|at|ch|fr|nl|es|it|eu|org|net)$/i, '');
+                        return `(${dayMonth}${shortYear}, ${cleanMerchant})`;
+                    }
+                );
+                return suffix;
+            }
+
             function renameHistoricalBestPriceLabel() {
                 const root = document.querySelector(
                     '.content.setdetails .productprice'
@@ -5614,16 +5635,96 @@ globalThis.BM_formatEuro = price => {
                 const nodes = [];
                 let node;
                 while (node = walker.nextNode()) {
-                    if (/bisheriger bestpreis/i.test(node.nodeValue || '')) {
+                    if (node.parentElement?.closest?.('.bm-atb-abbr')) continue;
+                    if (/(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(node.nodeValue || '')) {
+                        nodes.push(node);
+                    }
+                }
+                nodes.forEach(textNode => {
+                    const val = textNode.nodeValue || '';
+                    const match = val.match(/(?:bisheriger\s+bestpreis|all-time-bestpreis)/i);
+                    if (!match) return;
+
+                    const pre = val.slice(0, match.index);
+                    const post = val.slice(match.index + match[0].length);
+
+                    const atbSpan = document.createElement('span');
+                    atbSpan.className = 'bm-atb-abbr tooltipster';
+                    atbSpan.title = 'All-Time-Bestpreis';
+                    atbSpan.style.textDecoration = 'underline dashed #888';
+                    atbSpan.style.textUnderlineOffset = '2px';
+                    atbSpan.style.cursor = 'help';
+                    atbSpan.textContent = 'ATB';
+
+                    const parent = textNode.parentNode;
+                    if (!parent) return;
+
+                    if (pre) {
+                        parent.insertBefore(document.createTextNode(pre), textNode);
+                    }
+                    parent.insertBefore(atbSpan, textNode);
+                    if (post) {
+                        parent.insertBefore(document.createTextNode(post), textNode);
+                    }
+                    parent.removeChild(textNode);
+                });
+
+                const dateWalker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+                const dateNodes = [];
+                let dNode;
+                while (dNode = dateWalker.nextNode()) {
+                    if (/\bam\s+\d{1,2}\.\d{1,2}\.\d{2,4}\s+bei\b/i.test(dNode.nodeValue || '')) {
+                        dateNodes.push(dNode);
+                    }
+                }
+                dateNodes.forEach(textNode => {
+                    textNode.nodeValue = textNode.nodeValue.replace(
+                        /\bam\s+(\d{1,2}\.\d{1,2}\.)(?:19|20)?(\d{2})\s+bei\s+([^\s()|]+(?:\s+[^\s()|]+)*?)(?:\.+|\b)(?=\s*[<|]|$)/gi,
+                        (full, dayMonth, shortYear, merchant) => {
+                            let cleanMerchant = merchant.replace(/\.+$/, '').trim();
+                            cleanMerchant = cleanMerchant.replace(/\.(?:de|com|at|ch|fr|nl|es|it|eu|org|net)$/i, '');
+                            return `(${dayMonth}${shortYear}, ${cleanMerchant})`;
+                        }
+                    );
+                });
+
+                root.querySelectorAll('.bm-historical-bestprice-detail').forEach(el => {
+                    const formatted = formatHistoricalBestPriceSuffix(el.textContent);
+                    if (formatted && formatted !== el.textContent.trim()) {
+                        el.textContent = ` ${formatted}`;
+                    }
+                });
+            }
+
+            function renameAktBrickmergePreisLabel() {
+                const root = document.querySelector(
+                    '.content.setdetails .productprice'
+                );
+                if (!root) return;
+
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+                const nodes = [];
+                let node;
+                while (node = walker.nextNode()) {
+                    if (/akt\.\s*brickmerge\s*preis/i.test(node.nodeValue || '')) {
                         nodes.push(node);
                     }
                 }
                 nodes.forEach(textNode => {
                     textNode.nodeValue = textNode.nodeValue.replace(
-                        /bisheriger bestpreis/gi,
-                        'All-Time-Bestpreis'
+                        /akt\.\s*brickmerge\s*preis/gi,
+                        'akt. Bestpreis'
                     );
                 });
+
+                const nobrs = Array.from(root.querySelectorAll('nobr'));
+                for (let i = 0; i < nobrs.length - 1; i++) {
+                    const current = nobrs[i];
+                    const next = nobrs[i + 1];
+                    if (current.nextSibling && current.nextSibling === next.previousSibling && current.nextSibling.nodeType === Node.TEXT_NODE) {
+                        current.nextSibling.nodeValue = '\u00A0';
+                    }
+                }
             }
 
             let nativeChartHistoricalBestPriceInfo = null;
@@ -5675,6 +5776,24 @@ globalThis.BM_formatEuro = price => {
                 roots.push(document.body);
 
                 for (const root of roots.filter(Boolean)) {
+                    const atbAbbr = root.querySelector?.('.bm-atb-abbr');
+                    if (atbAbbr && !atbAbbr.closest('#bm-price-chart-overlay, #chartWrapper, #bigChart, #chartContainer, #all-time-bestpreis-discount')) {
+                        const container = atbAbbr.closest('a') || atbAbbr.parentElement;
+                        if (container) {
+                            const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+                            let node;
+                            let lastNode = null;
+                            while (node = walker.nextNode()) {
+                                if (node.parentElement?.closest?.('.bm-atb-abbr')) continue;
+                                lastNode = node;
+                                if (/€/i.test(node.nodeValue || '')) {
+                                    return node;
+                                }
+                            }
+                            if (lastNode) return lastNode;
+                        }
+                    }
+
                     const walker = document.createTreeWalker(
                         root,
                         NodeFilter.SHOW_TEXT,
@@ -5682,7 +5801,10 @@ globalThis.BM_formatEuro = price => {
                             acceptNode(node) {
                                 const parent = node.parentElement;
                                 if (!parent) return NodeFilter.FILTER_REJECT;
-                                if (!/(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(node.nodeValue || '')) {
+                                if (parent.closest('.bm-atb-abbr')) {
+                                    return NodeFilter.FILTER_REJECT;
+                                }
+                                if (!/(?:bisheriger\s+bestpreis|all-time-bestpreis|\batb\b)/i.test(node.nodeValue || '')) {
                                     return NodeFilter.FILTER_REJECT;
                                 }
                                 if (parent.closest('#bm-price-chart-overlay, #chartWrapper, #bigChart, #chartContainer')) {
@@ -5703,7 +5825,8 @@ globalThis.BM_formatEuro = price => {
             }
 
             function writeHistoricalBestPriceDetailToSidebar(detailSuffix, seedElement = null) {
-                const suffix = String(detailSuffix || '').replace(/\s+/g, ' ').trim();
+                const formattedSuffix = formatHistoricalBestPriceSuffix(detailSuffix);
+                const suffix = String(formattedSuffix || '').replace(/\s+/g, ' ').trim();
                 const existingDetails = Array.from(document.querySelectorAll(
                     '.bm-historical-bestprice-detail'
                 ));
@@ -7835,6 +7958,8 @@ globalThis.BM_formatEuro = price => {
                     linkDesignerName,
                     cleanMinifigureExclusiveText,
                     linkPackageDimensionsCalculator,
+                    renameHistoricalBestPriceLabel,
+                    renameAktBrickmergePreisLabel,
                     createDiscountSettingsUI,
                     removeCorrectionReportButtons,
                     compactSetFooter
@@ -8151,10 +8276,10 @@ globalThis.BM_formatEuro = price => {
 
                     const historyRow = Array.from(chartWrapper.children)
                         .find(element => element.querySelector?.('strong') &&
-                            /(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(element.textContent || ''));
+                            /(?:bisheriger\s+bestpreis|all-time-bestpreis|\batb\b)/i.test(element.textContent || ''));
                     if (historyRow) {
                         const bestPrice = Array.from(historyRow.querySelectorAll('strong'))
-                            .find(element => /(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(
+                            .find(element => /(?:bisheriger\s+bestpreis|all-time-bestpreis|\batb\b)/i.test(
                                 element.textContent || ''
                             ));
                         const historicalInfo = parseHistoricalBestPriceText(
@@ -8308,7 +8433,7 @@ globalThis.BM_formatEuro = price => {
             // Brickmerges eigener Chart-Schalter.
             function isPriceHistoryLink(link) {
                 const text = link?.textContent || '';
-                return /bisheriger\s+bestpreis|all-time-bestpreis|180\s*tage\s+bestpreis|preis\s+im\s+vergleich\s+zum\s+atb|differenz\s+zum\s+atb/i.test(text);
+                return /(?:bisheriger\s+bestpreis|all-time-bestpreis|\batb\b|180\s*tage\s+bestpreis|preis\s+im\s+vergleich\s+zum\s+atb|differenz\s+zum\s+atb)/i.test(text);
             }
 
             function decoratePriceHistoryLinks() {
@@ -11052,6 +11177,7 @@ globalThis.BM_formatEuro = price => {
                     [BM_SETTINGS.priceCalculations, calculateDiscount],
                     [BM_SETTINGS.detailLayout, decoratePriceHistoryLinks],
                     [BM_SETTINGS.priceCalculations, renameHistoricalBestPriceLabel],
+                    [BM_SETTINGS.priceCalculations, renameAktBrickmergePreisLabel],
                     [BM_SETTINGS.priceCalculations, createDiscountSettingsUI],
                     [BM_SETTINGS.shippingAndSorting, disableOfferListTooltips]
                 ].filter(([enabled]) => enabled).map(([, step]) => step).forEach(step => {
@@ -14410,13 +14536,25 @@ globalThis.BM_formatEuro = price => {
                     }
 
                     for (const root of roots) {
+                        const atbAbbr = root.querySelector?.('.bm-atb-abbr');
+                        if (atbAbbr) {
+                            const container = atbAbbr.closest('a') || atbAbbr.parentElement;
+                            const historicalInfo = parseHistoricalBestPriceText(
+                                container?.textContent
+                            );
+                            if (historicalInfo) {
+                                return { element: container, ...historicalInfo };
+                            }
+                        }
+
                         const walker = document.createTreeWalker(
                             root,
                             NodeFilter.SHOW_TEXT
                         );
                         let node;
                         while (node = walker.nextNode()) {
-                            if (/(?:bisheriger\s+bestpreis|all-time-bestpreis)/i.test(
+                            if (node.parentElement?.closest?.('.bm-atb-abbr')) continue;
+                            if (/(?:bisheriger\s+bestpreis|all-time-bestpreis|\batb\b)/i.test(
                                 node.nodeValue
                             )) {
                                 const container = node.parentElement;
