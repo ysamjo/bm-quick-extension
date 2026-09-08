@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.47/);
+    assert.match(loaderSource, /@version\s+5\.6\.48/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.47/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.48/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -890,6 +890,7 @@ test('overall best price box is inserted above Brickmerge best price with matchi
     assert.match(tweakerSource, /isMarketplaceCheaper/);
     assert.match(tweakerSource, /Bestpreis:/);
     assert.match(tweakerSource, /Brickmerge-Bestpreis:/);
+    assert.match(tweakerSource, /retailerLabel\.textContent\s*=\s*'Bestpreis:';/);
     assert.match(tweakerSource, /bm-topprice-logo-cell/);
     assert.match(tweakerSource, /bm-offer-row-highlight/);
     assert.match(tweakerSource, /padding:\s*0\.5rem\s+5\.5rem\s+0\.5rem\s+0\.6rem;/);
@@ -906,6 +907,8 @@ test('calculation price basis defaults to overall best price and supports toggle
     assert.match(tweakerSource, /bm-price-basis-toggle/);
     assert.match(tweakerSource, /syncGlobalPriceBasisToggle/);
     assert.match(tweakerSource, /bm-global-price-basis-toggle/);
+    assert.match(tweakerSource, /bm-price-basis-switch-row/);
+    assert.match(tweakerSource, /bm-price-basis-pill/);
     assert.match(tweakerSource, /isMarketplaceCheaper/);
     assert.match(tweakerSource, /syncPriceBasisCalculations/);
     assert.match(tweakerSource, /function syncMarketplaceDealBadge/);

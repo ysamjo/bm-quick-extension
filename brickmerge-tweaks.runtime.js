@@ -3594,6 +3594,57 @@ globalThis.BM_formatEuro = price => {
                     width: 18px;
                     height: 18px;
                 }
+                .bm-price-basis-switch-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 6px;
+                    margin: 0.35rem 0 0.45rem;
+                    padding: 4px 7px;
+                    background: #f4f4f4;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    box-sizing: border-box;
+                    width: 100%;
+                }
+                .bm-price-basis-switch-hint {
+                    font-size: 0.68rem;
+                    color: #555;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    line-height: 1.2;
+                }
+                .bm-price-basis-pills {
+                    display: inline-flex;
+                    gap: 2px;
+                    background: #e2e2e2;
+                    padding: 2px;
+                    border-radius: 4px;
+                    flex-shrink: 0;
+                }
+                .bm-price-basis-pill {
+                    padding: 2px 7px;
+                    font-size: 0.68rem;
+                    font-weight: 600;
+                    line-height: 1.25;
+                    border: 0;
+                    border-radius: 3px;
+                    background: transparent;
+                    color: #555;
+                    cursor: pointer;
+                    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+                    outline: none;
+                }
+                .bm-price-basis-pill:hover {
+                    color: #111;
+                }
+                .bm-price-basis-pill.bm-active {
+                    background: #fff !important;
+                    color: #b00 !important;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+                    font-weight: 700;
+                }
                 .bm-offer-row-highlight {
                     animation: bm-highlight-flash 1.6s ease-out;
                 }
@@ -7650,6 +7701,15 @@ globalThis.BM_formatEuro = price => {
                 toggle.dataset.bmMode = mode;
             }
 
+            function updatePriceBasisSwitchPills() {
+                const switchRow = document.querySelector('.content.setdetails .bm-price-basis-switch-row');
+                if (!switchRow) return;
+                const mode = getPriceBasisMode();
+                switchRow.querySelectorAll('.bm-price-basis-pill').forEach(pill => {
+                    pill.classList.toggle('bm-active', pill.dataset.mode === mode);
+                });
+            }
+
             function syncPriceBasisCalculations() {
                 const volumeLine = document.querySelector('.content.setdetails .bm-volume-line');
                 if (volumeLine) {
@@ -7684,6 +7744,7 @@ globalThis.BM_formatEuro = price => {
                         );
                     }
                 }
+                updatePriceBasisSwitchPills();
                 syncGlobalPriceBasisToggle();
             }
 
@@ -14146,28 +14207,50 @@ globalThis.BM_formatEuro = price => {
                     return;
                 }
 
-                let retailerLabel = productPrice.querySelector('.bm-retailer-bestprice-label');
+                let retailerLabel = productPrice.querySelector('.bm-retailer-bestprice-label, .bm-native-bestprice-label');
                 if (!retailerLabel) {
                     let prev = retailerTopPrice.previousElementSibling;
-                    while (prev && prev.classList.contains('bm-overall-bestprice')) {
+                    while (prev && (
+                        prev.classList.contains('bm-overall-bestprice') ||
+                        prev.classList.contains('bm-overall-bestprice-label') ||
+                        prev.classList.contains('bm-price-basis-switch-row')
+                    )) {
                         prev = prev.previousElementSibling;
                     }
                     if (prev?.tagName === 'P') {
                         retailerLabel = prev;
+                        retailerLabel.classList.add('bm-native-bestprice-label');
                     }
-                }
-                if (retailerLabel) {
-                    retailerLabel.classList.add('bm-retailer-bestprice-label');
-                    retailerLabel.textContent = 'Brickmerge-Bestpreis:';
                 }
 
                 productPrice.querySelector('.bm-marketplace-deal-badge')?.remove();
 
                 if (!prices.isMarketplaceCheaper || !prices.marketplaceBest) {
+                    if (retailerLabel) {
+                        retailerLabel.classList.remove('bm-retailer-bestprice-label');
+                        retailerLabel.textContent = 'Bestpreis:';
+                        retailerLabel.removeAttribute('title');
+                        retailerLabel.style.removeProperty('cursor');
+                        retailerLabel.onclick = null;
+                    }
                     bestPriceLabel?.remove();
                     bestPriceBox?.remove();
+                    productPrice.querySelector('.bm-price-basis-switch-row')?.remove();
                     syncGlobalPriceBasisToggle();
                     return;
+                }
+
+                if (retailerLabel) {
+                    retailerLabel.classList.add('bm-retailer-bestprice-label');
+                    retailerLabel.textContent = 'Brickmerge-Bestpreis:';
+                    retailerLabel.title = 'Klick, um Brickmerge-Bestpreis als Berechnungsgrundlage zu wählen';
+                    retailerLabel.style.cursor = 'pointer';
+                    retailerLabel.onclick = () => {
+                        if (getPriceBasisMode() !== 'retailer') {
+                            setPriceBasisMode('retailer');
+                            syncPriceBasisCalculations();
+                        }
+                    };
                 }
 
                 const { retailerBest, marketplaceBest } = prices;
@@ -14193,6 +14276,14 @@ globalThis.BM_formatEuro = price => {
                     bestPriceLabel.style.margin = '0';
                     bestPriceLabel.textContent = 'Bestpreis:';
                 }
+                bestPriceLabel.title = 'Klick, um Bestpreis als Berechnungsgrundlage zu wählen';
+                bestPriceLabel.style.cursor = 'pointer';
+                bestPriceLabel.onclick = () => {
+                    if (getPriceBasisMode() !== 'overall') {
+                        setPriceBasisMode('overall');
+                        syncPriceBasisCalculations();
+                    }
+                };
 
                 if (!bestPriceBox) {
                     bestPriceBox = document.createElement('div');
@@ -14203,11 +14294,45 @@ globalThis.BM_formatEuro = price => {
                 bestPriceBox.style.width = '100%';
                 bestPriceBox.style.marginBottom = '0.35rem';
 
+                let switchRow = productPrice.querySelector('.bm-price-basis-switch-row');
+                if (!switchRow) {
+                    switchRow = document.createElement('div');
+                    switchRow.className = 'bm-price-basis-switch-row';
+                }
+
                 const anchor = retailerLabel || retailerTopPrice;
-                if (bestPriceBox.nextElementSibling !== anchor) {
+                if (bestPriceBox.nextElementSibling !== switchRow || switchRow.nextElementSibling !== anchor) {
                     anchor.before(bestPriceBox);
                     bestPriceBox.before(bestPriceLabel);
+                    bestPriceBox.after(switchRow);
                 }
+
+                const currentMode = getPriceBasisMode();
+                switchRow.innerHTML = `
+                    <span class="bm-price-basis-switch-hint" title="Wähle, welcher Preis als Berechnungsgrundlage für Rabatte, Literpreise und Minifiguren dient">
+                        Berechnungsgrundlage:
+                    </span>
+                    <div class="bm-price-basis-pills" role="radiogroup" aria-label="Berechnungsgrundlage">
+                        <button type="button" class="bm-price-basis-pill ${currentMode === 'overall' ? 'bm-active' : ''}" data-mode="overall" title="Als Berechnungsgrundlage verwenden: Bestpreis (${formatEuroValue(marketplaceBest.price)} €)">
+                            Bestpreis
+                        </button>
+                        <button type="button" class="bm-price-basis-pill ${currentMode === 'retailer' ? 'bm-active' : ''}" data-mode="retailer" title="Als Berechnungsgrundlage verwenden: Brickmerge (${formatEuroValue(retailerBest)} €)">
+                            Brickmerge
+                        </button>
+                    </div>
+                `.trim();
+
+                switchRow.querySelectorAll('.bm-price-basis-pill').forEach(pill => {
+                    pill.onclick = event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const targetMode = pill.dataset.mode;
+                        if (targetMode && targetMode !== getPriceBasisMode()) {
+                            setPriceBasisMode(targetMode);
+                            syncPriceBasisCalculations();
+                        }
+                    };
+                });
 
                 let logoHtml = '';
                 const wrapper = marketplaceBest.wrapper;
