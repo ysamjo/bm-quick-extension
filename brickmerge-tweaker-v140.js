@@ -1597,33 +1597,43 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             border-radius: 3px;
         }
         .bm-price-basis-toggle {
+            cursor: pointer;
+            margin-left: 0.28em;
+            padding: 0;
+            width: 13px;
+            height: 13px;
+            border: 0;
+            background: none !important;
+            color: inherit;
+            user-select: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 17px;
-            height: 17px;
-            margin-left: 0.35rem;
-            padding: 0;
+            line-height: 0;
             vertical-align: middle;
-            background: #f0f0f0;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            color: #555;
-            cursor: pointer;
+            position: static;
+            transform: none;
+            opacity: 0.82;
             box-sizing: border-box;
-            transition: background 0.15s, color 0.15s, border-color 0.15s;
+            transition: opacity 0.15s ease, color 0.15s ease;
         }
         .bm-price-basis-toggle:hover,
         .bm-price-basis-toggle:focus-visible {
-            background: #b00;
-            border-color: #b00;
-            color: #fff;
+            opacity: 1;
+            color: #700;
             outline: none;
+        }
+        .bm-price-basis-toggle[data-bm-mode="retailer"] {
+            color: #700;
+        }
+        .bm-price-basis-toggle[data-bm-mode="overall"] {
+            color: #2eb866;
         }
         .bm-price-basis-toggle svg {
             display: block;
-            width: 11px;
-            height: 11px;
+            width: 13px;
+            height: 13px;
+            flex-shrink: 0;
         }
         .bm-offer-row-highlight {
             animation: bm-highlight-flash 1.6s ease-out;
@@ -1729,28 +1739,42 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
         .bm-dimensions-toggle-btn {
             cursor: pointer;
-            margin-left: 0.35em;
-            padding: 1px 3px;
+            margin-left: 0.25em;
+            padding: 0;
             border: 0;
-            border-radius: 3px;
-            background: none;
+            background: none !important;
             color: inherit;
             user-select: none;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 2px;
             line-height: 0;
             vertical-align: middle;
             position: static;
+            transform: none;
             opacity: 0.82;
-            transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+            box-sizing: border-box;
+            transition: opacity 0.15s ease, color 0.15s ease;
         }
         .bm-dimensions-toggle-btn:hover,
-        .bm-dimensions-toggle-btn:focus {
+        .bm-dimensions-toggle-btn:focus-visible {
             opacity: 1;
-            background-color: rgba(128, 128, 128, 0.15);
+            outline: none;
+        }
+        .bm-dimensions-toggle-btn .bm-dimensions-ruler-icon {
+            display: block;
+            width: 13px;
+            height: 13px;
+            flex-shrink: 0;
+            vertical-align: middle;
         }
         .bm-dimensions-toggle-btn .bm-dimensions-chevron {
+            display: block;
+            width: 8px;
+            height: 8px;
+            flex-shrink: 0;
+            vertical-align: middle;
             transition: transform 0.22s ease;
         }
         .bm-dimensions-toggle-btn[aria-expanded="true"] .bm-dimensions-chevron {
@@ -1767,38 +1791,36 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             display: inline;
         }
         .bm-model-dimensions-line {
-            display: inline-block;
-            vertical-align: top;
-            overflow: hidden;
+            display: inline;
         }
         .bm-model-dimensions-wrapper.bm-expanded .bm-model-dimensions-line {
-            animation: bmDimensionsSlideDown 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            display: inline-block;
+            vertical-align: middle;
+            animation: bmDimensionsSlideDown 0.22s ease-out forwards;
         }
         .bm-model-dimensions-wrapper.bm-collapsing .bm-model-dimensions-line {
-            animation: bmDimensionsSlideUp 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
+            display: inline-block;
+            vertical-align: middle;
+            animation: bmDimensionsSlideUp 0.18s ease-in forwards;
         }
         @keyframes bmDimensionsSlideDown {
             0% {
-                max-height: 0;
                 opacity: 0;
-                transform: translateY(-5px);
+                transform: translateY(-4px);
             }
             100% {
-                max-height: 3.5em;
                 opacity: 1;
                 transform: translateY(0);
             }
         }
         @keyframes bmDimensionsSlideUp {
             0% {
-                max-height: 3.5em;
                 opacity: 1;
                 transform: translateY(0);
             }
             100% {
-                max-height: 0;
                 opacity: 0;
-                transform: translateY(-5px);
+                transform: translateY(-4px);
             }
         }
         .bm-minifig-count-link {
@@ -3996,10 +4018,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 el.remove();
             }
         });
-        document.querySelectorAll('.topprice').forEach(topPrice => {
+        document.querySelectorAll('.topprice:not(.bm-overall-bestprice)').forEach(topPrice => {
             const label = topPrice.previousElementSibling;
             if (label?.tagName === 'P' && /^Top-Angebot:\s*$/i.test(label.textContent.trim())) {
                 label.textContent = 'Brickmerge-Bestpreis:';
+                label.classList.add('bm-retailer-bestprice-label');
             }
         });
 
@@ -5200,9 +5223,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 details.appendChild(dimensionsWrapper);
             }
 
-            toggleBtn = document.createElement('button');
-            toggleBtn.type = 'button';
+            toggleBtn = document.createElement('span');
             toggleBtn.className = 'bm-dimensions-toggle-btn';
+            toggleBtn.setAttribute('role', 'button');
+            toggleBtn.tabIndex = 0;
             toggleBtn.title = 'Modell-Abmessungen einblenden';
             toggleBtn.setAttribute('aria-label', 'Modell-Abmessungen einblenden');
             toggleBtn.setAttribute('aria-expanded', 'false');
@@ -5237,7 +5261,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         dimensionsWrapper.classList.remove('bm-collapsing');
                         dimensionsWrapper.style.display = 'none';
                         collapseTimeout = null;
-                    }, 220);
+                    }, 180);
                 } else {
                     dimensionsWrapper.style.display = 'inline';
                     dimensionsWrapper.classList.remove('bm-collapsing');
@@ -5274,8 +5298,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 if (boldValue) {
                     boldValue.textContent = `${formattedVolume} l${pricePerLiter}`;
                 }
-                updateVolumeBasisToggle(existingVolumeLine, volumeLiters);
             }
+            syncGlobalPriceBasisToggle();
             return;
         }
 
@@ -5287,13 +5311,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         volumeLine.dataset.bmVolumeLiters = String(volumeLiters);
         const boldValue = document.createElement('b');
         boldValue.textContent = `${formattedVolume} l${pricePerLiter}`;
-        volumeLine.append(document.createTextNode('\u00A0| Volumen: '), boldValue);
-        updateVolumeBasisToggle(volumeLine, volumeLiters);
+        volumeLine.append(document.createTextNode('| Volumen: '), boldValue);
 
         const targetAnchor = toggleBtn || link;
         const lineBreak = document.createElement('br');
         targetAnchor.parentNode?.insertBefore(lineBreak, targetAnchor.nextSibling);
         lineBreak.after(volumeLine);
+
+        syncGlobalPriceBasisToggle();
     }
 
     const CALC_PRICE_BASIS_STORAGE_KEY = 'bm-calc-price-basis';
@@ -5414,40 +5439,53 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         return prices.overallBest ?? prices.retailerBest;
     }
 
-    function updateVolumeBasisToggle(volumeLine, volumeLiters) {
-        if (!volumeLine) return;
-        const prices = getBestOfferPrices();
-        let toggle = volumeLine.querySelector('.bm-price-basis-toggle');
-
-        const mode = getPriceBasisMode();
-        const hasAlternative = Boolean(
-            prices.marketplaceBest && prices.retailerBest &&
-            Math.abs(prices.marketplaceBest.price - prices.retailerBest) > 0.004
+    function syncGlobalPriceBasisToggle() {
+        const titleCopyBtn = document.querySelector(
+            '.content.setdetails .productprice .bm-copy-btn, h1 .bm-copy-btn'
         );
+        const nameElement = titleCopyBtn?.parentElement ||
+            document.querySelector('.content.setdetails .productprice strong, .content.setdetails .productprice b, h1');
+        let toggle = document.querySelector('.bm-price-basis-toggle');
 
-        if (!hasAlternative) {
+        const prices = getBestOfferPrices();
+        const hasAlternative = Boolean(prices.isMarketplaceCheaper);
+
+        if (!hasAlternative || !nameElement) {
             toggle?.remove();
             return;
         }
 
+        const mode = getPriceBasisMode();
         if (!toggle) {
-            toggle = document.createElement('button');
-            toggle.type = 'button';
-            toggle.className = 'bm-price-basis-toggle';
+            toggle = document.createElement('span');
+            toggle.className = 'bm-price-basis-toggle bm-global-price-basis-toggle';
+            toggle.setAttribute('role', 'button');
+            toggle.tabIndex = 0;
             toggle.innerHTML = `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M7 16V4m0 0L3 8m4-4l4 4m10 4v12m0 0l4-4m-4 4l-4-4"/>
+                <svg class="bm-price-basis-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4.5 12V4m0 0L2 6.5m2.5-2.5L7 6.5m4.5-2.5v8m0 0l2.5-2.5m-2.5 2.5L9 9.5"/>
                 </svg>
             `.trim();
-            toggle.addEventListener('click', event => {
+            const toggleHandler = event => {
                 event.preventDefault();
                 event.stopPropagation();
                 const currentMode = getPriceBasisMode();
                 const nextMode = currentMode === 'retailer' ? 'overall' : 'retailer';
                 setPriceBasisMode(nextMode);
                 syncPriceBasisCalculations();
+            };
+            toggle.addEventListener('click', toggleHandler);
+            toggle.addEventListener('keydown', event => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                toggleHandler(event);
             });
-            volumeLine.appendChild(toggle);
+            if (titleCopyBtn && titleCopyBtn.parentNode === nameElement) {
+                titleCopyBtn.after(toggle);
+            } else {
+                nameElement.appendChild(toggle);
+            }
+        } else if (titleCopyBtn && toggle.previousElementSibling !== titleCopyBtn && titleCopyBtn.parentNode === nameElement) {
+            titleCopyBtn.after(toggle);
         }
 
         const currentBasis = mode === 'retailer' ? 'Händler-Bestpreis' : 'Echter Bestpreis (inkl. Marktplatz)';
@@ -5456,50 +5494,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         const tooltip = `Berechnungsgrundlage: ${currentBasis}. Klick zum Umschalten auf ${nextBasis}${nextPrice !== null ? ` (${formatEuroValue(nextPrice)} €)` : ''}.`;
         toggle.title = tooltip;
         toggle.setAttribute('aria-label', tooltip);
-    }
-
-    function updateMinifigBasisToggle(valueLine) {
-        if (!valueLine) return;
-        const prices = getBestOfferPrices();
-        let toggle = valueLine.querySelector('.bm-price-basis-toggle');
-
-        const mode = getPriceBasisMode();
-        const hasAlternative = Boolean(
-            prices.marketplaceBest && prices.retailerBest &&
-            Math.abs(prices.marketplaceBest.price - prices.retailerBest) > 0.004
-        );
-
-        if (!hasAlternative) {
-            toggle?.remove();
-            return;
-        }
-
-        if (!toggle) {
-            toggle = document.createElement('button');
-            toggle.type = 'button';
-            toggle.className = 'bm-price-basis-toggle';
-            toggle.innerHTML = `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M7 16V4m0 0L3 8m4-4l4 4m10 4v12m0 0l4-4m-4 4l-4-4"/>
-                </svg>
-            `.trim();
-            toggle.addEventListener('click', event => {
-                event.preventDefault();
-                event.stopPropagation();
-                const currentMode = getPriceBasisMode();
-                const nextMode = currentMode === 'retailer' ? 'overall' : 'retailer';
-                setPriceBasisMode(nextMode);
-                syncPriceBasisCalculations();
-            });
-            valueLine.appendChild(toggle);
-        }
-
-        const currentBasis = mode === 'retailer' ? 'Händler-Bestpreis' : 'Echter Bestpreis (inkl. Marktplatz)';
-        const nextBasis = mode === 'retailer' ? 'Echter Bestpreis (inkl. Marktplatz)' : 'Händler-Bestpreis';
-        const nextPrice = mode === 'retailer' ? prices.overallBest : prices.retailerBest;
-        const tooltip = `Berechnungsgrundlage: ${currentBasis}. Klick zum Umschalten auf ${nextBasis}${nextPrice !== null ? ` (${formatEuroValue(nextPrice)} €)` : ''}.`;
-        toggle.title = tooltip;
-        toggle.setAttribute('aria-label', tooltip);
+        toggle.dataset.bmMode = mode;
     }
 
     function syncPriceBasisCalculations() {
@@ -5519,12 +5514,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 if (bestPrice !== null) {
                     volumeLine.dataset.bmPricePerLiter = 'true';
                 }
-                updateVolumeBasisToggle(volumeLine, liters);
             }
         }
         if (lastMinifigTotalValue !== null) {
             updateMinifigureValueInDataBox(lastMinifigTotalValue, false, lastMinifigPriceSnapshot);
         }
+        syncGlobalPriceBasisToggle();
     }
 
     function readBrickmergeBestPriceFromDom() {
@@ -8810,7 +8805,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             [BM_SETTINGS.priceCalculations, syncEffectivePriceLabels],
             [BM_SETTINGS.priceCalculations, syncOfferDiscountBubbles],
             [BM_SETTINGS.shippingAndSorting, placeSoldOutBadgesAfterShipping],
-            [BM_SETTINGS.priceCalculations, syncMarketplaceDealBadge],
+            [BM_SETTINGS.priceCalculations, syncOverallBestPriceBox],
             [BM_SETTINGS.priceCalculations, syncPriceBasisCalculations],
             [BM_SETTINGS.priceCalculations, calculateDiscount],
             [BM_SETTINGS.detailLayout, decoratePriceHistoryLinks],
@@ -8869,7 +8864,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     event.preventDefault();
                     event.stopPropagation();
                     const nameClone = nameElement.cloneNode(true);
-                    nameClone.querySelector('.bm-copy-btn')?.remove();
+                    nameClone.querySelectorAll('.bm-copy-btn, .bm-price-basis-toggle').forEach(el => el.remove());
                     const cleaned = nameClone.textContent
                         .replace(/[\u00AE\u2122]/g, '')
                         .replace(/\s+/g, ' ')
@@ -8890,6 +8885,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     copyBtn.click();
                 });
                 nameElement.appendChild(copyBtn);
+                syncGlobalPriceBasisToggle();
             })();
         } catch (error) {
             console.error(
@@ -9422,9 +9418,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             valueLine.innerHTML =
                 `&nbsp;| <strong>${formatEuroValue(totalValue)} €</strong>`;
             valueLine.removeAttribute('title');
-            if (!document.querySelector('.content.setdetails .bm-volume-line')) {
-                updateMinifigBasisToggle(valueLine);
-            }
+            syncGlobalPriceBasisToggle();
 
             const tooltipParts = [
                 `Minifigurenwert: ${formatEuroValue(totalValue)} €`,
@@ -11819,6 +11813,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         if (offerPricesSummary.retailerBest !== null &&
                             Math.abs(price1 - offerPricesSummary.retailerBest) <= 0.004) {
                             createBestPriceBlackBubble(discount);
+                        } else if (offerPricesSummary.isMarketplaceCheaper &&
+                            offerPricesSummary.marketplaceBest &&
+                            Math.abs(price1 - offerPricesSummary.marketplaceBest.price) <= 0.004) {
+                            createBestPriceBlackBubble(discount);
                         } else {
                             document.querySelectorAll('.bm-bestprice-black-bubble')
                                 .forEach(element => element.remove());
@@ -11892,89 +11890,188 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             });
     }
 
-        // Der Abstand zum nächstteureren Angebot gehört auch immer an den
-        // Brickmerge-Bestpreis, unabhängig davon, ob dort ein UVP-Badge existiert.
+        // Der Abstand zum nächstteureren Angebot gehört an das Bestpreis-Angebot
     function createBestPriceBlackBubble(discountText) {
+            const prices = getBestOfferPrices();
+            const targetTopprice = (prices.isMarketplaceCheaper && prices.marketplaceBest)
+                ? (document.querySelector('.content.setdetails .topprice.bm-overall-bestprice') ||
+                   document.querySelector('.content.setdetails .topprice'))
+                : document.querySelector('.content.setdetails .topprice:not(.bm-overall-bestprice)');
+
             document.querySelectorAll('.topprice').forEach(topprice => {
-                let badge = topprice.querySelector(
-                    ':scope > .bm-bestprice-black-bubble'
-                );
-                topprice.querySelectorAll(':scope > .bm-bestprice-black-bubble')
-                    .forEach((candidate, index) => {
-                        if (index > 0) candidate.remove();
-                    });
-                if (!badge) {
-                    badge = document.createElement('span');
-                    badge.className =
-                        'black-discount-bubble bm-bestprice-black-bubble';
-                    topprice.appendChild(badge);
+                if (topprice !== targetTopprice) {
+                    topprice.querySelectorAll('.bm-bestprice-black-bubble').forEach(candidate => candidate.remove());
                 }
-                badge.textContent = `${discountText}%`;
-                badge.title = `${discountText}% günstiger als das nächstteurere Angebot`;
-                const hasNativeDiscountBubble = Array.from(
-                    topprice.querySelectorAll(
-                        ':scope > .off, :scope > span[style*="position"], ' +
-                        ':scope > div[style*="position"]'
-                    )
-                ).some(element => {
-                    if (element.classList.contains('black-discount-bubble')) return false;
-                    if (!/%/.test(element.textContent || '')) return false;
-                    const inlineStyle = element.getAttribute('style') || '';
-                    return element.classList.contains('off') ||
-                        /position\s*:\s*absolute/i.test(inlineStyle);
-                });
-                badge.classList.toggle(
-                    'bm-bestprice-black-bubble-single',
-                    !hasNativeDiscountBubble
-                );
-                topprice.style.setProperty('position', 'relative');
             });
+
+            if (!targetTopprice) return;
+
+            let badge = targetTopprice.querySelector(
+                ':scope > .bm-bestprice-black-bubble'
+            );
+            targetTopprice.querySelectorAll(':scope > .bm-bestprice-black-bubble')
+                .forEach((candidate, index) => {
+                    if (index > 0) candidate.remove();
+                });
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className =
+                    'black-discount-bubble bm-bestprice-black-bubble';
+                targetTopprice.appendChild(badge);
+            }
+            badge.textContent = `${discountText}%`;
+            badge.title = `${discountText}% günstiger als das nächstteurere Angebot`;
+            const hasNativeDiscountBubble = Array.from(
+                targetTopprice.querySelectorAll(
+                    ':scope > .off, :scope > span[style*="position"], ' +
+                    ':scope > div[style*="position"], .bm-bestprice-bubble'
+                )
+            ).some(element => {
+                if (element.classList.contains('black-discount-bubble')) return false;
+                if (!/%/.test(element.textContent || '')) return false;
+                const inlineStyle = element.getAttribute('style') || '';
+                return element.classList.contains('off') ||
+                    element.classList.contains('bm-bestprice-bubble') ||
+                    /position\s*:\s*absolute/i.test(inlineStyle);
+            });
+            badge.classList.toggle(
+                'bm-bestprice-black-bubble-single',
+                !hasNativeDiscountBubble
+            );
+            targetTopprice.style.setProperty('position', 'relative');
     }
 
-    function syncMarketplaceDealBadge() {
+    function syncOverallBestPriceBox() {
         const prices = getBestOfferPrices();
         const productPrice = document.querySelector('.content.setdetails .productprice');
-        const topPrice = productPrice?.querySelector('.topprice');
-        let badge = productPrice?.querySelector('.bm-marketplace-deal-badge');
+        const retailerTopPrice = productPrice?.querySelector(
+            '.topprice:not(.bm-overall-bestprice)'
+        );
+        let bestPriceLabel = productPrice?.querySelector('.bm-overall-bestprice-label');
+        let bestPriceBox = productPrice?.querySelector('.topprice.bm-overall-bestprice');
 
-        if (!prices.isMarketplaceCheaper || !prices.marketplaceBest || !topPrice) {
-            badge?.remove();
+        if (!productPrice || !retailerTopPrice) {
+            bestPriceLabel?.remove();
+            bestPriceBox?.remove();
+            return;
+        }
+
+        let retailerLabel = productPrice.querySelector('.bm-retailer-bestprice-label');
+        if (!retailerLabel) {
+            let prev = retailerTopPrice.previousElementSibling;
+            while (prev && prev.classList.contains('bm-overall-bestprice')) {
+                prev = prev.previousElementSibling;
+            }
+            if (prev?.tagName === 'P') {
+                retailerLabel = prev;
+            }
+        }
+        if (retailerLabel) {
+            retailerLabel.classList.add('bm-retailer-bestprice-label');
+            retailerLabel.textContent = 'Brickmerge-Bestpreis:';
+        }
+
+        productPrice.querySelector('.bm-marketplace-deal-badge')?.remove();
+
+        if (!prices.isMarketplaceCheaper || !prices.marketplaceBest) {
+            bestPriceLabel?.remove();
+            bestPriceBox?.remove();
             return;
         }
 
         const { retailerBest, marketplaceBest } = prices;
-        const discountPercent = Math.round((1 - (marketplaceBest.price / retailerBest)) * 100);
-        const savingsEur = retailerBest - marketplaceBest.price;
+        const uvp = getCurrentSetUvp();
+        let discountPercent = 0;
+        let bubbleTooltip = '';
+        let bubbleText = '';
 
-        if (!badge) {
-            badge = document.createElement('a');
-            badge.className = 'bm-marketplace-deal-badge';
-            topPrice.after(badge);
+        if (uvp !== null && uvp > marketplaceBest.price) {
+            discountPercent = Math.round((1 - (marketplaceBest.price / uvp)) * 100);
+            bubbleText = `${discountPercent}%`;
+            bubbleTooltip = `${discountPercent}% unter UVP (${formatEuroValue(uvp - marketplaceBest.price)} € Ersparnis)`;
+        } else if (retailerBest !== null && retailerBest > marketplaceBest.price) {
+            discountPercent = Math.round((1 - (marketplaceBest.price / retailerBest)) * 100);
+            bubbleText = `-${discountPercent}%`;
+            bubbleTooltip = `${discountPercent}% günstiger als Brickmerge-Bestpreis (${formatEuroValue(retailerBest - marketplaceBest.price)} € Ersparnis)`;
+        }
+
+        if (!bestPriceLabel) {
+            bestPriceLabel = document.createElement('p');
+            bestPriceLabel.className = 'bm-overall-bestprice-label';
+            bestPriceLabel.style.padding = '0.5rem 1rem 0';
+            bestPriceLabel.style.margin = '0';
+            bestPriceLabel.textContent = 'Bestpreis:';
+        }
+
+        if (!bestPriceBox) {
+            bestPriceBox = document.createElement('div');
+            bestPriceBox.className = 'topprice bm-overall-bestprice';
+            bestPriceBox.style.display = 'table';
+            bestPriceBox.style.width = '100%';
+            bestPriceBox.style.marginBottom = '0.35rem';
+        }
+
+        const anchor = retailerLabel || retailerTopPrice;
+        if (bestPriceBox.nextElementSibling !== anchor) {
+            anchor.before(bestPriceBox);
+            bestPriceBox.before(bestPriceLabel);
+        }
+
+        let logoHtml = '';
+        const wrapper = marketplaceBest.wrapper;
+        const existingLogoImg = wrapper?.querySelector('.bm-marketplace-logo, .goto img');
+        const existingWordmark = wrapper?.querySelector('.bm-marketplace-logo-stage, .bm-marketplace-logo');
+
+        if (existingLogoImg?.src) {
+            logoHtml = `<img src="${existingLogoImg.src}" alt="${marketplaceBest.label}" style="max-width: 84px; max-height: 31px; width: auto; height: auto; object-fit: contain; vertical-align: middle; display: inline-block;" />`;
+        } else if (existingWordmark && existingWordmark.textContent.trim()) {
+            logoHtml = `<span class="bm-marketplace-logo" style="color: #222 !important; font-size: 0.95rem !important; font-weight: 700 !important; line-height: 31px !important; display: inline-block;">${existingWordmark.textContent.trim()}</span>`;
+        } else {
+            logoHtml = `<span class="bm-marketplace-logo" style="color: #222 !important; font-size: 0.95rem !important; font-weight: 700 !important; line-height: 31px !important; display: inline-block;">${prices.marketplaceBest.label}</span>`;
         }
 
         const targetAnchorId = marketplaceBest.wrapper?.dataset.mid || 'offerlist';
-        badge.href = `#${targetAnchorId}`;
-        badge.title = `${marketplaceBest.label}-Angebot für ${formatEuroValue(marketplaceBest.price)} € ansehen ` +
-            `(${formatEuroValue(savingsEur)} € günstiger als der Brickmerge-Bestpreis)`;
-        badge.setAttribute('aria-label', badge.title);
+        const targetUrl = marketplaceBest.url || `#${targetAnchorId}`;
+        const savingsEur = retailerBest ? (retailerBest - marketplaceBest.price) : 0;
+        const linkTitle = `${marketplaceBest.label}-Angebot für ${formatEuroValue(marketplaceBest.price)} € ansehen` +
+            (savingsEur > 0 ? ` (${formatEuroValue(savingsEur)} € günstiger als Brickmerge-Bestpreis)` : '');
 
-        badge.innerHTML = `
-            <span class="bm-deal-icon" aria-hidden="true">🏷️</span>
-            <span class="bm-deal-text"><strong>${marketplaceBest.label}-Deal: ${formatEuroValue(marketplaceBest.price)} €</strong></span>
-            <span class="bm-deal-savings">(-${discountPercent}% ggü. Händler)</span>
+        bestPriceBox.innerHTML = `
+            <a href="${targetUrl}" ${marketplaceBest.url ? 'target="_blank" rel="noopener noreferrer nofollow"' : ''} class="tooltipster bm-overall-bestprice-link" title="${linkTitle}">
+                <div class="bm-topprice-logo-cell" style="display: table-cell; width: 88px; background-color: #fff; vertical-align: middle; text-align: center; padding: 2px;">
+                    ${logoHtml}
+                </div>
+                <div class="bm-topprice-price-cell" style="display: table-cell; padding: 0.5rem 0.6rem 0.5rem 0.5rem; vertical-align: middle; position: relative;">
+                    ${formatEuroValue(marketplaceBest.price)} €
+                    ${bubbleText ? `
+                        <span class="bm-bestprice-bubble" style="position: absolute; border-radius: 1000px; background-color: #b00; color: #fff; font-size: 0.7rem; font-weight: bold; min-height: 25px; min-width: 25px; text-align: center; line-height: 1.5rem; margin: 0 4px; right: 1rem;" title="${bubbleTooltip}">
+                            ${bubbleText}
+                        </span>
+                    ` : ''}
+                </div>
+            </a>
         `.trim();
 
-        badge.onclick = event => {
-            event.preventDefault();
-            const targetRow = marketplaceBest.wrapper || marketplaceBest.priceRow;
-            if (targetRow) {
-                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                targetRow.classList.remove('bm-offer-row-highlight');
-                void targetRow.offsetWidth;
-                targetRow.classList.add('bm-offer-row-highlight');
-                window.setTimeout(() => targetRow.classList.remove('bm-offer-row-highlight'), 1800);
-            }
-        };
+        const link = bestPriceBox.querySelector('a');
+        if (link) {
+            link.onclick = event => {
+                const targetRow = marketplaceBest.wrapper || marketplaceBest.priceRow;
+                if (targetRow) {
+                    targetRow.classList.remove('bm-offer-row-highlight');
+                    void targetRow.offsetWidth;
+                    targetRow.classList.add('bm-offer-row-highlight');
+                    window.setTimeout(() => targetRow.classList.remove('bm-offer-row-highlight'), 1800);
+                }
+                if (!marketplaceBest.url) {
+                    event.preventDefault();
+                    targetRow?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            };
+        }
+    }
+
+    function syncMarketplaceDealBadge() {
+        syncOverallBestPriceBox();
     }
 
         // Suche nach dem "bisherigen Bestpreis"

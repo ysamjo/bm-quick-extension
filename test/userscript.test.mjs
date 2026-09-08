@@ -836,7 +836,7 @@ test('volume detail line matches native Brickmerge formatting without hover', ()
     assert.match(tweakerSource, /volumeLine\.className = 'bm-volume-line';/);
     assert.doesNotMatch(tweakerSource, /volumeLine\.className = 'bm-volume-line bm-detail-line-link'/);
     assert.doesNotMatch(tweakerSource, /volumeLine\.title/);
-    assert.match(tweakerSource, /document\.createTextNode\('\\u00A0\| Volumen: '\)/);
+    assert.match(tweakerSource, /document\.createTextNode\('\| Volumen: '\)/);
     assert.match(tweakerSource, /boldValue\.textContent = `\${formattedVolume} l\${pricePerLiter}`;/);
     assert.match(tweakerSource, /` \| \${formatEuroPerLiter\(bestPrice, volumeLiters\)}`/);
     assert.match(tweakerSource, /formatted\.replace\('\.', ','\)/);
@@ -870,13 +870,14 @@ test('safety warning is replaced with EN 71 pictograms under instructions', () =
     assert.match(tweakerSource, /sidebarInstructions\.appendChild\(warningBlock\)/);
 });
 
-test('marketplace deal badge highlights when any marketplace offer is cheaper than retailer best price', () => {
-    assert.match(tweakerSource, /function syncMarketplaceDealBadge\(/);
-    assert.match(tweakerSource, /bm-marketplace-deal-badge/);
+test('overall best price box is inserted above Brickmerge best price with matching style when marketplace is cheaper', () => {
+    assert.match(tweakerSource, /function syncOverallBestPriceBox\(/);
+    assert.match(tweakerSource, /bm-overall-bestprice/);
+    assert.match(tweakerSource, /bm-overall-bestprice-label/);
     assert.match(tweakerSource, /isMarketplaceCheaper/);
-    assert.match(tweakerSource, /-Deal:\s*\${formatEuroValue/);
-    assert.match(tweakerSource, /ggü\.\s*Händler/);
-    assert.match(tweakerSource, /targetRow\.scrollIntoView/);
+    assert.match(tweakerSource, /Bestpreis:/);
+    assert.match(tweakerSource, /Brickmerge-Bestpreis:/);
+    assert.match(tweakerSource, /bm-topprice-logo-cell/);
     assert.match(tweakerSource, /bm-offer-row-highlight/);
 });
 
@@ -886,7 +887,9 @@ test('calculation price basis defaults to overall best price and supports toggle
     assert.match(tweakerSource, /function getCalculationBestPrice\(/);
     assert.match(tweakerSource, /return 'overall';/);
     assert.match(tweakerSource, /bm-price-basis-toggle/);
-    assert.match(tweakerSource, /updateVolumeBasisToggle/);
+    assert.match(tweakerSource, /syncGlobalPriceBasisToggle/);
+    assert.match(tweakerSource, /bm-global-price-basis-toggle/);
+    assert.match(tweakerSource, /isMarketplaceCheaper/);
     assert.match(tweakerSource, /syncPriceBasisCalculations/);
     assert.match(tweakerSource, /function syncMarketplaceDealBadge/);
 });
