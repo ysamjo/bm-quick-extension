@@ -5584,6 +5584,18 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (lastMinifigTotalValue !== null) {
             updateMinifigureValueInDataBox(lastMinifigTotalValue, false, lastMinifigPriceSnapshot);
         }
+        const historicalData = findAllTimeBestPrice();
+        if (historicalData) {
+            const bestPrice = getCalculationBestPrice();
+            if (bestPrice !== null && Number.isFinite(bestPrice) && bestPrice > 0) {
+                insertAllTimeDiscountRow(
+                    bestPrice,
+                    historicalData.price,
+                    historicalData.element,
+                    historicalData.detailSuffix
+                );
+            }
+        }
         syncGlobalPriceBasisToggle();
     }
 
@@ -11895,12 +11907,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 }
 
                 // All-Time-Bestpreis suchen und einfügen
-                if (uniqueSortedPrices.length >= 1) {
-                    const currentBestPrice = uniqueSortedPrices[0];
+                const effectiveBestPrice = getCalculationBestPrice() ??
+                    (uniqueSortedPrices.length >= 1 ? uniqueSortedPrices[0] : null);
+                if (effectiveBestPrice !== null && Number.isFinite(effectiveBestPrice) && effectiveBestPrice > 0) {
                     const historicalData = findAllTimeBestPrice();
                     if (historicalData) {
                         insertAllTimeDiscountRow(
-                            currentBestPrice,
+                            effectiveBestPrice,
                             historicalData.price,
                             historicalData.element,
                             historicalData.detailSuffix
@@ -12183,10 +12196,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         // Fügt die Rabatt-Zeile ein
     function insertAllTimeDiscountRow(currentPrice, allTimeBest, matchedElement, detailSuffix = '') {
             // Differenz: Negativ = günstiger, Positiv = teurer
-            const diffPercent = ((currentPrice - allTimeBest) / allTimeBest) * 100;
+            let diffPercent = ((currentPrice - allTimeBest) / allTimeBest) * 100;
+            if (Math.abs(diffPercent) < 0.05) diffPercent = 0;
 
-            // Farbe: Grün, wenn günstiger oder gleich (negativ/0), Rot wenn teurer (positiv)
-            const color = diffPercent <= 0 ? '#1b5e20' : '#b71c1c';
+            // Farbe: Rot wenn teurer (positiv), unformatiert/neutral wenn günstiger oder gleich (grün entfernt)
+            const color = diffPercent > 0 ? '#b71c1c' : '';
             const signPrefix = diffPercent > 0 ? '+' : '';
             const percentStr = `${signPrefix}${diffPercent.toFixed(1).replace('.', ',')}%`;
 
@@ -12203,7 +12217,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             const value = newEl.querySelector('strong');
             if (value) {
                 if (value.textContent !== percentStr) value.textContent = percentStr;
-                if (value.style.color !== color) value.style.color = color;
+                if (color) {
+                    if (value.style.color !== color) value.style.color = color;
+                } else {
+                    if (value.style.color) value.style.removeProperty('color');
+                }
             }
 
             updateSidebarHistoricalBestPriceDetail(matchedElement, detailSuffix);

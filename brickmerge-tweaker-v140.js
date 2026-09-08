@@ -5406,6 +5406,28 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
     }
 
+    function getOfferRowPrice(priceRow, priceSpan) {
+        if (!priceRow && !priceSpan) return null;
+        const row = priceRow || priceSpan?.closest('.pricerow');
+        const span = priceSpan || row?.querySelector('span.price');
+        if (!span) return null;
+        const basePrice = getBaseOfferPrice(span);
+        if (basePrice === null || basePrice <= 0) return null;
+
+        const personalSettings = loadPersonalDiscountSettings();
+        if (!personalSettings.enabled) return basePrice;
+
+        if (row?.dataset?.bmEffectivePrice) {
+            const parsed = parseFloat(row.dataset.bmEffectivePrice);
+            if (Number.isFinite(parsed) && parsed > 0) return parsed;
+        }
+        const retailerRate = Number(row?.dataset?.bmRetailerRate || 0);
+        if (retailerRate > 0) {
+            return Math.round((basePrice * (1 - retailerRate) + Number.EPSILON) * 100) / 100;
+        }
+        return basePrice;
+    }
+
     function getBestOfferPrices() {
         const offerlist = document.getElementById('offerlist');
         if (!offerlist) {
@@ -5425,7 +5447,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         );
         const retailerPrices = retailerPriceRows.map(priceRow => {
             const priceSpan = priceRow.querySelector('span.price');
-            return priceSpan ? getBaseOfferPrice(priceSpan) : null;
+            return getOfferRowPrice(priceRow, priceSpan);
         }).filter(price => Number.isFinite(price) && price > 0);
         const retailerBest = retailerPrices.length > 0 ? Math.min(...retailerPrices) : null;
 
@@ -5439,7 +5461,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         let marketplaceBest = null;
         for (const priceRow of marketplaceRows) {
             const priceSpan = priceRow.querySelector('span.price');
-            const price = priceSpan ? getBaseOfferPrice(priceSpan) : null;
+            const price = getOfferRowPrice(priceRow, priceSpan);
             if (!Number.isFinite(price) || price <= 0) continue;
 
             if (!marketplaceBest || price < marketplaceBest.price) {
@@ -5583,6 +5605,18 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
         if (lastMinifigTotalValue !== null) {
             updateMinifigureValueInDataBox(lastMinifigTotalValue, false, lastMinifigPriceSnapshot);
+        }
+        const historicalData = findAllTimeBestPrice();
+        if (historicalData) {
+            const bestPrice = getCalculationBestPrice();
+            if (bestPrice !== null && Number.isFinite(bestPrice) && bestPrice > 0) {
+                insertAllTimeDiscountRow(
+                    bestPrice,
+                    historicalData.price,
+                    historicalData.element,
+                    historicalData.detailSuffix
+                );
+            }
         }
         syncGlobalPriceBasisToggle();
     }
@@ -11847,9 +11881,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 document.querySelectorAll(
                     '#offerlist .medium-4.small-9.columns.pricerow'
                 ).forEach(priceRow => {
-                    if (priceRow.dataset.bmSoldOut === 'true') return;
+                    if (priceRow.closest('#soldOut') || priceRow.dataset.bmSoldOut === 'true') return;
                     const priceSpan = priceRow.querySelector('span.price');
-                    const price = priceSpan ? getBaseOfferPrice(priceSpan) : null;
+                    const price = getOfferRowPrice(priceRow, priceSpan);
                     if (price !== null && price > 0) {
                         offerPrices.push(price);
                     }
@@ -11895,12 +11929,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 }
 
                 // All-Time-Bestpreis suchen und einfügen
-                if (uniqueSortedPrices.length >= 1) {
-                    const currentBestPrice = uniqueSortedPrices[0];
+                const effectiveBestPrice = getCalculationBestPrice() ??
+                    (uniqueSortedPrices.length >= 1 ? uniqueSortedPrices[0] : null);
+                if (effectiveBestPrice !== null && Number.isFinite(effectiveBestPrice) && effectiveBestPrice > 0) {
                     const historicalData = findAllTimeBestPrice();
                     if (historicalData) {
                         insertAllTimeDiscountRow(
-                            currentBestPrice,
+                            effectiveBestPrice,
                             historicalData.price,
                             historicalData.element,
                             historicalData.detailSuffix
@@ -12183,10 +12218,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         // Fügt die Rabatt-Zeile ein
     function insertAllTimeDiscountRow(currentPrice, allTimeBest, matchedElement, detailSuffix = '') {
             // Differenz: Negativ = günstiger, Positiv = teurer
-            const diffPercent = ((currentPrice - allTimeBest) / allTimeBest) * 100;
+            let diffPercent = ((currentPrice - allTimeBest) / allTimeBest) * 100;
+            if (Math.abs(diffPercent) < 0.05) diffPercent = 0;
 
-            // Farbe: Grün, wenn günstiger oder gleich (negativ/0), Rot wenn teurer (positiv)
-            const color = diffPercent <= 0 ? '#1b5e20' : '#b71c1c';
+            // Farbe: Rot wenn teurer (positiv), unformatiert/neutral wenn günstiger oder gleich (grün entfernt)
+            const color = diffPercent > 0 ? '#b71c1c' : '';
             const signPrefix = diffPercent > 0 ? '+' : '';
             const percentStr = `${signPrefix}${diffPercent.toFixed(1).replace('.', ',')}%`;
 
@@ -12203,7 +12239,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             const value = newEl.querySelector('strong');
             if (value) {
                 if (value.textContent !== percentStr) value.textContent = percentStr;
-                if (value.style.color !== color) value.style.color = color;
+                if (color) {
+                    if (value.style.color !== color) value.style.color = color;
+                } else {
+                    if (value.style.color) value.style.removeProperty('color');
+                }
             }
 
             updateSidebarHistoricalBestPriceDetail(matchedElement, detailSuffix);
