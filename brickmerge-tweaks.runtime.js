@@ -4408,6 +4408,9 @@ globalThis.BM_formatEuro = price => {
                         padding-top: 0;
                         border-top: none;
                     }
+                    .bm-detail-warning {
+                        display: none !important;
+                    }
                     .bm-instruction-source .bm-safety-warning-block {
                         display: flex;
                         align-items: center;
@@ -4512,6 +4515,24 @@ globalThis.BM_formatEuro = price => {
                     margin-top: 0;
                     padding-top: 0;
                     border-top: none;
+                }
+                .bm-detail-warning {
+                    display: block;
+                    margin: 0.75rem 0 1rem;
+                    text-align: left;
+                }
+                .bm-detail-warning .bm-safety-warning-block {
+                    margin-top: 0;
+                    padding-top: 0;
+                    border-top: none;
+                }
+                .bm-instruction-source .bm-safety-warning-block {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.65rem;
+                    margin: 1rem 0;
+                    padding-top: 0.75rem;
+                    border-top: 1px solid #eee;
                 }
                 .bm-offer-toolbar {
                     display: flex;
@@ -5817,6 +5838,8 @@ globalThis.BM_formatEuro = price => {
                 // beibehalten.
                 document.querySelectorAll('h3').forEach(h3 => {
                     if (h3.id === 'Bauanleitung' || /\bBauanleitungen?\b/i.test(h3.textContent)) {
+                        const section = h3.closest('section');
+                        if (section) section.classList.add('bm-instruction-section');
                         h3.remove();
                     }
                 });
@@ -6500,6 +6523,7 @@ globalThis.BM_formatEuro = price => {
                 );
                 const moreParagraph = moreAnchor?.closest('p');
                 const sourceSection = sourceHeading?.closest('section') ||
+                    offerColumn.querySelector('.bm-instruction-section') ||
                     instructionImage?.closest('section') ||
                     (moreParagraph?.previousElementSibling?.tagName === 'SECTION'
                         ? moreParagraph.previousElementSibling
@@ -6564,81 +6588,113 @@ globalThis.BM_formatEuro = price => {
                 else sideColumn.prepend(panel);
             }
 
+            function isSetEligibleForSafetyWarning() {
+                const detailsContainer = document.querySelector('.content.setdetails');
+                const fullText = [
+                    detailsContainer?.textContent || '',
+                    document.getElementById('ol2nd')?.textContent || ''
+                ].join(' ');
+                if (/\bDUPLO\b/i.test(fullText)) return false;
+                const ageMatch = fullText.match(/Alter\s*:\s*([^|<br\n\r]+)/i);
+                if (ageMatch) {
+                    const ageStr = ageMatch[1].trim();
+                    if (/^(?:1\s*[½/]|1\.5|2\b|1\s*-\s*[23]\b)/i.test(ageStr)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
             // Ersetzt die Warnhinweis-Textzeile in den Setdetails durch standardisierte
             // Sicherheits-Piktogramme (0-3-Verbotskreis gemäß EN 71-1 und Warnungsdreieck)
             // unter den Bauanleitungen.
             function replaceSafetyWarningWithPictograms() {
-                if (document.querySelector('.bm-safety-warning-block')) return;
+                if (!isSetEligibleForSafetyWarning()) return;
 
-                const details = Array.from(
-                    document.querySelectorAll('.content.setdetails p, #ol2nd p')
-                ).find(paragraph =>
-                    /Warn(?:ung|hinweis(?:e)?)\s*:/i.test(paragraph.textContent || '')
+                // 1. Suche nach existierender Warnhinweis-Textzeile in den Setdetails
+                const detailsParagraphs = Array.from(
+                    document.querySelectorAll(
+                        '.content.setdetails .productprice p, ' +
+                        '.content.setdetails p, #ol2nd p'
+                    )
                 );
-                if (!details) return;
-
-                let warningText = '';
-                const lineBreaks = Array.from(details.querySelectorAll('br'));
-                const isFollowing = (first, second) => Boolean(
-                    first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING
-                );
-                const walker = document.createTreeWalker(details, NodeFilter.SHOW_TEXT);
-                let node;
-                while (node = walker.nextNode()) {
-                    if (node.parentElement?.closest('a')) continue;
-
-                    const previousBreaks = lineBreaks.filter(lb => isFollowing(lb, node));
-                    const previousBreak = previousBreaks[previousBreaks.length - 1] || null;
-                    const followingBreak = lineBreaks.find(lb => isFollowing(node, lb)) || null;
-
-                    const range = document.createRange();
-                    if (previousBreak) range.setStartAfter(previousBreak);
-                    else range.setStart(details, 0);
-                    if (followingBreak) range.setEndBefore(followingBreak);
-                    else range.setEnd(details, details.childNodes.length);
-
-                    const lineText = range.toString().replace(/\s+/g, ' ').trim();
-                    if (/Warn(?:ung|hinweis(?:e)?)\s*:/i.test(lineText)) {
-                        const match = lineText.match(/Warn(?:ung|hinweis(?:e)?)\s*:\s*(.+)$/i);
-                        warningText = match ? match[1].trim() : 'verschluckbare Kleinteile';
-                        range.deleteContents();
-                        if (followingBreak && followingBreak.parentNode) {
-                            followingBreak.remove();
-                        } else if (previousBreak && previousBreak.parentNode) {
-                            previousBreak.remove();
+                let warningText = 'verschluckbare Kleinteile';
+                for (const details of detailsParagraphs) {
+                    const line = findDetailsLineRange(
+                        details,
+                        /Warn(?:ung|hinweis(?:e)?)\s*:/i,
+                        { includeLeadingPipe: true }
+                    );
+                    if (line) {
+                        const match = line.text.match(/Warn(?:ung|hinweis(?:e)?)\s*:\s*(.+)$/i);
+                        if (match && match[1].trim()) {
+                            warningText = match[1].trim();
+                        }
+                        line.range.deleteContents();
+                        if (line.followingBreak && line.followingBreak.parentNode) {
+                            line.followingBreak.remove();
+                        } else if (line.previousBreak && line.previousBreak.parentNode) {
+                            line.previousBreak.remove();
                         }
                         break;
                     }
-                    range.detach?.();
                 }
-
-                if (!warningText) return;
 
                 const warningBlock = createSafetyWarningBlock(warningText);
                 const sidebarInstructions = document.querySelector(
                     '#ol2nd .bm-sidebar-instructions'
                 );
+                const sourceSection = document.querySelector(
+                    '#ol1st .bm-instruction-section, #ol1st .bm-instruction-source'
+                ) || document.querySelector(
+                    '#ol1st img[src*="/img/instructions/"]'
+                )?.closest('section');
+                const sideColumn = document.getElementById('ol2nd');
+
+                // A. Desktop Sidebar Instructions
                 if (sidebarInstructions) {
-                    sidebarInstructions.appendChild(warningBlock);
-                } else {
-                    const sideColumn = document.getElementById('ol2nd');
-                    if (sideColumn) {
-                        const standaloneSection = document.createElement('section');
-                        standaloneSection.className = 'bm-sidebar-warning';
-                        standaloneSection.appendChild(warningBlock);
-                        const barcodeBlock = sideColumn.querySelector('#barcode')?.closest('div');
-                        if (barcodeBlock) barcodeBlock.insertAdjacentElement('afterend', standaloneSection);
-                        else sideColumn.prepend(standaloneSection);
+                    const existingStandalone = sideColumn?.querySelector('.bm-sidebar-warning');
+                    if (existingStandalone) existingStandalone.remove();
+                    if (!sidebarInstructions.querySelector('.bm-safety-warning-block')) {
+                        sidebarInstructions.appendChild(warningBlock);
+                    }
+                } else if (sideColumn && !sideColumn.querySelector('.bm-safety-warning-block')) {
+                    // Wenn keine Bauanleitungen vorhanden sind: Standalone in der rechten Desktop-Spalte
+                    const standaloneSection = document.createElement('section');
+                    standaloneSection.className = 'bm-sidebar-warning';
+                    standaloneSection.appendChild(warningBlock);
+                    const partsBlock = sideColumn.querySelector('.bm-sidebar-parts');
+                    const barcodeBlock = sideColumn.querySelector('#barcode')?.closest('div') ||
+                        sideColumn.querySelector('.bm-sidebar-barcode');
+                    if (partsBlock) {
+                        partsBlock.insertAdjacentElement('beforebegin', standaloneSection);
+                    } else if (barcodeBlock) {
+                        barcodeBlock.insertAdjacentElement('afterend', standaloneSection);
                     } else {
-                        details.insertAdjacentElement('afterend', warningBlock);
+                        sideColumn.prepend(standaloneSection);
                     }
                 }
 
-                const sourceHeading = Array.from(document.querySelectorAll('#ol1st h3'))
-                    .find(h => h.id === 'Bauanleitung' || /Bauanleitung/i.test(h.textContent || ''));
-                const sourceSection = sourceHeading?.closest('section');
-                if (sourceSection && !sourceSection.querySelector('.bm-safety-warning-block')) {
-                    sourceSection.appendChild(createSafetyWarningBlock(warningText));
+                // B. Bauanleitungen im Inhaltsbereich (#ol1st, relevant für Mobilansicht)
+                if (sourceSection) {
+                    const existingMobileDetail = document.querySelector('.bm-detail-warning');
+                    if (existingMobileDetail) existingMobileDetail.remove();
+                    if (!sourceSection.querySelector('.bm-safety-warning-block')) {
+                        const mobileBlock = createSafetyWarningBlock(warningText);
+                        sourceSection.appendChild(mobileBlock);
+                    }
+                } else {
+                    // Wenn im Hauptbereich keine Bauanleitungen existieren (z. B. Mobilansicht ohne Bauanleitung):
+                    const container = document.querySelector('.content.setdetails');
+                    if (container && !container.querySelector('.bm-detail-warning')) {
+                        const detailWarning = document.createElement('div');
+                        detailWarning.className = 'bm-detail-warning';
+                        detailWarning.appendChild(createSafetyWarningBlock(warningText));
+                        const target = container.querySelector('.productprice') ||
+                            container.querySelector('p');
+                        if (target) target.insertAdjacentElement('afterend', detailWarning);
+                        else container.appendChild(detailWarning);
+                    }
                 }
             }
 
@@ -6746,8 +6802,12 @@ globalThis.BM_formatEuro = price => {
                 panel.append(heading, list);
 
                 const instructionPanel = sideColumn.querySelector('.bm-sidebar-instructions');
-                if (instructionPanel) instructionPanel.insertAdjacentElement('afterend', panel);
-                else {
+                const warningPanel = sideColumn.querySelector('.bm-sidebar-warning');
+                if (instructionPanel) {
+                    instructionPanel.insertAdjacentElement('afterend', panel);
+                } else if (warningPanel) {
+                    warningPanel.insertAdjacentElement('afterend', panel);
+                } else {
                     const barcodeBlock = sideColumn.querySelector('#barcode')?.closest('div');
                     if (barcodeBlock) barcodeBlock.insertAdjacentElement('afterend', panel);
                     else sideColumn.prepend(panel);

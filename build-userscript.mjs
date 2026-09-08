@@ -300,7 +300,7 @@ const metaGptRuntimeOutput = normalizeOutput([
 const mainLoaderOutput = normalizeOutput([
     mainMetadata,
     createRemoteLoader({
-        cacheKey: 'brickmerge-loader-runtime-v5',
+        cacheKey: 'brickmerge-loader-runtime-v6',
         runtimeUrl: `${rawBaseUrl}/${mainRuntimeFile}`,
         label: 'Brickmerge Loader'
     })

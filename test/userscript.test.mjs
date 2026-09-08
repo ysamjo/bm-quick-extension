@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.38/);
+    assert.match(loaderSource, /@version\s+5\.6\.39/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.38/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.39/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -859,6 +859,7 @@ test('box dimensions renamed to Maße and Abmessungen line is collapsible via ic
 });
 
 test('safety warning is replaced with EN 71 pictograms under instructions', () => {
+    assert.match(tweakerSource, /function isSetEligibleForSafetyWarning\(/);
     assert.match(tweakerSource, /function replaceSafetyWarningWithPictograms\(/);
     assert.match(tweakerSource, /function createSafetyWarningBlock\(/);
     assert.match(tweakerSource, /bm-safety-warning-block/);
@@ -868,6 +869,9 @@ test('safety warning is replaced with EN 71 pictograms under instructions', () =
     assert.match(tweakerSource, /0-3/);
     assert.match(tweakerSource, /#ol2nd \.bm-sidebar-instructions/);
     assert.match(tweakerSource, /sidebarInstructions\.appendChild\(warningBlock\)/);
+    assert.match(tweakerSource, /bm-sidebar-warning/);
+    assert.match(tweakerSource, /bm-detail-warning/);
+    assert.match(tweakerSource, /bm-instruction-section/);
 });
 
 test('overall best price box is inserted above Brickmerge best price with matching style when marketplace is cheaper', () => {
