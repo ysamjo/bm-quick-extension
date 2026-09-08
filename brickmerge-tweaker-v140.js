@@ -1727,6 +1727,80 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         .bm-price-history-link:focus * {
             color: #fff !important;
         }
+        .bm-dimensions-toggle-btn {
+            cursor: pointer;
+            margin-left: 0.35em;
+            padding: 1px 3px;
+            border: 0;
+            border-radius: 3px;
+            background: none;
+            color: inherit;
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            line-height: 0;
+            vertical-align: middle;
+            position: static;
+            opacity: 0.82;
+            transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+        }
+        .bm-dimensions-toggle-btn:hover,
+        .bm-dimensions-toggle-btn:focus {
+            opacity: 1;
+            background-color: rgba(128, 128, 128, 0.15);
+        }
+        .bm-dimensions-toggle-btn .bm-dimensions-chevron {
+            transition: transform 0.22s ease;
+        }
+        .bm-dimensions-toggle-btn[aria-expanded="true"] .bm-dimensions-chevron {
+            transform: rotate(180deg);
+        }
+        .bm-dimensions-toggle-btn[aria-expanded="true"] {
+            opacity: 1;
+            color: #700;
+        }
+        .bm-model-dimensions-wrapper {
+            display: none;
+        }
+        .bm-model-dimensions-wrapper.bm-expanded {
+            display: inline;
+        }
+        .bm-model-dimensions-line {
+            display: inline-block;
+            vertical-align: top;
+            overflow: hidden;
+        }
+        .bm-model-dimensions-wrapper.bm-expanded .bm-model-dimensions-line {
+            animation: bmDimensionsSlideDown 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .bm-model-dimensions-wrapper.bm-collapsing .bm-model-dimensions-line {
+            animation: bmDimensionsSlideUp 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
+        }
+        @keyframes bmDimensionsSlideDown {
+            0% {
+                max-height: 0;
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+            100% {
+                max-height: 3.5em;
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes bmDimensionsSlideUp {
+            0% {
+                max-height: 3.5em;
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                max-height: 0;
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+        }
         .bm-minifig-count-link {
             position: relative;
         }
@@ -4845,7 +4919,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         line.range.insertNode(link);
     }
 
-    function findDetailsLineRange(details, linePattern) {
+    function findDetailsLineRange(details, linePattern, options = {}) {
+        const { includeLeadingPipe = false } = options;
         const lineBreaks = Array.from(details.querySelectorAll('br'));
         const isFollowing = (first, second) => Boolean(
             first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING
@@ -4871,24 +4946,26 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             const lineText = range.toString().replace(/\s+/g, ' ').trim();
             linePattern.lastIndex = 0;
             if (linePattern.test(lineText)) {
-                const lineStartWalker = document.createTreeWalker(
-                    details,
-                    NodeFilter.SHOW_TEXT
-                );
-                let lineStartNode;
-                while (lineStartNode = lineStartWalker.nextNode()) {
-                    if (!range.intersectsNode(lineStartNode)) continue;
-                    const pipeMatch = String(lineStartNode.nodeValue || '')
-                        .match(/^\s*\|\s*/);
-                    if (pipeMatch) {
-                        range.setStart(
-                            lineStartNode,
-                            pipeMatch[0].length
-                        );
+                if (!includeLeadingPipe) {
+                    const lineStartWalker = document.createTreeWalker(
+                        details,
+                        NodeFilter.SHOW_TEXT
+                    );
+                    let lineStartNode;
+                    while (lineStartNode = lineStartWalker.nextNode()) {
+                        if (!range.intersectsNode(lineStartNode)) continue;
+                        const pipeMatch = String(lineStartNode.nodeValue || '')
+                            .match(/^\s*\|\s*/);
+                        if (pipeMatch) {
+                            range.setStart(
+                                lineStartNode,
+                                pipeMatch[0].length
+                            );
+                        }
+                        break;
                     }
-                    break;
                 }
-                return { range, text: lineText };
+                return { range, text: lineText, previousBreak, followingBreak };
             }
             range.detach?.();
         }
@@ -5007,14 +5084,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         const details = Array.from(
             document.querySelectorAll('.content.setdetails p')
         ).find(paragraph =>
-            /Box-Maße\s*:/i.test(paragraph.textContent || '') &&
+            /(?:Box-)?Maße\s*:/i.test(paragraph.textContent || '') &&
             /Setgewicht\s*:/i.test(paragraph.textContent || '')
         );
         if (!details || details.querySelector('.bm-package-dimensions-link')) return;
 
         const text = (details.textContent || '').replace(/\s+/g, ' ');
         const dimensionsMatch = text.match(
-            /Box-Maße\s*:\s*([\d.,]+)\s*[x×]\s*([\d.,]+)\s*[x×]\s*([\d.,]+)\s*cm/i
+            /(?:Box-)?Maße\s*:\s*([\d.,]+)\s*[x×]\s*([\d.,]+)\s*[x×]\s*([\d.,]+)\s*cm/i
         );
         const weightMatch = text.match(
             /Setgewicht\s*:\s*[≈~]?\s*([\d.,]+)\s*(kg|g)\b/i
@@ -5073,7 +5150,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             'i'
         );
 
-        const line = findDetailsLineRange(details, /Box-Maße\s*:/i);
+        const line = findDetailsLineRange(details, /(?:Box-)?Maße\s*:/i);
         if (!line || !dimensionTextPattern.test(line.text)) return;
 
         const link = createDetailsLineLink(
@@ -5082,8 +5159,103 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             'Paketpreis mit mindestens 2 cm Luft je Seite, maximal 15 cm ' +
             'je Seite und 10% Gewichtszuschlag berechnen'
         );
-        link.appendChild(line.range.extractContents());
+        const fragment = line.range.extractContents();
+        const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_TEXT);
+        let textNode;
+        while (textNode = walker.nextNode()) {
+            if (/Box-Maße\s*:/i.test(textNode.nodeValue || '')) {
+                textNode.nodeValue = textNode.nodeValue.replace(/Box-Maße\s*:/i, 'Maße:');
+                break;
+            }
+        }
+        link.appendChild(fragment);
         line.range.insertNode(link);
+
+        let toggleBtn = null;
+        const dimensionsLine = findDetailsLineRange(
+            details,
+            /Abmessungen(?:\s*\([^)]+\))?\s*:/i,
+            { includeLeadingPipe: true }
+        );
+        if (dimensionsLine && !details.querySelector('.bm-dimensions-toggle-btn')) {
+            const extractedDimensions = dimensionsLine.range.extractContents();
+            dimensionsLine.previousBreak?.remove();
+
+            const dimensionsWrapper = document.createElement('span');
+            dimensionsWrapper.className = 'bm-model-dimensions-wrapper';
+            dimensionsWrapper.style.display = 'none';
+
+            const dimLineBreak = document.createElement('br');
+            const dimInnerLine = document.createElement('span');
+            dimInnerLine.className = 'bm-model-dimensions-line';
+            dimInnerLine.appendChild(extractedDimensions);
+            dimensionsWrapper.append(dimLineBreak, dimInnerLine);
+
+            if (dimensionsLine.followingBreak?.parentNode) {
+                dimensionsLine.followingBreak.parentNode.insertBefore(
+                    dimensionsWrapper,
+                    dimensionsLine.followingBreak
+                );
+            } else {
+                details.appendChild(dimensionsWrapper);
+            }
+
+            toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = 'bm-dimensions-toggle-btn';
+            toggleBtn.title = 'Modell-Abmessungen einblenden';
+            toggleBtn.setAttribute('aria-label', 'Modell-Abmessungen einblenden');
+            toggleBtn.setAttribute('aria-expanded', 'false');
+            toggleBtn.innerHTML = `
+                <svg class="bm-dimensions-ruler-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M14 5.2 5.2 14a1.4 1.4 0 0 1-2 0L1.7 12.5a1.4 1.4 0 0 1 0-2L10.5 1.7a1.4 1.4 0 0 1 2 0L14 3.2a1.4 1.4 0 0 1 0 2z"/>
+                    <path d="m9.5 3 1.5 1.5"/>
+                    <path d="m7.5 5 2.5 2.5"/>
+                    <path d="m5.5 7 1.5 1.5"/>
+                    <path d="m3.5 9 2.5 2.5"/>
+                </svg>
+                <svg class="bm-dimensions-chevron" viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m2 3.5 3 3 3-3"/>
+                </svg>`;
+
+            let collapseTimeout = null;
+            const toggleDimensions = event => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (collapseTimeout) {
+                    clearTimeout(collapseTimeout);
+                    collapseTimeout = null;
+                }
+                const isExpanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+                if (isExpanded) {
+                    toggleBtn.setAttribute('aria-expanded', 'false');
+                    toggleBtn.title = 'Modell-Abmessungen einblenden';
+                    toggleBtn.setAttribute('aria-label', 'Modell-Abmessungen einblenden');
+                    dimensionsWrapper.classList.remove('bm-expanded');
+                    dimensionsWrapper.classList.add('bm-collapsing');
+                    collapseTimeout = setTimeout(() => {
+                        dimensionsWrapper.classList.remove('bm-collapsing');
+                        dimensionsWrapper.style.display = 'none';
+                        collapseTimeout = null;
+                    }, 220);
+                } else {
+                    dimensionsWrapper.style.display = 'inline';
+                    dimensionsWrapper.classList.remove('bm-collapsing');
+                    dimensionsWrapper.classList.add('bm-expanded');
+                    toggleBtn.setAttribute('aria-expanded', 'true');
+                    toggleBtn.title = 'Modell-Abmessungen ausblenden';
+                    toggleBtn.setAttribute('aria-label', 'Modell-Abmessungen ausblenden');
+                }
+            };
+
+            toggleBtn.addEventListener('click', toggleDimensions);
+            toggleBtn.addEventListener('keydown', event => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                toggleDimensions(event);
+            });
+
+            link.after(toggleBtn);
+        }
 
         const existingVolumeLine = details.querySelector('.bm-volume-line');
         const volumeLiters = width * length * height / 1000;
@@ -5115,11 +5287,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         volumeLine.dataset.bmVolumeLiters = String(volumeLiters);
         const boldValue = document.createElement('b');
         boldValue.textContent = `${formattedVolume} l${pricePerLiter}`;
-        volumeLine.append(document.createTextNode('| Volumen: '), boldValue);
+        volumeLine.append(document.createTextNode('\u00A0| Volumen: '), boldValue);
         updateVolumeBasisToggle(volumeLine, volumeLiters);
 
+        const targetAnchor = toggleBtn || link;
         const lineBreak = document.createElement('br');
-        link.parentNode?.insertBefore(lineBreak, link.nextSibling);
+        targetAnchor.parentNode?.insertBefore(lineBreak, targetAnchor.nextSibling);
         lineBreak.after(volumeLine);
     }
 
