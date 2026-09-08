@@ -53,7 +53,14 @@
             documentValue.querySelector('h1')?.textContent || documentValue.title
         );
         const brand = normalize(product?.brand?.name || product?.brand);
-        const sourceText = `${locationValue.pathname} ${locationValue.search} ${title} ${heading}`;
+        const decodedUrl = (() => {
+            try {
+                return decodeURIComponent(`${locationValue.pathname} ${locationValue.search}`);
+            } catch {
+                return `${locationValue.pathname} ${locationValue.search}`;
+            }
+        })();
+        const sourceText = `${decodedUrl} ${title} ${heading}`;
         const pageLooksLikeLego = /\bLEGO(?:®)?\b/i.test(
             `${sourceText} ${pageName} ${brand}`
         );
@@ -69,18 +76,27 @@
                 )
             ]
             : [];
+
+        const urlLegoSet = pageLooksLikeLego
+            ? decodedUrl.match(/\blego\b[^\w%&+=/]{0,6}(\d{3,7})\b/i)?.[1] ||
+              decodedUrl.match(/\b(\d{3,7})\b[^\w%&+=/]{0,6}\blego\b/i)?.[1] || ''
+            : '';
+        const searchParamSet = (pageLooksLikeLego || isBrickmergePage)
+            ? locationValue.search.match(
+                /[?&](?:find|q|query|search(?:_text|_query|term)?|k(?:eywords?)?|_nkw|s)=[^&]*?\b(\d{3,7})\b/i
+            )?.[1] || ''
+            : '';
+        const bmUrlSet = isBrickmergePage
+            ? locationValue.pathname.match(/\/(\d{3,7})-\d+/)?.[1] || ''
+            : '';
+
         const setCandidates = [
-            isBrickmergePage
-                ? locationValue.pathname.match(/\/(\d{3,7})-\d+_/)?.[1]
-                : '',
+            bmUrlSet,
+            urlLegoSet,
+            searchParamSet,
             pageLooksLikeLego
                 ? fiveDigitSet(productTitle) || fiveDigitSet(title) ||
                     fiveDigitSet(sourceText)
-                : '',
-            pageLooksLikeLego || isBrickmergePage
-                ? locationValue.search.match(
-                    /[?&](?:find|q|query|search)=[^&]*?\b(\d{3,7})\b/i
-                )?.[1]
                 : '',
             pageName.match(/\bLEGO(?:®)?\D{0,24}(\d{3,7})\b/i)?.[1],
             ...metadataSets
@@ -107,10 +123,16 @@
         const ean = eanCandidates.find(value => value.startsWith('570201')) ||
             eanCandidates[0] || '';
         if (!setNumber && !ean) return null;
+
+        let displayName = pageName;
+        if ((!displayName || /^(?:Artikel|Katalog|Suche|Search|Catalog)$/i.test(displayName)) && setNumber) {
+            displayName = `LEGO ${setNumber}`;
+        }
+
         return {
             setNumber,
             ean,
-            name: pageName,
+            name: displayName,
             url: locationValue.href,
             hostname: locationValue.hostname
         };
@@ -156,4 +178,29 @@
             characterData: true
         });
     }
+
+    const hookHistory = method => {
+        try {
+            const original = history[method];
+            if (typeof original !== 'function') return;
+            history[method] = function(...args) {
+                const result = original.apply(this, args);
+                window.setTimeout(() => report(false), 50);
+                return result;
+            };
+        } catch {}
+    };
+    hookHistory('pushState');
+    hookHistory('replaceState');
+    window.addEventListener('popstate', () => {
+        window.setTimeout(() => report(false), 50);
+    });
+
+    let lastReportedUrl = location.href;
+    window.setInterval(() => {
+        if (location.href !== lastReportedUrl) {
+            lastReportedUrl = location.href;
+            report(false);
+        }
+    }, 1000);
 })();

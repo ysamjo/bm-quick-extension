@@ -70,6 +70,31 @@ test('page detector accepts LEGO plus a five-digit number in URL, title, or h1',
     }
 });
 
+test('catalog and search URLs like Vinted detect set numbers from search_text and Lego queries', () => {
+    const vinted5 = detector.detect(productDocument({
+        title: 'Artikel | Vinted',
+        h1: 'Artikel'
+    }), new URL('https://www.vinted.de/catalog?search_text=lego+60458'));
+    assert.equal(vinted5?.setNumber, '60458');
+    assert.equal(vinted5?.name, 'LEGO 60458');
+
+    const vinted4 = detector.detect(productDocument({
+        title: 'Artikel | Vinted',
+        h1: 'Artikel'
+    }), new URL('https://www.vinted.de/catalog?search_text=lego+7592'));
+    assert.equal(vinted4?.setNumber, '7592');
+
+    const kleinanzeigen = detector.detect(productDocument({
+        title: 'Kleinanzeigen'
+    }), new URL('https://www.kleinanzeigen.de/s-lego-60458/k0'));
+    assert.equal(kleinanzeigen?.setNumber, '60458');
+
+    const amazonReversed = detector.detect(productDocument({
+        title: 'Amazon.de'
+    }), new URL('https://www.amazon.de/s?k=60458+lego'));
+    assert.equal(amazonReversed?.setNumber, '60458');
+});
+
 test('five-digit number without LEGO context is not detected', () => {
     const product = detector.detect(productDocument({
         title: 'Klemmbausteine 31168',
@@ -482,5 +507,90 @@ test('best price badge formatting and update action state', async () => {
     assert.ok(badgeCalls.some(call => call.tabId === 101 && call.text === '80€'));
     assert.equal(badgeCalls.at(-1).text, '80€');
     assert.match(titleCalls.at(-1).title, /Bestpreis ab 79,97 €/);
+});
+
+test('background onUpdated detects set immediately from URL and supports SPA route updates', async () => {
+    const backgroundSource = fs.readFileSync(
+        new URL('../background.js', import.meta.url),
+        'utf8'
+    );
+    const badgeCalls = [];
+    const popupCalls = [];
+    let onUpdatedListener = null;
+    const sentTabMessages = [];
+    const unusedEvent = { addListener() {} };
+    const bgContext = vm.createContext({
+        URL,
+        Headers,
+        console: { error() {} },
+        importScripts() {},
+        BM_mergeSettings(value) { return value || {}; },
+        BM_formatBadgePrice: price => `${Math.round(price)}€`,
+        BM_parsePrice: price => Number(price) || null,
+        BM_formatEuro: price => String(price),
+        fetch: async () => ({
+            ok: true,
+            text: async () => '{"lowPrice": "19.00"}'
+        }),
+        chrome: {
+            action: {
+                async setBadgeText(options) { badgeCalls.push({ ...options }); },
+                async setBadgeBackgroundColor() {},
+                async setBadgeTextColor() {},
+                async setPopup(options) { popupCalls.push({ ...options }); },
+                async setTitle() {},
+                onClicked: { addListener() {} }
+            },
+            runtime: {
+                onInstalled: unusedEvent,
+                onStartup: unusedEvent,
+                onMessage: { addListener() {} }
+            },
+            storage: {
+                local: {
+                    async get() { return {}; },
+                    async set() {}
+                },
+                onChanged: unusedEvent
+            },
+            declarativeNetRequest: {
+                async updateEnabledRulesets() {}
+            },
+            tabs: {
+                onUpdated: {
+                    addListener(listener) { onUpdatedListener = listener; }
+                },
+                onRemoved: unusedEvent,
+                async sendMessage(tabId, msg) {
+                    sentTabMessages.push({ tabId, msg });
+                    return { ok: true };
+                }
+            }
+        }
+    });
+
+    vm.runInContext(backgroundSource, bgContext);
+    assert.equal(typeof onUpdatedListener, 'function');
+
+    // Simulate tab loading Vinted URL
+    onUpdatedListener(
+        202,
+        { status: 'loading' },
+        { id: 202, url: 'https://www.vinted.de/catalog?search_text=lego+60458' }
+    );
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    assert.ok(badgeCalls.some(call => call.tabId === 202 && call.text === '19€' || call.text === '✓'));
+    assert.deepEqual(popupCalls.at(-1), { tabId: 202, popup: '' });
+
+    // Simulate SPA URL update on same tab
+    onUpdatedListener(
+        202,
+        { url: 'https://www.vinted.de/catalog?search_text=lego+7592' },
+        { id: 202, url: 'https://www.vinted.de/catalog?search_text=lego+7592' }
+    );
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    assert.ok(sentTabMessages.some(m => m.tabId === 202 && m.msg?.type === 'bm-detect-page-now'));
 });
 

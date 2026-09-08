@@ -4536,10 +4536,12 @@ globalThis.BM_formatEuro = price => {
                     align-items: center;
                     gap: 0.35rem;
                     flex-shrink: 0;
+                    opacity: 0.85;
                 }
                 .bm-safety-pictograms svg {
                     display: block;
                     flex-shrink: 0;
+                    filter: grayscale(100%);
                 }
                 .bm-safety-warning-text {
                     font-size: 0.72rem;
@@ -4547,7 +4549,7 @@ globalThis.BM_formatEuro = price => {
                     color: #555;
                 }
                 .bm-safety-warning-text strong {
-                    color: #c00;
+                    color: #444;
                     font-weight: 700;
                 }
                 .bm-sidebar-warning {

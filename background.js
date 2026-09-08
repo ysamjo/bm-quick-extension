@@ -127,6 +127,35 @@ function normalizeSelectedTerm(value) {
         .slice(0, 120);
 }
 
+function quickDetectSetFromUrl(rawUrl) {
+    if (!rawUrl || typeof rawUrl !== 'string') return null;
+    try {
+        const url = new URL(rawUrl);
+        const isBrickmerge = /(?:^|\.)brickmerge\.de$/i.test(url.hostname);
+        if (isBrickmerge) {
+            const bmMatch = url.pathname.match(/\/(\d{3,7})-\d+/)?.[1] ||
+                url.search.match(/[?&]find=(\d{3,7})\b/i)?.[1];
+            if (bmMatch && !/^(?:19|20)\d{2}$/.test(bmMatch)) return bmMatch;
+        }
+
+        const decoded = decodeURIComponent(`${url.pathname} ${url.search}`);
+        const legoDirectMatch = decoded.match(/\blego\b[^\w%&+=/]{0,6}(\d{3,7})\b/i)?.[1] ||
+            decoded.match(/\b(\d{3,7})\b[^\w%&+=/]{0,6}\blego\b/i)?.[1];
+        if (legoDirectMatch && !/^(?:19|20)\d{2}$/.test(legoDirectMatch)) return legoDirectMatch;
+
+        const searchParamMatch = url.search.match(
+            /[?&](?:find|q|query|search(?:_text|_query|term)?|k(?:eywords?)?|_nkw|s)=[^&]*?\b(\d{3,7})\b/i
+        )?.[1];
+        if (searchParamMatch && !/^(?:19|20)\d{2}$/.test(searchParamMatch)) {
+            if (/\blego\b/i.test(decoded)) return searchParamMatch;
+        }
+
+        return null;
+    } catch {
+        return null;
+    }
+}
+
 const priceCache = new Map();
 const PRICE_CACHE_TTL_MS = 15 * 60 * 1000;
 
@@ -320,10 +349,45 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     }
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-    if (changeInfo.status !== 'loading') return;
-    selectedTerms.delete(tabId);
-    void updateDetectedProduct(tabId, null);
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'loading') {
+        selectedTerms.delete(tabId);
+        const urlToInspect = changeInfo.url || tab?.url;
+        const quickSet = quickDetectSetFromUrl(urlToInspect);
+        if (quickSet) {
+            try {
+                const parsedUrl = new URL(urlToInspect);
+                void updateDetectedProduct(tabId, {
+                    setNumber: quickSet,
+                    ean: '',
+                    name: `LEGO ${quickSet}`,
+                    url: urlToInspect,
+                    hostname: parsedUrl.hostname
+                });
+            } catch {
+                void updateDetectedProduct(tabId, null);
+            }
+        } else {
+            void updateDetectedProduct(tabId, null);
+        }
+    }
+
+    if (changeInfo.url && changeInfo.status !== 'loading') {
+        const quickSet = quickDetectSetFromUrl(changeInfo.url);
+        if (quickSet) {
+            try {
+                const parsedUrl = new URL(changeInfo.url);
+                void updateDetectedProduct(tabId, {
+                    setNumber: quickSet,
+                    ean: '',
+                    name: `LEGO ${quickSet}`,
+                    url: changeInfo.url,
+                    hostname: parsedUrl.hostname
+                });
+            } catch {}
+        }
+        chrome.tabs.sendMessage(tabId, { type: 'bm-detect-page-now' }).catch(() => {});
+    }
 });
 
 chrome.tabs.onRemoved.addListener(tabId => {
