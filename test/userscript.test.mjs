@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.44/);
+    assert.match(loaderSource, /@version\s+5\.6\.45/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.44/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.45/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -872,6 +872,10 @@ test('safety warning is replaced with EN 71 pictograms under instructions', () =
     assert.match(tweakerSource, /bm-picto-03/);
     assert.match(tweakerSource, /bm-picto-triangle/);
     assert.match(tweakerSource, /0-3/);
+    assert.match(tweakerSource, /opacity:\s*0\.85;/);
+    assert.match(tweakerSource, /filter:\s*grayscale\(100%\);/);
+    assert.match(tweakerSource, /stroke="#444"/);
+    assert.match(tweakerSource, /\.bm-safety-warning-text strong \{\s*color:\s*#444;/);
     assert.match(tweakerSource, /#ol2nd \.bm-sidebar-instructions/);
     assert.match(tweakerSource, /sidebarInstructions\.appendChild\(warningBlock\)/);
     assert.match(tweakerSource, /bm-sidebar-warning/);
@@ -888,6 +892,10 @@ test('overall best price box is inserted above Brickmerge best price with matchi
     assert.match(tweakerSource, /Brickmerge-Bestpreis:/);
     assert.match(tweakerSource, /bm-topprice-logo-cell/);
     assert.match(tweakerSource, /bm-offer-row-highlight/);
+    assert.match(tweakerSource, /padding:\s*0\.5rem\s+5\.5rem\s+0\.5rem\s+0\.6rem;/);
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-bestprice-bubble/);
+    assert.match(tweakerSource, /bestPriceBox\.style\.display\s*=\s*['"]block['"]/);
+    assert.match(tweakerSource, /existingBlackBubble/);
 });
 
 test('calculation price basis defaults to overall best price and supports toggle', () => {

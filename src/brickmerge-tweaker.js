@@ -1523,6 +1523,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             position: relative;
         }
         .content.setdetails .topprice span[style*="position: absolute"],
+        .content.setdetails .topprice .bm-bestprice-bubble,
         .bm-bestprice-black-bubble {
             position: absolute !important;
             top: calc(50% + 4px) !important;
@@ -1546,7 +1547,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             transform: translateY(-50%) !important;
             box-sizing: border-box;
         }
-        .content.setdetails .topprice span[style*="position: absolute"] {
+        .content.setdetails .topprice span[style*="position: absolute"],
+        .content.setdetails .topprice .bm-bestprice-bubble {
             right: 0.65rem !important;
         }
         .bm-bestprice-black-bubble {
@@ -4900,18 +4902,18 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         pictos.innerHTML = `
             <svg class="bm-safety-picto bm-picto-03" viewBox="0 0 100 100" width="34" height="34" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Nicht für Kinder unter 3 Jahren geeignet">
                 <circle cx="50" cy="50" r="46" fill="#fff"/>
-                <circle cx="50" cy="50" r="44" fill="none" stroke="#d32f2f" stroke-width="8"/>
-                <line x1="19" y1="19" x2="81" y2="81" stroke="#d32f2f" stroke-width="8" stroke-linecap="round"/>
-                <circle cx="34" cy="46" r="11" fill="none" stroke="#111" stroke-width="2.5"/>
-                <circle cx="30" cy="43" r="1.5" fill="#111"/>
-                <circle cx="38" cy="43" r="1.5" fill="#111"/>
-                <path d="M 30 51 Q 34 47 38 51" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round"/>
-                <text x="64" y="57" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="25" fill="#111" letter-spacing="-1">0-3</text>
+                <circle cx="50" cy="50" r="44" fill="none" stroke="#444" stroke-width="8"/>
+                <line x1="19" y1="19" x2="81" y2="81" stroke="#444" stroke-width="8" stroke-linecap="round"/>
+                <circle cx="34" cy="46" r="11" fill="none" stroke="#222" stroke-width="2.5"/>
+                <circle cx="30" cy="43" r="1.5" fill="#222"/>
+                <circle cx="38" cy="43" r="1.5" fill="#222"/>
+                <path d="M 30 51 Q 34 47 38 51" fill="none" stroke="#222" stroke-width="2" stroke-linecap="round"/>
+                <text x="64" y="57" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="25" fill="#222" letter-spacing="-1">0-3</text>
             </svg>
             <svg class="bm-safety-picto bm-picto-triangle" viewBox="0 0 100 90" width="34" height="30" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Achtung">
-                <path d="M 50 7 L 93 81 A 5 5 0 0 1 89 88 L 11 88 A 5 5 0 0 1 7 81 Z" fill="#ffcc00" stroke="#222" stroke-width="6" stroke-linejoin="round"/>
-                <line x1="50" y1="32" x2="50" y2="58" stroke="#111" stroke-width="8" stroke-linecap="round"/>
-                <circle cx="50" cy="73" r="5" fill="#111"/>
+                <path d="M 50 7 L 93 81 A 5 5 0 0 1 89 88 L 11 88 A 5 5 0 0 1 7 81 Z" fill="#fff" stroke="#444" stroke-width="7" stroke-linejoin="round"/>
+                <line x1="50" y1="32" x2="50" y2="58" stroke="#222" stroke-width="8" stroke-linecap="round"/>
+                <circle cx="50" cy="73" r="5" fill="#222"/>
             </svg>
         `.trim();
 
@@ -12158,8 +12160,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             badge.title = `${discountText}% günstiger als das nächstteurere Angebot`;
             const hasNativeDiscountBubble = Array.from(
                 targetTopprice.querySelectorAll(
-                    ':scope > .off, :scope > span[style*="position"], ' +
-                    ':scope > div[style*="position"], .bm-bestprice-bubble'
+                    '.off, span[style*="position"], ' +
+                    'div[style*="position"], .bm-bestprice-bubble'
                 )
             ).some(element => {
                 if (element.classList.contains('black-discount-bubble')) return false;
@@ -12243,10 +12245,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (!bestPriceBox) {
             bestPriceBox = document.createElement('div');
             bestPriceBox.className = 'topprice bm-overall-bestprice';
-            bestPriceBox.style.display = 'table';
-            bestPriceBox.style.width = '100%';
-            bestPriceBox.style.marginBottom = '0.35rem';
         }
+        bestPriceBox.style.display = 'block';
+        bestPriceBox.style.position = 'relative';
+        bestPriceBox.style.width = '100%';
+        bestPriceBox.style.marginBottom = '0.35rem';
 
         const anchor = retailerLabel || retailerTopPrice;
         if (bestPriceBox.nextElementSibling !== anchor) {
@@ -12273,21 +12276,27 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         const linkTitle = `${marketplaceBest.label}-Angebot für ${formatEuroValue(marketplaceBest.price)} € ansehen` +
             (savingsEur > 0 ? ` (${formatEuroValue(savingsEur)} € günstiger als Brickmerge-Bestpreis)` : '');
 
+        const existingBlackBubble = bestPriceBox.querySelector('.bm-bestprice-black-bubble');
+
         bestPriceBox.innerHTML = `
-            <a href="${targetUrl}" ${marketplaceBest.url ? 'target="_blank" rel="noopener noreferrer nofollow"' : ''} class="tooltipster bm-overall-bestprice-link" title="${linkTitle}">
-                <div class="bm-topprice-logo-cell" style="display: table-cell; width: 88px; background-color: #fff; vertical-align: middle; text-align: center; padding: 2px;">
+            <a href="${targetUrl}" ${marketplaceBest.url ? 'target="_blank" rel="noopener noreferrer nofollow"' : ''} class="tooltipster bm-overall-bestprice-link" title="${linkTitle}" style="display: flex; align-items: center; width: 100%; min-height: 35px; text-decoration: none; color: inherit;">
+                <div class="bm-topprice-logo-cell" style="width: 88px; min-width: 88px; max-width: 88px; background-color: #fff; display: flex; align-items: center; justify-content: center; padding: 2px; align-self: stretch; box-sizing: border-box;">
                     ${logoHtml}
                 </div>
-                <div class="bm-topprice-price-cell" style="display: table-cell; padding: 0.5rem 0.6rem 0.5rem 0.5rem; vertical-align: middle; position: relative;">
+                <div class="bm-topprice-price-cell" style="flex: 1 1 auto; min-width: 0; padding: 0.5rem 5.5rem 0.5rem 0.6rem; vertical-align: middle; box-sizing: border-box;">
                     ${formatEuroValue(marketplaceBest.price)} €
-                    ${bubbleText ? `
-                        <span class="bm-bestprice-bubble" style="position: absolute; border-radius: 1000px; background-color: #b00; color: #fff; font-size: 0.7rem; font-weight: bold; min-height: 25px; min-width: 25px; text-align: center; line-height: 1.5rem; margin: 0 4px; right: 1rem;" title="${bubbleTooltip}">
-                            ${bubbleText}
-                        </span>
-                    ` : ''}
                 </div>
+                ${bubbleText ? `
+                    <span class="bm-bestprice-bubble" style="position: absolute; border-radius: 1000px; background-color: #b00; color: #fff; font-size: 0.7rem; font-weight: bold; min-height: 28px; min-width: 28px; text-align: center; line-height: 28px; margin: 0; right: 0.65rem;" title="${bubbleTooltip}">
+                        ${bubbleText}
+                    </span>
+                ` : ''}
             </a>
         `.trim();
+
+        if (existingBlackBubble) {
+            bestPriceBox.appendChild(existingBlackBubble);
+        }
 
         const link = bestPriceBox.querySelector('a');
         if (link) {
