@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.56/);
+    assert.match(loaderSource, /@version\s+5\.6\.57/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.56/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.57/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -343,6 +343,7 @@ test('Google Shopping and Klarna offers are deduplicated by merchant and price',
     ]);
     assert.equal(googleAdvances[0].merchantName, 'Otto');
     assert.equal(googleAdvances[1].merchantName, 'Amazon');
+    assert.match(tweakerSource, /logo-klarna\.png/);
 
     const nativeDuplicate = context.BM_dedupeMarketplaceOffers([
         {

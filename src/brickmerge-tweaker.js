@@ -8662,7 +8662,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                     ? chrome.runtime.getURL('icons/logo-leboncoin.png')
                                     : source === 'stockx'
                                         ? chrome.runtime.getURL('icons/logo-stockx.svg')
-                                        : icon(logoDomain),
+                                        : source === 'klarna'
+                                            ? chrome.runtime.getURL('icons/logo-klarna.png')
+                                            : icon(logoDomain),
                             `${source}-apify`,
                             `${label}: Angebot ${index + 1} von ${result.comparedOffers} passenden Angeboten; ${stockxCurrencyNote}Gesamtpreis${Number.isFinite(transactionFee) ? ` inklusive geschätzter Transaktionsgebühr ${formatEuroValue(transactionFee)} €` : ''}; ${candidate.title}`,
                             {
@@ -8673,7 +8675,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                 logoText: '',
                                 logoClass: source === 'stockx'
                                     ? 'bm-stockx-logo'
-                                    : '',
+                                    : source === 'klarna'
+                                        ? 'bm-klarna-logo'
+                                        : '',
+                                logoFallbackUrl: icon(logoDomain),
                                 logoCaption: candidate.shopName || '',
                                 merchantName: candidate.shopName || '',
                                 dedupeMerchant: candidate.shopName || '',

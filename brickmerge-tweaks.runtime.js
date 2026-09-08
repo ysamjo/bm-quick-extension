@@ -10571,7 +10571,9 @@ globalThis.BM_formatEuro = price => {
                                             ? BM_MOBILE_CHROME.runtime.getURL('icons/logo-leboncoin.png')
                                             : source === 'stockx'
                                                 ? BM_MOBILE_CHROME.runtime.getURL('icons/logo-stockx.svg')
-                                                : icon(logoDomain),
+                                                : source === 'klarna'
+                                                    ? BM_MOBILE_CHROME.runtime.getURL('icons/logo-klarna.png')
+                                                    : icon(logoDomain),
                                     `${source}-apify`,
                                     `${label}: Angebot ${index + 1} von ${result.comparedOffers} passenden Angeboten; ${stockxCurrencyNote}Gesamtpreis${Number.isFinite(transactionFee) ? ` inklusive geschätzter Transaktionsgebühr ${formatEuroValue(transactionFee)} €` : ''}; ${candidate.title}`,
                                     {
@@ -10582,7 +10584,10 @@ globalThis.BM_formatEuro = price => {
                                         logoText: '',
                                         logoClass: source === 'stockx'
                                             ? 'bm-stockx-logo'
-                                            : '',
+                                            : source === 'klarna'
+                                                ? 'bm-klarna-logo'
+                                                : '',
+                                        logoFallbackUrl: icon(logoDomain),
                                         logoCaption: candidate.shopName || '',
                                         merchantName: candidate.shopName || '',
                                         dedupeMerchant: candidate.shopName || '',
