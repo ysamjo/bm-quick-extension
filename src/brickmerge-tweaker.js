@@ -2437,34 +2437,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 line-height: 1.25;
                 text-decoration: underline;
             }
-            .bm-safety-warning-block {
-                display: flex;
-                align-items: center;
-                gap: 0.65rem;
-                margin-top: 0.85rem;
-                padding-top: 0.75rem;
-                border-top: 1px solid #eee;
-                text-align: left;
-            }
-            .bm-safety-pictograms {
-                display: inline-flex;
-                align-items: center;
-                gap: 0.35rem;
-                flex-shrink: 0;
-            }
-            .bm-safety-pictograms svg {
-                display: block;
-                flex-shrink: 0;
-            }
-            .bm-safety-warning-text {
-                font-size: 0.72rem;
-                line-height: 1.25;
-                color: #555;
-            }
-            .bm-safety-warning-text strong {
-                color: #c00;
-                font-weight: 700;
-            }
             #ol2nd .bm-sidebar-warning {
                 display: block;
                 margin: 0 0 1.25rem;
@@ -2540,6 +2512,45 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             #showmoreimages {
                 display: none !important;
             }
+        }
+        .bm-safety-warning-block {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            margin-top: 0.85rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #eee;
+            text-align: left;
+            box-sizing: border-box;
+        }
+        .bm-safety-pictograms {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex-shrink: 0;
+        }
+        .bm-safety-pictograms svg {
+            display: block;
+            flex-shrink: 0;
+        }
+        .bm-safety-warning-text {
+            font-size: 0.72rem;
+            line-height: 1.25;
+            color: #555;
+        }
+        .bm-safety-warning-text strong {
+            color: #c00;
+            font-weight: 700;
+        }
+        .bm-sidebar-warning {
+            display: block;
+            margin: 0.75rem 0 1.25rem;
+            text-align: left;
+        }
+        .bm-sidebar-warning .bm-safety-warning-block {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
         }
         .bm-offer-toolbar {
             display: flex;
@@ -4598,7 +4609,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (document.querySelector('.bm-safety-warning-block')) return;
 
         const details = Array.from(
-            document.querySelectorAll('.content.setdetails p')
+            document.querySelectorAll('.content.setdetails p, #ol2nd p')
         ).find(paragraph =>
             /Warn(?:ung|hinweis(?:e)?)\s*:/i.test(paragraph.textContent || '')
         );
@@ -4656,6 +4667,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 const barcodeBlock = sideColumn.querySelector('#barcode')?.closest('div');
                 if (barcodeBlock) barcodeBlock.insertAdjacentElement('afterend', standaloneSection);
                 else sideColumn.prepend(standaloneSection);
+            } else {
+                details.insertAdjacentElement('afterend', warningBlock);
             }
         }
 
