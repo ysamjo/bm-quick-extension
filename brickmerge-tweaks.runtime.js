@@ -393,11 +393,49 @@ globalThis.BM_resolveWorkerUrl = (value, baseUrl) => {
 globalThis.BM_getBrickmergeSetNumber = value => {
     try {
         const url = new URL(value, 'https://www.brickmerge.de/');
-        const match = url.pathname.match(/^\/(\d{4,7})-\d+_[^/]+\/?$/);
+        const match = url.pathname.match(/^\/(\d{4,7})-[\da-z]+_[^/]+\/?$/i);
         return match ? match[1] : null;
     } catch {
         return null;
     }
+};
+
+globalThis.BM_isCollectibleMinifigures = (
+    doc = globalThis.document,
+    urlValue = globalThis.location?.href
+) => {
+    try {
+        const url = new URL(urlValue, 'https://www.brickmerge.de/');
+        if (/(?:collectable|collectible)[-_ ]minifigures/i.test(url.pathname)) {
+            return true;
+        }
+    } catch {}
+
+    if (/(?:collectable|collectible)\s*minifigures/i.test(doc?.title || '')) {
+        return true;
+    }
+
+    if (doc?.querySelector?.(
+        'a[href*="Collectable%20Minifigures"], ' +
+        'a[href*="collectable-minifigures"], ' +
+        'a[href*="collectable_minifigures"], ' +
+        'a[href*="Collectable-Minifigures"], ' +
+        'a[href*="LEGO-Collectable"]'
+    )) {
+        return true;
+    }
+
+    const description = doc?.querySelector?.('meta[name="description"]')?.getAttribute('content') || '';
+    if (/(?:collectable|collectible)\s*minifigures/i.test(description)) {
+        return true;
+    }
+
+    const detailsBox = doc?.querySelector?.('.content.setdetails, #productdetails, .setdetailtags')?.textContent || '';
+    if (/(?:collectable|collectible)\s*minifigures/i.test(detailsBox)) {
+        return true;
+    }
+
+    return false;
 };
 
 globalThis.BM_normalizeMinifigNameTokens = value => {
@@ -3576,75 +3614,7 @@ globalThis.BM_formatEuro = price => {
                     height: 13px;
                     flex-shrink: 0;
                 }
-                h1 .bm-copy-btn {
-                    width: 18px;
-                    height: 18px;
-                    margin-left: 0.35em;
-                }
-                h1 .bm-copy-btn svg {
-                    width: 18px;
-                    height: 18px;
-                }
-                h1 .bm-price-basis-toggle {
-                    width: 18px;
-                    height: 18px;
-                    margin-left: 0.35em;
-                }
-                h1 .bm-price-basis-toggle svg {
-                    width: 18px;
-                    height: 18px;
-                }
-                .bm-price-basis-switch-row {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: 6px;
-                    margin: 0.35rem 0 0.45rem;
-                    padding: 4px 7px;
-                    background: #f4f4f4;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                    box-sizing: border-box;
-                    width: 100%;
-                }
-                .bm-price-basis-switch-hint {
-                    font-size: 0.68rem;
-                    color: #555;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    line-height: 1.2;
-                }
-                .bm-price-basis-pills {
-                    display: inline-flex;
-                    gap: 2px;
-                    background: #e2e2e2;
-                    padding: 2px;
-                    border-radius: 4px;
-                    flex-shrink: 0;
-                }
-                .bm-price-basis-pill {
-                    padding: 2px 7px;
-                    font-size: 0.68rem;
-                    font-weight: 600;
-                    line-height: 1.25;
-                    border: 0;
-                    border-radius: 3px;
-                    background: transparent;
-                    color: #555;
-                    cursor: pointer;
-                    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-                    outline: none;
-                }
-                .bm-price-basis-pill:hover {
-                    color: #111;
-                }
-                .bm-price-basis-pill.bm-active {
-                    background: #fff !important;
-                    color: #b00 !important;
-                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-                    font-weight: 700;
-                }
+
                 .bm-offer-row-highlight {
                     animation: bm-highlight-flash 1.6s ease-out;
                 }
@@ -7740,43 +7710,59 @@ globalThis.BM_formatEuro = price => {
                 return copyBtn;
             }
 
-            function ensureH1CopyButton(h1) {
-                if (!h1) return null;
-                let copyBtn = h1.querySelector('.bm-copy-btn');
+            function ensureDetailsNameCopyButton() {
+                document.querySelectorAll('h1 .bm-copy-btn, h1 .bm-price-basis-toggle').forEach(el => el.remove());
+                const details = document.querySelector('.content.setdetails .productprice');
+                let copyBtn = details?.querySelector('.bm-copy-btn');
                 if (copyBtn) return copyBtn;
+                if (!setNum || !BM_SETTINGS.copyAndMinifigures) return null;
+
+                const h1 = document.querySelector('.content.setdetails h1, h1');
+                const pageTitle = h1?.textContent
+                    .replace(/[\u00AE\u2122]/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim() || '';
+                const nameElement = Array.from(
+                    details?.querySelectorAll('strong, b') || []
+                ).find(element => {
+                    const text = element.textContent
+                        .replace(/[\u00AE\u2122]/g, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    return text.includes(setNum) &&
+                        text.length > String(setNum).length + 4 &&
+                        !/Artikel-Nr\s*:|€/.test(text) &&
+                        (!pageTitle || pageTitle.includes(text) || text.includes(pageTitle));
+                });
+                if (!nameElement) return null;
+
                 copyBtn = createNameCopyButton(() => {
-                    const clone = h1.cloneNode(true);
-                    clone.querySelectorAll('.bm-copy-btn, .bm-price-basis-toggle').forEach(el => el.remove());
-                    return clone.textContent
+                    const nameClone = nameElement.cloneNode(true);
+                    nameClone.querySelectorAll('.bm-copy-btn, .bm-price-basis-toggle').forEach(el => el.remove());
+                    return nameClone.textContent
                         .replace(/[\u00AE\u2122]/g, '')
                         .replace(/\s+/g, ' ')
                         .trim();
                 }, 'Setnamen kopieren');
-                h1.appendChild(copyBtn);
+                nameElement.appendChild(copyBtn);
                 return copyBtn;
             }
 
             function syncGlobalPriceBasisToggle() {
-                const h1 = document.querySelector('.content.setdetails h1, h1');
-                let h1CopyBtn = h1?.querySelector('.bm-copy-btn');
-                if (h1 && !h1CopyBtn && BM_SETTINGS.copyAndMinifigures) {
-                    h1CopyBtn = ensureH1CopyButton(h1);
-                }
+                document.querySelectorAll('h1 .bm-copy-btn, h1 .bm-price-basis-toggle').forEach(el => el.remove());
 
-                const fallbackCopyBtn = document.querySelector(
-                    '.content.setdetails .productprice .bm-copy-btn'
+                const copyBtn = ensureDetailsNameCopyButton() ||
+                    document.querySelector('.content.setdetails .productprice .bm-copy-btn');
+                const fallbackTarget = document.querySelector(
+                    '.content.setdetails .productprice strong, .content.setdetails .productprice b'
                 );
-                const fallbackTarget = fallbackCopyBtn?.parentElement ||
-                    document.querySelector('.content.setdetails .productprice strong, .content.setdetails .productprice b');
-
-                const targetContainer = h1 || fallbackTarget;
-                const copyAnchor = (h1 && h1CopyBtn) ? h1CopyBtn : (fallbackCopyBtn || targetContainer?.querySelector('.bm-copy-btn'));
+                const anchor = copyBtn || fallbackTarget;
                 let toggle = document.querySelector('.bm-price-basis-toggle');
 
                 const prices = getBestOfferPrices();
                 const hasAlternative = Boolean(prices.isMarketplaceCheaper);
 
-                if (!hasAlternative || !targetContainer) {
+                if (!hasAlternative || !anchor) {
                     toggle?.remove();
                     return;
                 }
@@ -7788,7 +7774,7 @@ globalThis.BM_formatEuro = price => {
                     toggle.setAttribute('role', 'button');
                     toggle.tabIndex = 0;
                     toggle.innerHTML = `
-                        <svg class="bm-price-basis-icon" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <svg class="bm-price-basis-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M4.5 12V4m0 0L2 6.5m2.5-2.5L7 6.5m4.5-2.5v8m0 0l2.5-2.5m-2.5 2.5L9 9.5"/>
                         </svg>
                     `.trim();
@@ -7807,12 +7793,12 @@ globalThis.BM_formatEuro = price => {
                     });
                 }
 
-                if (copyAnchor && copyAnchor.parentElement === targetContainer) {
-                    if (copyAnchor.nextElementSibling !== toggle) {
-                        copyAnchor.after(toggle);
+                if (copyBtn) {
+                    if (copyBtn.nextElementSibling !== toggle) {
+                        copyBtn.after(toggle);
                     }
-                } else if (toggle.parentElement !== targetContainer) {
-                    targetContainer.appendChild(toggle);
+                } else if (fallbackTarget && !fallbackTarget.contains(toggle)) {
+                    fallbackTarget.appendChild(toggle);
                 }
 
                 const currentBasis = mode === 'retailer' ? 'Händler-Bestpreis' : 'Echter Bestpreis (inkl. Marktplatz)';
@@ -7822,15 +7808,6 @@ globalThis.BM_formatEuro = price => {
                 toggle.title = tooltip;
                 toggle.setAttribute('aria-label', tooltip);
                 toggle.dataset.bmMode = mode;
-            }
-
-            function updatePriceBasisSwitchPills() {
-                const switchRow = document.querySelector('.content.setdetails .bm-price-basis-switch-row');
-                if (!switchRow) return;
-                const mode = getPriceBasisMode();
-                switchRow.querySelectorAll('.bm-price-basis-pill').forEach(pill => {
-                    pill.classList.toggle('bm-active', pill.dataset.mode === mode);
-                });
             }
 
             function syncPriceBasisCalculations() {
@@ -7867,7 +7844,6 @@ globalThis.BM_formatEuro = price => {
                         );
                     }
                 }
-                updatePriceBasisSwitchPills();
                 syncGlobalPriceBasisToggle();
             }
 
@@ -8588,6 +8564,10 @@ globalThis.BM_formatEuro = price => {
                     document.querySelectorAll('a[data-bmid="btn-kleinanzeigen"]')
                         .forEach(applyKleinanzeigenStatusToShortcut);
                 };
+                const isCmf = Boolean((globalThis.BM_isCollectibleMinifigures || BM_isCollectibleMinifigures)?.(
+                    document,
+                    window.location.href
+                ));
                 const groups = [
                     {
                         key: 'marketplaces',
@@ -8616,6 +8596,13 @@ globalThis.BM_formatEuro = price => {
                         key: 'resources',
                         title: "Ressourcen",
                         links: [
+                            ...(isCmf ? [{
+                                id: "btn-cmf-scanner",
+                                name: "CMF Scanner",
+                                title: "CMF Box-Scanner auf brickbank.app öffnen",
+                                url: "https://brickbank.app/cmf/scanner/",
+                                icon: icon("brickbank.app")
+                            }] : []),
                             { name: "Rebrickable", url: `https://rebrickable.com/sets/${setNum}-1/#alt_builds`, icon: icon("rebrickable.com") },
                             {
                                 id: "btn-meta-gpt",
@@ -9026,6 +9013,7 @@ globalThis.BM_formatEuro = price => {
                         for (const {
                             id,
                             name,
+                            title: linkTitle,
                             url,
                             icon,
                             icons,
@@ -9071,6 +9059,7 @@ globalThis.BM_formatEuro = price => {
                             const a = document.createElement("a");
                             a.href = url; a.target = "_blank"; a.className = "bm-link";
                             if (id) a.dataset.bmid = id;
+                            if (linkTitle) a.title = linkTitle;
                             if (Array.isArray(icons) && icons.length) {
                                 const iconGroup = document.createElement('span');
                                 iconGroup.className = 'bm-link-icons';
@@ -11195,37 +11184,7 @@ globalThis.BM_formatEuro = price => {
             if (setNum && BM_SETTINGS.copyAndMinifigures) {
                 try {
                     (function detailsNameCopyButton() {
-                        const h1 = document.querySelector('.content.setdetails h1, h1');
-                        ensureH1CopyButton(h1);
-
-                        const details = document.querySelector('.content.setdetails .productprice');
-                        const pageTitle = h1?.textContent
-                            .replace(/[\u00AE\u2122]/g, '')
-                            .replace(/\s+/g, ' ')
-                            .trim() || '';
-                        const nameElement = Array.from(
-                            details?.querySelectorAll('strong, b') || []
-                        ).find(element => {
-                            const text = element.textContent
-                                .replace(/[\u00AE\u2122]/g, '')
-                                .replace(/\s+/g, ' ')
-                                .trim();
-                            return text.includes(setNum) &&
-                                text.length > String(setNum).length + 4 &&
-                                !/Artikel-Nr\s*:|€/.test(text) &&
-                                (!pageTitle || pageTitle.includes(text) || text.includes(pageTitle));
-                        });
-                        if (nameElement && !nameElement.querySelector('.bm-copy-btn')) {
-                            const copyBtn = createNameCopyButton(() => {
-                                const nameClone = nameElement.cloneNode(true);
-                                nameClone.querySelectorAll('.bm-copy-btn, .bm-price-basis-toggle').forEach(el => el.remove());
-                                return nameClone.textContent
-                                    .replace(/[\u00AE\u2122]/g, '')
-                                    .replace(/\s+/g, ' ')
-                                    .trim();
-                            }, 'Setnamen kopieren');
-                            nameElement.appendChild(copyBtn);
-                        }
+                        ensureDetailsNameCopyButton();
                         syncGlobalPriceBasisToggle();
                     })();
                 } catch (error) {
@@ -14420,45 +14379,13 @@ globalThis.BM_formatEuro = price => {
                 bestPriceBox.style.width = '100%';
                 bestPriceBox.style.marginBottom = '0.35rem';
 
-                let switchRow = productPrice.querySelector('.bm-price-basis-switch-row');
-                if (!switchRow) {
-                    switchRow = document.createElement('div');
-                    switchRow.className = 'bm-price-basis-switch-row';
-                }
+                productPrice.querySelector('.bm-price-basis-switch-row')?.remove();
 
                 const anchor = retailerLabel || retailerTopPrice;
-                if (bestPriceBox.nextElementSibling !== switchRow || switchRow.nextElementSibling !== anchor) {
+                if (bestPriceBox.nextElementSibling !== anchor) {
                     anchor.before(bestPriceBox);
                     bestPriceBox.before(bestPriceLabel);
-                    bestPriceBox.after(switchRow);
                 }
-
-                const currentMode = getPriceBasisMode();
-                switchRow.innerHTML = `
-                    <span class="bm-price-basis-switch-hint" title="Wähle, welcher Preis als Berechnungsgrundlage für Rabatte, Literpreise und Minifiguren dient">
-                        Berechnungsgrundlage:
-                    </span>
-                    <div class="bm-price-basis-pills" role="radiogroup" aria-label="Berechnungsgrundlage">
-                        <button type="button" class="bm-price-basis-pill ${currentMode === 'overall' ? 'bm-active' : ''}" data-mode="overall" title="Als Berechnungsgrundlage verwenden: Bestpreis (${formatEuroValue(marketplaceBest.price)} €)">
-                            Bestpreis
-                        </button>
-                        <button type="button" class="bm-price-basis-pill ${currentMode === 'retailer' ? 'bm-active' : ''}" data-mode="retailer" title="Als Berechnungsgrundlage verwenden: Brickmerge (${formatEuroValue(retailerBest)} €)">
-                            Brickmerge
-                        </button>
-                    </div>
-                `.trim();
-
-                switchRow.querySelectorAll('.bm-price-basis-pill').forEach(pill => {
-                    pill.onclick = event => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        const targetMode = pill.dataset.mode;
-                        if (targetMode && targetMode !== getPriceBasisMode()) {
-                            setPriceBasisMode(targetMode);
-                            syncPriceBasisCalculations();
-                        }
-                    };
-                });
 
                 let logoHtml = '';
                 const wrapper = marketplaceBest.wrapper;
@@ -15842,7 +15769,7 @@ globalThis.BM_formatEuro = price => {
 
             function getSetNumber() {
                 return globalThis.BM_getBrickmergeSetNumber?.(window.location.href) ||
-                    window.location.pathname.match(/\/(\d{4,7})-\d+_[^/]+\/?$/)?.[1] ||
+                    window.location.pathname.match(/\/(\d{4,7})-[\da-z]+_[^/]+\/?$/i)?.[1] ||
                     null;
             }
 

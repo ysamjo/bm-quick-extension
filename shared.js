@@ -259,11 +259,49 @@ globalThis.BM_resolveWorkerUrl = (value, baseUrl) => {
 globalThis.BM_getBrickmergeSetNumber = value => {
     try {
         const url = new URL(value, 'https://www.brickmerge.de/');
-        const match = url.pathname.match(/^\/(\d{4,7})-\d+_[^/]+\/?$/);
+        const match = url.pathname.match(/^\/(\d{4,7})-[\da-z]+_[^/]+\/?$/i);
         return match ? match[1] : null;
     } catch {
         return null;
     }
+};
+
+globalThis.BM_isCollectibleMinifigures = (
+    doc = globalThis.document,
+    urlValue = globalThis.location?.href
+) => {
+    try {
+        const url = new URL(urlValue, 'https://www.brickmerge.de/');
+        if (/(?:collectable|collectible)[-_ ]minifigures/i.test(url.pathname)) {
+            return true;
+        }
+    } catch {}
+
+    if (/(?:collectable|collectible)\s*minifigures/i.test(doc?.title || '')) {
+        return true;
+    }
+
+    if (doc?.querySelector?.(
+        'a[href*="Collectable%20Minifigures"], ' +
+        'a[href*="collectable-minifigures"], ' +
+        'a[href*="collectable_minifigures"], ' +
+        'a[href*="Collectable-Minifigures"], ' +
+        'a[href*="LEGO-Collectable"]'
+    )) {
+        return true;
+    }
+
+    const description = doc?.querySelector?.('meta[name="description"]')?.getAttribute('content') || '';
+    if (/(?:collectable|collectible)\s*minifigures/i.test(description)) {
+        return true;
+    }
+
+    const detailsBox = doc?.querySelector?.('.content.setdetails, #productdetails, .setdetailtags')?.textContent || '';
+    if (/(?:collectable|collectible)\s*minifigures/i.test(detailsBox)) {
+        return true;
+    }
+
+    return false;
 };
 
 globalThis.BM_normalizeMinifigNameTokens = value => {

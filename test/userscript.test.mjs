@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.49/);
+    assert.match(loaderSource, /@version\s+5\.6\.50/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.49/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.50/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -907,15 +907,14 @@ test('calculation price basis defaults to overall best price and supports toggle
     assert.match(tweakerSource, /bm-price-basis-toggle/);
     assert.match(tweakerSource, /syncGlobalPriceBasisToggle/);
     assert.match(tweakerSource, /bm-global-price-basis-toggle/);
-    assert.match(tweakerSource, /bm-price-basis-switch-row/);
-    assert.match(tweakerSource, /bm-price-basis-pill/);
     assert.match(tweakerSource, /isMarketplaceCheaper/);
     assert.match(tweakerSource, /syncPriceBasisCalculations/);
     assert.match(tweakerSource, /function syncMarketplaceDealBadge/);
-    assert.match(tweakerSource, /function ensureH1CopyButton\(/);
+    assert.match(tweakerSource, /function ensureDetailsNameCopyButton\(/);
     assert.match(tweakerSource, /function createNameCopyButton\(/);
-    assert.match(tweakerSource, /h1 \.bm-copy-btn/);
-    assert.match(tweakerSource, /h1 \.bm-price-basis-toggle/);
+    assert.match(tweakerSource, /copyBtn\.after\(toggle\)/);
+    assert.match(tweakerSource, /h1 \.bm-copy-btn, h1 \.bm-price-basis-toggle/);
+    assert.match(tweakerSource, /productPrice\.querySelector\('\.bm-price-basis-switch-row'\)\?\.remove\(\)/);
 });
 
 test('all-time best difference calculation uses calculation price basis and removes green styling', () => {
@@ -972,5 +971,79 @@ test('historical best price is abbreviated to ATB with tooltip and formatted suf
     assert.equal(fn('am 05.12.2023 bei Proshop.de'), '(05.12.23, Proshop)');
     assert.equal(fn('/ 45% am 27.08.2026 bei LEGO.com.'), '/ 45% (27.08.26, LEGO)');
     assert.equal(fn('(27.08.26, eBay)'), '(27.08.26, eBay)');
+});
+
+test('collectible minifigures detection and set number parsing support -x suffixes', () => {
+    const context = vm.createContext({ URL });
+    vm.runInContext(sharedSource, context);
+
+    assert.equal(
+        context.BM_getBrickmergeSetNumber('https://www.brickmerge.de/71047-x_lego-collectable-minifigures-dungeons-dragons'),
+        '71047'
+    );
+    assert.equal(
+        context.BM_getBrickmergeSetNumber('https://www.brickmerge.de/71046-36_lego-collectable-minifigures-lego-minifiguren-serie-26-space-36er-box'),
+        '71046'
+    );
+    assert.equal(
+        context.BM_getBrickmergeSetNumber('https://www.brickmerge.de/75192-1_lego-star-wars-millennium-falcon'),
+        '75192'
+    );
+
+    // CMF by URL
+    assert.equal(
+        context.BM_isCollectibleMinifigures(
+            {},
+            'https://www.brickmerge.de/71047-x_lego-collectable-minifigures-dungeons-dragons'
+        ),
+        true
+    );
+    assert.equal(
+        context.BM_isCollectibleMinifigures(
+            {},
+            'https://www.brickmerge.de/71046-36_lego-collectable-minifigures-lego-minifiguren-serie-26-space-36er-box'
+        ),
+        true
+    );
+    // Non-CMF
+    assert.equal(
+        context.BM_isCollectibleMinifigures(
+            {},
+            'https://www.brickmerge.de/75192-1_lego-star-wars-millennium-falcon'
+        ),
+        false
+    );
+    // CMF by Document Title
+    assert.equal(
+        context.BM_isCollectibleMinifigures(
+            { title: 'LEGO® Collectable Minifigures 71047 Dungeons & Dragons®' },
+            'https://www.brickmerge.de/71047'
+        ),
+        true
+    );
+    // CMF by Theme Anchor
+    assert.equal(
+        context.BM_isCollectibleMinifigures(
+            {
+                querySelector: selector => selector.includes('Collectable%20Minifigures') ? {} : null
+            },
+            'https://www.brickmerge.de/71047'
+        ),
+        true
+    );
+});
+
+test('resources group places CMF Scanner link at the front for collectible minifigures', () => {
+    assert.match(tweakerSource, /id:\s*"btn-cmf-scanner"/);
+    assert.match(tweakerSource, /name:\s*"CMF Scanner"/);
+    assert.match(tweakerSource, /https:\/\/brickbank\.app\/cmf\/scanner\//);
+    assert.match(tweakerSource, /icon\("brickbank\.app"\)/);
+
+    // Verify it is placed in the resources group before Rebrickable
+    const resourcesSection = tweakerSource.match(
+        /key:\s*'resources'[\s\S]*?links:\s*\[[\s\S]*?name:\s*"Rebrickable"/
+    )?.[0] || '';
+    assert.match(resourcesSection, /btn-cmf-scanner/);
+    assert.match(resourcesSection, /isCmf/);
 });
 
