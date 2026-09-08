@@ -5438,6 +5438,26 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         syncGlobalPriceBasisToggle();
     }
 
+    function cleanMinifigureExclusiveText(container) {
+        const target = container || Array.from(
+            document.querySelectorAll(
+                '.content.setdetails .productprice p, .content.setdetails p, #ol2nd p'
+            )
+        ).find(paragraph => /Minifiguren\s*:/i.test(paragraph.textContent || ''));
+        if (!target) return;
+
+        const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+            if (/in diesem Set/i.test(node.nodeValue || '')) {
+                node.nodeValue = node.nodeValue.replace(
+                    /(?:\s+nur)?\s+in diesem Set\b(?:\s*(?=\)))?/gi,
+                    ''
+                );
+            }
+        }
+    }
+
     const CALC_PRICE_BASIS_STORAGE_KEY = 'bm-calc-price-basis';
 
     function getPriceBasisMode() {
@@ -5835,6 +5855,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             expandProductDescription,
             linkLegoArticleNumber,
             linkDesignerName,
+            cleanMinifigureExclusiveText,
             linkPackageDimensionsCalculator,
             createDiscountSettingsUI,
             removeCorrectionReportButtons,
@@ -9612,6 +9633,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 valueLine.className = 'bm-minifig-total-value';
             }
             const minifigureLink = details.querySelector('.bm-minifig-count-link');
+            cleanMinifigureExclusiveText(minifigureLink || details);
             if (minifigureLink) {
                 minifigureLink.appendChild(valueLine);
             } else if (targetBreak) {
@@ -10084,12 +10106,24 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             ) || candidates.find(paragraph =>
                 /Minifiguren\s*:/i.test(paragraph.textContent || '')
             );
-            if (!details || details.querySelector('.bm-minifig-count-link')) return;
+            if (!details) return;
+
+            const existingLink = details.querySelector('.bm-minifig-count-link');
+            if (existingLink) {
+                cleanMinifigureExclusiveText(existingLink);
+                return;
+            }
 
             const line = findDetailsLineRange(details, /Minifiguren\s*:/i);
             if (!line) return;
 
-            const linkedText = line.text;
+            const fragment = line.range.extractContents();
+            cleanMinifigureExclusiveText(fragment);
+
+            const linkedText = line.text.replace(
+                /(?:\s+nur)?\s+in diesem Set\b(?:\s*(?=\)))?/gi,
+                ''
+            );
             const link = document.createElement('a');
             link.href = '#';
             link.className = 'bm-detail-line-link bm-minifig-count-link';
@@ -10097,7 +10131,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 'aria-label',
                 `${linkedText} – Minifiguren anzeigen`
             );
-            link.appendChild(line.range.extractContents());
+            link.appendChild(fragment);
             const tooltip = document.createElement('span');
             tooltip.className = 'bm-minifig-tooltip';
             tooltip.id = `bm-minifig-tooltip-${setNum}`;

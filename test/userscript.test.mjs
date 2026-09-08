@@ -925,4 +925,8 @@ test('black discount bubble accounts for personal retailer discounts', () => {
     );
 });
 
-
+test('minifigure details line removes "in diesem Set"', () => {
+    assert.match(tweakerSource, /function cleanMinifigureExclusiveText\(/);
+    assert.match(tweakerSource, /cleanMinifigureExclusiveText,\s*linkPackageDimensionsCalculator/);
+    assert.match(tweakerSource, /node\.nodeValue\.replace\([\s\S]*?in diesem Set/);
+});
