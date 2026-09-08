@@ -176,7 +176,8 @@ test('toolbar click opens the floating sidebar only for a detected product', () 
     );
     assert.match(background, /chrome\.action\.setPopup\(\{ tabId, popup: '' \}\)/);
     assert.match(background, /function isBrickmergePage\(product\)/);
-    assert.match(background, /text: onBrickmergePage \? '' : '✓'/);
+    assert.match(background, /chrome\.action\.setBadgeText\(\{ tabId, text: badgeText \}\)/);
+    assert.match(background, /fetchBrickmergeBestPrice/);
     assert.match(background, /chrome\.action\.onClicked\.addListener/);
     assert.match(background, /type: 'bm-show-floating-sidebar'/);
     assert.doesNotMatch(background, /chrome\.sidePanel/);
@@ -381,3 +382,105 @@ test('floating sidebar automatically collapses to the right on outside click', (
     assert.match(source, /setCollapsed\(true\)/);
     assert.match(source, /panel\.classList\.contains\('is-collapsed'\)/);
 });
+
+test('best price badge formatting and update action state', async () => {
+    const sharedSource = fs.readFileSync(
+        new URL('../shared.js', import.meta.url),
+        'utf8'
+    );
+    const sharedContext = vm.createContext({ globalThis: {} });
+    vm.runInContext(sharedSource, sharedContext);
+
+    assert.equal(typeof sharedContext.globalThis.BM_formatBadgePrice, 'function');
+    assert.equal(sharedContext.globalThis.BM_formatBadgePrice(79.97), '80€');
+    assert.equal(sharedContext.globalThis.BM_formatBadgePrice(149.99), '150€');
+    assert.equal(sharedContext.globalThis.BM_formatBadgePrice(749.95), '750€');
+    assert.equal(sharedContext.globalThis.BM_formatBadgePrice(1049), '1k');
+    assert.equal(sharedContext.globalThis.BM_formatBadgePrice(1250), '1.3k');
+    assert.equal(sharedContext.globalThis.BM_formatBadgePrice(0), '');
+    assert.equal(sharedContext.globalThis.BM_formatBadgePrice(null), '');
+
+    assert.equal(sharedContext.globalThis.BM_parsePrice('79.97'), 79.97);
+    assert.equal(sharedContext.globalThis.BM_parsePrice('79,97'), 79.97);
+    assert.equal(sharedContext.globalThis.BM_parsePrice('1.250,00'), 1250);
+
+    const backgroundSource = fs.readFileSync(
+        new URL('../background.js', import.meta.url),
+        'utf8'
+    );
+    const badgeCalls = [];
+    const titleCalls = [];
+    let messageListener = null;
+    const unusedEvent = { addListener() {} };
+    const bgContext = vm.createContext({
+        URL,
+        Headers,
+        console: { error() {} },
+        importScripts() {},
+        BM_mergeSettings(value) { return value || {}; },
+        BM_formatBadgePrice: sharedContext.globalThis.BM_formatBadgePrice,
+        BM_parsePrice: sharedContext.globalThis.BM_parsePrice,
+        BM_formatEuro: sharedContext.globalThis.BM_formatEuro,
+        fetch: async () => ({
+            ok: true,
+            text: async () => `
+                <script type="application/ld+json">
+                {
+                    "@type": "Product",
+                    "offers": {
+                        "@type": "AggregateOffer",
+                        "lowPrice": "79.97"
+                    }
+                }
+                </script>
+            `
+        }),
+        chrome: {
+            action: {
+                async setBadgeText(options) { badgeCalls.push({ ...options }); },
+                async setBadgeBackgroundColor() {},
+                async setBadgeTextColor() {},
+                async setPopup() {},
+                async setTitle(options) { titleCalls.push({ ...options }); },
+                onClicked: { addListener() {} }
+            },
+            runtime: {
+                onInstalled: unusedEvent,
+                onStartup: unusedEvent,
+                onMessage: {
+                    addListener(listener) { messageListener = listener; }
+                }
+            },
+            storage: {
+                local: {
+                    async get() { return {}; },
+                    async set() {}
+                },
+                onChanged: unusedEvent
+            },
+            declarativeNetRequest: {
+                async updateEnabledRulesets() {}
+            },
+            tabs: {
+                onUpdated: unusedEvent,
+                onRemoved: unusedEvent
+            }
+        }
+    });
+
+    vm.runInContext(backgroundSource, bgContext);
+
+    // Simulate product detection
+    messageListener({
+        type: 'bm-page-product-detected',
+        product: { setNumber: '42154', name: 'Ford GT', hostname: 'amazon.de' }
+    }, { tab: { id: 101 } }, () => {});
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    assert.ok(badgeCalls.some(call => call.tabId === 101 && call.text === '✓'));
+    assert.ok(badgeCalls.some(call => call.tabId === 101 && call.text === '80€'));
+    assert.equal(badgeCalls.at(-1).text, '80€');
+    assert.match(titleCalls.at(-1).title, /Bestpreis ab 79,97 €/);
+});
+

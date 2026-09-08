@@ -444,3 +444,37 @@ globalThis.BM_mergeSettings = value => ({
 
 globalThis.BM_isFranceEnabled = settings =>
     settings?.linkRows?.france === true;
+
+globalThis.BM_parsePrice = value => {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    const text = String(value || '').replace(/\s/g, '');
+    const match = text.match(/\d[\d.,]*/);
+    if (!match) return null;
+    const raw = match[0];
+    const comma = raw.lastIndexOf(',');
+    const dot = raw.lastIndexOf('.');
+    const normalized = comma > dot
+        ? raw.replace(/\./g, '').replace(',', '.')
+        : raw.replace(/,/g, '');
+    const number = Number(normalized);
+    return Number.isFinite(number) && number > 0 ? number : null;
+};
+
+globalThis.BM_formatBadgePrice = price => {
+    const num = Number(price);
+    if (!Number.isFinite(num) || num <= 0) return '';
+    if (num >= 1000) {
+        const k = (num / 1000).toFixed(1);
+        return `${k}k`.replace('.0k', 'k');
+    }
+    return `${Math.round(num)}€`;
+};
+
+globalThis.BM_formatEuro = price => {
+    const num = Number(price);
+    if (!Number.isFinite(num)) return '';
+    return num.toLocaleString('de-DE', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+};

@@ -127,24 +127,140 @@ function normalizeSelectedTerm(value) {
         .slice(0, 120);
 }
 
+const priceCache = new Map();
+const PRICE_CACHE_TTL_MS = 15 * 60 * 1000;
+
+const formatBadgePrice = typeof BM_formatBadgePrice === 'function'
+    ? BM_formatBadgePrice
+    : price => {
+        const num = Number(price);
+        if (!Number.isFinite(num) || num <= 0) return '';
+        if (num >= 1000) {
+            const k = (num / 1000).toFixed(1);
+            return `${k}k`.replace('.0k', 'k');
+        }
+        return `${Math.round(num)}€`;
+    };
+
+const parsePrice = typeof BM_parsePrice === 'function'
+    ? BM_parsePrice
+    : value => {
+        if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+        const text = String(value || '').replace(/\s/g, '');
+        const match = text.match(/\d[\d.,]*/);
+        if (!match) return null;
+        const raw = match[0];
+        const comma = raw.lastIndexOf(',');
+        const dot = raw.lastIndexOf('.');
+        const normalized = comma > dot
+            ? raw.replace(/\./g, '').replace(',', '.')
+            : raw.replace(/,/g, '');
+        const number = Number(normalized);
+        return Number.isFinite(number) && number > 0 ? number : null;
+    };
+
+const formatEuro = typeof BM_formatEuro === 'function'
+    ? BM_formatEuro
+    : price => {
+        const num = Number(price);
+        if (!Number.isFinite(num)) return '';
+        return num.toLocaleString('de-DE', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    };
+
+async function fetchBrickmergeBestPrice(setNumber) {
+    const key = String(setNumber || '').trim();
+    if (!key) return null;
+
+    const cached = priceCache.get(key);
+    if (cached && (Date.now() - cached.timestamp < PRICE_CACHE_TTL_MS)) {
+        return cached.price;
+    }
+
+    try {
+        const response = await fetch(
+            `https://www.brickmerge.de/?find=${encodeURIComponent(key)}`,
+            {
+                headers: { 'Accept': 'text/html,application/xhtml+xml' }
+            }
+        );
+        if (!response.ok) return null;
+        const html = await response.text();
+
+        let price = null;
+        const lowPriceMatch = html.match(/"lowPrice":\s*"([^"]+)"/i);
+        if (lowPriceMatch) {
+            price = parsePrice(lowPriceMatch[1]);
+        }
+
+        if (!price) {
+            const titleMatch = html.match(
+                /<title>[^<]*?\bab\s+([\d.,]+)\s*(?:€|&euro;)/i
+            );
+            if (titleMatch) {
+                price = parsePrice(titleMatch[1]);
+            }
+        }
+
+        if (!price) {
+            const descMatch = html.match(
+                /content="[^"]*?\bAb\s+([\d.,]+)\s*(?:€|&euro;)/i
+            );
+            if (descMatch) {
+                price = parsePrice(descMatch[1]);
+            }
+        }
+
+        if (price !== null) {
+            priceCache.set(key, { price, timestamp: Date.now() });
+        }
+        return price;
+    } catch {
+        return null;
+    }
+}
+
 async function updateActionState(tabId) {
     if (!Number.isInteger(tabId)) return;
     const product = detectedProducts.get(tabId) || null;
     const hasSelection = Boolean(selectedTerms.get(tabId));
     if (product) {
         const onBrickmergePage = isBrickmergePage(product);
+        let badgeText = '';
+        let titleText = onBrickmergePage
+            ? 'Brickmerge Tools – Brickmerge-Seite'
+            : product.setNumber
+            ? `Brickmerge Tools – Set ${product.setNumber} erkannt`
+            : 'Brickmerge Tools – LEGO-Produkt erkannt';
+
+        if (!onBrickmergePage) {
+            if (product.setNumber) {
+                const cached = priceCache.get(product.setNumber);
+                const isFresh = cached &&
+                    (Date.now() - cached.timestamp < PRICE_CACHE_TTL_MS);
+                if (isFresh && cached.price) {
+                    badgeText = formatBadgePrice(cached.price);
+                    titleText = `Brickmerge Tools – Set ${product.setNumber}: Bestpreis ab ${formatEuro(cached.price)} €`;
+                } else {
+                    badgeText = '✓';
+                    void fetchBrickmergeBestPrice(product.setNumber).then(price => {
+                        if (price && detectedProducts.get(tabId) === product) {
+                            void updateActionState(tabId);
+                        }
+                    });
+                }
+            } else {
+                badgeText = '✓';
+            }
+        }
+
         await Promise.all([
-            chrome.action.setBadgeText({ tabId, text: onBrickmergePage ? '' : '✓' }),
+            chrome.action.setBadgeText({ tabId, text: badgeText }),
             chrome.action.setBadgeBackgroundColor({ tabId, color: '#16843f' }),
             chrome.action.setPopup({ tabId, popup: '' }),
-            chrome.action.setTitle({
-                tabId,
-                title: onBrickmergePage
-                    ? 'Brickmerge Tools – Brickmerge-Seite'
-                    : product.setNumber
-                    ? `Brickmerge Tools – Set ${product.setNumber} erkannt`
-                    : 'Brickmerge Tools – LEGO-Produkt erkannt'
-            })
+            chrome.action.setTitle({ tabId, title: titleText })
         ]);
         if (chrome.action.setBadgeTextColor) {
             await chrome.action.setBadgeTextColor({ tabId, color: '#ffffff' });

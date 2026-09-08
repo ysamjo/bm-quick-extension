@@ -27,6 +27,8 @@
     "declarativeNetRequest"
   ],
   "host_permissions": [
+    "https://*.brickmerge.de/*",
+    "https://brickmerge.de/*",
     "*://*/*"
   ],
   "content_scripts": [

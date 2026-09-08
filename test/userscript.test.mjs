@@ -856,3 +856,25 @@ test('safety warning is replaced with EN 71 pictograms under instructions', () =
     assert.match(tweakerSource, /#ol2nd \.bm-sidebar-instructions/);
     assert.match(tweakerSource, /sidebarInstructions\.appendChild\(warningBlock\)/);
 });
+
+test('marketplace deal badge highlights when any marketplace offer is cheaper than retailer best price', () => {
+    assert.match(tweakerSource, /function syncMarketplaceDealBadge\(/);
+    assert.match(tweakerSource, /bm-marketplace-deal-badge/);
+    assert.match(tweakerSource, /isMarketplaceCheaper/);
+    assert.match(tweakerSource, /-Deal:\s*\${formatEuroValue/);
+    assert.match(tweakerSource, /ggü\.\s*Händler/);
+    assert.match(tweakerSource, /targetRow\.scrollIntoView/);
+    assert.match(tweakerSource, /bm-offer-row-highlight/);
+});
+
+test('calculation price basis defaults to overall best price and supports toggle', () => {
+    assert.match(tweakerSource, /function getPriceBasisMode\(/);
+    assert.match(tweakerSource, /function setPriceBasisMode\(/);
+    assert.match(tweakerSource, /function getCalculationBestPrice\(/);
+    assert.match(tweakerSource, /return 'overall';/);
+    assert.match(tweakerSource, /bm-price-basis-toggle/);
+    assert.match(tweakerSource, /updateVolumeBasisToggle/);
+    assert.match(tweakerSource, /syncPriceBasisCalculations/);
+    assert.match(tweakerSource, /function syncMarketplaceDealBadge/);
+});
+

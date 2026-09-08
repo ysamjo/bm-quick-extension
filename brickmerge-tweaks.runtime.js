@@ -579,6 +579,40 @@ globalThis.BM_mergeSettings = value => ({
 globalThis.BM_isFranceEnabled = settings =>
     settings?.linkRows?.france === true;
 
+globalThis.BM_parsePrice = value => {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    const text = String(value || '').replace(/\s/g, '');
+    const match = text.match(/\d[\d.,]*/);
+    if (!match) return null;
+    const raw = match[0];
+    const comma = raw.lastIndexOf(',');
+    const dot = raw.lastIndexOf('.');
+    const normalized = comma > dot
+        ? raw.replace(/\./g, '').replace(',', '.')
+        : raw.replace(/,/g, '');
+    const number = Number(normalized);
+    return Number.isFinite(number) && number > 0 ? number : null;
+};
+
+globalThis.BM_formatBadgePrice = price => {
+    const num = Number(price);
+    if (!Number.isFinite(num) || num <= 0) return '';
+    if (num >= 1000) {
+        const k = (num / 1000).toFixed(1);
+        return `${k}k`.replace('.0k', 'k');
+    }
+    return `${Math.round(num)}€`;
+};
+
+globalThis.BM_formatEuro = price => {
+    const num = Number(price);
+    if (!Number.isFinite(num)) return '';
+    return num.toLocaleString('de-DE', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+};
+
 (() => {
     'use strict';
 
@@ -3387,6 +3421,82 @@ globalThis.BM_isFranceEnabled = settings =>
                 }
                 .bm-bestprice-black-bubble.bm-bestprice-black-bubble-single {
                     right: 0.65rem !important;
+                }
+                .bm-marketplace-deal-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
+                    margin-top: 0.45rem;
+                    margin-bottom: 0.25rem;
+                    padding: 0.3rem 0.6rem;
+                    border-radius: 4px;
+                    background: #eef8ee;
+                    border: 1px solid #c2e0c2;
+                    color: #1b5e20 !important;
+                    font-size: 0.82rem;
+                    font-weight: 600;
+                    line-height: 1.25;
+                    text-decoration: none !important;
+                    cursor: pointer;
+                    box-sizing: border-box;
+                    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+                }
+                .bm-marketplace-deal-badge:hover,
+                .bm-marketplace-deal-badge:focus-visible {
+                    background: #dcf2dc;
+                    border-color: #a3d4a3;
+                    color: #0d3813 !important;
+                    outline: none;
+                    transform: translateY(-1px);
+                }
+                .bm-marketplace-deal-badge .bm-deal-icon {
+                    font-size: 0.95rem;
+                    line-height: 1;
+                }
+                .bm-marketplace-deal-badge .bm-deal-savings {
+                    font-size: 0.76rem;
+                    font-weight: 700;
+                    color: #2e7d32;
+                    background: rgba(46, 125, 50, 0.12);
+                    padding: 0.1rem 0.35rem;
+                    border-radius: 3px;
+                }
+                .bm-price-basis-toggle {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 17px;
+                    height: 17px;
+                    margin-left: 0.35rem;
+                    padding: 0;
+                    vertical-align: middle;
+                    background: #f0f0f0;
+                    border: 1px solid #ccc;
+                    border-radius: 3px;
+                    color: #555;
+                    cursor: pointer;
+                    box-sizing: border-box;
+                    transition: background 0.15s, color 0.15s, border-color 0.15s;
+                }
+                .bm-price-basis-toggle:hover,
+                .bm-price-basis-toggle:focus-visible {
+                    background: #b00;
+                    border-color: #b00;
+                    color: #fff;
+                    outline: none;
+                }
+                .bm-price-basis-toggle svg {
+                    display: block;
+                    width: 11px;
+                    height: 11px;
+                }
+                .bm-offer-row-highlight {
+                    animation: bm-highlight-flash 1.6s ease-out;
+                }
+                @keyframes bm-highlight-flash {
+                    0% { background-color: #ffecb3 !important; }
+                    30% { background-color: #ffe082 !important; }
+                    100% { background-color: transparent; }
                 }
                 .content.setdetails .large-3.medium-4.columns.hide-for-small
                     > .off:not(.bm-bestprice-black-bubble),
@@ -6830,19 +6940,21 @@ globalThis.BM_isFranceEnabled = settings =>
                 const existingVolumeLine = details.querySelector('.bm-volume-line');
                 const volumeLiters = width * length * height / 1000;
                 if (!Number.isFinite(volumeLiters) || volumeLiters <= 0) return;
-                const bestPrice = readBrickmergeBestPriceFromDom();
+                const bestPrice = getCalculationBestPrice();
                 const formattedVolume = formatVolumeLiters(volumeLiters);
                 const pricePerLiter = bestPrice === null
                     ? ''
                     : ` | ${formatEuroPerLiter(bestPrice, volumeLiters)}`;
 
                 if (existingVolumeLine) {
-                    if (bestPrice !== null && !existingVolumeLine.dataset.bmPricePerLiter) {
+                    existingVolumeLine.dataset.bmVolumeLiters = String(volumeLiters);
+                    if (bestPrice !== null) {
                         existingVolumeLine.dataset.bmPricePerLiter = 'true';
                         const boldValue = existingVolumeLine.querySelector('b');
                         if (boldValue) {
                             boldValue.textContent = `${formattedVolume} l${pricePerLiter}`;
                         }
+                        updateVolumeBasisToggle(existingVolumeLine, volumeLiters);
                     }
                     return;
                 }
@@ -6852,13 +6964,246 @@ globalThis.BM_isFranceEnabled = settings =>
                 if (bestPrice !== null) {
                     volumeLine.dataset.bmPricePerLiter = 'true';
                 }
+                volumeLine.dataset.bmVolumeLiters = String(volumeLiters);
                 const boldValue = document.createElement('b');
                 boldValue.textContent = `${formattedVolume} l${pricePerLiter}`;
                 volumeLine.append(document.createTextNode('| Volumen: '), boldValue);
+                updateVolumeBasisToggle(volumeLine, volumeLiters);
 
                 const lineBreak = document.createElement('br');
                 link.parentNode?.insertBefore(lineBreak, link.nextSibling);
                 lineBreak.after(volumeLine);
+            }
+
+            const CALC_PRICE_BASIS_STORAGE_KEY = 'bm-calc-price-basis';
+
+            function getPriceBasisMode() {
+                try {
+                    const stored = localStorage.getItem(CALC_PRICE_BASIS_STORAGE_KEY);
+                    if (stored === 'retailer' || stored === 'overall') return stored;
+                } catch {
+                    // LocalStorage fallback
+                }
+                return 'overall';
+            }
+
+            function setPriceBasisMode(mode) {
+                try {
+                    localStorage.setItem(CALC_PRICE_BASIS_STORAGE_KEY, mode);
+                } catch {
+                    // LocalStorage fallback
+                }
+            }
+
+            function getBestOfferPrices() {
+                const offerlist = document.getElementById('offerlist');
+                if (!offerlist) {
+                    return {
+                        retailerBest: null,
+                        marketplaceBest: null,
+                        overallBest: null,
+                        isMarketplaceCheaper: false
+                    };
+                }
+
+                const retailerPriceRows = Array.from(offerlist.querySelectorAll(
+                    '.medium-4.small-9.columns.pricerow:not([data-bm-marketplace="true"])'
+                )).filter(priceRow =>
+                    !priceRow.closest('#soldOut') &&
+                    priceRow.dataset.bmSoldOut !== 'true'
+                );
+                const retailerPrices = retailerPriceRows.map(priceRow => {
+                    const priceSpan = priceRow.querySelector('span.price');
+                    return priceSpan ? getBaseOfferPrice(priceSpan) : null;
+                }).filter(price => Number.isFinite(price) && price > 0);
+                const retailerBest = retailerPrices.length > 0 ? Math.min(...retailerPrices) : null;
+
+                const marketplaceRows = Array.from(offerlist.querySelectorAll(
+                    '.medium-4.small-9.columns.pricerow[data-bm-marketplace="true"]'
+                )).filter(priceRow =>
+                    !priceRow.closest('#soldOut') &&
+                    priceRow.dataset.bmSoldOut !== 'true'
+                );
+
+                let marketplaceBest = null;
+                for (const priceRow of marketplaceRows) {
+                    const priceSpan = priceRow.querySelector('span.price');
+                    const price = priceSpan ? getBaseOfferPrice(priceSpan) : null;
+                    if (!Number.isFinite(price) || price <= 0) continue;
+
+                    if (!marketplaceBest || price < marketplaceBest.price) {
+                        const wrapper = priceRow.closest('.row.collapse');
+                        const sourceKey = String(
+                            priceRow.dataset.bmOfferKey || priceRow.dataset.bmSource || ''
+                        ).toLowerCase();
+                        const offerLink = priceRow.querySelector(':scope > a');
+                        const logoImg = wrapper?.querySelector('.goto img[alt]');
+                        const logoAlt = logoImg?.getAttribute('alt') || '';
+                        const logoText = wrapper?.querySelector('.bm-marketplace-logo')?.textContent?.trim() || '';
+
+                        const labelMap = {
+                            'kleinanzeigen': 'Kleinanzeigen',
+                            'ebay': 'eBay',
+                            'ebay-fr': 'eBay FR',
+                            'vinted': 'Vinted',
+                            'leboncoin': 'Leboncoin',
+                            'stockx': 'StockX',
+                            'bricklink': 'BrickLink',
+                            'bo': 'BrickOwl',
+                            'brickowl': 'BrickOwl',
+                            'google-shopping': 'Google Shopping',
+                            'klarna': 'Klarna',
+                            'idealo': 'Idealo',
+                            'smyths': 'Smyths Toys',
+                            'mueller': 'Müller'
+                        };
+                        const label = labelMap[sourceKey] || logoAlt || logoText || sourceKey || 'Marktplatz';
+
+                        marketplaceBest = {
+                            price,
+                            sourceKey,
+                            label,
+                            url: offerLink?.href || '',
+                            priceRow,
+                            wrapper
+                        };
+                    }
+                }
+
+                const overallBest = (retailerBest !== null && marketplaceBest !== null)
+                    ? Math.min(retailerBest, marketplaceBest.price)
+                    : (marketplaceBest?.price ?? retailerBest);
+
+                const isMarketplaceCheaper = (retailerBest !== null && marketplaceBest !== null && marketplaceBest.price < retailerBest - 0.004);
+
+                return {
+                    retailerBest,
+                    marketplaceBest,
+                    overallBest,
+                    isMarketplaceCheaper
+                };
+            }
+
+            function getCalculationBestPrice() {
+                const prices = getBestOfferPrices();
+                const mode = getPriceBasisMode();
+                if (mode === 'retailer') {
+                    return prices.retailerBest ?? prices.overallBest;
+                }
+                return prices.overallBest ?? prices.retailerBest;
+            }
+
+            function updateVolumeBasisToggle(volumeLine, volumeLiters) {
+                if (!volumeLine) return;
+                const prices = getBestOfferPrices();
+                let toggle = volumeLine.querySelector('.bm-price-basis-toggle');
+
+                const mode = getPriceBasisMode();
+                const hasAlternative = Boolean(
+                    prices.marketplaceBest && prices.retailerBest &&
+                    Math.abs(prices.marketplaceBest.price - prices.retailerBest) > 0.004
+                );
+
+                if (!hasAlternative) {
+                    toggle?.remove();
+                    return;
+                }
+
+                if (!toggle) {
+                    toggle = document.createElement('button');
+                    toggle.type = 'button';
+                    toggle.className = 'bm-price-basis-toggle';
+                    toggle.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M7 16V4m0 0L3 8m4-4l4 4m10 4v12m0 0l4-4m-4 4l-4-4"/>
+                        </svg>
+                    `.trim();
+                    toggle.addEventListener('click', event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const currentMode = getPriceBasisMode();
+                        const nextMode = currentMode === 'retailer' ? 'overall' : 'retailer';
+                        setPriceBasisMode(nextMode);
+                        syncPriceBasisCalculations();
+                    });
+                    volumeLine.appendChild(toggle);
+                }
+
+                const currentBasis = mode === 'retailer' ? 'Händler-Bestpreis' : 'Echter Bestpreis (inkl. Marktplatz)';
+                const nextBasis = mode === 'retailer' ? 'Echter Bestpreis (inkl. Marktplatz)' : 'Händler-Bestpreis';
+                const nextPrice = mode === 'retailer' ? prices.overallBest : prices.retailerBest;
+                const tooltip = `Berechnungsgrundlage: ${currentBasis}. Klick zum Umschalten auf ${nextBasis}${nextPrice !== null ? ` (${formatEuroValue(nextPrice)} €)` : ''}.`;
+                toggle.title = tooltip;
+                toggle.setAttribute('aria-label', tooltip);
+            }
+
+            function updateMinifigBasisToggle(valueLine) {
+                if (!valueLine) return;
+                const prices = getBestOfferPrices();
+                let toggle = valueLine.querySelector('.bm-price-basis-toggle');
+
+                const mode = getPriceBasisMode();
+                const hasAlternative = Boolean(
+                    prices.marketplaceBest && prices.retailerBest &&
+                    Math.abs(prices.marketplaceBest.price - prices.retailerBest) > 0.004
+                );
+
+                if (!hasAlternative) {
+                    toggle?.remove();
+                    return;
+                }
+
+                if (!toggle) {
+                    toggle = document.createElement('button');
+                    toggle.type = 'button';
+                    toggle.className = 'bm-price-basis-toggle';
+                    toggle.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M7 16V4m0 0L3 8m4-4l4 4m10 4v12m0 0l4-4m-4 4l-4-4"/>
+                        </svg>
+                    `.trim();
+                    toggle.addEventListener('click', event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const currentMode = getPriceBasisMode();
+                        const nextMode = currentMode === 'retailer' ? 'overall' : 'retailer';
+                        setPriceBasisMode(nextMode);
+                        syncPriceBasisCalculations();
+                    });
+                    valueLine.appendChild(toggle);
+                }
+
+                const currentBasis = mode === 'retailer' ? 'Händler-Bestpreis' : 'Echter Bestpreis (inkl. Marktplatz)';
+                const nextBasis = mode === 'retailer' ? 'Echter Bestpreis (inkl. Marktplatz)' : 'Händler-Bestpreis';
+                const nextPrice = mode === 'retailer' ? prices.overallBest : prices.retailerBest;
+                const tooltip = `Berechnungsgrundlage: ${currentBasis}. Klick zum Umschalten auf ${nextBasis}${nextPrice !== null ? ` (${formatEuroValue(nextPrice)} €)` : ''}.`;
+                toggle.title = tooltip;
+                toggle.setAttribute('aria-label', tooltip);
+            }
+
+            function syncPriceBasisCalculations() {
+                const volumeLine = document.querySelector('.content.setdetails .bm-volume-line');
+                if (volumeLine) {
+                    const liters = Number(volumeLine.dataset.bmVolumeLiters);
+                    if (Number.isFinite(liters) && liters > 0) {
+                        const bestPrice = getCalculationBestPrice();
+                        const formattedVolume = formatVolumeLiters(liters);
+                        const pricePerLiter = bestPrice === null
+                            ? ''
+                            : ` | ${formatEuroPerLiter(bestPrice, liters)}`;
+                        const boldValue = volumeLine.querySelector('b');
+                        if (boldValue) {
+                            boldValue.textContent = `${formattedVolume} l${pricePerLiter}`;
+                        }
+                        if (bestPrice !== null) {
+                            volumeLine.dataset.bmPricePerLiter = 'true';
+                        }
+                        updateVolumeBasisToggle(volumeLine, liters);
+                    }
+                }
+                if (lastMinifigTotalValue !== null) {
+                    updateMinifigureValueInDataBox(lastMinifigTotalValue, false, lastMinifigPriceSnapshot);
+                }
             }
 
             function readBrickmergeBestPriceFromDom() {
@@ -10144,6 +10489,8 @@ globalThis.BM_isFranceEnabled = settings =>
                     [BM_SETTINGS.priceCalculations, syncEffectivePriceLabels],
                     [BM_SETTINGS.priceCalculations, syncOfferDiscountBubbles],
                     [BM_SETTINGS.shippingAndSorting, placeSoldOutBadgesAfterShipping],
+                    [BM_SETTINGS.priceCalculations, syncMarketplaceDealBadge],
+                    [BM_SETTINGS.priceCalculations, syncPriceBasisCalculations],
                     [BM_SETTINGS.priceCalculations, calculateDiscount],
                     [BM_SETTINGS.detailLayout, decoratePriceHistoryLinks],
                     [BM_SETTINGS.priceCalculations, renameHistoricalBestPriceLabel],
@@ -10695,13 +11042,18 @@ globalThis.BM_isFranceEnabled = settings =>
                     ));
                 }
 
+                let lastMinifigTotalValue = null;
+                let lastMinifigPriceSnapshot = null;
+
                 function updateMinifigureValueInDataBox(
                     totalValue,
                     saveToCache = true,
                     priceSnapshot = null
                 ) {
                     if (!Number.isFinite(totalValue) || totalValue <= 0) return;
+                    lastMinifigTotalValue = totalValue;
                     if (priceSnapshot instanceof Map) {
+                        lastMinifigPriceSnapshot = priceSnapshot;
                         priceSnapshot.forEach((price, itemNo) =>
                             rememberMinifigPrice(itemNo, price, 'EU')
                         );
@@ -10749,6 +11101,9 @@ globalThis.BM_isFranceEnabled = settings =>
                     valueLine.innerHTML =
                         `&nbsp;| <strong>${formatEuroValue(totalValue)} €</strong>`;
                     valueLine.removeAttribute('title');
+                    if (!document.querySelector('.content.setdetails .bm-volume-line')) {
+                        updateMinifigBasisToggle(valueLine);
+                    }
 
                     const tooltipParts = [
                         `Minifigurenwert: ${formatEuroValue(totalValue)} €`,
@@ -10763,19 +11118,7 @@ globalThis.BM_isFranceEnabled = settings =>
                             ?.replace(/\./g, '') || 0
                     );
                     const figureCount = getPageMinifigureCount();
-                    const nativePrices = Array.from(document.querySelectorAll(
-                        '#offerlist .medium-4.small-9.columns.pricerow' +
-                        ':not([data-bm-marketplace="true"])'
-                    )).filter(priceRow =>
-                        !priceRow.closest('#soldOut') &&
-                        priceRow.dataset.bmSoldOut !== 'true'
-                    ).map(priceRow => {
-                        const priceSpan = priceRow.querySelector('span.price');
-                        return priceSpan ? getBaseOfferPrice(priceSpan) : null;
-                    }).filter(price => Number.isFinite(price) && price > 0);
-                    const currentSetPrice = nativePrices.length
-                        ? Math.min(...nativePrices)
-                        : null;
+                    const currentSetPrice = getCalculationBestPrice();
                     const remainingPartCount = partCount - figureCount;
                     if (
                         Number.isFinite(currentSetPrice) &&
@@ -10788,8 +11131,13 @@ globalThis.BM_isFranceEnabled = settings =>
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2
                         });
+                        const calcMode = getPriceBasisMode();
+                        const prices = getBestOfferPrices();
+                        const basisNotice = (calcMode === 'retailer' || !prices.isMarketplaceCheaper)
+                            ? ''
+                            : ` (${prices.marketplaceBest?.label || 'Marktplatz'})`;
                         tooltipParts.push(
-                            `ohne Figuren: ${metricLabel} ct/Teil`
+                            `ohne Figuren: ${metricLabel} ct/Teil${basisNotice}`
                         );
                     }
                     const tooltipText = tooltipParts.join(' · ');
@@ -13145,8 +13493,15 @@ globalThis.BM_isFranceEnabled = settings =>
                             const discount = ((1 - (price1 / price2)) * 100).toFixed(0);
 
                             if (Number(discount) > 0) {
+                                const offerPricesSummary = getBestOfferPrices();
                                 ensureFeaturedBlackBubble(discount);
-                                createBestPriceBlackBubble(discount);
+                                if (offerPricesSummary.retailerBest !== null &&
+                                    Math.abs(price1 - offerPricesSummary.retailerBest) <= 0.004) {
+                                    createBestPriceBlackBubble(discount);
+                                } else {
+                                    document.querySelectorAll('.bm-bestprice-black-bubble')
+                                        .forEach(element => element.remove());
+                                }
                                 hasOfferComparison = true;
                             }
                         }
@@ -13253,6 +13608,52 @@ globalThis.BM_isFranceEnabled = settings =>
                         );
                         topprice.style.setProperty('position', 'relative');
                     });
+            }
+
+            function syncMarketplaceDealBadge() {
+                const prices = getBestOfferPrices();
+                const productPrice = document.querySelector('.content.setdetails .productprice');
+                const topPrice = productPrice?.querySelector('.topprice');
+                let badge = productPrice?.querySelector('.bm-marketplace-deal-badge');
+
+                if (!prices.isMarketplaceCheaper || !prices.marketplaceBest || !topPrice) {
+                    badge?.remove();
+                    return;
+                }
+
+                const { retailerBest, marketplaceBest } = prices;
+                const discountPercent = Math.round((1 - (marketplaceBest.price / retailerBest)) * 100);
+                const savingsEur = retailerBest - marketplaceBest.price;
+
+                if (!badge) {
+                    badge = document.createElement('a');
+                    badge.className = 'bm-marketplace-deal-badge';
+                    topPrice.after(badge);
+                }
+
+                const targetAnchorId = marketplaceBest.wrapper?.dataset.mid || 'offerlist';
+                badge.href = `#${targetAnchorId}`;
+                badge.title = `${marketplaceBest.label}-Angebot für ${formatEuroValue(marketplaceBest.price)} € ansehen ` +
+                    `(${formatEuroValue(savingsEur)} € günstiger als der Brickmerge-Bestpreis)`;
+                badge.setAttribute('aria-label', badge.title);
+
+                badge.innerHTML = `
+                    <span class="bm-deal-icon" aria-hidden="true">🏷️</span>
+                    <span class="bm-deal-text"><strong>${marketplaceBest.label}-Deal: ${formatEuroValue(marketplaceBest.price)} €</strong></span>
+                    <span class="bm-deal-savings">(-${discountPercent}% ggü. Händler)</span>
+                `.trim();
+
+                badge.onclick = event => {
+                    event.preventDefault();
+                    const targetRow = marketplaceBest.wrapper || marketplaceBest.priceRow;
+                    if (targetRow) {
+                        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        targetRow.classList.remove('bm-offer-row-highlight');
+                        void targetRow.offsetWidth;
+                        targetRow.classList.add('bm-offer-row-highlight');
+                        window.setTimeout(() => targetRow.classList.remove('bm-offer-row-highlight'), 1800);
+                    }
+                };
             }
 
                 // Suche nach dem "bisherigen Bestpreis"
