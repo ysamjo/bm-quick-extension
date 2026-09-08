@@ -3836,13 +3836,13 @@ globalThis.BM_formatEuro = price => {
                     display: block;
                     width: max-content;
                     max-width: min(360px, calc(100vw - 32px));
-                    padding: 0.48rem 0.62rem;
-                    border: 3px solid #fff;
-                    border-radius: 6px;
+                    padding: 8px 10px;
+                    border: 2px solid #fff;
+                    border-radius: 5px;
                     background: #ff771a !important;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+                    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
                     color: #fff !important;
-                    font: 400 0.72rem/1.35 Arial, sans-serif;
+                    font: 400 0.75rem/1rem Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                     text-align: left;
                     white-space: normal;
                     opacity: 0;
@@ -3858,7 +3858,7 @@ globalThis.BM_formatEuro = price => {
                     position: absolute;
                     top: 100%;
                     left: 50%;
-                    border: 9px solid transparent;
+                    border: 8px solid transparent;
                     border-top-color: #fff;
                     transform: translateX(-50%);
                 }
@@ -5638,6 +5638,227 @@ globalThis.BM_formatEuro = price => {
                 return suffix;
             }
 
+            function setupAtbTooltip() {
+                if (typeof document === 'undefined') return;
+                if (document.documentElement.dataset.bmAtbTooltipBound === 'true') return;
+                document.documentElement.dataset.bmAtbTooltipBound = 'true';
+
+                let tooltipEl = null;
+                let arrowEl = null;
+                let currentTarget = null;
+                let hideTimer = null;
+
+                const getTooltip = () => {
+                    if (tooltipEl && document.body?.contains(tooltipEl)) return tooltipEl;
+                    tooltipEl = document.createElement('div');
+                    tooltipEl.id = 'bm-atb-tooltip';
+                    tooltipEl.className = 'tooltipster-base tooltipster-light';
+                    tooltipEl.setAttribute('role', 'tooltip');
+                    tooltipEl.style.cssText = [
+                        'position: fixed',
+                        'z-index: 2147483647',
+                        'background: #ff771a',
+                        'color: #ffffff',
+                        'border: 2px solid #ffffff',
+                        'border-radius: 5px',
+                        'padding: 8px 10px',
+                        'box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25)',
+                        'font-family: inherit',
+                        'font-size: 0.75rem',
+                        'line-height: 1rem',
+                        'max-width: 300px',
+                        'text-align: left',
+                        'pointer-events: auto',
+                        'opacity: 0',
+                        'transform: translateY(3px)',
+                        'transition: opacity 0.12s ease-out, transform 0.12s ease-out',
+                        'box-sizing: border-box',
+                        'display: none'
+                    ].join('; ');
+
+                    arrowEl = document.createElement('div');
+                    arrowEl.className = 'bm-atb-tooltip-arrow';
+                    arrowEl.style.cssText = [
+                        'position: absolute',
+                        'width: 8px',
+                        'height: 8px',
+                        'background: #ff771a',
+                        'transform: rotate(45deg)',
+                        'box-sizing: border-box'
+                    ].join('; ');
+
+                    tooltipEl.appendChild(arrowEl);
+
+                    tooltipEl.addEventListener('pointerenter', () => {
+                        clearTimeout(hideTimer);
+                    });
+                    tooltipEl.addEventListener('pointerleave', () => {
+                        scheduleHide();
+                    });
+
+                    if (document.body) {
+                        document.body.appendChild(tooltipEl);
+                    }
+                    return tooltipEl;
+                };
+
+                const updatePosition = (target) => {
+                    if (!tooltipEl || !target || typeof window === 'undefined') return;
+                    const rect = target.getBoundingClientRect();
+                    const tipRect = tooltipEl.getBoundingClientRect();
+                    const gap = 8;
+
+                    let top = rect.top - tipRect.height - gap;
+                    let isBelow = false;
+                    if (top < 10) {
+                        top = rect.bottom + gap;
+                        isBelow = true;
+                    }
+
+                    const targetCenterX = rect.left + (rect.width / 2);
+                    const left = targetCenterX - (tipRect.width / 2);
+                    const minLeft = 10;
+                    const maxLeft = Math.max(10, (window.innerWidth || 360) - tipRect.width - 10);
+                    const clampedLeft = Math.min(Math.max(left, minLeft), maxLeft);
+
+                    tooltipEl.style.top = `${Math.round(top)}px`;
+                    tooltipEl.style.left = `${Math.round(clampedLeft)}px`;
+
+                    if (arrowEl) {
+                        const arrowLeft = Math.min(Math.max(targetCenterX - clampedLeft - 4, 8), tipRect.width - 16);
+                        arrowEl.style.left = `${Math.round(arrowLeft)}px`;
+                        if (isBelow) {
+                            arrowEl.style.top = '-5px';
+                            arrowEl.style.bottom = '';
+                            arrowEl.style.borderRight = 'none';
+                            arrowEl.style.borderBottom = 'none';
+                            arrowEl.style.borderLeft = '2px solid #ffffff';
+                            arrowEl.style.borderTop = '2px solid #ffffff';
+                        } else {
+                            arrowEl.style.bottom = '-5px';
+                            arrowEl.style.top = '';
+                            arrowEl.style.borderLeft = 'none';
+                            arrowEl.style.borderTop = 'none';
+                            arrowEl.style.borderRight = '2px solid #ffffff';
+                            arrowEl.style.borderBottom = '2px solid #ffffff';
+                        }
+                    }
+                };
+
+                const show = (target, force = false) => {
+                    if (!force && target.classList.contains('tooltipstered')) return;
+                    clearTimeout(hideTimer);
+                    currentTarget = target;
+
+                    if (target.hasAttribute('title')) {
+                        target.dataset.bmOriginalTitle = target.getAttribute('title') || '';
+                        target.removeAttribute('title');
+                    }
+
+                    const tip = getTooltip();
+                    if (!tip) return;
+                    const titleText = target.dataset.bmTooltipTitle || 'All-Time-Bestpreis';
+                    const descText = target.dataset.bmTooltip || 'Historisch niedrigster je bei brickmerge erfasster Preis für dieses Set.';
+
+                    let contentContainer = tip.querySelector('.bm-tooltip-content');
+                    if (!contentContainer) {
+                        contentContainer = document.createElement('div');
+                        contentContainer.className = 'bm-tooltip-content tooltipster-content';
+                        tip.insertBefore(contentContainer, arrowEl);
+                    }
+                    contentContainer.innerHTML = `<span style="font-weight: 700;">${titleText} (ATB):</span> ${descText}`;
+
+                    tip.style.display = 'block';
+                    tip.style.visibility = 'hidden';
+                    updatePosition(target);
+                    tip.style.visibility = 'visible';
+
+                    requestAnimationFrame(() => {
+                        tip.style.opacity = '1';
+                        tip.style.transform = 'translateY(0)';
+                    });
+                };
+
+                const scheduleHide = () => {
+                    clearTimeout(hideTimer);
+                    hideTimer = setTimeout(() => {
+                        if (tooltipEl) {
+                            tooltipEl.style.opacity = '0';
+                            tooltipEl.style.transform = 'translateY(3px)';
+                            setTimeout(() => {
+                                if (tooltipEl && tooltipEl.style.opacity === '0') {
+                                    tooltipEl.style.display = 'none';
+                                }
+                            }, 140);
+                        }
+                        if (currentTarget) {
+                            if (currentTarget.dataset.bmOriginalTitle) {
+                                currentTarget.setAttribute('title', currentTarget.dataset.bmOriginalTitle);
+                                delete currentTarget.dataset.bmOriginalTitle;
+                            }
+                            currentTarget = null;
+                        }
+                    }, 100);
+                };
+
+                document.addEventListener('pointerenter', event => {
+                    const atb = event.target.closest?.('.bm-atb-abbr');
+                    if (atb) {
+                        show(atb);
+                    }
+                }, true);
+
+                document.addEventListener('pointerleave', event => {
+                    const atb = event.target.closest?.('.bm-atb-abbr');
+                    if (atb) {
+                        scheduleHide();
+                    }
+                }, true);
+
+                document.addEventListener('focusin', event => {
+                    const atb = event.target.closest?.('.bm-atb-abbr');
+                    if (atb) {
+                        show(atb);
+                    }
+                }, true);
+
+                document.addEventListener('focusout', event => {
+                    const atb = event.target.closest?.('.bm-atb-abbr');
+                    if (atb) {
+                        scheduleHide();
+                    }
+                }, true);
+
+                document.addEventListener('click', event => {
+                    const atb = event.target.closest?.('.bm-atb-abbr');
+                    if (atb) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (tooltipEl && tooltipEl.style.display !== 'none' && currentTarget === atb) {
+                            scheduleHide();
+                        } else {
+                            show(atb, true);
+                        }
+                        return;
+                    }
+                    if (tooltipEl && !event.target.closest?.('#bm-atb-tooltip')) {
+                        scheduleHide();
+                    }
+                }, true);
+
+                document.addEventListener('keydown', event => {
+                    if (event.key === 'Escape') {
+                        scheduleHide();
+                    }
+                });
+
+                window.addEventListener('scroll', () => {
+                    if (currentTarget && tooltipEl && tooltipEl.style.display !== 'none') {
+                        updatePosition(currentTarget);
+                    }
+                }, { passive: true });
+            }
+
             function renameHistoricalBestPriceLabel() {
                 const root = document.querySelector(
                     '.content.setdetails .productprice'
@@ -5664,6 +5885,9 @@ globalThis.BM_formatEuro = price => {
                     const atbSpan = document.createElement('span');
                     atbSpan.className = 'bm-atb-abbr tooltipster';
                     atbSpan.title = 'All-Time-Bestpreis';
+                    atbSpan.dataset.bmTooltipTitle = 'All-Time-Bestpreis';
+                    atbSpan.dataset.bmTooltip = 'Historisch niedrigster je bei brickmerge erfasster Preis für dieses Set.';
+                    atbSpan.setAttribute('aria-label', 'All-Time-Bestpreis (ATB)');
                     atbSpan.style.textDecoration = 'underline dashed #888';
                     atbSpan.style.textUnderlineOffset = '2px';
                     atbSpan.style.cursor = 'help';
@@ -5716,10 +5940,20 @@ globalThis.BM_formatEuro = price => {
                         try {
                             const $atb = window.jQuery(atbSpan);
                             if (!$atb.hasClass('tooltipstered')) {
-                                $atb.tooltipster();
+                                $atb.tooltipster({
+                                    theme: 'tooltipster-light',
+                                    content: '<strong>All-Time-Bestpreis (ATB):</strong> Historisch niedrigster je bei brickmerge erfasster Preis für dieses Set.',
+                                    contentAsHTML: true,
+                                    maxWidth: 300,
+                                    position: 'top',
+                                    delay: 100,
+                                    onlyOne: true,
+                                    touchDevices: false
+                                });
                             }
                         } catch {}
                     }
+                    atbSpan.dispatchEvent(new CustomEvent('bm-tooltip-enable-request', { bubbles: true }));
                 });
 
                 // Ensure price in ATB line has no space before € (e.g. 18,51€ instead of 18,51 €)
@@ -5770,6 +6004,8 @@ globalThis.BM_formatEuro = price => {
                         el.textContent = ` ${formatted}`;
                     }
                 });
+
+                setupAtbTooltip();
             }
 
             function renameAktBrickmergePreisLabel() {
@@ -7940,21 +8176,8 @@ globalThis.BM_formatEuro = price => {
 
             function ensureH1CopyButton(h1) {
                 if (!h1) return null;
-                let copyBtn = h1.querySelector('.bm-copy-btn:not(.bm-ean-copy-btn)');
-                if (copyBtn) return copyBtn;
-                if (!setNum || !BM_SETTINGS.copyAndMinifigures) return null;
-
-                copyBtn = createNameCopyButton(() => {
-                    const clone = h1.cloneNode(true);
-                    clone.querySelectorAll('.bm-copy-btn, .bm-price-basis-toggle').forEach(el => el.remove());
-                    return clone.textContent
-                        .replace(/[\u00AE\u2122]/g, '')
-                        .replace(/\s+/g, ' ')
-                        .trim();
-                }, 'Setnamen kopieren');
-                copyBtn.classList.add('bm-name-copy-btn');
-                h1.appendChild(copyBtn);
-                return copyBtn;
+                h1.querySelectorAll('.bm-copy-btn:not(.bm-ean-copy-btn), .bm-price-basis-toggle').forEach(el => el.remove());
+                return null;
             }
 
             function ensureDetailsNameCopyButton() {
@@ -8011,17 +8234,13 @@ globalThis.BM_formatEuro = price => {
                 }
 
                 const h1 = document.querySelector('.content.setdetails h1, h1');
-                const h1CopyBtn = (h1 && BM_SETTINGS.copyAndMinifigures) ? ensureH1CopyButton(h1) : null;
+                if (h1) {
+                    h1.querySelectorAll('.bm-copy-btn:not(.bm-ean-copy-btn), .bm-price-basis-toggle').forEach(el => el.remove());
+                }
                 const detailsCopyBtn = BM_SETTINGS.copyAndMinifigures ? ensureDetailsNameCopyButton() : null;
                 const detailsNameElement = detailsCopyBtn?.parentElement || getDetailsNameElement();
 
                 const targets = [];
-                if (h1) {
-                    targets.push({
-                        container: h1,
-                        anchor: h1CopyBtn || h1.querySelector('.bm-copy-btn:not(.bm-ean-copy-btn)')
-                    });
-                }
                 if (detailsNameElement) {
                     targets.push({
                         container: detailsNameElement,
@@ -8079,9 +8298,11 @@ globalThis.BM_formatEuro = price => {
                         }
                     }
                 }
-                if (lastMinifigTotalValue !== null) {
-                    updateMinifigureValueInDataBox(lastMinifigTotalValue, false, lastMinifigPriceSnapshot);
-                }
+                try {
+                    if (lastMinifigTotalValue !== null) {
+                        updateMinifigureValueInDataBox(lastMinifigTotalValue, false, lastMinifigPriceSnapshot);
+                    }
+                } catch (_) {}
                 const historicalData = findAllTimeBestPrice();
                 if (historicalData) {
                     const bestPrice = getCalculationBestPrice();
@@ -8188,6 +8409,7 @@ globalThis.BM_formatEuro = price => {
                     cleanMinifigureExclusiveText,
                     linkPackageDimensionsCalculator,
                     renameHistoricalBestPriceLabel,
+                    setupAtbTooltip,
                     renameAktBrickmergePreisLabel,
                     shortenDealScoreLabel,
                     createDiscountSettingsUI,
@@ -9939,7 +10161,27 @@ globalThis.BM_formatEuro = price => {
                     }).filter(Boolean);
 
                     void getWorkerClientId().then(workerClientId => {
-                        const setTitle = getSetTitle();
+                        const setTitle = (() => {
+                            try {
+                                const heading = document.querySelector(
+                                    '.content.setdetails h1, #productTitle, h1#title'
+                                );
+                                const headingText = String(heading?.textContent || '').replace(/\s+/g, ' ').trim();
+                                if (headingText) return headingText.slice(0, 200);
+                                const jsonLd = Array.from(
+                                    document.querySelectorAll('script[type="application/ld+json"]')
+                                ).map(script => {
+                                    try { return JSON.parse(script.textContent); } catch { return null; }
+                                }).find(payload => {
+                                    const types = Array.isArray(payload?.['@type'])
+                                        ? payload['@type']
+                                        : [payload?.['@type']];
+                                    return types.includes('Product');
+                                });
+                                const ldName = String(jsonLd?.name || '').replace(/\s+/g, ' ').trim();
+                                return ldName ? ldName.slice(0, 200) : '';
+                            } catch { return ''; }
+                        })();
                         const ean = document.querySelector(
                             '.bm-ean-line-link[data-ean]'
                         )?.dataset.ean || Array.from(
@@ -14016,8 +14258,12 @@ globalThis.BM_formatEuro = price => {
                         const enableTooltip = (anchor) => {
                             if (!anchor || !window.jQuery ||
                                 typeof window.jQuery.fn?.tooltipster !== 'function') return;
-                            const content = anchor.dataset.bmTooltip ||
-                                anchor.getAttribute('title') || '';
+                            const desc = anchor.dataset.bmTooltip || '';
+                            const title = anchor.dataset.bmTooltipTitle || anchor.getAttribute('title') || '';
+                            const content = anchor.dataset.bmTooltipFull ||
+                                (anchor.classList.contains('bm-atb-abbr') && desc
+                                    ? '<strong>' + (title || 'All-Time-Bestpreis') + ' (ATB):</strong> ' + desc
+                                    : (desc || title));
                             if (!content) return;
                             try {
                                 const target = window.jQuery(anchor);
@@ -14026,9 +14272,13 @@ globalThis.BM_formatEuro = price => {
                                 } else {
                                     target.tooltipster({
                                         content,
-                                        maxWidth: 360,
+                                        contentAsHTML: true,
+                                        theme: 'tooltipster-light',
+                                        maxWidth: 300,
                                         position: 'top',
-                                        delay: 100
+                                        delay: 100,
+                                        onlyOne: true,
+                                        touchDevices: false
                                     });
                                 }
                             } catch (e) {}
@@ -14067,13 +14317,17 @@ globalThis.BM_formatEuro = price => {
                         }, true);
 
                         document.addEventListener('mouseover', event => {
-                            const anchor = event.target.closest?.('a.tooltipster');
-                            if (!anchor) return;
-                            captureTooltip(anchor);
-                            if (anchor.dataset.bmTooltip) syncTooltip(anchor);
+                            const target = event.target.closest?.('.tooltipster');
+                            if (!target) return;
+                            captureTooltip(target);
+                            if (target.classList.contains('bm-atb-abbr')) {
+                                enableTooltip(target);
+                            } else if (target.dataset.bmTooltip) {
+                                syncTooltip(target);
+                            }
                         }, true);
 
-                        document.querySelectorAll('#offerlist a.tooltipster').forEach(captureTooltip);
+                        document.querySelectorAll('#offerlist a.tooltipster, .tooltipster').forEach(captureTooltip);
                     })();
                 `;
                 document.documentElement.appendChild(bridge);
@@ -15064,7 +15318,13 @@ globalThis.BM_formatEuro = price => {
                     if (!newEl) {
                         newEl = document.createElement('span');
                         newEl.id = 'all-time-bestpreis-discount';
-                        newEl.innerHTML = `<br />&nbsp;<span class="contentcolor" style="color: #b00;">|</span> <a class="bm-price-history-link" href="#bm-price-chart-overlay" aria-controls="bm-price-chart-overlay">Differenz zum ATB: <strong></strong></a>`;
+                        newEl.innerHTML = `<br />&nbsp;<span class="contentcolor" style="color: #b00;">|</span> <a class="bm-price-history-link" href="#bm-price-chart-overlay" aria-controls="bm-price-chart-overlay">Differenz zum <span class="bm-atb-abbr tooltipster" title="All-Time-Bestpreis" data-bm-tooltip-title="All-Time-Bestpreis" data-bm-tooltip="Historisch niedrigster je bei brickmerge erfasster Preis für dieses Set." aria-label="All-Time-Bestpreis (ATB)" style="text-decoration: underline dashed #888; text-underline-offset: 2px; cursor: help;">ATB</span>: <strong></strong></a>`;
+                    } else if (!newEl.querySelector('.bm-atb-abbr')) {
+                        const link = newEl.querySelector('a.bm-price-history-link');
+                        if (link) {
+                            const strong = link.querySelector('strong');
+                            link.innerHTML = `Differenz zum <span class="bm-atb-abbr tooltipster" title="All-Time-Bestpreis" data-bm-tooltip-title="All-Time-Bestpreis" data-bm-tooltip="Historisch niedrigster je bei brickmerge erfasster Preis für dieses Set." aria-label="All-Time-Bestpreis (ATB)" style="text-decoration: underline dashed #888; text-underline-offset: 2px; cursor: help;">ATB</span>: <strong>${strong?.textContent || ''}</strong>`;
+                        }
                     }
                     const value = newEl.querySelector('strong');
                     if (value) {
@@ -15081,6 +15341,7 @@ globalThis.BM_formatEuro = price => {
                         matchedElement.parentNode.insertBefore(newEl, matchedElement.nextSibling);
                     }
                     decoratePriceHistoryLinks();
+                    setupAtbTooltip();
             }
 
             // ==========================================

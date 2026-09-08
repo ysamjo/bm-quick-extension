@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.55/);
+    assert.match(loaderSource, /@version\s+5\.6\.56/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.55/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.56/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -960,6 +960,9 @@ test('historical best price is abbreviated to ATB with tooltip and formatted suf
     assert.match(tweakerSource, /function formatHistoricalBestPriceSuffix\(/);
     assert.match(tweakerSource, /function renameHistoricalBestPriceLabel\(/);
     assert.match(tweakerSource, /function renameAktBrickmergePreisLabel\(/);
+    assert.match(tweakerSource, /function setupAtbTooltip\(/);
+    assert.match(tweakerSource, /bm-atb-tooltip/);
+    assert.match(tweakerSource, /Historisch niedrigster je bei brickmerge erfasster Preis für dieses Set/);
     assert.match(tweakerSource, /bm-atb-abbr/);
     assert.match(tweakerSource, /title = 'All-Time-Bestpreis'/);
     assert.match(tweakerSource, /textContent = 'ATB'/);
@@ -1080,6 +1083,7 @@ test('ATB abbreviation is placed outside anchor tag and not linked to price comp
     assert.match(tweakerSource, /anchor\.parentNode\.insertBefore\(document\.createTextNode\(': '\),\s*anchor\)/);
     assert.match(tweakerSource, /event\.target\.closest\?\.\('\.bm-atb-abbr'\)/);
     assert.match(tweakerSource, /link\.previousElementSibling\?\.classList\?\.contains\('bm-atb-abbr'\)/);
+    assert.match(tweakerSource, /Differenz zum <span class="bm-atb-abbr/);
 
     const isPriceHistoryLinkMatch = tweakerSource.match(/function isPriceHistoryLink\(link\) \{[\s\S]*?\n    \}/);
     assert.ok(isPriceHistoryLinkMatch);
