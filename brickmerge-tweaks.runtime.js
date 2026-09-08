@@ -3343,6 +3343,9 @@ globalThis.BM_isFranceEnabled = settings =>
                 .bm-sidebar-parts {
                     display: none;
                 }
+                .bm-sidebar-warning {
+                    display: none;
+                }
                 .content.setdetails .topprice {
                     position: relative !important;
                 }
@@ -4188,6 +4191,52 @@ globalThis.BM_isFranceEnabled = settings =>
                         font-size: 0.72rem;
                         line-height: 1.25;
                         text-decoration: underline;
+                    }
+                    .bm-safety-warning-block {
+                        display: flex;
+                        align-items: center;
+                        gap: 0.65rem;
+                        margin-top: 0.85rem;
+                        padding-top: 0.75rem;
+                        border-top: 1px solid #eee;
+                        text-align: left;
+                    }
+                    .bm-safety-pictograms {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.35rem;
+                        flex-shrink: 0;
+                    }
+                    .bm-safety-pictograms svg {
+                        display: block;
+                        flex-shrink: 0;
+                    }
+                    .bm-safety-warning-text {
+                        font-size: 0.72rem;
+                        line-height: 1.25;
+                        color: #555;
+                    }
+                    .bm-safety-warning-text strong {
+                        color: #c00;
+                        font-weight: 700;
+                    }
+                    #ol2nd .bm-sidebar-warning {
+                        display: block;
+                        margin: 0 0 1.25rem;
+                        text-align: left;
+                    }
+                    #ol2nd .bm-sidebar-warning .bm-safety-warning-block {
+                        margin-top: 0;
+                        padding-top: 0;
+                        border-top: none;
+                    }
+                    .bm-instruction-source .bm-safety-warning-block {
+                        display: flex;
+                        align-items: center;
+                        gap: 0.65rem;
+                        margin: 1rem 0;
+                        padding-top: 0.75rem;
+                        border-top: 1px solid #eee;
                     }
                     #ol2nd .bm-sidebar-parts {
                         display: block;
@@ -6297,6 +6346,128 @@ globalThis.BM_isFranceEnabled = settings =>
                 else sideColumn.prepend(panel);
             }
 
+            // Ersetzt die Warnhinweis-Textzeile in den Setdetails durch standardisierte
+            // Sicherheits-Piktogramme (0-3-Verbotskreis gemäß EN 71-1 und Warnungsdreieck)
+            // unter den Bauanleitungen.
+            function replaceSafetyWarningWithPictograms() {
+                if (document.querySelector('.bm-safety-warning-block')) return;
+
+                const details = Array.from(
+                    document.querySelectorAll('.content.setdetails p')
+                ).find(paragraph =>
+                    /Warn(?:ung|hinweis(?:e)?)\s*:/i.test(paragraph.textContent || '')
+                );
+                if (!details) return;
+
+                let warningText = '';
+                const lineBreaks = Array.from(details.querySelectorAll('br'));
+                const isFollowing = (first, second) => Boolean(
+                    first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING
+                );
+                const walker = document.createTreeWalker(details, NodeFilter.SHOW_TEXT);
+                let node;
+                while (node = walker.nextNode()) {
+                    if (node.parentElement?.closest('a')) continue;
+
+                    const previousBreaks = lineBreaks.filter(lb => isFollowing(lb, node));
+                    const previousBreak = previousBreaks[previousBreaks.length - 1] || null;
+                    const followingBreak = lineBreaks.find(lb => isFollowing(node, lb)) || null;
+
+                    const range = document.createRange();
+                    if (previousBreak) range.setStartAfter(previousBreak);
+                    else range.setStart(details, 0);
+                    if (followingBreak) range.setEndBefore(followingBreak);
+                    else range.setEnd(details, details.childNodes.length);
+
+                    const lineText = range.toString().replace(/\s+/g, ' ').trim();
+                    if (/Warn(?:ung|hinweis(?:e)?)\s*:/i.test(lineText)) {
+                        const match = lineText.match(/Warn(?:ung|hinweis(?:e)?)\s*:\s*(.+)$/i);
+                        warningText = match ? match[1].trim() : 'verschluckbare Kleinteile';
+                        range.deleteContents();
+                        if (followingBreak && followingBreak.parentNode) {
+                            followingBreak.remove();
+                        } else if (previousBreak && previousBreak.parentNode) {
+                            previousBreak.remove();
+                        }
+                        break;
+                    }
+                    range.detach?.();
+                }
+
+                if (!warningText) return;
+
+                const warningBlock = createSafetyWarningBlock(warningText);
+                const sidebarInstructions = document.querySelector(
+                    '#ol2nd .bm-sidebar-instructions'
+                );
+                if (sidebarInstructions) {
+                    sidebarInstructions.appendChild(warningBlock);
+                } else {
+                    const sideColumn = document.getElementById('ol2nd');
+                    if (sideColumn) {
+                        const standaloneSection = document.createElement('section');
+                        standaloneSection.className = 'bm-sidebar-warning';
+                        standaloneSection.appendChild(warningBlock);
+                        const barcodeBlock = sideColumn.querySelector('#barcode')?.closest('div');
+                        if (barcodeBlock) barcodeBlock.insertAdjacentElement('afterend', standaloneSection);
+                        else sideColumn.prepend(standaloneSection);
+                    }
+                }
+
+                const sourceHeading = Array.from(document.querySelectorAll('#ol1st h3'))
+                    .find(h => h.id === 'Bauanleitung' || /Bauanleitung/i.test(h.textContent || ''));
+                const sourceSection = sourceHeading?.closest('section');
+                if (sourceSection && !sourceSection.querySelector('.bm-safety-warning-block')) {
+                    sourceSection.appendChild(createSafetyWarningBlock(warningText));
+                }
+            }
+
+            function formatSafetyWarningCaption(warningText) {
+                const raw = String(warningText || '').trim();
+                if (!raw) return 'Nicht für Kinder unter 3 Jahren geeignet (verschluckbare Kleinteile).';
+                if (/unter 3(?:6)?\s*(?:Jahren|Monaten)/i.test(raw)) {
+                    return raw.endsWith('.') ? raw : `${raw}.`;
+                }
+                return `Nicht für Kinder unter 3 Jahren geeignet (${raw}).`;
+            }
+
+            function createSafetyWarningBlock(warningText) {
+                const block = document.createElement('div');
+                block.className = 'bm-safety-warning-block';
+
+                const caption = formatSafetyWarningCaption(warningText);
+                block.title = `Achtung! ${caption}`;
+
+                const pictos = document.createElement('div');
+                pictos.className = 'bm-safety-pictograms';
+                pictos.innerHTML = `
+                    <svg class="bm-safety-picto bm-picto-03" viewBox="0 0 100 100" width="34" height="34" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Nicht für Kinder unter 3 Jahren geeignet">
+                        <circle cx="50" cy="50" r="46" fill="#fff"/>
+                        <circle cx="50" cy="50" r="44" fill="none" stroke="#d32f2f" stroke-width="8"/>
+                        <line x1="19" y1="19" x2="81" y2="81" stroke="#d32f2f" stroke-width="8" stroke-linecap="round"/>
+                        <circle cx="34" cy="46" r="11" fill="none" stroke="#111" stroke-width="2.5"/>
+                        <circle cx="30" cy="43" r="1.5" fill="#111"/>
+                        <circle cx="38" cy="43" r="1.5" fill="#111"/>
+                        <path d="M 30 51 Q 34 47 38 51" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+                        <text x="64" y="57" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="25" fill="#111" letter-spacing="-1">0-3</text>
+                    </svg>
+                    <svg class="bm-safety-picto bm-picto-triangle" viewBox="0 0 100 90" width="34" height="30" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Achtung">
+                        <path d="M 50 7 L 93 81 A 5 5 0 0 1 89 88 L 11 88 A 5 5 0 0 1 7 81 Z" fill="#ffcc00" stroke="#222" stroke-width="6" stroke-linejoin="round"/>
+                        <line x1="50" y1="32" x2="50" y2="58" stroke="#111" stroke-width="8" stroke-linecap="round"/>
+                        <circle cx="50" cy="73" r="5" fill="#111"/>
+                    </svg>
+                `.trim();
+
+                const textDiv = document.createElement('div');
+                textDiv.className = 'bm-safety-warning-text';
+                const strong = document.createElement('strong');
+                strong.textContent = 'Achtung!';
+                textDiv.append(strong, document.createTextNode(` ${caption}`));
+
+                block.append(pictos, textDiv);
+                return block;
+            }
+
             // Die Einzelteilelinks werden auf Desktop ebenfalls in der rechten Spalte
             // angezeigt. Auf kleinen Bildschirmen bleibt der Originalblock erhalten.
             function setupDesktopSidebarParts() {
@@ -6767,6 +6938,7 @@ globalThis.BM_isFranceEnabled = settings =>
                     setupDesktopOfferGallery,
                     setupEanBarcode,
                     setupDesktopSidebarInstructions,
+                    replaceSafetyWarningWithPictograms,
                     setupDesktopSidebarParts,
                     expandProductDescription,
                     linkLegoArticleNumber,

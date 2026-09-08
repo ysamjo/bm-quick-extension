@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.34/);
+    assert.match(loaderSource, /@version\s+5\.6\.35/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.34/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.35/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -843,4 +843,16 @@ test('volume detail line matches native Brickmerge formatting without hover', ()
     assert.match(tweakerSource, /toLocaleString\('de-DE'/);
     assert.match(tweakerSource, /`\${formattedPrice} €\/l`/);
     assert.match(sharedSource, /'Box-Maße',\s*'Volumen',\s*'Release'/);
+});
+
+test('safety warning is replaced with EN 71 pictograms under instructions', () => {
+    assert.match(tweakerSource, /function replaceSafetyWarningWithPictograms\(/);
+    assert.match(tweakerSource, /function createSafetyWarningBlock\(/);
+    assert.match(tweakerSource, /bm-safety-warning-block/);
+    assert.match(tweakerSource, /bm-safety-pictograms/);
+    assert.match(tweakerSource, /bm-picto-03/);
+    assert.match(tweakerSource, /bm-picto-triangle/);
+    assert.match(tweakerSource, /0-3/);
+    assert.match(tweakerSource, /#ol2nd \.bm-sidebar-instructions/);
+    assert.match(tweakerSource, /sidebarInstructions\.appendChild\(warningBlock\)/);
 });
