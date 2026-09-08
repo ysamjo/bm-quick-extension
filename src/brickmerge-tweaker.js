@@ -13296,17 +13296,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             );
             const insertionAnchor = originalOrder[originalOrder.length - 1]?.nextSibling || null;
             group.sort((a, b) => {
-                const aSoldOut = Boolean(
-                    a.priceRow?.dataset.bmSoldOut === 'true' ||
-                    a.wrapper?.classList.contains('bm-sold-out-offer')
-                );
-                const bSoldOut = Boolean(
-                    b.priceRow?.dataset.bmSoldOut === 'true' ||
-                    b.wrapper?.classList.contains('bm-sold-out-offer')
-                );
-                if (aSoldOut !== bSoldOut) {
-                    return aSoldOut ? 1 : -1;
-                }
                 if (a.price === null && b.price === null) return a.originalIndex - b.originalIndex;
                 if (a.price === null) return 1;
                 if (b.price === null) return -1;

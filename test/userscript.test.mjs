@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.46/);
+    assert.match(loaderSource, /@version\s+5\.6\.47/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.46/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.47/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -942,14 +942,13 @@ test('minifigure details line removes "in diesem Set"', () => {
     assert.match(tweakerSource, /node\.nodeValue\.replace\([\s\S]*?in diesem Set/);
 });
 
-test('sold out offers have uniform background, left indicator bar, and are sorted to the end without discounts', () => {
+test('sold out offers have uniform background, left indicator bar, and remain sorted by price without discounts', () => {
     assert.match(tweakerSource, /#offerlist \.row\.collapse\.bm-sold-out-offer::before/);
     assert.match(tweakerSource, /#offerlist \.row\.collapse\.bm-sold-out-offer \.bm-marketplace-logo-link/);
     assert.match(tweakerSource, /#offerlist \.bm-sold-out-overlay\s*\{[\s\S]*?z-index:\s*8/);
     assert.match(tweakerSource, /#offerlist \.bm-sold-out-badge\s*\{[\s\S]*?z-index:\s*9/);
     assert.match(tweakerSource, /discountRow\?\.dataset\.bmSoldOut === 'true' \|\|\s*discountRow\?\.closest\('\.bm-sold-out-offer'\)/);
     assert.match(tweakerSource, /priceRow\?\.dataset\.bmSoldOut === 'true' \|\|\s*priceRow\?\.closest\('\.bm-sold-out-offer'\)/);
-    assert.match(tweakerSource, /const aSoldOut = Boolean\(/);
-    assert.match(tweakerSource, /if \(aSoldOut !== bSoldOut\) \{\s*return aSoldOut \? 1 : -1;\s*\}/);
+    assert.doesNotMatch(tweakerSource, /aSoldOut !== bSoldOut/);
 });
 
