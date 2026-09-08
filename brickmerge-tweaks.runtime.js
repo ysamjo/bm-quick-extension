@@ -11824,7 +11824,7 @@ globalThis.BM_formatEuro = price => {
                     const seen = new Set();
 
                     (Array.isArray(entries) ? entries : []).forEach(entry => {
-                        const itemNo = String(entry?.set_num || '').trim();
+                        const itemNo = String(entry?.set_num || entry?.itemNo || '').trim();
                         if (!itemNo || seen.has(itemNo)) return;
                         seen.add(itemNo);
 
@@ -11835,7 +11835,7 @@ globalThis.BM_formatEuro = price => {
                         const name = String(
                             entry?.set_name || entry?.name || itemNo
                         ).trim();
-                        const imageUrl = String(entry?.set_img_url || '').trim();
+                        const imageUrl = String(entry?.set_img_url || entry?.imageUrl || '').trim();
                         const brickLinkUrl =
                             'https://www.bricklink.com/v2/catalog/catalogitem.page' +
                             `?M=${encodeURIComponent(itemNo)}`;
@@ -12520,6 +12520,21 @@ globalThis.BM_formatEuro = price => {
                             }
                         } catch (error) {
                             // BrickLink remains the fallback when Rebrickable is unavailable.
+                        }
+
+                        if (figures.length === 0) {
+                            try {
+                                const blItems = await fetchBrickLinkSetMinifigs();
+                                if (Array.isArray(blItems) && blItems.length > 0) {
+                                    brickLinkFigures = blItems.map(item => ({
+                                        itemNo: String(item?.itemNo || '').trim(),
+                                        quantity: Number.parseInt(item?.quantity, 10) || 1
+                                    })).filter(figure => figure.itemNo);
+                                    figures = brickLinkFigures;
+                                }
+                            } catch (error) {
+                                // The direct page scraping below remains available as fallback.
+                            }
                         }
 
                         try {
@@ -14034,13 +14049,17 @@ globalThis.BM_formatEuro = price => {
                     };
 
                     const loadRebrickableInventory = async (sequence, onFallback) => {
+                        let rebrickableChecked = false;
                         try {
                             const entries = await fetchRebrickableMinifigs();
                             if (sequence !== loadSequence || !overlay.isConnected) return;
-                            const result = buildRebrickableFigureTable(entries);
-                            if (result) {
-                                renderResult(result, sequence);
-                                return;
+                            if (Array.isArray(entries)) {
+                                rebrickableChecked = true;
+                                const result = buildRebrickableFigureTable(entries);
+                                if (result) {
+                                    renderResult(result, sequence);
+                                    return;
+                                }
                             }
                         } catch (error) {
                             // Ohne persönlichen Rebrickable-Key oder bei einem API-Fehler
@@ -14048,10 +14067,42 @@ globalThis.BM_formatEuro = price => {
                         }
                         if (sequence !== loadSequence || !overlay.isConnected) return;
                         if (typeof onFallback === 'function') {
-                            onFallback();
+                            onFallback(rebrickableChecked);
+                            return;
+                        }
+                        if (rebrickableChecked) {
+                            subtitle.textContent = `0 Figuren · LEGO Set ${setNum}`;
+                            setStatus('Keine Minifiguren in diesem Set enthalten.');
                             return;
                         }
                         setStatus('Rebrickable konnte das Inventar momentan nicht laden. Bitte versuche es erneut.', true);
+                    };
+
+                    const loadBrickLinkApiInventory = async (sequence, onFallback) => {
+                        let brickLinkChecked = false;
+                        try {
+                            const items = await fetchBrickLinkSetMinifigs();
+                            if (sequence !== loadSequence || !overlay.isConnected) return;
+                            if (Array.isArray(items)) {
+                                brickLinkChecked = true;
+                                if (items.length > 0) {
+                                    const result = buildRebrickableFigureTable(items);
+                                    if (result) {
+                                        renderResult(result, sequence);
+                                        return;
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            // Fallback to HTML scraping
+                        }
+                        if (sequence !== loadSequence || !overlay.isConnected) return;
+                        if (typeof onFallback === 'function') {
+                            onFallback(brickLinkChecked);
+                            return;
+                        }
+                        subtitle.textContent = `0 Figuren · LEGO Set ${setNum}`;
+                        setStatus('Keine Minifiguren in diesem Set enthalten.');
                     };
 
                     const loadLegacyInventory = sequence => {
@@ -14063,7 +14114,10 @@ globalThis.BM_formatEuro = price => {
                             parseLegacyInventory,
                             sequence,
                             result => renderResult(result, sequence),
-                            () => void loadRebrickableInventory(sequence)
+                            () => {
+                                subtitle.textContent = `0 Figuren · LEGO Set ${setNum}`;
+                                setStatus('Keine Minifiguren in diesem Set enthalten.');
+                            }
                         );
                     };
 
@@ -14092,7 +14146,7 @@ globalThis.BM_formatEuro = price => {
                                     sequence,
                                     result => {
                                         if (result.kind === 'none') {
-                                            setStatus('Keine Minifiguren gefunden.');
+                                            setStatus('Keine Minifiguren in diesem Set enthalten.');
                                             return;
                                         }
                                         renderResult(result, sequence);
@@ -14106,8 +14160,13 @@ globalThis.BM_formatEuro = price => {
 
                     const loadPreferredInventory = sequence => {
                         // Rebrickable liefert die saubereren Minifigurenbilder. Die
-                        // BrickLink-ID wird danach weiterhin je Figur für Preise ermittelt.
-                        loadRebrickableInventory(sequence, () => loadModernInventory(sequence));
+                        // strukturierte BrickLink-API springt ein, wenn Rebrickable
+                        // das Set nicht führt oder keine Figuren listet (z. B. Mario Kart).
+                        loadRebrickableInventory(sequence, () =>
+                            loadBrickLinkApiInventory(sequence, () =>
+                                loadModernInventory(sequence)
+                            )
+                        );
                     };
 
                     const loadMinifigures = forceReload => {
