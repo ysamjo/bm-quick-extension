@@ -368,3 +368,16 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
     assert.match(popup, /id="query"[^>]*autofocus/);
     assert.match(popup, /placeholder="Setnummer oder Suchbegriff"/);
 });
+
+test('floating sidebar automatically collapses to the right on outside click', () => {
+    const source = fs.readFileSync(
+        new URL('../page-overlay.js', import.meta.url),
+        'utf8'
+    );
+    assert.match(source, /outsideHandler = event => \{/);
+    assert.match(source, /document\.addEventListener\('pointerdown',\s*outsideHandler,\s*true\)/);
+    assert.match(source, /document\.removeEventListener\('pointerdown',\s*outsideHandler,\s*true\)/);
+    assert.match(source, /path\.includes\(host\)\s*\|\|\s*event\.target === host/);
+    assert.match(source, /setCollapsed\(true\)/);
+    assert.match(source, /panel\.classList\.contains\('is-collapsed'\)/);
+});

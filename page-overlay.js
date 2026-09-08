@@ -6,6 +6,7 @@
     const COLLAPSE_TRANSITION_MS = 240;
     let host = null;
     let escapeHandler = null;
+    let outsideHandler = null;
 
     function normalizedQuery(product) {
         return String(product?.setNumber || product?.ean || '')
@@ -26,6 +27,10 @@
         if (escapeHandler) {
             document.removeEventListener('keydown', escapeHandler, true);
             escapeHandler = null;
+        }
+        if (outsideHandler) {
+            document.removeEventListener('pointerdown', outsideHandler, true);
+            outsideHandler = null;
         }
     }
 
@@ -358,6 +363,17 @@
             toggleTab.focus();
         };
         document.addEventListener('keydown', escapeHandler, true);
+
+        const openedAt = Date.now();
+        outsideHandler = event => {
+            if (Date.now() - openedAt < 100) return;
+            if (panel.classList.contains('is-collapsed')) return;
+            const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+            if (path.includes(host) || event.target === host) return;
+            setCollapsed(true);
+        };
+        document.addEventListener('pointerdown', outsideHandler, true);
+
         setCollapsed(false);
         navigate(query);
         window.setTimeout(() => closeButton.focus(), 0);
