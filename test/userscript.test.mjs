@@ -394,6 +394,8 @@ test('stock action lives in the parts block and opens the native depot form', ()
     assert.match(setupDetailButton, /host\.appendChild\(existingButton\)/);
     assert.match(tweakerSource, /if \(stockButton\) list\.appendChild\(stockButton\)/);
     assert.match(setupDetailButton, /Zum Bestand hinzufügen/);
+    assert.match(setupDetailButton, /\.bm-mobile-parts-stock-wrap/);
+    assert.match(setupDetailButton, /sourceSection\.insertAdjacentElement\('afterend', mobileHost\)/);
     assert.doesNotMatch(setupDetailButton, /chartTrigger/);
     assert.doesNotMatch(setupDetailButton, /loadDepotData\(/);
 });
@@ -907,4 +909,16 @@ test('all-time best difference calculation uses calculation price basis and remo
     assert.match(tweakerSource, /value\.style\.removeProperty\(['"]color['"]\)/);
     assert.match(tweakerSource, /getCalculationBestPrice\(\)\s*\?\?\s*\(uniqueSortedPrices/);
 });
+
+test('black discount bubble accounts for personal retailer discounts', () => {
+    assert.match(tweakerSource, /function getOfferRowPrice\(/);
+    assert.match(tweakerSource, /getOfferRowPrice\(priceRow,\s*priceSpan\)/);
+    assert.match(tweakerSource, /row\?\.dataset\?\.bmEffectivePrice/);
+    assert.match(tweakerSource, /row\?\.dataset\?\.bmRetailerRate/);
+    assert.match(
+        tweakerSource,
+        /offerPricesSummary\.retailerBest !== null &&\s*Math\.abs\(price1 - offerPricesSummary\.retailerBest\) <= 0\.004/
+    );
+});
+
 

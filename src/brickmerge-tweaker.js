@@ -4927,6 +4927,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
         const stockButton = document.querySelector('.bmd-open-button');
         if (stockButton) list.appendChild(stockButton);
+        const mobileWrap = document.querySelector('.bm-mobile-parts-stock-wrap');
+        if (mobileWrap && !mobileWrap.hasChildNodes()) mobileWrap.remove();
 
         panel.append(heading, list);
 
@@ -5406,6 +5408,28 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
     }
 
+    function getOfferRowPrice(priceRow, priceSpan) {
+        if (!priceRow && !priceSpan) return null;
+        const row = priceRow || priceSpan?.closest('.pricerow');
+        const span = priceSpan || row?.querySelector('span.price');
+        if (!span) return null;
+        const basePrice = getBaseOfferPrice(span);
+        if (basePrice === null || basePrice <= 0) return null;
+
+        const personalSettings = loadPersonalDiscountSettings();
+        if (!personalSettings.enabled) return basePrice;
+
+        if (row?.dataset?.bmEffectivePrice) {
+            const parsed = parseFloat(row.dataset.bmEffectivePrice);
+            if (Number.isFinite(parsed) && parsed > 0) return parsed;
+        }
+        const retailerRate = Number(row?.dataset?.bmRetailerRate || 0);
+        if (retailerRate > 0) {
+            return Math.round((basePrice * (1 - retailerRate) + Number.EPSILON) * 100) / 100;
+        }
+        return basePrice;
+    }
+
     function getBestOfferPrices() {
         const offerlist = document.getElementById('offerlist');
         if (!offerlist) {
@@ -5425,7 +5449,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         );
         const retailerPrices = retailerPriceRows.map(priceRow => {
             const priceSpan = priceRow.querySelector('span.price');
-            return priceSpan ? getBaseOfferPrice(priceSpan) : null;
+            return getOfferRowPrice(priceRow, priceSpan);
         }).filter(price => Number.isFinite(price) && price > 0);
         const retailerBest = retailerPrices.length > 0 ? Math.min(...retailerPrices) : null;
 
@@ -5439,7 +5463,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         let marketplaceBest = null;
         for (const priceRow of marketplaceRows) {
             const priceSpan = priceRow.querySelector('span.price');
-            const price = priceSpan ? getBaseOfferPrice(priceSpan) : null;
+            const price = getOfferRowPrice(priceRow, priceSpan);
             if (!Number.isFinite(price) || price <= 0) continue;
 
             if (!marketplaceBest || price < marketplaceBest.price) {
@@ -11859,9 +11883,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 document.querySelectorAll(
                     '#offerlist .medium-4.small-9.columns.pricerow'
                 ).forEach(priceRow => {
-                    if (priceRow.dataset.bmSoldOut === 'true') return;
+                    if (priceRow.closest('#soldOut') || priceRow.dataset.bmSoldOut === 'true') return;
                     const priceSpan = priceRow.querySelector('span.price');
-                    const price = priceSpan ? getBaseOfferPrice(priceSpan) : null;
+                    const price = getOfferRowPrice(priceRow, priceSpan);
                     if (price !== null && price > 0) {
                         offerPrices.push(price);
                     }
@@ -13199,6 +13223,39 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             .bmd-parts-stock-button:hover,.bmd-parts-stock-button:focus {
                 background:#b00!important;color:#fff!important;outline:none
             }
+            .bm-mobile-parts-stock-wrap {
+                display:block;margin:.85rem 0 1rem;clear:both
+            }
+            .bm-mobile-parts-stock-wrap:empty {
+                display:none!important
+            }
+            .bm-mobile-parts-stock-wrap .bmd-parts-stock-button {
+                display:inline-flex!important;align-items:center!important;
+                justify-content:center!important;width:100%!important;
+                min-height:42px;padding:.65rem 1rem!important;
+                margin:0!important;border:1px solid #ddd!important;
+                border-radius:4px!important;background:#f7f7f7!important;
+                color:#b00!important;font-size:.85rem!important;
+                font-weight:600!important;line-height:1.25!important;
+                text-align:center!important;text-decoration:none!important;
+                box-shadow:0 1px 2px rgba(0,0,0,.05)!important;
+                box-sizing:border-box!important;cursor:pointer
+            }
+            .bm-mobile-parts-stock-wrap .bmd-parts-stock-button:hover,
+            .bm-mobile-parts-stock-wrap .bmd-parts-stock-button:focus {
+                background:#b00!important;color:#fff!important;
+                border-color:#b00!important;outline:none!important
+            }
+            .bm-mobile-parts-stock-wrap .bmd-parts-stock-button .bmd-button-icon {
+                width:1.25rem!important;height:1.25rem!important;
+                flex:0 0 1.25rem!important;margin-right:.35rem
+            }
+            .bm-mobile-parts-stock-wrap .bmd-parts-stock-button .bmd-button-icon svg {
+                width:1.25rem!important;height:1.25rem!important
+            }
+            @media screen and (min-width:1025px) {
+                .bm-mobile-parts-stock-wrap { display:none!important }
+            }
             body.bmd-overlay-open { overflow:hidden!important }
             .bmd-overlay {
                 position:fixed;inset:0;z-index:2147483000;display:flex;
@@ -14136,13 +14193,26 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
     function setupDetailButton() {
         const setNumber = getSetNumber();
-        const desktopPartsList = window.matchMedia('(min-width: 1025px)').matches
+        const isDesktop = window.matchMedia('(min-width: 1025px)').matches;
+        const desktopPartsList = isDesktop
             ? document.querySelector('.bm-sidebar-parts-list')
             : null;
         const sourcePartsHeading = Array.from(document.querySelectorAll(
             '#ol1st h3, .content.setdetails h3'
         )).find(heading => /Einzelteilelisten/i.test(heading.textContent || ''));
-        const host = desktopPartsList || sourcePartsHeading?.closest('section');
+        const sourceSection = sourcePartsHeading?.closest('section');
+
+        let mobileHost = null;
+        if (!isDesktop && sourceSection) {
+            mobileHost = document.querySelector('.bm-mobile-parts-stock-wrap');
+            if (!mobileHost) {
+                mobileHost = document.createElement('div');
+                mobileHost.className = 'bm-mobile-parts-stock-wrap';
+                sourceSection.insertAdjacentElement('afterend', mobileHost);
+            }
+        }
+
+        const host = desktopPartsList || mobileHost || sourceSection;
         if (!setNumber || !host) return;
         const existingButton = document.querySelector('.bmd-open-button');
         if (existingButton) {
@@ -15238,4 +15308,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     window.addEventListener('load', () => {
         setupDetailButton();
     }, { once: true });
+    try {
+        const desktopPartsQuery = window.matchMedia('(min-width: 1025px)');
+        if (desktopPartsQuery.addEventListener) {
+            desktopPartsQuery.addEventListener('change', setupDetailButton);
+        } else if (desktopPartsQuery.addListener) {
+            desktopPartsQuery.addListener(setupDetailButton);
+        }
+    } catch (_) {}
 })();
