@@ -3510,6 +3510,28 @@ globalThis.BM_formatEuro = price => {
                 .bm-bestprice-black-bubble.bm-bestprice-black-bubble-single {
                     right: 0.65rem !important;
                 }
+                .content.setdetails .topprice div[style*="table-cell"]:first-child,
+                .content.setdetails .topprice .bm-topprice-logo-cell {
+                    vertical-align: middle !important;
+                }
+                .content.setdetails .topprice div[style*="table-cell"]:nth-child(2),
+                .content.setdetails .topprice .bm-topprice-price-cell {
+                    vertical-align: middle !important;
+                    padding-right: 5.5rem !important;
+                }
+                .content.setdetails .topprice .small,
+                .content.setdetails .topprice .code {
+                    margin-left: 0.25rem;
+                }
+                .content.setdetails .topprice .bm-effective-info {
+                    color: #ffeb3b !important;
+                    font-size: 0.85rem !important;
+                    font-weight: 600;
+                    margin-left: 0.35rem;
+                    white-space: nowrap;
+                    vertical-align: baseline;
+                    display: inline-block;
+                }
                 .bm-marketplace-deal-badge {
                     display: inline-flex;
                     align-items: center;
@@ -7591,6 +7613,7 @@ globalThis.BM_formatEuro = price => {
                 if (!offerlist) {
                     return {
                         retailerBest: fallbackRetailer,
+                        retailerBestOffer: null,
                         marketplaceBest: null,
                         overallBest: fallbackRetailer,
                         isMarketplaceCheaper: false
@@ -7604,13 +7627,39 @@ globalThis.BM_formatEuro = price => {
                     !priceRow.closest('#soldOut') &&
                     priceRow.dataset.bmSoldOut !== 'true'
                 );
-                const retailerPrices = retailerPriceRows.map(priceRow => {
+                let retailerBestOffer = null;
+                for (const priceRow of retailerPriceRows) {
                     const priceSpan = priceRow.querySelector('span.price');
-                    return getOfferRowPrice(priceRow, priceSpan);
-                }).filter(price => Number.isFinite(price) && price > 0);
-                const retailerBest = retailerPrices.length > 0
-                    ? Math.min(...retailerPrices)
-                    : fallbackRetailer;
+                    const price = getOfferRowPrice(priceRow, priceSpan);
+                    if (!Number.isFinite(price) || price <= 0) continue;
+                    const basePrice = getBaseOfferPrice(priceSpan);
+                    const rate = Number(priceRow.dataset.bmRetailerRate || 0);
+
+                    if (!retailerBestOffer || price < retailerBestOffer.price) {
+                        const wrapper = priceRow.closest('.row.collapse');
+                        const offerLink = priceRow.querySelector(':scope > a') || priceRow.querySelector('a');
+                        const logoImg = wrapper?.querySelector('.goto img[alt]');
+                        const logoAlt = logoImg?.getAttribute('alt') || '';
+                        const logoSrc = logoImg?.getAttribute('src') || '';
+                        const mid = priceRow.getAttribute('data-mid') || wrapper?.querySelector('[data-mid]')?.getAttribute('data-mid') || '';
+                        const hasCode = Boolean(priceSpan.querySelector('.code') || /\[Code\]/i.test(priceSpan.textContent));
+
+                        retailerBestOffer = {
+                            price,
+                            basePrice: (Number.isFinite(basePrice) && basePrice > 0) ? basePrice : price,
+                            rate,
+                            mid,
+                            label: logoAlt || priceRow.dataset.bmRetailerDomain || 'Händler',
+                            logoSrc,
+                            url: offerLink?.href || '',
+                            hasCode,
+                            priceRow,
+                            wrapper,
+                            linkElement: offerLink
+                        };
+                    }
+                }
+                const retailerBest = retailerBestOffer?.price ?? fallbackRetailer;
 
                 const marketplaceRows = Array.from(offerlist.querySelectorAll(
                     '.pricerow[data-bm-marketplace="true"]'
@@ -7625,6 +7674,8 @@ globalThis.BM_formatEuro = price => {
                     const priceSpan = priceRow.querySelector('span.price');
                     const price = getOfferRowPrice(priceRow, priceSpan);
                     if (!Number.isFinite(price) || price <= 0) continue;
+                    const basePrice = getBaseOfferPrice(priceSpan);
+                    const rate = Number(priceRow.dataset.bmRetailerRate || 0);
 
                     if (!marketplaceBest || price < marketplaceBest.price) {
                         const wrapper = priceRow.closest('.row.collapse');
@@ -7656,6 +7707,8 @@ globalThis.BM_formatEuro = price => {
 
                         marketplaceBest = {
                             price,
+                            basePrice: (Number.isFinite(basePrice) && basePrice > 0) ? basePrice : price,
+                            rate,
                             sourceKey,
                             label,
                             url: offerLink?.href || '',
@@ -7673,6 +7726,7 @@ globalThis.BM_formatEuro = price => {
 
                 return {
                     retailerBest,
+                    retailerBestOffer,
                     marketplaceBest,
                     overallBest,
                     isMarketplaceCheaper
@@ -7907,6 +7961,7 @@ globalThis.BM_formatEuro = price => {
                     }
                 }
                 syncGlobalPriceBasisToggle();
+                syncTopPriceEffectiveValues();
             }
 
             function readBrickmergeBestPriceFromDom() {
@@ -7926,7 +7981,9 @@ globalThis.BM_formatEuro = price => {
                     '.content.setdetails .topprice:not(.bm-overall-bestprice)'
                 );
                 if (topPriceEl) {
-                    const parsed = parseEuroValue(topPriceEl.textContent);
+                    const clone = topPriceEl.cloneNode(true);
+                    clone.querySelectorAll('.bm-effective-info, .black-discount-bubble, .bm-bestprice-black-bubble').forEach(el => el.remove());
+                    const parsed = parseEuroValue(clone.textContent);
                     if (Number.isFinite(parsed) && parsed > 0) return parsed;
                 }
                 return null;
@@ -10088,7 +10145,7 @@ globalThis.BM_formatEuro = price => {
                             ['vinted', { label: 'Vinted', logoDomain: 'vinted.de' }],
                             ['leboncoin', { label: 'Leboncoin', logoDomain: 'leboncoin.fr' }],
                             ['stockx', { label: 'StockX', logoDomain: 'stockx.com' }],
-                            ['klarna', { label: 'Klarna', logoDomain: 'klarna.com', manualOnly: true }]
+                            ['klarna', { label: 'Klarna', logoDomain: 'klarna.com' }]
                         ]);
                         const applyApifyMarketplaceResult = (
                             source,
@@ -10175,6 +10232,9 @@ globalThis.BM_formatEuro = price => {
                             const requestUrl = new URL(`${BM_WORKER_URL}/${source}`);
                             requestUrl.searchParams.set('set', setNumber);
                             requestUrl.searchParams.set('cache', 'only');
+                            if (ean) {
+                                requestUrl.searchParams.set('ean', ean);
+                            }
                             if (setTitle) {
                                 requestUrl.searchParams.set('setTitle', setTitle);
                             }
@@ -11225,6 +11285,7 @@ globalThis.BM_formatEuro = price => {
                     [BM_SETTINGS.priceCalculations, syncOfferDiscountBubbles],
                     [BM_SETTINGS.shippingAndSorting, placeSoldOutBadgesAfterShipping],
                     [BM_SETTINGS.priceCalculations, syncOverallBestPriceBox],
+                    [BM_SETTINGS.priceCalculations, syncTopPriceEffectiveValues],
                     [BM_SETTINGS.priceCalculations, syncPriceBasisCalculations],
                     [BM_SETTINGS.priceCalculations, calculateDiscount],
                     [BM_SETTINGS.detailLayout, decoratePriceHistoryLinks],
@@ -14167,7 +14228,12 @@ globalThis.BM_formatEuro = price => {
                                 return;
                             }
 
-                            const text = el.textContent.trim();
+                            let text = el.textContent.trim();
+                            if (el.classList.contains('topprice')) {
+                                const clone = el.cloneNode(true);
+                                clone.querySelectorAll('.bm-effective-info, .black-discount-bubble, .bm-bestprice-black-bubble').forEach(child => child.remove());
+                                text = clone.textContent.trim();
+                            }
                             const priceMatch = text.match(/(\d+[\d\s.,]*)\s*€/);
                             if (priceMatch) {
                                 let priceStr = priceMatch[1].replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
@@ -14473,13 +14539,17 @@ globalThis.BM_formatEuro = price => {
 
                 const existingBlackBubble = bestPriceBox.querySelector('.bm-bestprice-black-bubble');
 
+                const priceCellContent = (marketplaceBest.rate > 0 && marketplaceBest.basePrice)
+                    ? `${formatEuroValue(marketplaceBest.basePrice)} € <span class="bm-effective-info bm-topprice-effective-info" title="Persönlicher Rabatt: ${formatPercentValue(marketplaceBest.rate * 100, 2, 0)}%">(effektiv ${formatEuroValue(marketplaceBest.price)} €)</span>`
+                    : `${formatEuroValue(marketplaceBest.price)} €`;
+
                 bestPriceBox.innerHTML = `
                     <a href="${targetUrl}" ${marketplaceBest.url ? 'target="_blank" rel="noopener noreferrer nofollow"' : ''} class="tooltipster bm-overall-bestprice-link" title="${linkTitle}" style="display: flex; align-items: center; width: 100%; min-height: 35px; text-decoration: none; color: inherit;">
                         <div class="bm-topprice-logo-cell" style="width: 88px; min-width: 88px; max-width: 88px; background-color: #fff; display: flex; align-items: center; justify-content: center; padding: 2px; align-self: stretch; box-sizing: border-box;">
                             ${logoHtml}
                         </div>
                         <div class="bm-topprice-price-cell" style="flex: 1 1 auto; min-width: 0; padding: 0.5rem 5.5rem 0.5rem 0.6rem; vertical-align: middle; box-sizing: border-box;">
-                            ${formatEuroValue(marketplaceBest.price)} €
+                            ${priceCellContent}
                         </div>
                         ${bubbleText ? `
                             <span class="bm-bestprice-bubble" style="position: absolute; border-radius: 1000px; background-color: #b00; color: #fff; font-size: 0.7rem; font-weight: bold; min-height: 28px; min-width: 28px; text-align: center; line-height: 28px; margin: 0; right: 0.65rem;" title="${bubbleTooltip}">
@@ -14510,10 +14580,268 @@ globalThis.BM_formatEuro = price => {
                     };
                 }
                 syncGlobalPriceBasisToggle();
+                syncTopPriceEffectiveValues();
             }
 
             function syncMarketplaceDealBadge() {
                 syncOverallBestPriceBox();
+            }
+
+            function ensureTopPriceOriginalPriceElement(detailsCell, basePrice) {
+                let originalPrice = detailsCell.querySelector(':scope > .bm-original-price, .bm-original-price');
+                if (originalPrice) {
+                    if (basePrice !== null && Number.isFinite(basePrice) && basePrice > 0) {
+                        const formatted = `${formatEuroValue(basePrice)} €`;
+                        if (originalPrice.textContent !== formatted) originalPrice.textContent = formatted;
+                    }
+                    return originalPrice;
+                }
+
+                const priceTextNode = Array.from(detailsCell.childNodes).find(node => {
+                    return node.nodeType === 3 && parseEuroValue(node.textContent) !== null;
+                });
+                if (!priceTextNode) return null;
+
+                originalPrice = document.createElement('span');
+                originalPrice.className = 'bm-original-price';
+                const val = (Number.isFinite(basePrice) && basePrice > 0)
+                    ? basePrice
+                    : parseEuroValue(priceTextNode.textContent);
+                originalPrice.textContent = `${formatEuroValue(val)} €`;
+                priceTextNode.replaceWith(originalPrice);
+                return originalPrice;
+            }
+
+            function syncTopPriceEffectiveValues() {
+                const productPrice = document.querySelector('.content.setdetails .productprice');
+                const retailerTopPrice = productPrice?.querySelector(
+                    '.topprice:not(.bm-overall-bestprice)'
+                );
+                if (!productPrice || !retailerTopPrice) return;
+
+                const personalSettings = loadPersonalDiscountSettings();
+                const personalEnabled = Boolean(personalSettings && personalSettings.enabled !== false);
+                const prices = getBestOfferPrices();
+                const bestRetailer = prices.retailerBestOffer;
+                const uvp = getCurrentSetUvp();
+
+                function restoreNativeRetailer() {
+                    if (retailerTopPrice.dataset.bmOriginalHtml) {
+                        retailerTopPrice.innerHTML = retailerTopPrice.dataset.bmOriginalHtml;
+                        delete retailerTopPrice.dataset.bmOriginalHtml;
+                        delete retailerTopPrice.dataset.bmReplacedRetailer;
+                    }
+                    retailerTopPrice.querySelectorAll('.bm-topprice-effective-info').forEach(el => el.remove());
+                    const redBubble = Array.from(
+                        retailerTopPrice.querySelectorAll('.off, span[style*="position"], div[style*="position"], .bm-bestprice-bubble')
+                    ).find(element => {
+                        if (element.classList.contains('black-discount-bubble') || element.classList.contains('bm-bestprice-black-bubble')) return false;
+                        return /%/.test(element.textContent || '');
+                    });
+                    if (redBubble) {
+                        if (redBubble.dataset.bmOriginalDiscount) {
+                            redBubble.textContent = redBubble.dataset.bmOriginalDiscount;
+                            delete redBubble.dataset.bmOriginalDiscount;
+                        }
+                        if (redBubble.dataset.bmOriginalTitle !== undefined) {
+                            if (redBubble.dataset.bmOriginalTitle) {
+                                redBubble.setAttribute('title', redBubble.dataset.bmOriginalTitle);
+                            } else {
+                                redBubble.removeAttribute('title');
+                            }
+                            delete redBubble.dataset.bmOriginalTitle;
+                        }
+                    }
+                }
+
+                if (!personalEnabled) {
+                    restoreNativeRetailer();
+                    return;
+                }
+
+                let activeBest = bestRetailer;
+                if (!activeBest) {
+                    const anchor = retailerTopPrice.querySelector('a');
+                    const candidates = [];
+                    const img = anchor?.querySelector('img[alt]');
+                    if (img?.alt) candidates.push(img.alt.trim());
+                    const title = anchor?.getAttribute('title') || '';
+                    const titleMatch = title.match(/Link zu (.+?)(?:\s+-\s+|$)/i);
+                    if (titleMatch && titleMatch[1]) candidates.push(titleMatch[1].trim());
+
+                    const midMatch = anchor?.href?.match(/go2m=(\d+)/i) || anchor?.getAttribute('onclick')?.match(/m=(\d+)/i);
+                    const mid = midMatch ? midMatch[1] : null;
+
+                    const configuredEntries = getConfiguredRetailerDiscounts();
+                    let matchedRate = 0;
+                    if (configuredEntries.length > 0) {
+                        for (const [, discount] of configuredEntries) {
+                            if (mid && discount.mid && String(discount.mid) === String(mid)) {
+                                matchedRate = discount.rate;
+                                break;
+                            }
+                            if (discount.aliases && candidates.some(c => discount.aliases.some(a => a.toLowerCase() === c.toLowerCase()))) {
+                                matchedRate = discount.rate;
+                                break;
+                            }
+                        }
+                    }
+                    if (matchedRate > 0) {
+                        const clone = retailerTopPrice.cloneNode(true);
+                        clone.querySelectorAll('.bm-effective-info, .black-discount-bubble, .bm-bestprice-black-bubble').forEach(child => child.remove());
+                        const basePrice = parseEuroValue(clone.textContent);
+                        if (basePrice) {
+                            activeBest = {
+                                price: Math.round((basePrice * (1 - matchedRate) + Number.EPSILON) * 100) / 100,
+                                basePrice,
+                                rate: matchedRate,
+                                mid: mid || '',
+                                label: candidates[0] || 'Händler',
+                                logoSrc: img?.src || '',
+                                url: anchor?.href || '',
+                                hasCode: /\[Code\]/i.test(retailerTopPrice.textContent)
+                            };
+                        }
+                    }
+                }
+
+                if (!activeBest || !activeBest.rate || activeBest.rate <= 0) {
+                    restoreNativeRetailer();
+                    return;
+                }
+
+                const anchor = retailerTopPrice.querySelector(':scope > a') || retailerTopPrice.querySelector('a');
+                if (!anchor) return;
+
+                if (!retailerTopPrice.dataset.bmNativeMid) {
+                    const nativeMidMatch = anchor.href?.match(/go2m=(\d+)/i) || anchor.getAttribute('onclick')?.match(/m=(\d+)/i);
+                    if (nativeMidMatch) {
+                        retailerTopPrice.dataset.bmNativeMid = nativeMidMatch[1];
+                    }
+                }
+                if (!retailerTopPrice.dataset.bmOriginalHtml) {
+                    retailerTopPrice.dataset.bmOriginalHtml = retailerTopPrice.innerHTML;
+                }
+
+                const isDifferentRetailer = Boolean(
+                    activeBest.mid &&
+                    retailerTopPrice.dataset.bmNativeMid &&
+                    activeBest.mid !== retailerTopPrice.dataset.bmNativeMid
+                );
+
+                if (isDifferentRetailer) {
+                    retailerTopPrice.dataset.bmReplacedRetailer = 'true';
+
+                    let discountPercent = 0;
+                    let bubbleTooltip = '';
+                    let bubbleText = '';
+                    if (uvp !== null && uvp > activeBest.price) {
+                        discountPercent = Math.round((1 - (activeBest.price / uvp)) * 100);
+                        bubbleText = `${discountPercent}%`;
+                        bubbleTooltip = `${discountPercent}% unter UVP (${formatEuroValue(uvp - activeBest.price)} € Ersparnis durch persönlichen Rabatt)`;
+                    }
+
+                    let logoHtml = '';
+                    if (activeBest.logoSrc) {
+                        logoHtml = `<img src="${activeBest.logoSrc}" alt="${activeBest.label}" width="88" height="31" style="max-width: 84px; max-height: 31px; width: auto; height: auto; object-fit: contain; vertical-align: middle; display: inline-block;" />`;
+                    } else {
+                        logoHtml = `<span style="color: #222 !important; font-size: 0.95rem !important; font-weight: 700 !important; display: inline-block;">${activeBest.label}</span>`;
+                    }
+
+                    const targetUrl = activeBest.url || '#offerlist';
+                    const linkTitle = `${activeBest.label}-Angebot für ${formatEuroValue(activeBest.basePrice)} € ansehen (effektiv ${formatEuroValue(activeBest.price)} € durch ${formatPercentValue(activeBest.rate * 100, 2, 0)}% Rabatt)`;
+
+                    const existingBlackBubble = retailerTopPrice.querySelector('.bm-bestprice-black-bubble');
+
+                    retailerTopPrice.innerHTML = `
+                        <a href="${targetUrl}" ${activeBest.url ? 'target="_blank" rel="nofollow sponsored"' : ''} class="tooltipster" title="${linkTitle}" style="display: table; width: 100%; min-height: 35px; text-decoration: none; color: inherit;">
+                            <div class="bm-topprice-logo-cell" style="display: table-cell; width: 88px; min-width: 88px; max-width: 88px; background-color: #fff; vertical-align: middle; text-align: center; padding: 2px; box-sizing: border-box;">
+                                ${logoHtml}
+                            </div>
+                            <div class="bm-topprice-price-cell" style="display: table-cell; padding: 0.5rem 5.5rem 0.5rem 0.3rem; vertical-align: middle; box-sizing: border-box;">
+                                <span class="bm-original-price">${formatEuroValue(activeBest.basePrice)} €</span>
+                                ${activeBest.hasCode ? '<span class="small">[Code]</span>' : ''}
+                                <span class="bm-effective-info bm-topprice-effective-info" title="Persönlicher Rabatt: ${formatPercentValue(activeBest.rate * 100, 2, 0)}%">(effektiv ${formatEuroValue(activeBest.price)} €)</span>
+                                ${bubbleText ? `
+                                    <span class="bm-bestprice-bubble" style="position: absolute; border-radius: 1000px; background-color: #b00; color: #fff; font-size: 0.7rem; font-weight: bold; min-height: 28px; min-width: 28px; text-align: center; line-height: 28px; margin: 0; right: 0.65rem;" title="${bubbleTooltip}">
+                                        ${bubbleText}
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </a>
+                    `.trim();
+
+                    if (existingBlackBubble) {
+                        retailerTopPrice.appendChild(existingBlackBubble);
+                    }
+
+                    const link = retailerTopPrice.querySelector('a');
+                    if (link) {
+                        link.onclick = event => {
+                            const targetRow = activeBest.priceRow || activeBest.wrapper;
+                            if (targetRow) {
+                                targetRow.classList.remove('bm-offer-row-highlight');
+                                void targetRow.offsetWidth;
+                                targetRow.classList.add('bm-offer-row-highlight');
+                                window.setTimeout(() => targetRow.classList.remove('bm-offer-row-highlight'), 1800);
+                            }
+                            if (!activeBest.url) {
+                                event.preventDefault();
+                                targetRow?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        };
+                    }
+                } else {
+                    if (retailerTopPrice.dataset.bmReplacedRetailer === 'true') {
+                        retailerTopPrice.innerHTML = retailerTopPrice.dataset.bmOriginalHtml;
+                        delete retailerTopPrice.dataset.bmReplacedRetailer;
+                    }
+
+                    const anchorEl = retailerTopPrice.querySelector(':scope > a') || retailerTopPrice.querySelector('a');
+                    const detailsCell = anchorEl?.querySelector(':scope > div:nth-child(2), .bm-topprice-price-cell') || anchorEl;
+                    if (!detailsCell) return;
+
+                    const stableOriginalPrice = ensureTopPriceOriginalPriceElement(detailsCell, activeBest.basePrice);
+
+                    let effectiveInfo = detailsCell.querySelector(':scope > .bm-topprice-effective-info, .bm-topprice-effective-info');
+                    if (!effectiveInfo) {
+                        effectiveInfo = document.createElement('span');
+                        effectiveInfo.className = 'bm-effective-info bm-topprice-effective-info';
+                    }
+                    const effectiveLabel = `(effektiv ${formatEuroValue(activeBest.price)} €)`;
+                    if (effectiveInfo.textContent !== effectiveLabel) {
+                        effectiveInfo.textContent = effectiveLabel;
+                    }
+                    effectiveInfo.title = `Persönlicher Rabatt: ${formatPercentValue(activeBest.rate * 100, 2, 0)}%`;
+
+                    const codeSpan = detailsCell.querySelector('.small, .code');
+                    if (codeSpan && /\[Code\]/i.test(codeSpan.textContent)) {
+                        placeNodeAfter(codeSpan, effectiveInfo);
+                    } else if (stableOriginalPrice) {
+                        placeNodeAfter(stableOriginalPrice, effectiveInfo);
+                    } else {
+                        detailsCell.appendChild(effectiveInfo);
+                    }
+
+                    const redBubble = Array.from(
+                        retailerTopPrice.querySelectorAll('.off, span[style*="position"], div[style*="position"], .bm-bestprice-bubble')
+                    ).find(element => {
+                        if (element.classList.contains('black-discount-bubble') || element.classList.contains('bm-bestprice-black-bubble')) return false;
+                        return /%/.test(element.textContent || '');
+                    });
+
+                    if (redBubble) {
+                        if (!redBubble.dataset.bmOriginalDiscount) {
+                            redBubble.dataset.bmOriginalDiscount = redBubble.textContent.trim();
+                            redBubble.dataset.bmOriginalTitle = redBubble.getAttribute('title') || '';
+                        }
+                        if (uvp !== null && uvp > activeBest.price) {
+                            const effectiveDiscount = Math.round((1 - (activeBest.price / uvp)) * 100);
+                            redBubble.textContent = `${effectiveDiscount}%`;
+                            redBubble.title = `${effectiveDiscount}% unter UVP (${formatEuroValue(uvp - activeBest.price)} € Ersparnis durch persönlichen Rabatt)`;
+                        }
+                    }
+                }
             }
 
                 // Suche nach dem "bisherigen Bestpreis"
@@ -15246,6 +15574,7 @@ globalThis.BM_formatEuro = price => {
                     if (info.textContent !== label) info.textContent = label;
                     info.title = `Persönlicher Rabatt: ${formatPercentValue(retailerRate * 100, 2, 0)}%`;
                 });
+                syncTopPriceEffectiveValues();
             }
 
             function syncOfferDiscountBubbles() {

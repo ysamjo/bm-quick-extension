@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.51/);
+    assert.match(loaderSource, /@version\s+5\.6\.52/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.51/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.52/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -1059,4 +1059,19 @@ test('tap hand overlay on product images is hidden via CSS and removed from DOM'
     assert.match(tweakerSource, /span\.tap,\s*\.tap\s*\{[\s\S]*?display:\s*none\s*!important/);
     assert.match(tweakerSource, /document\.querySelectorAll\('span\.tap, \.tap'\)\.forEach/);
 });
+
+test('effective prices from personal retailer discounts are visible in topprice green bar', () => {
+    assert.match(tweakerSource, /function syncTopPriceEffectiveValues\(/);
+    assert.match(tweakerSource, /function ensureTopPriceOriginalPriceElement\(/);
+    assert.match(tweakerSource, /\[BM_SETTINGS\.priceCalculations, syncTopPriceEffectiveValues\]/);
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-effective-info\s*\{/);
+    assert.match(tweakerSource, /color:\s*#ffeb3b\s*!important;/);
+    assert.match(tweakerSource, /padding-right:\s*5\.5rem\s*!important;/);
+    assert.match(tweakerSource, /retailerBestOffer/);
+    assert.match(tweakerSource, /bm-topprice-effective-info/);
+    assert.match(tweakerSource, /bm-effective-info bm-topprice-effective-info/);
+    assert.match(tweakerSource, /bmReplacedRetailer/);
+    assert.match(tweakerSource, /bmOriginalHtml/);
+});
+
 
