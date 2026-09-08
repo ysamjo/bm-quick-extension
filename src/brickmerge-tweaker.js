@@ -12359,14 +12359,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
         // Fügt die Rabatt-Zeile ein
     function insertAllTimeDiscountRow(currentPrice, allTimeBest, matchedElement, detailSuffix = '') {
-            // Differenz: Negativ = günstiger, Positiv = teurer
-            let diffPercent = ((currentPrice - allTimeBest) / allTimeBest) * 100;
-            if (Math.abs(diffPercent) < 0.05) diffPercent = 0;
+            // Differenz: Negativ = günstiger, Positiv = teurer, gerundet auf ganze Prozent
+            let diffPercent = Math.round(((currentPrice - allTimeBest) / allTimeBest) * 100);
+            if (!diffPercent || Object.is(diffPercent, -0)) diffPercent = 0;
 
             // Farbe: Rot wenn teurer (positiv), unformatiert/neutral wenn günstiger oder gleich (grün entfernt)
             const color = diffPercent > 0 ? '#b71c1c' : '';
             const signPrefix = diffPercent > 0 ? '+' : '';
-            const percentStr = `${signPrefix}${diffPercent.toFixed(1).replace('.', ',')}%`;
+            const percentStr = `${signPrefix}${diffPercent}%`;
 
             // Als eigene Zeile einfügen: die umliegenden Infozeilen (UVP, 180-Tage-
             // Bestpreis, etc.) sind alle durch "<br />&nbsp;|" voneinander getrennt,

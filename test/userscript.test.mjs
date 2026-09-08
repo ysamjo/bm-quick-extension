@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.42/);
+    assert.match(loaderSource, /@version\s+5\.6\.43/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.42/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.43/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -912,6 +912,8 @@ test('all-time best difference calculation uses calculation price basis and remo
     assert.match(tweakerSource, /const\s+color\s*=\s*diffPercent\s*>\s*0\s*\?\s*['"]#b71c1c['"]\s*:\s*['"]['"]/);
     assert.match(tweakerSource, /value\.style\.removeProperty\(['"]color['"]\)/);
     assert.match(tweakerSource, /getCalculationBestPrice\(\)\s*\?\?\s*\(uniqueSortedPrices/);
+    assert.match(tweakerSource, /Math\.round\(\(\(currentPrice - allTimeBest\) \/ allTimeBest\) \* 100\)/);
+    assert.match(tweakerSource, /\$\{signPrefix\}\$\{diffPercent\}%/);
 });
 
 test('black discount bubble accounts for personal retailer discounts', () => {
