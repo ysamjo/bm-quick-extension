@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.52/);
+    assert.match(loaderSource, /@version\s+5\.6\.53/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.52/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.53/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -1072,6 +1072,31 @@ test('effective prices from personal retailer discounts are visible in topprice 
     assert.match(tweakerSource, /bm-effective-info bm-topprice-effective-info/);
     assert.match(tweakerSource, /bmReplacedRetailer/);
     assert.match(tweakerSource, /bmOriginalHtml/);
+});
+
+test('ATB abbreviation is placed outside anchor tag and not linked to price comparison chart', () => {
+    assert.match(tweakerSource, /anchor\.parentNode\.insertBefore\(atbSpan,\s*anchor\)/);
+    assert.match(tweakerSource, /anchor\.parentNode\.insertBefore\(document\.createTextNode\(': '\),\s*anchor\)/);
+    assert.match(tweakerSource, /event\.target\.closest\?\.\('\.bm-atb-abbr'\)/);
+    assert.match(tweakerSource, /link\.previousElementSibling\?\.classList\?\.contains\('bm-atb-abbr'\)/);
+
+    const isPriceHistoryLinkMatch = tweakerSource.match(/function isPriceHistoryLink\(link\) \{[\s\S]*?\n    \}/);
+    assert.ok(isPriceHistoryLinkMatch);
+    const isPriceHistoryLink = new Function('link', `${isPriceHistoryLinkMatch[0]}; return isPriceHistoryLink(link);`);
+
+    assert.equal(isPriceHistoryLink({
+        classList: { contains: cls => cls === 'bm-price-history-link' },
+        textContent: '14,93 € / 47% (30.04.26, eBay)'
+    }), true);
+
+    assert.equal(isPriceHistoryLink({
+        previousElementSibling: { classList: { contains: cls => cls === 'bm-atb-abbr' } },
+        textContent: '14,93 € / 47% (30.04.26, eBay)'
+    }), true);
+
+    assert.equal(isPriceHistoryLink({
+        textContent: 'Zum Shop'
+    }), false);
 });
 
 

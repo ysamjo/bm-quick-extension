@@ -3753,17 +3753,57 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             atbSpan.style.cursor = 'help';
             atbSpan.textContent = 'ATB';
 
+            atbSpan.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (window.jQuery && typeof window.jQuery.fn?.tooltipster === 'function') {
+                    try {
+                        const $atb = window.jQuery(atbSpan);
+                        if ($atb.hasClass('tooltipstered')) {
+                            try { $atb.tooltipster('show'); } catch { $atb.tooltipster('open'); }
+                        }
+                    } catch {}
+                }
+            });
+
             const parent = textNode.parentNode;
             if (!parent) return;
 
-            if (pre) {
-                parent.insertBefore(document.createTextNode(pre), textNode);
+            const anchor = parent.closest ? parent.closest('a') : (parent.tagName === 'A' ? parent : null);
+            if (anchor && anchor.parentNode) {
+                if (pre && pre.trim()) {
+                    anchor.parentNode.insertBefore(document.createTextNode(pre), anchor);
+                }
+                anchor.parentNode.insertBefore(atbSpan, anchor);
+                anchor.parentNode.insertBefore(document.createTextNode(': '), anchor);
+                anchor.classList.add('bm-price-history-link');
+                anchor.setAttribute('href', '#bm-price-chart-overlay');
+                anchor.setAttribute('aria-controls', 'bm-price-chart-overlay');
+
+                const remainingPost = post.replace(/^[:\s\u00A0]+/, '');
+                if (remainingPost) {
+                    parent.insertBefore(document.createTextNode(remainingPost), textNode);
+                }
+                parent.removeChild(textNode);
+            } else {
+                if (pre) {
+                    parent.insertBefore(document.createTextNode(pre), textNode);
+                }
+                parent.insertBefore(atbSpan, textNode);
+                if (post) {
+                    parent.insertBefore(document.createTextNode(post), textNode);
+                }
+                parent.removeChild(textNode);
             }
-            parent.insertBefore(atbSpan, textNode);
-            if (post) {
-                parent.insertBefore(document.createTextNode(post), textNode);
+
+            if (window.jQuery && typeof window.jQuery.fn?.tooltipster === 'function') {
+                try {
+                    const $atb = window.jQuery(atbSpan);
+                    if (!$atb.hasClass('tooltipstered')) {
+                        $atb.tooltipster();
+                    }
+                } catch {}
             }
-            parent.removeChild(textNode);
         });
 
         const dateWalker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -3875,7 +3915,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         for (const root of roots.filter(Boolean)) {
             const atbAbbr = root.querySelector?.('.bm-atb-abbr');
             if (atbAbbr && !atbAbbr.closest('#bm-price-chart-overlay, #chartWrapper, #bigChart, #chartContainer, #all-time-bestpreis-discount')) {
-                const container = atbAbbr.closest('a') || atbAbbr.parentElement;
+                const anchor = atbAbbr.closest('a') ||
+                    (atbAbbr.nextElementSibling?.tagName === 'A' ? atbAbbr.nextElementSibling : null) ||
+                    atbAbbr.parentElement?.querySelector?.('a.bm-price-history-link');
+                const container = anchor || atbAbbr.parentElement;
                 if (container) {
                     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
                     let node;
@@ -3927,14 +3970,17 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         const existingDetails = Array.from(document.querySelectorAll(
             '.bm-historical-bestprice-detail'
         ));
-        if (!suffix) {
+        if (!suffix || /^\/?\s*\d+\s*%?$/.test(suffix)) {
             existingDetails.forEach(element => element.remove());
             return;
         }
 
         const textNode = findHistoricalBestPriceSidebarTextNode(seedElement);
-        const parent = textNode?.parentElement;
+        let parent = textNode?.parentElement;
         if (!textNode || !parent) return;
+        if (parent.tagName === 'STRONG' && parent.parentElement) {
+            parent = parent.parentElement;
+        }
         removeRelativeDayLabelsFromBestPriceLines(parent);
 
         const expectedText = ` ${suffix}`;
@@ -3952,7 +3998,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
 
         const lineNodes = Array.from(parent.childNodes);
-        const startIndex = lineNodes.indexOf(textNode);
+        const effectiveNode = textNode.parentElement === parent ? textNode : textNode.parentElement;
+        const startIndex = lineNodes.indexOf(effectiveNode);
         let lineText = '';
         for (let index = Math.max(0, startIndex); index < lineNodes.length; index += 1) {
             const node = lineNodes[index];
@@ -6619,6 +6666,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     // Historische Preisangaben öffnen dieselbe Preisverlaufsansicht wie
     // Brickmerges eigener Chart-Schalter.
     function isPriceHistoryLink(link) {
+        if (!link) return false;
+        if (link.classList?.contains('bm-price-history-link')) return true;
+        if (link.previousElementSibling?.classList?.contains('bm-atb-abbr')) return true;
         const text = link?.textContent || '';
         return /(?:bisheriger\s+bestpreis|all-time-bestpreis|\batb\b|180\s*tage\s+bestpreis|preis\s+im\s+vergleich\s+zum\s+atb|differenz\s+zum\s+atb)/i.test(text);
     }
@@ -6638,6 +6688,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         document.documentElement.dataset.bmPriceHistoryBound = 'true';
 
         document.addEventListener('click', event => {
+            if (event.target.closest?.('.bm-atb-abbr')) {
+                return;
+            }
             const link = event.target.closest?.('a');
             if (!isPriceHistoryLink(link)) return;
             event.preventDefault();
@@ -12949,12 +13002,18 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             for (const root of roots) {
                 const atbAbbr = root.querySelector?.('.bm-atb-abbr');
                 if (atbAbbr) {
-                    const container = atbAbbr.closest('a') || atbAbbr.parentElement;
+                    const anchor = atbAbbr.closest('a') ||
+                        (atbAbbr.nextElementSibling?.tagName === 'A' ? atbAbbr.nextElementSibling : null) ||
+                        atbAbbr.parentElement?.querySelector?.('a.bm-price-history-link');
+                    const container = anchor || atbAbbr.parentElement;
+                    const textToParse = anchor
+                        ? `ATB ${anchor.textContent}`
+                        : container?.textContent;
                     const historicalInfo = parseHistoricalBestPriceText(
-                        container?.textContent
+                        textToParse
                     );
                     if (historicalInfo) {
-                        return { element: container, ...historicalInfo };
+                        return { element: anchor || container, ...historicalInfo };
                     }
                 }
 
