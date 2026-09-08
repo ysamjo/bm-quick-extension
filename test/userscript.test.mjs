@@ -37,7 +37,7 @@ const gmCompatSource = fs.readFileSync(
 );
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.48/);
+    assert.match(loaderSource, /@version\s+5\.6\.49/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +110,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.48/);
+    assert.match(metaGptLoaderSource, /@version\s+5\.6\.49/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -281,7 +281,7 @@ test('resources include a direct Mydealz search for the detected LEGO set', () =
     assert.match(tweakerSource, /name: "Mydealz"/);
     assert.match(
         tweakerSource,
-        /https:\/\/www\.mydealz\.de\/search\?q=\$\{encodeURIComponent\(`"\$\{setNum\}"`\)\}/
+        /https:\/\/www\.mydealz\.de\/search\?q=\$\{encodeURIComponent\(`Lego "\$\{setNum\}"`\)\}/
     );
 });
 
