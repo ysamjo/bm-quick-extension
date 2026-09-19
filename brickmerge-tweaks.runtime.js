@@ -6738,106 +6738,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     display: none !important;
                 }
 
-                /* Händler-, Themen- und Steinelisten zweispaltig mit gleich hohen Kacheln */
-                html.bm-android-app .wrapper.merchants,
-                html.bm-android-app .wrapper.themen,
-                html.bm-android-app .wrapper.brickstores {
-                    display: grid !important;
-                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                    gap: 10px !important;
-                    align-items: stretch !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    margin: 0 auto !important;
-                    padding: 0.5rem 0.75rem 1.5rem !important;
-                    float: none !important;
-                    box-sizing: border-box !important;
-                }
-                html.bm-android-app .wrapper.merchants::before,
-                html.bm-android-app .wrapper.merchants::after,
-                html.bm-android-app .wrapper.themen::before,
-                html.bm-android-app .wrapper.themen::after,
-                html.bm-android-app .wrapper.brickstores::before,
-                html.bm-android-app .wrapper.brickstores::after {
-                    display: none !important;
-                    content: none !important;
-                }
-                html.bm-android-app .wrapper.merchants .slide,
-                html.bm-android-app .wrapper.themen .slide,
-                html.bm-android-app .wrapper.brickstores .slide {
-                    display: flex !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    min-width: 0 !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    float: none !important;
-                    border: none !important;
-                    box-sizing: border-box !important;
-                }
-                html.bm-android-app .wrapper.merchants .slide a,
-                html.bm-android-app .wrapper.themen .slide a,
-                html.bm-android-app .wrapper.brickstores .slide a {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    width: 100% !important;
-                    height: 100% !important;
-                    min-height: 96px !important;
-                    margin: 0 !important;
-                    padding: 10px 8px 8px !important;
-                    border: 1px solid #E2E8F0 !important;
-                    border-radius: 12px !important;
-                    background: #FFFFFF !important;
-                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
-                    box-sizing: border-box !important;
-                    text-align: center !important;
-                    text-decoration: none !important;
-                }
-                html.bm-android-app .wrapper.merchants .slide .img,
-                html.bm-android-app .wrapper.themen .slide .img,
-                html.bm-android-app .wrapper.brickstores .slide .img {
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    width: 100% !important;
-                    height: 44px !important;
-                    margin: 0 0 6px !important;
-                    float: none !important;
-                }
-                html.bm-android-app .wrapper.merchants .slide img,
-                html.bm-android-app .wrapper.themen .slide img,
-                html.bm-android-app .wrapper.brickstores .slide img {
-                    display: block !important;
-                    width: auto !important;
-                    max-width: 100% !important;
-                    height: auto !important;
-                    max-height: 40px !important;
-                    margin: 0 auto !important;
-                    object-fit: contain !important;
-                }
-                html.bm-android-app .wrapper.merchants .slide .img img,
-                html.bm-android-app .wrapper.themen .slide .img img,
-                html.bm-android-app .wrapper.brickstores .slide .img img {
-                    margin: 0 !important;
-                }
-                html.bm-android-app .wrapper.merchants .slide a > span:last-child,
-                html.bm-android-app .wrapper.themen .slide a > span:last-child,
-                html.bm-android-app .wrapper.brickstores .slide a > span:last-child {
-                    display: block !important;
-                    margin-top: auto !important;
-                    font-size: 12px !important;
-                    font-weight: 600 !important;
-                    line-height: 1.25 !important;
-                    color: #1E293B !important;
-                }
-                html.bm-android-app .wrapper.merchants .slide a:active,
-                html.bm-android-app .wrapper.themen .slide a:active,
-                html.bm-android-app .wrapper.brickstores .slide a:active {
-                    background: #F8FAFC !important;
-                    transform: scale(0.97) !important;
-                }
 
                 /* Startseite (Preisvergleichs-Seite): SEO-Content raus & Kacheln ab Deal-Alarm zentriert */
                 .content.isIntro .setdetails.noMarg,
@@ -6889,8 +6789,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     display: flex !important;
                     flex-wrap: wrap !important;
                 }
-
-                /* Händler-, Themen- und Steinelisten zweispaltig mit gleich hohen Kacheln */
 
                 /* Händler-, Themen- und Steinelisten zweispaltig mit gleich hohen Kacheln */
                 html.bm-android-app .wrapper.merchants,
@@ -7058,86 +6956,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     transform: scale(0.98) !important;
                 }
 
-                /* Händler-, Themen- und Steinelisten zweispaltig mit gleich hohen Kacheln */
-                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) {
-                    display: grid !important;
-                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                    gap: 10px !important;
-                    align-items: stretch !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    margin: 0 auto !important;
-                    padding: 0.5rem 0.75rem 1.5rem !important;
-                    float: none !important;
-                    box-sizing: border-box !important;
-                }
-                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores)::before,
-                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores)::after {
-                    display: none !important;
-                    content: none !important;
-                }
-                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide {
-                    display: flex !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    min-width: 0 !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    float: none !important;
-                    border: none !important;
-                    box-sizing: border-box !important;
-                }
-                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide a {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    width: 100% !important;
-                    height: 100% !important;
-                    min-height: 96px !important;
-                    margin: 0 !important;
-                    padding: 10px 8px 8px !important;
-                    border: 1px solid #E2E8F0 !important;
-                    border-radius: 12px !important;
-                    background: #FFFFFF !important;
-                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
-                    box-sizing: border-box !important;
-                    text-align: center !important;
-                    text-decoration: none !important;
-                }
-                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide .img {
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    width: 100% !important;
-                    height: 44px !important;
-                    margin: 0 0 6px !important;
-                    float: none !important;
-                }
-                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide img {
-                    display: block !important;
-                    width: auto !important;
-                    max-width: 100% !important;
-                    height: auto !important;
-                    max-height: 40px !important;
-                    margin: 0 auto !important;
-                    object-fit: contain !important;
-                }
-                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide .img img {
-                    margin: 0 !important;
-                }
-                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide a > span:last-child {
-                    display: block !important;
-                    margin-top: auto !important;
-                    font-size: 12px !important;
-                    font-weight: 600 !important;
-                    line-height: 1.25 !important;
-                    color: #1E293B !important;
-                }
-                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide a:active {
-                    background: #F8FAFC !important;
-                    transform: scale(0.97) !important;
-                }
 
 
                 /* Schwarze Bubble auf Kachelansicht (Abstand zum 2. besten Angebot) */
