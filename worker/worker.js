@@ -1,4 +1,4 @@
-import { isCompleteEbaySetTitle, hasFrenchAccessorySignal } from "./lib/ebay-title-filter.js";
+import { isCompleteEbaySetTitle, hasFrenchAccessorySignal, HARD_EXCLUSION_PATTERN } from "./lib/ebay-title-filter.js";
 import { handleEbayDrafts } from "./ebay-drafts.js";
 import { handleEbayOAuth } from "./ebay-oauth.js";
 
@@ -240,7 +240,6 @@ function getKleinanzeigenCondition(ad) {
   );
   return isExactlyNew ? "new" : "not-new-or-unknown";
 }
-const INCOMPLETE_SET_HARD_EXCLUSION_PATTERN = /\b(?:ersatzteile?|einzelteile?|kleinteile?|anleitungen?|bauanleitungen?|manuals?|instructions?|stickers?|aufkleber|leerkarton|ovp\s*leer|leere\s+(?:ovp|box|verpackung)|box\s*only|empty\s*box|unvollst[aä]ndig|incomplete|incomplet(?:e|es|s)?|ohne\s+(?:figuren|minifiguren|steine|teile|anleitung|ovp)|sans\s+(?:figurines?|minifigurines?|pi[eè]ces?|briques?|bo[iî]te|notice)|moc|custom|kompatibel|compatible|konvolut|parts?\s*only|minifig(?:ur(?:e|en)?|ure?s?)\s*only|figurines?\s+seules?|minifigurines?\s+seules?|pi[eè]ces?\s+d[eé]tach[eé]es?|lot\s+de\s+pi[eè]ces?|pi[eè]ces?\s+seules?|autocollants?|vitrinen?|schauk[aä]sten?|schutzhauben?|staubschutz|display\s*(?:case|box|stand)|showcase|acryl(?:glas)?(?:box|haube|vitrine)?|acrylic\s*(?:case|box|display)|pr[eé]sentoir(?:s)?|support(?:s)?\s+(?:mural|d['’]?exposition)|socle(?:s)?\s+d['’]?exposition|bo[iî]te(?:s)?\s+(?:acrylique|de\s+protection|vide|seule)|housse(?:s)?\s+anti[- ]?poussi[eè]re|protection(?:s)?\s+anti[- ]?poussi[eè]re|light(?:ing)?[- ]?(?:kits?|sets?)|(?:led[- ]?)?licht[- ]?(?:sets?|kits?)|(?:led[- ]?)?beleuchtungs?[- ]?(?:sets?|kits?)|led[- ]?(?:beleuchtung|leuchten|lampen|strip|streifen|kits?|sets?)|(?:led[- ]?)?kit[- ]?led|kit(?:[- ]*(?:d['’\s]*|de\s*)?|s\s+)?(?:led|lumi[eè]res?|[eé]clairages?|light(?:ing)?)|(?:led[- ]?)?[eé]clairage(?:s)?(?:\s+led)?|(?:led[- ]?)?lumi[eè]re(?:s)?(?:\s+led)?|t[eé]l[eé]command[eé](?:s)?|nur\s+(?:das\s+)?(?:licht|led|beleuchtung)|(?:ohne|kein|sans|without)\s+(?:lego|modell|briques?|mod[eè]le)|(?:lego|modell|briques?|mod[eè]le)\s+(?:nicht\s+(?:enthalten|inklusive)|non\s+inclus(?:es?)?|not\s+included)|briksmax|lightailing|light\s*my\s*bricks|game\s*of\s*bricks|brickbling|yeabricks|kyglaring|vonado|lelightgo|brickshine|wandhalterung|wall\s*mount|(?:bausteine?|klemmbausteine?)[- ]?(?:set|bausatz)?\s*(?:wie|ähnlich|ahnlich)|(?:wie|ähnlich|ahnlich)\s+lego|(?:nicht\s+von\s+lego|kein\s+lego|keine\s+lego|not\s+lego|no\s+lego|nicht\s+original\s+lego)|(?:building[- ]?)?block[- ]?sets?|china[- ]?(?:klon|clone)s?|(?:lego[- ]?)?plagiat(?:e)?|(?:fake|kopie)[- ]?lego|knock[- ]?offs?|bootlegs?|mould[- ]?king|mold[- ]?king|cobi|lepin|bluebrixx|blue[- ]?brixx|cada|ca[- ]?da|xingbao|sembo(?:\s*blocks?)?|sluban|qman|keeppley|panlos(?:\s*brick)?|reobrix|pantasy|funwhole|decool|forange|leji|sy\s*blocks?|wange\s*(?:blocks?|bricks?|set|bausteine?)|kazi\s*(?:blocks?|bricks?|set|bausteine?)|star\s*plan|space\s*wars)\b/i;
 const INCOMPLETE_SET_ONLY_ACCESSORY_PATTERN = /\b(?:nur|lediglich|ausschlie(?:ß|ss)lich|only)\s+(?:die\s+|das\s+|den\s+)?(?:figuren?|minifig(?:ur(?:e|en)?|ure?s?)|steine|teile|parts?|karton|box|ovp|verpackung|anleitung)\b/i;
 const INCOMPLETE_SET_ACCESSORY_TITLE_PATTERN = /\b(?:minifig(?:ur(?:e|en)?|ure?s?)|figuren?|steine|teile|parts?|karton|box|ovp|verpackung|anleitung)\b/i;
 const INCOMPLETE_SET_COMPLETE_SIGNAL_PATTERN = /\b(?:set|komplett|vollst[aä]ndig|complete|sealed|ovp|neu|new|ungeöffnet|unopened)\b/i;
@@ -248,7 +247,7 @@ const INCOMPLETE_SET_COMPLETE_SIGNAL_PATTERN = /\b(?:set|komplett|vollst[aä]ndi
 function hasIncompleteSetSignal(title, description) {
   const titleText = String(title || "");
   const searchableText = `${titleText} ${String(description || "")}`;
-  if (INCOMPLETE_SET_HARD_EXCLUSION_PATTERN.test(searchableText)) return true;
+  if (HARD_EXCLUSION_PATTERN.test(searchableText)) return true;
   if (hasFrenchAccessorySignal(searchableText)) return true;
   if (INCOMPLETE_SET_ONLY_ACCESSORY_PATTERN.test(searchableText)) return true;
   return INCOMPLETE_SET_ACCESSORY_TITLE_PATTERN.test(titleText) && !INCOMPLETE_SET_COMPLETE_SIGNAL_PATTERN.test(titleText);
