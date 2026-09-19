@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker, { __test, legacyEbayWorker } from '../worker.js';
+import {
+  hasMinifigureOnlySignal,
+  hasExactSetNumber,
+  isCompleteEbaySetTitle
+} from '../lib/ebay-title-filter.js';
 
 const context = { waitUntil() {} };
 globalThis.caches ??= {
@@ -21,6 +26,23 @@ test('health reports version and KV binding', async () => {
   assert.equal(body.ok, true);
   assert.equal(body.version, '2.5.5');
   assert.equal(body.cache, 'edge+kv');
+});
+
+test('Brickmerge parser returns the cheapest commercial item price without shipping', () => {
+  const html = `
+    <div id="offerlist">
+      <div class="pricerow"><span class="price lowest">96,99 &euro;</span></div>
+      <div class="pricerow"><span class="price">99,95 &euro;</span></div>
+      <div class="pricerow"><span class="price">109,99 &euro;</span></div>
+      <span title="99,95 &euro; + Versand 3,95 &euro;"></span>
+    </div>
+    <div id="SoldOutContainer"></div>`;
+  const result = __test.parseBrickmergePricePage(html, '21328', 'https://www.brickmerge.de/21328');
+  assert.equal(result.found, true);
+  assert.equal(result.cheapest.price, 96.99);
+  assert.equal(result.cheapest.total, 96.99);
+  assert.equal(result.cheapest.shipping, null);
+  assert.deepEqual(result.offers.map((offer) => offer.price), [96.99, 99.95, 109.99]);
 });
 
 test('BrickLink money parser handles German and international EUR formats', () => {
@@ -153,6 +175,15 @@ test('eBay title filter rejects display accessories and minifigure-only offers',
     'Acryl Vitrine Display Case für LEGO Technic 42154',
     'Display Stand für LEGO 42154 Ford GT',
     'LED Beleuchtungsset für LEGO Icons 10333',
+    'LED-Beleuchtungsset für LEGO 10333',
+    'LED Beleuchtungs-Set passend für LEGO 42154',
+    'LED Beleuchtung für LEGO 10333',
+    'Licht-Set für LEGO 42154',
+    'LED Licht Set für LEGO Icons 10333',
+    'Lichtset für LEGO 42154',
+    'Briksmax Licht-Set für LEGO 42154',
+    'Light Set for LEGO 10333',
+    'Light Kit für LEGO 42154',
     'LEGO 10333 Minifiguren Set komplett neu',
     'Alle 11 Minifiguren aus LEGO Set 10333 neu'
   ];
@@ -174,6 +205,105 @@ test('eBay title filter rejects display accessories and minifigure-only offers',
   ));
 });
 
+test('eBay title filter hasMinifigureOnlySignal detects static and dynamic signals efficiently', () => {
+  const staticSignals = [
+    'LEGO Minifiguren Set neu',
+    'LEGO Minifiguren Set OVP',
+    'Lego minifigures pack 5',
+    'Star Wars Figuren Sammlung',
+    'LEGO Minifiguren Lot von 10',
+    'Set of 4 minifigures LEGO',
+    'Sammlung von LEGO Minifiguren',
+    'Alle 11 Minifiguren komplett',
+    'All 4 minifigures new'
+  ];
+  for (const title of staticSignals) {
+    assert.equal(hasMinifigureOnlySignal(title, '10333'), true, `Static signal should match: ${title}`);
+    assert.equal(hasMinifigureOnlySignal(title, null), true, `Static signal should match without set: ${title}`);
+  }
+
+  assert.equal(hasMinifigureOnlySignal('Minifigur aus LEGO Set 10333', '10333'), true);
+  assert.equal(hasMinifigureOnlySignal('Figuren aus dem Set 10333', '10333'), true);
+  assert.equal(hasMinifigureOnlySignal('Minifiguren from LEGO set 42154', '42154'), true);
+  assert.equal(hasMinifigureOnlySignal('Minifigur aus LEGO Set 10333', '42154'), false);
+
+  const validSetTitles = [
+    'LEGO Icons 10333 Barad-dur Neu OVP mit 11 Minifiguren',
+    'LEGO Technic 42154 Ford GT 2022 Neu OVP komplettes Set',
+    'LEGO Star Wars 75192 UCS Millennium Falcon'
+  ];
+  for (const title of validSetTitles) {
+    assert.equal(hasMinifigureOnlySignal(title, '10333'), false, `Valid title should not match: ${title}`);
+  }
+
+  assert.equal(hasMinifigureOnlySignal('', '10333'), false);
+  assert.equal(hasMinifigureOnlySignal(null, '10333'), false);
+  assert.equal(hasMinifigureOnlySignal(undefined, '10333'), false);
+  assert.equal(hasMinifigureOnlySignal('Some random title', null), false);
+  assert.equal(hasMinifigureOnlySignal('Some random title', undefined), false);
+  assert.equal(hasMinifigureOnlySignal('Minifigur aus Set 10333', 10333), true);
+  assert.equal(hasMinifigureOnlySignal('Minifigur vom LEGO Set 10333', '10333'), true);
+  assert.equal(hasMinifigureOnlySignal('Minifigures from the LEGO Set 10333', '10333'), true);
+
+  // Verify true LRU cache behavior:
+  // Populate cache with 50 distinct sets (2000..2049)
+  for (let i = 2000; i < 2050; i++) {
+    assert.equal(hasMinifigureOnlySignal(`Minifigur aus Set ${i}`, String(i)), true);
+  }
+  // Re-access set 2000 to promote it to MRU (2001 is now the oldest)
+  assert.equal(hasMinifigureOnlySignal('Minifigur aus Set 2000', '2000'), true);
+  // Add 51st set (2050) which should evict 2001, not 2000
+  assert.equal(hasMinifigureOnlySignal('Minifigur aus Set 2050', '2050'), true);
+  // Set 2000 must still be matched efficiently
+  assert.equal(hasMinifigureOnlySignal('Minifigur aus Set 2000', '2000'), true);
+
+  // hasExactSetNumber verification & caching
+  assert.equal(hasExactSetNumber('LEGO 10333 Barad-dur', 10333), true);
+  assert.equal(hasExactSetNumber('LEGO 10333 Barad-dur', '10333'), true);
+  assert.equal(hasExactSetNumber('LEGO 103334 Fake Set', '10333'), false);
+  assert.equal(hasExactSetNumber(null, '10333'), false);
+  assert.equal(hasExactSetNumber('LEGO 10333', null), false);
+  assert.equal(hasExactSetNumber('LEGO 10333', ''), false);
+
+  // isCompleteEbaySetTitle robustness with numeric setNumber, numeric title, and null inputs
+  assert.equal(isCompleteEbaySetTitle('LEGO Icons 10333 Barad-dur Neu OVP', 10333), true);
+  assert.equal(isCompleteEbaySetTitle(10333, '10333'), true);
+  assert.equal(isCompleteEbaySetTitle('LEGO null Set', null), false);
+  assert.equal(isCompleteEbaySetTitle('LEGO 10333 Set', ''), false);
+  assert.equal(isCompleteEbaySetTitle(null, '10333'), false);
+  assert.equal(isCompleteEbaySetTitle(undefined, '10333'), false);
+});
+
+test('eBay and Kleinanzeigen filter rejects alternative brick brands, clones, and replica titles', () => {
+  const rejectedTitles = [
+    'Mould King 13056 Star Destroyer Bausatz 42154',
+    'Mold King Technic 42154 Supercar',
+    'Cobi 2540 Panzer Bausteine-Set wie LEGO 42154',
+    'Lepin 05007 Star Plan Falcon Block Set 42154',
+    'Custom Set kompatibel mit LEGO 10333',
+    'BlueBrixx Burg Blaustein Block Set 10333',
+    'CaDA Master C61042 Bausatz 42154',
+    'Space Wars Millennium Falcon 42154 Block Set',
+    'Bausteine-Set wie LEGO Technic 42154',
+    'Klemmbausteine-Set ähnlich LEGO 10333',
+    'Technic 42154 kein LEGO original',
+    'Building Block Set 42154',
+    'China-Klon 42154 Supercar',
+    'LEGO Plagiat 10333 Barad-dur',
+    'Panlos 613001 Block Set 10333'
+  ];
+  rejectedTitles.forEach((title) => {
+    assert.equal(
+      __test.isCompleteEbaySetTitle(title, title.includes('42154') ? '42154' : '10333'),
+      false,
+      `Should reject eBay title: ${title}`
+    );
+  });
+  assert.equal(__test.hasIncompleteSetSignal('Mould King 42154', 'Tolles Modell neu'), true);
+  assert.equal(__test.hasIncompleteSetSignal('Cobi Panzer 42154', 'Bausteine-Set wie LEGO'), true);
+  assert.equal(__test.hasIncompleteSetSignal('LEGO Technic 42154', 'neu OVP ungeöffnet'), false);
+});
+
 test('eBay France rejects French lighting, display and incomplete-set titles', () => {
   const relevant = [
     'LEGO Star Wars 75302 La Navette Impériale neuf scellé',
@@ -181,6 +311,7 @@ test('eBay France rejects French lighting, display and incomplete-set titles', (
   ];
   const irrelevant = [
     "Kit d'éclairage LED pour LEGO 75302",
+    'Kit LED Télécommandé pour LEGO Harry Potter ¤ Tour du Grand Escalier ¤76454¤NEUF',
     'Lumière LED pour LEGO Star Wars 75302',
     'Lampe pour LEGO Ideas 21330',
     'Vitrine acrylique pour LEGO Ideas 21330',
@@ -199,15 +330,19 @@ test('eBay France rejects French lighting, display and incomplete-set titles', (
     true,
     title
   ));
-  irrelevant.forEach((title) => assert.equal(
-    __test.isCompleteEbaySetTitle(
-      title,
-      title.includes('75302') ? '75302' : '21330',
-      'fr'
-    ),
-    false,
-    title
-  ));
+  irrelevant.forEach((title) => {
+    const setNum = title.includes('76454') ? '76454' : title.includes('75302') ? '75302' : '21330';
+    assert.equal(
+      __test.isCompleteEbaySetTitle(title, setNum, 'fr'),
+      false,
+      `Should reject in fr locale: ${title}`
+    );
+    assert.equal(
+      __test.isCompleteEbaySetTitle(title, setNum, 'de'),
+      false,
+      `Should reject in de locale: ${title}`
+    );
+  });
 });
 
 test('eBay minifigure filter accepts the exact BrickLink ID only', () => {

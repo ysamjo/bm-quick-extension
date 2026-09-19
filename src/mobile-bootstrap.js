@@ -6,6 +6,14 @@
         franceDefault: true
     });
 
+    if (typeof globalThis.GM_xmlhttpRequest !== 'function') {
+        if (typeof GM_xmlhttpRequest === 'function') {
+            globalThis.GM_xmlhttpRequest = GM_xmlhttpRequest;
+        } else if (typeof globalThis.GM?.xmlHttpRequest === 'function') {
+            globalThis.GM_xmlhttpRequest = globalThis.GM.xmlHttpRequest;
+        }
+    }
+
     const STORAGE_PREFIX = 'brickmerge-mobile-storage:';
     const ASSET_BASE =
         'https://raw.githubusercontent.com/ysamjo/bm-quick-extension/main/';

@@ -51,6 +51,12 @@ Worker verwendet dafür das Secret `SERPAPI_API_KEY`, fragt deutsche
 Google-Shopping-Ergebnisse ab und speichert positive Treffer zwei Stunden im
 gemeinsamen Cache. In die Offerlist gelangt nur der günstigste passende Treffer.
 
+`/brickmerge?set=...` ruft die Brickmerge-Detailseite serverseitig über den
+Cloudflare Worker ab und liefert den günstigsten dort gelisteten gewerblichen
+Artikelpreis. Versandkosten werden bewusst nicht addiert; der Wert dient als
+reiner Brickmerge-Preisvergleich. Positive Ergebnisse werden zwei Stunden am
+Edge gecacht, leere Ergebnisse 20 Minuten.
+
 Klarna wird über den deutschen, EAN-basierten Apify-Actor
 `m3web/german-price-comparison-actor` abgefragt. Dieser liefert Händlerangebote
 aus dem deutschen Klarna-Preisvergleich; der Händlername wird in die Offerlist

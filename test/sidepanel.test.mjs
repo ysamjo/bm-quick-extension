@@ -594,3 +594,136 @@ test('background onUpdated detects set immediately from URL and supports SPA rou
     assert.ok(sentTabMessages.some(m => m.tabId === 202 && m.msg?.type === 'bm-detect-page-now'));
 });
 
+test('popup search opens floating sidebar on active tab by default and supports fallback and options', async () => {
+    const popupHtml = fs.readFileSync(
+        new URL('../popup/popup.html', import.meta.url),
+        'utf8'
+    );
+    const popupJs = fs.readFileSync(
+        new URL('../popup/popup.js', import.meta.url),
+        'utf8'
+    );
+    const optionsHtml = fs.readFileSync(
+        new URL('../options/options.html', import.meta.url),
+        'utf8'
+    );
+    const sharedSource = fs.readFileSync(
+        new URL('../shared.js', import.meta.url),
+        'utf8'
+    );
+
+    assert.match(popupHtml, /<script src="\.\.\/platform-config\.js"><\/script>/);
+    assert.match(popupHtml, /<script src="\.\.\/shared\.js"><\/script>/);
+    assert.match(popupHtml, /<script src="popup\.js"><\/script>/);
+    assert.match(optionsHtml, /data-setting="searchInSidebar"/);
+    assert.match(optionsHtml, /Suche in Seitenleiste öffnen/);
+
+    const sharedContext = vm.createContext({ globalThis: {} });
+    vm.runInContext(sharedSource, sharedContext);
+    assert.equal(sharedContext.globalThis.BM_EXTENSION_DEFAULTS.searchInSidebar, true);
+
+    const runPopupSearch = async ({ settings = {}, tab = { id: 77 }, tabSendError = false }) => {
+        let formSubmitListener = null;
+        let closed = false;
+        const createdTabs = [];
+        const sentTabMessages = [];
+        const runtimeMessages = [];
+
+        const mockForm = {
+            addEventListener(type, listener) {
+                if (type === 'submit') formSubmitListener = listener;
+            }
+        };
+        const mockInput = { value: 'LEGO Orchidee 10311' };
+        const mockOptionsBtn = { addListener() {}, addEventListener() {} };
+
+        const popupContext = vm.createContext({
+            URL,
+            BM_mergeSettings: sharedContext.globalThis.BM_mergeSettings,
+            document: {
+                getElementById(id) {
+                    if (id === 'search-form') return mockForm;
+                    if (id === 'query') return mockInput;
+                    if (id === 'open-options') return mockOptionsBtn;
+                    return null;
+                }
+            },
+            window: {
+                close() { closed = true; }
+            },
+            chrome: {
+                storage: {
+                    local: {
+                        async get() { return { settings }; }
+                    }
+                },
+                tabs: {
+                    async query() { return tab ? [tab] : []; },
+                    async sendMessage(tabId, message) {
+                        if (tabSendError) throw new Error('Tab unavailable');
+                        sentTabMessages.push({ tabId, message });
+                        return { ok: true };
+                    },
+                    async create(options) { createdTabs.push(options); }
+                },
+                runtime: {
+                    async sendMessage(message) {
+                        runtimeMessages.push(message);
+                        return { ok: true };
+                    },
+                    openOptionsPage() {}
+                }
+            }
+        });
+
+        vm.runInContext(popupJs, popupContext);
+        assert.equal(typeof formSubmitListener, 'function');
+
+        let prevented = false;
+        await formSubmitListener({ preventDefault() { prevented = true; } });
+        assert.equal(prevented, true);
+
+        return { closed, createdTabs, sentTabMessages, runtimeMessages };
+    };
+
+    // 1. Default settings -> opens floating sidebar on active tab
+    const resDefault = await runPopupSearch({});
+    assert.equal(resDefault.closed, true);
+    assert.equal(resDefault.createdTabs.length, 0);
+    assert.equal(resDefault.sentTabMessages.length, 1);
+    assert.deepEqual(JSON.parse(JSON.stringify(resDefault.sentTabMessages[0])), {
+        tabId: 77,
+        message: {
+            type: 'bm-show-floating-sidebar',
+            product: {
+                setNumber: 'LEGO Orchidee 10311',
+                name: 'LEGO Orchidee 10311',
+                query: 'LEGO Orchidee 10311'
+            }
+        }
+    });
+    assert.equal(resDefault.runtimeMessages.length, 1);
+    assert.deepEqual(JSON.parse(JSON.stringify(resDefault.runtimeMessages[0])), {
+        type: 'bm-page-product-detected',
+        tabId: 77,
+        product: {
+            setNumber: 'LEGO Orchidee 10311',
+            name: 'LEGO Orchidee 10311',
+            query: 'LEGO Orchidee 10311'
+        }
+    });
+
+    // 2. When active tab fails (e.g. chrome:// internal page) -> falls back to new tab
+    const resFallback = await runPopupSearch({ tabSendError: true });
+    assert.equal(resFallback.closed, true);
+    assert.equal(resFallback.createdTabs.length, 1);
+    assert.match(resFallback.createdTabs[0].url, /brickmerge\.de\/\?find=LEGO\+Orchidee\+10311/);
+
+    // 3. When searchInSidebar is explicitly disabled -> opens new tab directly
+    const resDisabled = await runPopupSearch({ settings: { searchInSidebar: false } });
+    assert.equal(resDisabled.closed, true);
+    assert.equal(resDisabled.sentTabMessages.length, 0);
+    assert.equal(resDisabled.createdTabs.length, 1);
+    assert.match(resDisabled.createdTabs[0].url, /brickmerge\.de\/\?find=LEGO\+Orchidee\+10311/);
+});
+

@@ -6,6 +6,14 @@
         franceDefault: true
     });
 
+    if (typeof globalThis.GM_xmlhttpRequest !== 'function') {
+        if (typeof GM_xmlhttpRequest === 'function') {
+            globalThis.GM_xmlhttpRequest = GM_xmlhttpRequest;
+        } else if (typeof globalThis.GM?.xmlHttpRequest === 'function') {
+            globalThis.GM_xmlhttpRequest = globalThis.GM.xmlHttpRequest;
+        }
+    }
+
     const STORAGE_PREFIX = 'brickmerge-mobile-storage:';
     const ASSET_BASE =
         'https://raw.githubusercontent.com/ysamjo/bm-quick-extension/main/';
@@ -141,10 +149,14 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
     priceCalculations: true,
     shippingAndSorting: true,
     selectionPopup: true,
+    searchInSidebar: true,
     networkBlocking: true,
     luckyFallback: true,
     autoContinueRedirect: true,
     metaGptBridge: true,
+    marketplacesInOfferlist: true,
+    listView: true,
+    twoColumnGrid: false,
     offerShops: {
         ebay: true,
         ebayFr: true,
@@ -161,6 +173,7 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
         brickowl: true
     },
     linkRows: {
+        tools: true,
         marketplaces: true,
         france: globalThis.BM_PLATFORM?.franceDefault !== false,
         resources: true,
@@ -228,6 +241,20 @@ globalThis.BM_isMarketplacePricePlausible = (
     if (minimum === null) return true;
     return candidate + Number.EPSILON >= minimum;
 };
+globalThis.BM_EXCLUDED_OFFER_TITLE_PATTERN =
+    /\b(?:ersatzteile?|einzelteile?|kleinteile?|anleitungen?|bauanleitungen?|manual|instructions?|stickers?|aufkleber|leerkarton|ovp\s*leer|box\s*only|empty\s*box|unvollst[aä]ndig|incomplete|incomplet(?:e|es|s)?|ohne\s+(?:figuren|minifiguren|steine|teile|anleitung|ovp)|sans\s+(?:figurines?|minifigurines?|pi[eè]ces?|briques?|bo[iî]te|notice)|moc|custom|kompatibel|compatible|konvolut|bundle|parts?\s*only|(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)\s*only|figurines?\s+seules?|minifigurines?\s+seules?|lot\s+(?:de\s+|of\s+|von\s+)?(?:\d+\s+)?(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)|pack\s+(?:de\s+|of\s+)?(?:\d+\s+)?(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)|set\s+(?:de\s+|of\s+|aus\s+)(?:\d+\s+)?(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)|toutes\s+les\s+(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)|nur\s+(?:die\s+)?(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)|(?:only|just)\s+(?:\d+\s+)?(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)|(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)(?:[^\n,;]{0,60}?)\s+(?:du|from|aus|vom)\s+(?:dem\s+|der\s+|the\s+)?set|(?:[a-z]{2,5}\d{3,5}[a-z]?\s+(?:figurines?|minifigs?|minifigure?s?|minifiguren?|figure?n?)|(?:figurines?|minifigs?|minifigure?s?|minifiguren?|figure?n?)\s+[a-z]{2,5}\d{3,5}[a-z]?)|pi[eè]ces?\s+d[eé]tach[eé]es?|lot\s+de\s+pi[eè]ces?|pi[eè]ces?\s+seules?|autocollants?|vitrinen?|schauk[aä]sten?|schutzhauben?|staubschutz|display\s*(?:case|box|stand)|showcase|acryl(?:glas)?(?:box|haube|vitrine)?|acrylic\s*(?:case|box|display)|pr[eé]sentoir(?:s)?|support(?:s)?\s+(?:mural|d['’]?exposition)|socle(?:s)?\s+d['’]?exposition|bo[iî]te(?:s)?\s+(?:acrylique|de\s+protection|vide|seule)|housse(?:s)?\s+anti[- ]?poussi[eè]re|protection(?:s)?\s+anti[- ]?poussi[eè]re|light(?:ing)?[- ]?(?:kits?|sets?)|(?:led[- ]?)?licht[- ]?(?:sets?|kits?)|(?:led[- ]?)?beleuchtungs?[- ]?(?:sets?|kits?)|led[- ]?(?:ferngesteuerte[s|r|n]?|mit\s+fernbedienung|fernbedienung|remote[- ]?control(?:led)?|wireless|kabellose[s|r|n]?|funk[- ]?)?\s*(?:licht[- ]?|beleuchtungs?[- ]?)?(?:beleuchtung|leuchten|lampen|strip|streifen|kits?|sets?)|(?:ferngesteuerte[s|r|n]?|kabellose[s|r|n]?|remote[- ]?control(?:led)?)\s+(?:led[- ]?|licht[- ]?|beleuchtungs?[- ]?)(?:kits?|sets?)|(?:led[- ]?)?kit[- ]?led|kit(?:[- ]*(?:d['’\s]*|de\s*)?|s\s+)?(?:led|lumi[eè]res?|[eé]clairages?|light(?:ing)?)(?:\s+(?:t[eé]l[eé]command[eé](?:e|es|s)?|avec\s+t[eé]l[eé]commande))?|(?:led[- ]?)?[eé]clairage(?:s)?(?:\s+led)?|(?:led[- ]?)?lumi[eè]re(?:s)?(?:\s+led)?|t[eé]l[eé]command[eé](?:e|es|s)?|nur\s+(?:das\s+)?(?:licht|led|beleuchtung)|(?:ohne|kein|sans|without)\s+(?:lego|modell|briques?|mod[eè]le)|(?:lego|modell|briques?|mod[eè]le)\s+(?:nicht\s+(?:enthalten|inklusive)|non\s+inclus(?:es?)?|not\s+included)|briksmax|lightailing|light\s*my\s*bricks|game\s*of\s*bricks|brickbling|yeabricks|kyglaring|vonado|lelightgo|brickshine|another[- ]?brick(?:[- ]?shop)?|wandhalterung|wall\s*mount|(?:bausteine?|klemmbausteine?)[- ]?(?:set|bausatz)?\s*(?:wie|ähnlich|ahnlich)|(?:wie|ähnlich|ahnlich)\s+lego|(?:nicht\s+von\s+lego|kein\s+lego|keine\s+lego|not\s+lego|no\s+lego|nicht\s+original\s+lego)|(?:building[- ]?)?block[- ]?sets?|china[- ]?(?:klon|clone)s?|(?:lego[- ]?)?plagiat(?:e)?|(?:fake|kopie)[- ]?lego|knock[- ]?offs?|bootlegs?|mould[- ]?king|mold[- ]?king|cobi|lepin|bluebrixx|blue[- ]?brixx|cada|ca[- ]?da|xingbao|sembo(?:\s*blocks?)?|sluban|qman|keeppley|panlos(?:\s*brick)?|reobrix|pantasy|funwhole|decool|forange|leji|sy\s*blocks?|wange\s*(?:blocks?|bricks?|set|bausteine?)|kazi\s*(?:blocks?|bricks?|set|bausteine?)|star\s*plan|space\s*wars)\b/i;
+
+globalThis.BM_isExcludedOfferTitle = title => {
+    return Boolean(title) && globalThis.BM_EXCLUDED_OFFER_TITLE_PATTERN.test(String(title));
+};
+
+globalThis.BM_EXCLUDED_OFFER_SELLER_PATTERN =
+    /\b(?:another[-_ ]?brick(?:[-_ ]?shop)?|briksmax|lightailing|gameofbricks|game[-_ ]of[-_ ]bricks|brickbling|yeabricks|kyglaring|vonado|lelightgo|brickshine)\b/i;
+
+globalThis.BM_isExcludedOfferSeller = seller => {
+    return Boolean(seller) && globalThis.BM_EXCLUDED_OFFER_SELLER_PATTERN.test(String(seller));
+};
+
 globalThis.BM_getPlausibleMarketplaceOffers = (
     source,
     result,
@@ -241,6 +268,18 @@ globalThis.BM_getPlausibleMarketplaceOffers = (
     const seen = new Set();
     return candidates
         .filter(candidate => {
+            const title = candidate?.title || candidate?.name || candidate?.model || '';
+            if (title && globalThis.BM_isExcludedOfferTitle(title)) return false;
+            const seller = typeof candidate?.seller === 'string'
+                ? candidate.seller
+                : String(
+                    candidate?.seller?.username ||
+                    candidate?.seller?.name ||
+                    candidate?.sellerName ||
+                    candidate?.merchantName ||
+                    ''
+                );
+            if (seller && globalThis.BM_isExcludedOfferSeller(seller)) return false;
             const price = getPrice(candidate);
             const identity = `${candidate?.url || ''}:${price}`;
             if (seen.has(identity)) return false;
@@ -393,7 +432,7 @@ globalThis.BM_resolveWorkerUrl = (value, baseUrl) => {
 globalThis.BM_getBrickmergeSetNumber = value => {
     try {
         const url = new URL(value, 'https://www.brickmerge.de/');
-        const match = url.pathname.match(/^\/(\d{4,7})-[\da-z]+_[^/]+\/?$/i);
+        const match = url.pathname.match(/^\/(\d{4,7})(?:-[\da-z]+)?(?:_[^/]+)?\/?$/i);
         return match ? match[1] : null;
     } catch {
         return null;
@@ -610,6 +649,9 @@ globalThis.BM_parseBrickmergeDetailLines = values => {
 globalThis.BM_mergeSettings = value => ({
     ...globalThis.BM_EXTENSION_DEFAULTS,
     ...(value || {}),
+    listView: value?.listView !== undefined ? value.listView === true : (value?.twoColumnGrid !== false),
+    twoColumnGrid: value?.twoColumnGrid === true,
+    marketplacesInOfferlist: value?.marketplacesInOfferlist !== false,
     offerShops: {
         ...globalThis.BM_EXTENSION_DEFAULTS.offerShops,
         ...(value?.offerShops || {})
@@ -677,6 +719,69 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
     return '';
 };
 
+globalThis.BM_SHOP_SHIPPING_RULES = Object.freeze([
+    {
+        name: 'LEGO Online Shop',
+        pattern: /\b(?:lego|lego\.com|lego\s*shop|lego\s*store)\b/i,
+        freeFrom: 55.00,
+        standardCost: 3.95
+    },
+    {
+        name: 'Smyths Toys',
+        pattern: /\bsmyths(?:\s*toys)?\b/i,
+        freeFrom: 29.00,
+        standardCost: 3.95
+    },
+    {
+        name: 'Müller',
+        pattern: /\bm[üu]ller(?:\.de)?\b/i,
+        freeFrom: 49.00,
+        standardCost: 4.95,
+        pickupFree: true
+    },
+    {
+        name: 'Galaxus',
+        pattern: /\bgalaxus(?:\.de)?\b/i,
+        freeFrom: 30.00,
+        standardCost: 3.90
+    },
+    {
+        name: 'Amazon',
+        pattern: /\bamazon(?:\.de)?\b/i,
+        freeFrom: 39.00,
+        standardCost: 3.99
+    },
+    {
+        name: 'Proshop',
+        pattern: /\bproshop(?:\.de)?\b/i,
+        freeFrom: 100.00,
+        standardCost: 4.99
+    },
+    {
+        name: 'Steinehelden',
+        pattern: /\bsteinehelden(?:\.de)?\b/i,
+        freeFrom: 60.00,
+        standardCost: 4.50
+    },
+    {
+        name: 'JB Spielwaren',
+        pattern: /\bjb[- ]?spielwaren\b/i,
+        freeFrom: 150.00,
+        standardCost: 4.99
+    },
+    {
+        name: 'Alza',
+        pattern: /\balza(?:\.de)?\b/i,
+        freeFrom: null,
+        standardCost: 0.98
+    }
+]);
+
+globalThis.BM_findShopShippingRule = merchantName => {
+    if (!merchantName) return null;
+    return globalThis.BM_SHOP_SHIPPING_RULES.find(rule => rule.pattern.test(merchantName)) || null;
+};
+
 (() => {
     'use strict';
 
@@ -704,7 +809,12 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
         html.bm-extension-cleaner-enabled .content.setdetails div.offerbox,
         html.bm-extension-cleaner-enabled #offerlist .goto.medium-7,
         html.bm-extension-cleaner-enabled #offerlist span.showmore,
-        html.bm-extension-cleaner-enabled form[name="sctoggle"],
+        html.bm-extension-cleaner-enabled #offerlist form[name="sctoggle"],
+        html.bm-extension-cleaner-enabled .content.setdetails form[name="sctoggle"],
+        html.bm-extension-cleaner-enabled .small-12.medium-4.large-3.right,
+        html.bm-extension-cleaner-enabled .content.noPadBottom > .row:first-child .small-12.column > .small-12:not(.setdetails),
+        html.bm-extension-cleaner-enabled .bm-usernav,
+        .bm-usernav,
         span.tap,
         .tap {
             display: none !important;
@@ -713,9 +823,74 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
             pointer-events: none !important;
             background-image: none !important;
         }
+        #productrowcontainer,
+        #productrow,
+        .productrow,
+        .bm-view-switcher {
+            background: #FFFFFF !important;
+        }
+        #SoldOutContainer:empty,
+        #SoldOutContainer:not(:has(.pricerow)),
+        #soldOut:empty,
+        #soldOut:not(:has(.pricerow)) {
+            display: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 0 !important;
+        }
+        #productrow .wrapper div.slide .productimg,
+        .productrow .wrapper div.slide .productimg {
+            background: #FFFFFF !important;
+            border: none !important;
+        }
+        @media screen and (min-width: 769px) {
+            .bm-view-switcher {
+                display: none !important;
+            }
+        }
+        @media screen and (max-width: 768px) {
+            .dropdown.button::before,
+            .dropdown.button::after,
+            button.dropdown::before,
+            button.dropdown::after,
+            a.button.dropdown::before,
+            a.button.dropdown::after,
+            #contenttoprow .dropdown.button::before,
+            #contenttoprow .dropdown.button::after,
+            #contenttoprow a.button.dropdown::before,
+            #contenttoprow a.button.dropdown::after,
+            #contenttoprow button.dropdown::before,
+            #contenttoprow button.dropdown::after,
+            #contenttoprow .viewDropDown::before,
+            #contenttoprow .viewDropDown::after,
+            a.button.dropdown.viewDropDown::before,
+            a.button.dropdown.viewDropDown::after,
+            .viewDropDown::before,
+            .viewDropDown::after {
+                display: none !important;
+                opacity: 0 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+                background-image: none !important;
+                content: none !important;
+                border: none !important;
+                width: 0 !important;
+                height: 0 !important;
+            }
+        }
         html.bm-sidepanel-frame #filterrow,
         html.bm-sidepanel-frame .top-tab,
-        html.bm-sidepanel-frame .content.setdetails [itemscope][itemtype$="BreadcrumbList"] {
+        html.bm-sidepanel-frame .content.setdetails [itemscope][itemtype$="BreadcrumbList"],
+        html.bm-android-app [itemscope][itemtype*="BreadcrumbList"],
+        html.bm-android-app .breadcrumb,
+        html.bm-android-app nav[aria-label="breadcrumb"],
+        html.bm-android-app .breadcrumbs,
+        html.bm-android-app nav.breadcrumbs,
+        html.bm-android-app .content.setdetails [itemscope][itemtype*="BreadcrumbList"],
+        html.bm-android-app #headlinerow,
+        html.bm-android-app #headlinerow h1,
+        html.bm-android-app .content.setdetails h1,
+        html.bm-android-app .setdetails h1 {
             display: none !important;
         }
         html.bm-sidepanel-frame {
@@ -731,6 +906,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
             min-width: 0 !important;
             min-height: 100% !important;
             overflow-x: hidden !important;
+            background: #FFFFFF !important;
         }
         html.bm-sidepanel-frame #wrap,
         html.bm-sidepanel-frame .content.setdetails,
@@ -746,6 +922,108 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
         }
         html.bm-sidepanel-frame .content.setdetails h1 {
             display: none !important;
+        }
+        @media screen and (max-width: 768px) {
+            .wrapper.merchants#wrappernormal,
+            .wrapper.merchants,
+            .wrapper.themen#wrappernormal,
+            .wrapper.themen {
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 10px !important;
+                padding: 0.5rem 0.75rem 2rem !important;
+                box-sizing: border-box !important;
+                width: 100% !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                justify-content: center !important;
+            }
+            .wrapper.brickstores#wrappernormal,
+            .wrapper.brickstores {
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 10px !important;
+                padding: 0.5rem 0.75rem 2rem !important;
+                box-sizing: border-box !important;
+                width: 100% !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                justify-content: center !important;
+            }
+            .wrapper.merchants::before,
+            .wrapper.merchants::after,
+            .wrapper.themen::before,
+            .wrapper.themen::after {
+                display: none !important;
+            }
+            .wrapper.merchants .slide,
+            .wrapper.themen .slide {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                float: none !important;
+                display: flex !important;
+                box-sizing: border-box !important;
+                border: none !important;
+            }
+            .wrapper.merchants .slide a.themeimg,
+            .wrapper.merchants .slide a,
+            .wrapper.themen .slide a.themeimg,
+            .wrapper.themen .slide a {
+                width: 100% !important;
+                min-height: 96px !important;
+                height: 100% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 10px 8px 8px !important;
+                border: 1px solid #E2E8F0 !important;
+                border-radius: 12px !important;
+                background: #FFFFFF !important;
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+                box-sizing: border-box !important;
+                text-align: center !important;
+                text-decoration: none !important;
+            }
+            .wrapper.merchants .slide .img,
+            .wrapper.themen .slide .img {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                height: 44px !important;
+                width: 100% !important;
+                margin-bottom: 6px !important;
+            }
+            .wrapper.merchants .slide img,
+            .wrapper.themen .slide img {
+                max-height: 40px !important;
+                max-width: 100% !important;
+                width: auto !important;
+                height: auto !important;
+                object-fit: contain !important;
+                margin: 0 auto 6px !important;
+                display: block !important;
+            }
+            .wrapper.merchants .slide .img img,
+            .wrapper.themen .slide .img img {
+                margin-bottom: 0 !important;
+            }
+            .wrapper.merchants .slide a span:last-child,
+            .wrapper.themen .slide a span:last-child {
+                display: block !important;
+                font-size: 12px !important;
+                font-weight: 600 !important;
+                color: #1E293B !important;
+                line-height: 1.25 !important;
+                margin-top: auto !important;
+                padding: 0 !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
+                max-width: 100% !important;
+            }
         }
     `;
     root.appendChild(style);
@@ -770,7 +1048,13 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
 (() => {
     'use strict';
 
-    const originalRequest = globalThis.GM_xmlhttpRequest;
+    const originalRequest = typeof GM_xmlhttpRequest === 'function'
+        ? GM_xmlhttpRequest
+        : (typeof globalThis.GM_xmlhttpRequest === 'function'
+            ? globalThis.GM_xmlhttpRequest
+            : (typeof globalThis.GM?.xmlHttpRequest === 'function'
+                ? globalThis.GM.xmlHttpRequest
+                : null));
     if (typeof originalRequest !== 'function') return;
 
     const storageKeys = globalThis.BM_EXTENSION_STORAGE_KEYS;
@@ -979,6 +1263,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
     }
 
     globalThis.GM_xmlhttpRequest = bridgedRequest;
+    if (typeof window !== 'undefined') {
+        window.GM_xmlhttpRequest = bridgedRequest;
+    }
     if (globalThis.GM) {
         globalThis.GM.xmlHttpRequest = bridgedRequest;
         globalThis.GM.xmlhttpRequest = bridgedRequest;
@@ -994,7 +1281,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
         (() => {
             'use strict';
 
-            const CARD_SELECTOR = '#productrow .wrapper div.slide[id^="set"]';
+            const CARD_SELECTOR = ':is(#productrow, .productrow) .wrapper div.slide[id^="set"]';
             const CONCURRENCY = 4;
             const SOURCE_ORDER = Object.freeze([
                 'ebay',
@@ -1024,9 +1311,12 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
 
             const cleanDigits = (value, min, max) => {
                 const normalized = String(value || '').trim();
-                return new RegExp(`^\\d{${min},${max}}$`).test(normalized)
-                    ? normalized
-                    : '';
+                if (normalized.length < min || normalized.length > max) return '';
+                for (let i = 0; i < normalized.length; i++) {
+                    const code = normalized.charCodeAt(i);
+                    if (code < 48 || code > 57) return '';
+                }
+                return normalized;
             };
 
             const parsePrice = value => (typeof globalThis.BM_parsePrice === 'function')
@@ -1164,6 +1454,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     }))
                     .filter(candidate => {
                         if (!candidate) return false;
+                        const title = candidate.title || candidate.name || '';
+                        if (title && (typeof globalThis.BM_isExcludedOfferTitle === 'function') && globalThis.BM_isExcludedOfferTitle(title)) return false;
                         const identity = `${candidate.url}:${candidate.total}`;
                         if (seen.has(identity)) return false;
                         seen.add(identity);
@@ -1261,10 +1553,29 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         element.textContent?.trim() || ''
                     ));
                 if (percentage) percentage.textContent = `${discount.percentage}%`;
-                const bubble = card.querySelector(':scope > .off');
+                let bubble = card.querySelector(':scope > .off, .off');
+                if (!bubble && discount.percentage > 0) {
+                    bubble = document.createElement('div');
+                    bubble.className = 'off';
+                    const productImg = card.querySelector('.productimg') || card;
+                    if (document.documentElement.classList.contains('bm-view-list')) {
+                        bubble.classList.add('bm-list-off');
+                        offerBox.appendChild(bubble);
+                    } else {
+                        productImg.prepend(bubble);
+                    }
+                }
                 if (bubble) {
-                    bubble.textContent = `${discount.percentage}%`;
-                    bubble.hidden = discount.percentage === 0;
+                    const oldVal = parseInt(bubble.textContent || '', 10);
+                    const newVal = discount.percentage;
+                    if (typeof globalThis.BM_animateNumber === 'function' && Number.isFinite(oldVal) && oldVal > 0 && oldVal !== newVal) {
+                        globalThis.BM_animateNumber(bubble, oldVal, newVal, '%');
+                    } else {
+                        bubble.textContent = `${newVal}%`;
+                    }
+                    bubble.hidden = newVal === 0;
+                    if (newVal === 0) bubble.style.display = 'none';
+                    else if (!document.documentElement.classList.contains('bm-view-list')) bubble.style.display = 'inline-flex';
                 }
             };
 
@@ -1289,6 +1600,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
             };
 
             const enabledSources = settings => {
+                if (settings?.marketplacesInOfferlist === false) return [];
                 const franceEnabled = settings?.linkRows?.france === true;
                 const franceSources = new Set(['ebay-fr', 'leboncoin', 'idealo']);
                 return SOURCE_ORDER.filter(source => {
@@ -1509,30 +1821,89 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 return clientId;
             };
 
+            const getRequestHandler = () => {
+                if (typeof GM_xmlhttpRequest === 'function') return GM_xmlhttpRequest;
+                if (typeof globalThis.GM_xmlhttpRequest === 'function') return globalThis.GM_xmlhttpRequest;
+                if (typeof window !== 'undefined' && typeof window.GM_xmlhttpRequest === 'function') return window.GM_xmlhttpRequest;
+                if (typeof globalThis.GM?.xmlHttpRequest === 'function') return globalThis.GM.xmlHttpRequest;
+                if (typeof window !== 'undefined' && typeof window.GM?.xmlHttpRequest === 'function') return window.GM.xmlHttpRequest;
+                if (typeof globalThis.GM?.xmlhttpRequest === 'function') return globalThis.GM.xmlhttpRequest;
+                if (typeof window !== 'undefined' && typeof window.GM?.xmlhttpRequest === 'function') return window.GM.xmlhttpRequest;
+                return null;
+            };
+
             const requestJson = async (url, acceptedStatuses = [200]) => {
                 const clientId = await getClientId();
-                return new Promise((resolve, reject) => {
-                    GM_xmlhttpRequest({
-                        method: 'GET',
-                        url,
-                        headers: {
-                            Accept: 'application/json',
-                            'X-BM-Client-ID': clientId
-                        },
-                        timeout: 30000,
-                        onload: response => {
-                            let payload = null;
-                            try { payload = JSON.parse(response.responseText); } catch {}
-                            if (acceptedStatuses.includes(response.status) && payload) {
-                                resolve({ status: response.status, payload });
-                            } else {
-                                reject(new Error(`Preisabruf fehlgeschlagen (${response.status})`));
-                            }
-                        },
-                        onerror: reject,
-                        ontimeout: () => reject(new Error('Preisabruf Timeout'))
+                const handler = getRequestHandler();
+                if (handler) {
+                    return new Promise((resolve, reject) => {
+                        handler({
+                            method: 'GET',
+                            url,
+                            headers: {
+                                Accept: 'application/json',
+                                'X-BM-Client-ID': clientId
+                            },
+                            timeout: 30000,
+                            onload: response => {
+                                let payload = null;
+                                try { payload = JSON.parse(response.responseText); } catch {}
+                                if (acceptedStatuses.includes(response.status) && payload) {
+                                    resolve({ status: response.status, payload });
+                                } else {
+                                    reject(new Error(`Preisabruf fehlgeschlagen (${response.status})`));
+                                }
+                            },
+                            onerror: reject,
+                            ontimeout: () => reject(new Error('Preisabruf Timeout'))
+                        });
                     });
+                }
+                if (typeof globalThis.BrickmergeNative?.request === 'function') {
+                    return new Promise((resolve, reject) => {
+                        const reqId = `bm-req-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+                        const timer = setTimeout(() => {
+                            delete globalThis.__bmNativeCallbacks?.[reqId];
+                            reject(new Error('Preisabruf Timeout'));
+                        }, 30000);
+                        globalThis.__bmNativeCallbacks = globalThis.__bmNativeCallbacks || {};
+                        globalThis.__bmNativeCallbacks[reqId] = result => {
+                            clearTimeout(timer);
+                            delete globalThis.__bmNativeCallbacks[reqId];
+                            if (!result?.ok) {
+                                reject(new Error(result?.error || 'Preisabruf fehlgeschlagen'));
+                                return;
+                            }
+                            let payload = null;
+                            try { payload = JSON.parse(result.responseText); } catch {}
+                            const status = Number(result.status) || 0;
+                            if (acceptedStatuses.includes(status) && payload) {
+                                resolve({ status, payload });
+                            } else {
+                                reject(new Error(`Preisabruf fehlgeschlagen (${status})`));
+                            }
+                        };
+                        globalThis.BrickmergeNative.request(
+                            reqId,
+                            url,
+                            'GET',
+                            JSON.stringify({ Accept: 'application/json', 'X-BM-Client-ID': clientId }),
+                            '',
+                            30000
+                        );
+                    });
+                }
+                const response = await fetch(url, {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-BM-Client-ID': clientId
+                    }
                 });
+                const payload = await response.json().catch(() => null);
+                if (acceptedStatuses.includes(response.status) && payload) {
+                    return { status: response.status, payload };
+                }
+                throw new Error(`Preisabruf fehlgeschlagen (${response.status})`);
             };
 
             const delay = milliseconds => new Promise(resolve => {
@@ -1828,6 +2199,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
             };
 
             const mountDetailRefresh = (settings, workerBaseUrl) => {
+                if (settings?.marketplacesInOfferlist === false) {
+                    document.querySelectorAll('.bm-detail-all-prices-refresh').forEach(el => el.remove());
+                    return false;
+                }
                 const offerlist = document.getElementById('offerlist');
                 const toolbar = offerlist?.querySelector('.bm-offer-toolbar');
                 if (!offerlist || !toolbar) return false;
@@ -1907,23 +2282,39 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
             };
 
             const start = settings => {
+                if (settings?.marketplacesInOfferlist === false) {
+                    document.querySelectorAll('.bm-detail-all-prices-refresh').forEach(el => el.remove());
+                    return;
+                }
                 const workerBaseUrl = globalThis.BM_WORKER_DEFAULT_BASE_URL;
                 const detailSet = globalThis.BM_getBrickmergeSetNumber?.(location.href);
                 if (!detailSet) return;
                 ensureStyles();
                 let observer = null;
                 const tryMount = () => {
-                    if (mountDetailRefresh(settings, workerBaseUrl)) return true;
+                    if (mountDetailRefresh(settings, workerBaseUrl)) {
+                        if (observer) {
+                            observer.disconnect();
+                            observer = null;
+                        }
+                        return true;
+                    }
                     return false;
                 };
-                tryMount();
-                observer = new MutationObserver(() => tryMount());
-                observer.observe(document.documentElement, {
-                    childList: true,
-                    subtree: true
-                });
-                [250, 750, 1800].forEach(delay => window.setTimeout(tryMount, delay));
-                window.setTimeout(() => observer?.disconnect(), 15000);
+                if (!tryMount()) {
+                    observer = new MutationObserver(() => tryMount());
+                    observer.observe(document.documentElement, {
+                        childList: true,
+                        subtree: true
+                    });
+                    [250, 750, 1800].forEach(delay => window.setTimeout(tryMount, delay));
+                    window.setTimeout(() => {
+                        if (observer) {
+                            observer.disconnect();
+                            observer = null;
+                        }
+                    }, 10000);
+                }
             };
 
             BM_MOBILE_CHROME.storage.local.get('settings').then(({ settings }) => {
@@ -1951,6 +2342,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 brickowl: 'brickowl'
             };
             const BM_isOfferShopEnabled = key => {
+                if (BM_SETTINGS.marketplacesInOfferlist === false) {
+                    return false;
+                }
                 const normalized = BM_OFFER_SHOP_KEY_MAP[key] || key;
                 if (['ebayFr', 'leboncoin', 'idealo'].includes(normalized) &&
                     !BM_isFranceEnabled(BM_SETTINGS)) {
@@ -2308,6 +2702,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     });
                     if (!target) return false;
 
+                    // Do not auto-redirect if there is a voucher code to copy
+                    const hasVoucher = document.querySelector('.code, .gutschein, [onclick*="copy"]');
+                    if (hasVoucher) return false;
+
                     completed = true;
                     navigateToTarget(target);
                     return true;
@@ -2377,6 +2775,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
             }
 
             function normalizeEbaySellerAccountType(value) {
+                if (typeof globalThis.BM_normalizeEbaySellerAccountType === 'function') {
+                    return globalThis.BM_normalizeEbaySellerAccountType(value);
+                }
                 const normalized = String(value || '')
                     .trim()
                     .toUpperCase()
@@ -2441,7 +2842,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 });
 
                 document.querySelectorAll(
-                    '#offerlist .medium-4.small-9.columns.pricerow[data-mid]'
+                    '#offerlist .medium-4.small-9.columns.pricerow[data-mid]:not([data-bm-depot-inventory="true"])'
                 ).forEach(priceRow => {
                     const mid = priceRow.dataset.mid;
                     const priceSpan = priceRow.querySelector('.price');
@@ -2482,14 +2883,14 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     getRetailerCatalog().map(([key, discount]) => [
                         key,
                         {
-                            enabled: discount.isDefault,
+                            enabled: false,
                             percent: discount.isDefault
                                 ? Math.round(discount.rate * 10000) / 100
                                 : 0
                         }
                     ])
                 );
-                return { enabled: true, retailers };
+                return { enabled: false, retailers };
             }
 
             function loadPersonalDiscountSettings() {
@@ -2522,7 +2923,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
 
                         const percent = Number(candidate.percent);
                         defaults.retailers[key] = {
-                            enabled: candidate.enabled !== false,
+                            enabled: candidate.enabled === true,
                             percent: Number.isFinite(percent)
                                 ? Math.min(100, Math.max(0, percent))
                             : fallback.percent
@@ -2539,8 +2940,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         };
                     });
 
-                    if (stored?.enabled === false) {
-                        defaults.enabled = false;
+                    if (typeof stored?.enabled === 'boolean') {
+                        defaults.enabled = stored.enabled;
                     }
                 } catch (e) {
                     console.warn('Brickmerge Tools: Persönliche Rabatte konnten nicht geladen werden.');
@@ -2579,11 +2980,126 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
             const globalCss = `
                 html.bm-extension-cleaner-enabled #CookiebotWidget,
                 html.bm-extension-cleaner-enabled .CookiebotWidget,
-                html.bm-extension-cleaner-enabled #cybotCookiebotDialog {
+                html.bm-extension-cleaner-enabled #cybotCookiebotDialog,
+                html.bm-extension-cleaner-enabled .small-12.medium-4.large-3.right,
+                html.bm-extension-cleaner-enabled .content.noPadBottom > .row:first-child .small-12.column > .small-12:not(.setdetails),
+                html.bm-extension-cleaner-enabled .bm-usernav,
+                .bm-usernav {
                     display: none !important;
                     opacity: 0 !important;
                     visibility: hidden !important;
                     pointer-events: none !important;
+                }
+                #SoldOutContainer:empty,
+                #SoldOutContainer:not(:has(.pricerow)),
+                #soldOut:empty,
+                #soldOut:not(:has(.pricerow)) {
+                    display: none !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    height: 0 !important;
+                }
+                @media screen and (max-width: 768px) {
+                    .wrapper.merchants#wrappernormal,
+                    .wrapper.merchants,
+                    .wrapper.themen#wrappernormal,
+                    .wrapper.themen {
+                        display: grid !important;
+                        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                        gap: 10px !important;
+                        padding: 0.5rem 0.75rem 2rem !important;
+                        box-sizing: border-box !important;
+                        width: 100% !important;
+                        margin-left: auto !important;
+                        margin-right: auto !important;
+                        justify-content: center !important;
+                    }
+                    .wrapper.brickstores#wrappernormal,
+                    .wrapper.brickstores {
+                        display: grid !important;
+                        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                        gap: 10px !important;
+                        padding: 0.5rem 0.75rem 2rem !important;
+                        box-sizing: border-box !important;
+                        width: 100% !important;
+                        margin-left: auto !important;
+                        margin-right: auto !important;
+                        justify-content: center !important;
+                    }
+                    .wrapper.merchants::before,
+                    .wrapper.merchants::after,
+                    .wrapper.themen::before,
+                    .wrapper.themen::after {
+                        display: none !important;
+                    }
+                    .wrapper.merchants .slide,
+                    .wrapper.themen .slide {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        float: none !important;
+                        display: flex !important;
+                        box-sizing: border-box !important;
+                        border: none !important;
+                    }
+                    .wrapper.merchants .slide a.themeimg,
+                    .wrapper.merchants .slide a,
+                    .wrapper.themen .slide a.themeimg,
+                    .wrapper.themen .slide a {
+                        width: 100% !important;
+                        min-height: 96px !important;
+                        height: 100% !important;
+                        display: flex !important;
+                        flex-direction: column !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        padding: 10px 8px 8px !important;
+                        border: 1px solid #E2E8F0 !important;
+                        border-radius: 12px !important;
+                        background: #FFFFFF !important;
+                        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+                        box-sizing: border-box !important;
+                        text-align: center !important;
+                        text-decoration: none !important;
+                    }
+                    .wrapper.merchants .slide .img,
+                    .wrapper.themen .slide .img {
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        height: 44px !important;
+                        width: 100% !important;
+                        margin-bottom: 6px !important;
+                    }
+                    .wrapper.merchants .slide img,
+                    .wrapper.themen .slide img {
+                        max-height: 40px !important;
+                        max-width: 100% !important;
+                        width: auto !important;
+                        height: auto !important;
+                        object-fit: contain !important;
+                        margin: 0 auto 6px !important;
+                        display: block !important;
+                    }
+                    .wrapper.merchants .slide .img img,
+                    .wrapper.themen .slide .img img {
+                        margin-bottom: 0 !important;
+                    }
+                    .wrapper.merchants .slide a span:last-child,
+                    .wrapper.themen .slide a span:last-child {
+                        display: block !important;
+                        font-size: 12px !important;
+                        font-weight: 600 !important;
+                        color: #1E293B !important;
+                        line-height: 1.25 !important;
+                        margin-top: auto !important;
+                        padding: 0 !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                        white-space: nowrap !important;
+                        max-width: 100% !important;
+                    }
                 }
                 /* Preis-Spalte auf die durch die entfernte "Hier zu X!"-Spalte freiwerdende
                    Breite ausdehnen. Nur ab der Foundation-"medium"-Breakpoint-Grenze, damit
@@ -2597,43 +3113,96 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     width: 95% !important;
                     border: none !important;
                 }
+                #offerlist .pricerow .merchant,
+                #offerlist span.price > .merchant,
+                #offerlist .show-for-small-only.merchant,
+                #offerlist .pricerow .merchant + br,
+                #offerlist span.price > .merchant + br,
+                #offerlist .show-for-small-only.merchant + br,
+                .content.setdetails .topprice .merchant,
+                .content.setdetails .topprice .merchant + br {
+                    display: none !important;
+                }
                 #offerlist span.price,
                 #offerlist span.price > .merchant,
                 #offerlist span.price > .merchant * {
-                    color: #b00 !important;
+                    color: #B80000 !important;
                 }
                 #offerlist span.price,
                 #offerlist .bm-original-price {
                     font-weight: normal !important;
                 }
+                #offerlist .pricerow.isuvp span.price,
+                #offerlist .pricerow.isuvp span.price > .merchant,
+                #offerlist .pricerow.isuvp span.price > .merchant *,
+                #offerlist .isuvp span.price,
+                #offerlist .isuvp span.price > .merchant,
+                #offerlist .isuvp span.price > .merchant * {
+                    color: #666666 !important;
+                }
+                #offerlist .medium-4.small-9.columns.pricerow.lowest,
+                #offerlist .pricerow.lowest,
+                #offerlist .lowest .pricerow,
+                #offerlist .lowest.pricerow,
+                #offerlist .row.collapse.lowest > .medium-4.small-9.columns.pricerow {
+                    background-color: transparent !important;
+                    background-image: none !important;
+                    background-size: 0 0 !important;
+                    color: inherit !important;
+                }
+                #offerlist .pricerow.lowest.row-a,
+                #offerlist .lowest.row-a .pricerow,
+                #offerlist .row.collapse.lowest.row-a > .medium-4.small-9.columns.pricerow,
+                #offerlist .row.collapse.row-a > .medium-4.small-9.columns.pricerow.lowest {
+                    background-color: rgba(233, 233, 233, 0.8) !important;
+                }
+                #offerlist .pricerow.lowest.row-b,
+                #offerlist .lowest.row-b .pricerow,
+                #offerlist .row.collapse.lowest.row-b > .medium-4.small-9.columns.pricerow,
+                #offerlist .row.collapse.row-b > .medium-4.small-9.columns.pricerow.lowest {
+                    background-color: rgba(247, 247, 247, 0.8) !important;
+                }
+                #offerlist .lowest span.price,
+                #offerlist .lowest span.price > .merchant,
+                #offerlist .lowest span.price > .merchant *,
+                #offerlist .pricerow.lowest span.price,
+                #offerlist .pricerow.lowest span.price > .merchant,
+                #offerlist .pricerow.lowest span.price > .merchant * {
+                    color: #B80000 !important;
+                    font-weight: normal !important;
+                }
+                #offerlist .lowest .price > .show-for-small-only.small,
+                #offerlist .lowest .show-for-small-only.small,
+                #offerlist .lowest .bm-shipping-info,
+                #offerlist .lowest .bm-shipping-unknown,
+                #offerlist .pricerow.lowest .price > .show-for-small-only.small,
+                #offerlist .pricerow.lowest .show-for-small-only.small,
+                #offerlist .pricerow.lowest .bm-shipping-info,
+                #offerlist .pricerow.lowest .bm-shipping-unknown {
+                    color: #999999 !important;
+                    opacity: 1 !important;
+                    font-weight: normal !important;
+                }
                 #offerlist .row.collapse.bm-marketplace-offer {
                     position: relative;
                     box-shadow:
-                        inset 7px 0 0 #f8dc62,
-                        inset 8px 0 0 #d3b437 !important;
+                        inset 8px 0 0 #f8dc62,
+                        inset 9px 0 0 #d3b437 !important;
                 }
                 #offerlist .row.collapse.bm-marketplace-offer::before {
                     content: "";
                     position: absolute;
                     inset: 0 auto 0 0;
                     z-index: 9;
-                    width: 8px;
+                    width: 9px;
                     background: linear-gradient(
                         to right,
                         #f8dc62 0,
-                        #f8dc62 7px,
-                        #d3b437 7px,
-                        #d3b437 8px
+                        #f8dc62 8px,
+                        #d3b437 8px,
+                        #d3b437 9px
                     );
                     pointer-events: none;
-                }
-                @media screen and (min-width: 641px) {
-                    #offerlist .row.collapse.bm-marketplace-offer {
-                        width: calc(100% + 8px) !important;
-                        margin-left: -8px !important;
-                        padding-left: 8px !important;
-                        box-sizing: border-box;
-                    }
                 }
                 #offerlist .row.collapse.bm-marketplace-offer:hover
                     > .goto.small-3.columns,
@@ -2665,29 +3234,31 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     overflow: visible;
                 }
                 #offerlist .bm-offer-dismissible .pricerow > a > .price {
-                    width: 95% !important;
+                    width: calc(100% - 28px) !important;
+                    box-sizing: border-box !important;
                 }
                 #offerlist .bm-offer-dismiss {
                     position: absolute;
                     top: 50%;
-                    right: -1.55rem;
+                    right: 4px;
                     z-index: 18;
                     display: inline-flex !important;
-                    width: 1.25rem;
-                    height: 1.25rem;
+                    width: 22px;
+                    height: 22px;
                     align-items: center;
                     justify-content: center;
                     margin: 0 !important;
                     padding: 0 !important;
                     transform: translateY(-50%);
-                    border: 1px solid #bbb !important;
+                    border: 1px solid #CBD5E1 !important;
                     border-radius: 50% !important;
-                    background: rgba(255,255,255,.94) !important;
-                    color: #777 !important;
-                    font: 700 1rem/1 Arial, sans-serif !important;
+                    background: #FFFFFF !important;
+                    color: #64748B !important;
+                    font: 700 0.85rem/1 Arial, sans-serif !important;
                     text-shadow: none !important;
                     opacity: 0;
                     cursor: pointer;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
                     transition: opacity 120ms ease, color 120ms ease,
                         border-color 120ms ease, background-color 120ms ease;
                 }
@@ -2698,8 +3269,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
                 #offerlist .bm-offer-dismiss:hover,
                 #offerlist .bm-offer-dismiss:focus-visible {
-                    border-color: #800 !important;
-                    background: #800 !important;
+                    border-color: #B80000 !important;
+                    background: #B80000 !important;
                     color: #fff !important;
                     outline: none;
                 }
@@ -2734,8 +3305,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
                 @media screen and (max-width: 640px) {
                     #offerlist .bm-offer-dismiss {
-                        right: -1.35rem;
-                        opacity: 0.72;
+                        right: 4px;
+                        opacity: 0.75;
                     }
                 }
                 #offerlist .row.collapse.bm-sold-out-offer {
@@ -2797,8 +3368,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     align-items: center;
                     margin-left: 0.45rem;
                     padding: 0.12rem 0.38rem;
-                    border-radius: 2px;
-                    background: #b00000;
+                    border-radius: 4px;
+                    background: #B80000;
                     color: #fff !important;
                     font-size: 0.58rem;
                     font-weight: 700;
@@ -2828,7 +3399,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     background-image: none !important;
                     background-size: 0 0 !important;
                 }
-                #offerlist .price > span[style*="position: absolute"] {
+                #offerlist .price:has(.bm-offer-discount-bubble:not([style*="display: none"])) > span[style*="position: absolute"] {
                     display: none !important;
                 }
                 #offerlist .bm-marketplace-logo-link {
@@ -2857,9 +3428,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     grid-template-rows: minmax(0, 1fr) 12px;
                     padding: 2px 7px 1px;
                 }
+                #offerlist .bm-ebay-logo-link,
                 #offerlist .bm-ebay-logo-link.bm-has-meta {
                     grid-template-rows: minmax(0, 1fr) 13px;
-                    padding: 2px 7px 1px;
+                    padding: 2px 3px 1px !important;
                 }
                 #offerlist .bm-marketplace-logo-stage {
                     position: relative;
@@ -2912,24 +3484,24 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
                 #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage {
                     display: grid;
-                    grid-template-columns: 62px 16px;
+                    grid-template-columns: 46px 18px !important;
                     align-items: center;
                     justify-content: center;
                     justify-items: center;
-                    gap: 2px;
+                    gap: 2px !important;
                     width: 100%;
                     height: 100%;
-                    padding: 0 3px;
+                    padding: 0 1px !important;
                     box-sizing: border-box;
-                    overflow: hidden;
+                    overflow: visible !important;
                 }
                 #offerlist .bm-ebay-wordmark {
                     display: block !important;
                     grid-column: 1;
-                    width: 62px !important;
+                    width: 46px !important;
                     height: auto !important;
-                    max-width: 62px !important;
-                    max-height: 25px !important;
+                    max-width: 46px !important;
+                    max-height: 20px !important;
                     margin: 0 !important;
                     color: #111 !important;
                     overflow: visible;
@@ -3010,35 +3582,32 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 #offerlist .bm-marketplace-country-flag {
                     position: static;
                     grid-column: 2;
-                    display: block;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
                     width: 16px;
                     height: 11px;
                     min-width: 16px;
                     min-height: 11px;
                     padding: 0;
-                    overflow: hidden;
-                    border: 1px solid rgba(0,0,0,0.16);
-                    border-radius: 1px;
+                    overflow: visible;
+                    border: none;
                     box-sizing: border-box;
-                    font-size: 0;
                     line-height: 0;
                 }
                 #offerlist .bm-marketplace-country-flag-fr {
-                    /* Dieselbe native Flagge wie im Frankreich-Schalter verwenden. */
                     background: transparent !important;
                     border: 0;
                     width: 16px;
-                    height: 16px;
+                    height: 11px;
                     min-width: 16px;
-                    min-height: 16px;
+                    min-height: 11px;
                     overflow: visible;
-                    font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
-                    font-size: 14px;
-                    line-height: 16px;
+                    line-height: 0;
                 }
                 @media screen and (min-width: 641px) {
                     #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage {
-                        grid-template-columns: 50px 14px;
+                        grid-template-columns: 50px 18px !important;
                         gap: 3px;
                     }
                     #offerlist .bm-ebay-wordmark {
@@ -3057,10 +3626,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         height: 13px;
                     }
                     #offerlist .bm-marketplace-country-flag {
-                        width: 14px;
-                        height: 10px;
-                        min-width: 14px;
-                        min-height: 10px;
+                        width: 16px;
+                        height: 11px;
+                        min-width: 16px;
+                        min-height: 11px;
                     }
                 }
                 #offerlist .bm-marketplace-logo-cell {
@@ -3189,7 +3758,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
                 #offerlist .bm-original-price {
                     display: inline;
-                    color: #b00 !important;
+                    color: #B80000 !important;
                     font-size: inherit;
                     font-weight: inherit;
                     white-space: nowrap;
@@ -3203,7 +3772,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     position: relative;
                     z-index: 3;
                     margin-left: 0.45rem;
-                    color: #b00 !important;
+                    color: #B80000 !important;
                     font-size: 0.8rem;
                     font-weight: normal;
                     line-height: inherit;
@@ -3235,7 +3804,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     min-height: 26px;
                     padding: 0;
                     border-radius: 1000px;
-                    background: #b00;
+                    background: #B80000;
                     color: #fff;
                     font-size: 0.7rem;
                     font-weight: bolder;
@@ -3269,55 +3838,108 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     box-sizing: border-box;
                 }
                 @media screen and (max-width: 640px) {
-                    /* Jede dekorierte Zeile streckt die Logo-Spalte auf die echte
-                       Angebotshöhe; damit sitzen auch native Händlerlogos mittig. */
-                    #offerlist .row.collapse.bm-marketplace-logo-row {
+                    /* Jede Zeile in der Angebotsliste auf Mobile als Flex-Container ausrichten,
+                       damit Logo (22.5%) und Preis/Händler (77.5%) sauber nebeneinandersitzen. */
+                    #offerlist .row.collapse {
+                        position: relative;
                         display: flex !important;
                         min-height: 54px;
                         height: auto !important;
-                        flex-wrap: nowrap;
-                        align-items: stretch;
+                        flex-wrap: nowrap !important;
+                        align-items: stretch !important;
                     }
-                    #offerlist .row.collapse.bm-marketplace-logo-row::after {
+                    #offerlist .row.collapse:not(:has(.pricerow)):not(:has(.goto)) {
+                        display: none !important;
+                        height: 0 !important;
+                        min-height: 0 !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    #offerlist p:empty {
+                        display: none !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    #offerlist .row.collapse::after {
                         display: none !important;
                         content: none !important;
                     }
+                    #offerlist .row.collapse:not(.bm-marketplace-offer):not(.bm-sold-out-offer)::before {
+                        display: none !important;
+                        content: none !important;
+                    }
+                    #offerlist .row.collapse.bm-marketplace-offer::before,
+                    #offerlist .row.collapse.bm-sold-out-offer::before {
+                        display: block !important;
+                    }
+                    #offerlist .row.collapse > .goto.small-3.columns,
+                    #offerlist .row.collapse > .goto.columns,
                     #offerlist .row.collapse.bm-marketplace-logo-row
                         > .goto.small-3.columns {
                         display: flex !important;
-                        width: 25% !important;
+                        width: 22.5% !important;
+                        max-width: 22.5% !important;
+                        min-width: 22.5% !important;
                         height: auto !important;
                         min-height: 54px !important;
-                        flex: 0 0 25%;
-                        align-items: stretch;
+                        flex: 0 0 22.5% !important;
+                        align-items: stretch !important;
+                        justify-content: center !important;
                         float: none !important;
+                        box-sizing: border-box !important;
+                        padding: 0 !important;
                     }
+                    #offerlist .row.collapse > .medium-4.small-9.columns.pricerow,
                     #offerlist .row.collapse.bm-marketplace-logo-row
                         > .medium-4.small-9.columns.pricerow {
                         display: flex !important;
-                        width: 75% !important;
+                        width: 77.5% !important;
+                        max-width: 77.5% !important;
+                        min-width: 77.5% !important;
                         height: auto !important;
                         min-height: 54px !important;
-                        flex: 0 0 75%;
-                        align-items: stretch;
+                        flex: 0 0 77.5% !important;
+                        align-items: stretch !important;
                         float: none !important;
+                        box-sizing: border-box !important;
                     }
+                    #offerlist .row.collapse > .medium-4.small-9.columns.pricerow > a,
                     #offerlist .row.collapse.bm-marketplace-logo-row
                         > .medium-4.small-9.columns.pricerow > a {
                         display: flex !important;
-                        min-width: 0;
-                        min-height: 54px;
-                        flex: 1 1 auto;
-                        align-items: center;
+                        min-width: 0 !important;
+                        min-height: 54px !important;
+                        flex: 1 1 auto !important;
+                        align-items: center !important;
+                        width: 100% !important;
                     }
+                    #offerlist .row.collapse > .medium-4.small-9.columns.pricerow > a > span.price,
+                    #offerlist .row.collapse.bm-marketplace-logo-row
+                        > .medium-4.small-9.columns.pricerow > a > span.price {
+                        align-self: center !important;
+                    }
+                    #offerlist .row.collapse > .goto.small-3.columns > .pricerow,
+                    #offerlist .row.collapse > .goto.columns > .pricerow,
                     #offerlist .row.collapse.bm-marketplace-logo-row
                         > .goto.small-3.columns > .pricerow {
                         display: flex !important;
                         width: 100% !important;
                         height: auto !important;
                         min-height: 54px !important;
-                        flex: 1 1 auto;
-                        align-items: stretch;
+                        flex: 1 1 auto !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        box-sizing: border-box !important;
+                    }
+                    #offerlist .row.collapse > .goto.small-3.columns > .pricerow > a,
+                    #offerlist .row.collapse > .goto.columns > .pricerow > a {
+                        display: flex !important;
+                        width: 100% !important;
+                        height: 100% !important;
+                        align-items: center !important;
+                        justify-content: center !important;
                     }
                     #offerlist .row.collapse.bm-marketplace-logo-row
                         .bm-marketplace-logo-link {
@@ -3349,10 +3971,11 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     #offerlist .row.collapse.bm-marketplace-offer
                         > .goto.small-3.columns {
                         display: flex !important;
-                        width: 25% !important;
+                        width: 22.5% !important;
+                        max-width: 22.5% !important;
                         height: auto !important;
                         min-height: 54px !important;
-                        flex: 0 0 25%;
+                        flex: 0 0 22.5% !important;
                         align-items: stretch;
                         float: none !important;
                     }
@@ -3361,10 +3984,11 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     #offerlist .row.collapse.bm-marketplace-offer
                         > .medium-4.small-9.columns.pricerow {
                         display: flex !important;
-                        width: 75% !important;
+                        width: 77.5% !important;
+                        max-width: 77.5% !important;
                         height: auto !important;
                         min-height: 54px !important;
-                        flex: 0 0 75%;
+                        flex: 0 0 77.5% !important;
                         align-items: stretch;
                         float: none !important;
                     }
@@ -3446,7 +4070,14 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         transform: translateY(-50%);
                     }
                     #offerlist .price > .show-for-small-only.small {
-                        display: none !important;
+                        display: inline-block !important;
+                        font-size: 0.7rem;
+                        margin-left: 0.25rem;
+                        color: #999999;
+                    }
+                    #offerlist .lowest .price > .show-for-small-only.small {
+                        color: #999999 !important;
+                        opacity: 1 !important;
                     }
                     #offerlist .row.collapse.bm-effective-row {
                         min-height: 54px;
@@ -3480,6 +4111,43 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         max-width: 78% !important;
                         max-height: 26px !important;
                     }
+                    .content.setdetails .topprice a,
+                    .content.setdetails .topprice .bm-overall-bestprice-link {
+                        display: flex !important;
+                        width: 100% !important;
+                        align-items: stretch !important;
+                    }
+                    .content.setdetails .topprice div[style*="table-cell"]:first-child,
+                    .content.setdetails .topprice a > div:first-child,
+                    .content.setdetails .topprice .bm-topprice-logo-cell,
+                    .content.setdetails .topprice .bm-topprice-logo-cell.bm-marketplace-logo-link,
+                    .content.setdetails .topprice .bm-topprice-logo-cell.bm-ebay-logo-link {
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        width: 22.5% !important;
+                        min-width: 22.5% !important;
+                        max-width: 22.5% !important;
+                        flex: 0 0 22.5% !important;
+                        align-self: stretch !important;
+                        height: auto !important;
+                        min-height: 100% !important;
+                        background-color: #ffffff !important;
+                        box-sizing: border-box !important;
+                    }
+                    .content.setdetails .topprice div[style*="table-cell"]:nth-child(2),
+                    .content.setdetails .topprice a > div:nth-child(2),
+                    .content.setdetails .topprice .bm-topprice-price-cell {
+                        display: flex !important;
+                        align-items: center !important;
+                        flex: 1 1 77.5% !important;
+                        width: 77.5% !important;
+                        min-width: 0 !important;
+                        box-sizing: border-box !important;
+                        white-space: nowrap !important;
+                        flex-wrap: nowrap !important;
+                        gap: 0.25rem !important;
+                    }
                 }
                 .bm-offer-gallery {
                     display: none;
@@ -3492,6 +4160,12 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
                 .bm-sidebar-warning {
                     display: none;
+                }
+                a[href*="preisfehler"],
+                button[onclick*="preisfehler"],
+                a[data-reveal-id*="preisfehler"],
+                .preisfehler {
+                    display: none !important;
                 }
                 .content.setdetails .topprice {
                     position: relative !important;
@@ -3537,27 +4211,257 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 .bm-bestprice-black-bubble.bm-bestprice-black-bubble-single {
                     right: 0.65rem !important;
                 }
+                .content.setdetails .topprice,
+                .content.setdetails .topprice a {
+                    background: transparent !important;
+                    background-color: transparent !important;
+                    border: none !important;
+                    border-bottom: none !important;
+                    outline: none !important;
+                    box-shadow: none !important;
+                }
                 .content.setdetails .topprice div[style*="table-cell"]:first-child,
+                .content.setdetails .topprice a > div:first-child,
                 .content.setdetails .topprice .bm-topprice-logo-cell {
                     vertical-align: middle !important;
+                    background-color: #ffffff !important;
+                    background: #ffffff !important;
+                    border: none !important;
+                    border-bottom: none !important;
+                    box-shadow: none !important;
+                    box-sizing: border-box !important;
+                }
+                .content.setdetails .topprice div[style*="table-cell"]:nth-child(2),
+                .content.setdetails .topprice a > div:nth-child(2),
+                .content.setdetails .topprice .bm-topprice-price-cell {
+                    background-color: #557700 !important;
+                    background: #557700 !important;
+                }
+                @media screen and (min-width: 769px) {
+                    .content.setdetails .topprice div[style*="table-cell"]:first-child,
+                    .content.setdetails .topprice .bm-topprice-logo-cell,
+                    .content.setdetails .topprice .bm-topprice-logo-cell.bm-marketplace-logo-link,
+                    .content.setdetails .topprice .bm-topprice-logo-cell.bm-ebay-logo-link {
+                        display: table-cell !important;
+                        width: 88px !important;
+                        min-width: 88px !important;
+                        max-width: 88px !important;
+                        height: 100% !important;
+                        min-height: 100% !important;
+                        align-self: stretch !important;
+                        vertical-align: middle !important;
+                        text-align: center !important;
+                        background-color: #ffffff !important;
+                        background: #ffffff !important;
+                        border: none !important;
+                        border-bottom: none !important;
+                        padding: 2px !important;
+                        box-sizing: border-box !important;
+                        overflow: hidden !important;
+                    }
+                }
+                /* Der Händlerbalken muss auch auf Desktop eine Flex-Zeile bleiben.
+                   Die Händlerseite setzt ".productprice .topprice a { display:block }".
+                   Sobald die Preiszelle zusätzlich auf "flex" gesetzt wird, bilden die
+                   beiden Tabellenzellen keine gemeinsame anonyme Tabelle mehr – das
+                   Händlerlogo landet dann in einer eigenen Zeile über dem grünen
+                   Preisbalken. Ein Flex-Container am Anker verhindert das. */
+                .content.setdetails .topprice > a {
+                    display: flex !important;
+                    width: 100% !important;
+                    align-items: stretch !important;
+                }
+                .content.setdetails .topprice .bm-overall-bestprice-link {
+                    display: flex !important;
+                    align-items: stretch !important;
+                }
+                .content.setdetails .topprice .bm-overall-bestprice-link .bm-topprice-logo-cell {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    align-self: stretch !important;
+                    height: auto !important;
+                    min-height: 100% !important;
+                }
+                .content.setdetails .topprice .bm-topprice-logo-cell.bm-ebay-logo-link.bm-has-meta {
+                    display: table-cell !important;
+                    padding: 2px 3px !important;
+                }
+                .content.setdetails .topprice .bm-topprice-logo-cell .bm-marketplace-logo-stage,
+                .content.setdetails .topprice .bm-topprice-logo-cell.bm-ebay-logo-link .bm-marketplace-logo-stage {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 3px !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    margin: 0 auto !important;
+                    background: #fff !important;
+                    overflow: visible !important;
+                }
+                .content.setdetails .topprice .bm-topprice-logo-cell .bm-ebay-wordmark {
+                    display: inline-block !important;
+                    max-width: 46px !important;
+                    max-height: 20px !important;
+                    width: 46px !important;
+                    height: auto !important;
+                    margin: 0 !important;
+                    vertical-align: middle !important;
+                    color: #111 !important;
+                    overflow: visible;
+                    shape-rendering: geometricPrecision;
+                }
+                .content.setdetails .topprice .bm-topprice-logo-cell .bm-ebay-wordmark path {
+                    fill: currentColor;
+                }
+                .content.setdetails .topprice .bm-topprice-logo-cell .bm-ebay-seller-type-icon {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 16px !important;
+                    height: 16px !important;
+                    color: #111 !important;
+                    line-height: 0 !important;
+                }
+                .content.setdetails .topprice .bm-topprice-logo-cell .bm-ebay-seller-type-icon svg {
+                    display: block !important;
+                    width: 14px !important;
+                    height: 14px !important;
+                    fill: currentColor !important;
+                }
+                .content.setdetails .topprice .bm-topprice-logo-cell .bm-marketplace-country-flag {
+                    display: inline-block !important;
+                    font-size: 13px !important;
+                    line-height: 1 !important;
+                    vertical-align: middle !important;
+                }
+                .content.setdetails .topprice .bm-ebay-de-source { --bm-ebay-accent: #c40000; }
+                .content.setdetails .topprice .bm-ebay-fr-source { --bm-ebay-accent: #0057a8; }
+                .content.setdetails .topprice .bm-ebay-native-source { --bm-ebay-accent: #555; }
+                .content.setdetails .topprice .bm-ebay-commercial { --bm-ebay-accent: #0064d2; }
+                .content.setdetails .topprice .bm-ebay-private { --bm-ebay-accent: #7b2e83; }
+                .content.setdetails .topprice .bm-topprice-logo-cell .bm-marketplace-logo-meta {
+                    display: none !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 2px !important;
+                    width: 100% !important;
+                    min-width: 0 !important;
+                    height: 13px !important;
+                    overflow: hidden !important;
+                    background: #fff !important;
+                    box-sizing: border-box !important;
+                }
+                .content.setdetails .topprice .bm-topprice-logo-cell.bm-ebay-logo-link .bm-marketplace-logo-meta {
+                    display: none !important;
+                    border-top: none !important;
+                }
+                .content.setdetails .topprice .bm-topprice-logo-cell .bm-marketplace-logo-caption {
+                    display: none !important;
+                    color: var(--bm-ebay-accent, #555) !important;
+                    font-size: 0.58rem !important;
+                    font-weight: 700 !important;
+                    line-height: 1 !important;
                 }
                 .content.setdetails .topprice div[style*="table-cell"]:nth-child(2),
                 .content.setdetails .topprice .bm-topprice-price-cell {
                     vertical-align: middle !important;
-                    padding-right: 5.5rem !important;
+                    padding: 0.5rem 2.5rem 0.5rem 0.3rem !important;
+                    white-space: nowrap !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    flex-wrap: nowrap !important;
+                    gap: 0.25rem !important;
+                }
+                /* Preiszelle nimmt in der Flex-Zeile die Restbreite ein, damit der
+                   grüne Balken bis zum rechten Rand reicht (Desktop-Pendant zur
+                   77,5-%-Regel der Mobilansicht). */
+                .content.setdetails .topprice .bm-topprice-price-cell,
+                .content.setdetails .topprice a > div:nth-child(2) {
+                    flex: 1 1 auto !important;
+                    min-width: 0 !important;
+                }
+                .content.setdetails .topprice.bm-overall-bestprice .bm-topprice-price-cell {
+                    padding-right: 4.5rem !important;
+                }
+                .content.setdetails .topprice .bm-original-price {
+                    white-space: nowrap !important;
+                    flex-shrink: 0 !important;
+                    display: inline-block !important;
                 }
                 .content.setdetails .topprice .small,
                 .content.setdetails .topprice .code {
-                    margin-left: 0.25rem;
+                    margin-left: 0.15rem;
+                    white-space: nowrap !important;
+                    flex-shrink: 0 !important;
+                    display: inline-block !important;
                 }
                 .content.setdetails .topprice .bm-effective-info {
                     color: #ffffff !important;
-                    font-size: 0.85rem !important;
+                    font-size: 0.8rem !important;
                     font-weight: 400;
-                    margin-left: 0.35rem;
-                    white-space: nowrap;
+                    margin-left: 0.2rem;
+                    white-space: nowrap !important;
+                    flex-shrink: 0 !important;
                     vertical-align: baseline;
-                    display: inline-block;
+                    display: inline-block !important;
+                }
+                @media (max-width: 768px) {
+                    .content.setdetails .topprice a {
+                        display: flex !important;
+                        width: 100% !important;
+                        align-items: stretch !important;
+                    }
+                    .content.setdetails .topprice .bm-overall-bestprice-link {
+                        display: flex !important;
+                        width: 100% !important;
+                        align-items: stretch !important;
+                    }
+                    .content.setdetails .topprice div[style*="table-cell"]:first-child,
+                    .content.setdetails .topprice a > div:first-child,
+                    .content.setdetails .topprice .bm-topprice-logo-cell,
+                    .content.setdetails .topprice .bm-topprice-logo-cell.bm-marketplace-logo-link,
+                    .content.setdetails .topprice .bm-topprice-logo-cell.bm-ebay-logo-link {
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        width: 22.5% !important;
+                        min-width: 22.5% !important;
+                        max-width: 22.5% !important;
+                        flex: 0 0 22.5% !important;
+                        align-self: stretch !important;
+                        height: auto !important;
+                        min-height: 100% !important;
+                        background-color: #ffffff !important;
+                        box-sizing: border-box !important;
+                        padding: 0 !important;
+                    }
+                    .content.setdetails .topprice div[style*="table-cell"]:first-child img,
+                    .content.setdetails .topprice a > div:first-child img,
+                    .content.setdetails .topprice .bm-topprice-logo-cell img {
+                        max-width: 100% !important;
+                        max-height: 28px !important;
+                        object-fit: contain !important;
+                    }
+                    .content.setdetails .topprice div[style*="table-cell"]:nth-child(2),
+                    .content.setdetails .topprice a > div:nth-child(2),
+                    .content.setdetails .topprice .bm-topprice-price-cell {
+                        display: flex !important;
+                        align-items: center !important;
+                        flex: 1 1 77.5% !important;
+                        width: 77.5% !important;
+                        min-width: 0 !important;
+                        box-sizing: border-box !important;
+                        white-space: nowrap !important;
+                        flex-wrap: nowrap !important;
+                        gap: 0.25rem !important;
+                        padding: 0.5rem 2.4rem 0.5rem 0.3rem !important;
+                    }
+                    .content.setdetails .topprice.bm-overall-bestprice div[style*="table-cell"]:nth-child(2),
+                    .content.setdetails .topprice.bm-overall-bestprice a > div:nth-child(2),
+                    .content.setdetails .topprice.bm-overall-bestprice .bm-topprice-price-cell {
+                        padding-right: 4.5rem !important;
+                    }
                 }
                 .bm-marketplace-deal-badge {
                     display: inline-flex;
@@ -3631,43 +4535,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     flex-shrink: 0;
                 }
                 .bm-price-basis-toggle {
-                    cursor: pointer;
-                    margin-left: 0.28em;
-                    padding: 0;
-                    width: 13px;
-                    height: 13px;
-                    border: 0;
-                    background: none !important;
-                    color: inherit;
-                    user-select: none;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    line-height: 0;
-                    vertical-align: middle;
-                    position: static;
-                    transform: none;
-                    opacity: 0.82;
-                    box-sizing: border-box;
-                    transition: opacity 0.15s ease, color 0.15s ease;
-                }
-                .bm-price-basis-toggle:hover,
-                .bm-price-basis-toggle:focus-visible {
-                    opacity: 1;
-                    color: #700;
-                    outline: none;
-                }
-                .bm-price-basis-toggle[data-bm-mode="retailer"] {
-                    color: #700;
-                }
-                .bm-price-basis-toggle[data-bm-mode="overall"] {
-                    color: #2eb866;
-                }
-                .bm-price-basis-toggle svg {
-                    display: block;
-                    width: 13px;
-                    height: 13px;
-                    flex-shrink: 0;
+                    display: none !important;
                 }
 
                 .bm-offer-row-highlight {
@@ -3905,6 +4773,28 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     transform: translate(-50%, 0);
                     transition-delay: 0s;
                 }
+                @media (hover: none), (pointer: coarse), (max-width: 64em) {
+                    .bm-minifig-tooltip,
+                    .bm-minifig-count-link > .bm-minifig-tooltip {
+                        display: none !important;
+                        visibility: hidden !important;
+                        opacity: 0 !important;
+                        pointer-events: none !important;
+                    }
+                }
+                body.bm-minifig-overlay-open .bm-minifig-tooltip,
+                body.bm-chart-overlay-open .bm-minifig-tooltip,
+                body.bm-ean-overlay-open .bm-minifig-tooltip,
+                body.bm-minifig-overlay-open div[class*="tooltipster"],
+                body.bm-chart-overlay-open div[class*="tooltipster"],
+                body.bm-ean-overlay-open div[class*="tooltipster"],
+                body:has(.bm-minifig-overlay) .bm-minifig-tooltip,
+                body:has(.bm-minifig-overlay) div[class*="tooltipster"] {
+                    display: none !important;
+                    opacity: 0 !important;
+                    visibility: hidden !important;
+                    pointer-events: none !important;
+                }
                 .bm-ean-source-block {
                     display: none !important;
                 }
@@ -3929,10 +4819,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     max-height: min(84vh, 760px);
                     flex-direction: column;
                     overflow: hidden;
-                    border-top: 5px solid #b00;
-                    border-radius: 4px;
+                    border-top: 4px solid #B80000;
+                    border-radius: 20px;
                     background: #fff;
-                    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+                    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
                     animation: bm-ean-zoom-in 0.16s ease-out;
                 }
                 .bm-ean-header {
@@ -3942,8 +4832,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     align-items: center;
                     justify-content: space-between;
                     padding: 0.8rem 0.8rem 0.8rem 1.25rem;
-                    border-bottom: 1px solid #ddd;
-                    background: #fff !important;
+                    border-bottom: 1px solid #990000;
+                    background: #B80000 !important;
                     box-shadow: none !important;
                     text-shadow: none !important;
                 }
@@ -3953,7 +4843,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 .bm-ean-title {
                     margin: 0;
                     padding: 0;
-                    color: #333 !important;
+                    color: #ffffff !important;
                     background: none !important;
                     font-size: 1.25rem;
                     font-weight: 700;
@@ -3962,32 +4852,36 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
                 .bm-ean-subtitle {
                     margin-top: 3px;
-                    color: #777;
+                    color: rgba(255, 255, 255, 0.85);
                     font-size: 0.75rem;
                     line-height: 1.2;
                 }
                 .bm-ean-close {
-                    display: flex;
-                    width: 40px;
-                    min-width: 40px;
-                    height: 40px;
-                    align-items: center;
-                    justify-content: center;
-                    margin: 0;
-                    padding: 0;
-                    border: 0;
-                    border-radius: 4px;
-                    background: #f7eaea;
-                    color: #800;
-                    cursor: pointer;
-                    font: bold 1.8rem/1 Arial, sans-serif;
+                    display: inline-flex !important;
+                    width: 32px !important;
+                    min-width: 32px !important;
+                    height: 32px !important;
+                    flex: 0 0 32px !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    border: 0 !important;
+                    border-radius: 16px !important;
+                    background: rgba(255, 255, 255, 0.2) !important;
+                    color: #ffffff !important;
+                    cursor: pointer !important;
+                    font: bold 1.25rem/1 Arial, sans-serif !important;
                     text-shadow: none !important;
+                    box-shadow: none !important;
+                    -webkit-appearance: none !important;
+                    appearance: none !important;
                 }
                 .bm-ean-close:hover,
                 .bm-ean-close:focus {
-                    background: #b00;
-                    color: #fff;
-                    outline: none;
+                    background: rgba(255, 255, 255, 0.3) !important;
+                    color: #ffffff !important;
+                    outline: none !important;
                 }
                 .bm-ean-content {
                     display: flex;
@@ -4114,19 +5008,20 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     height: calc(100dvh - 1.5rem);
                     flex-direction: column;
                     overflow: hidden;
-                    border-top: 5px solid #b00;
-                    border-radius: 4px;
+                    border-top: 4px solid #B80000;
+                    border-radius: 20px;
                     background: #fff;
-                    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+                    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
                     animation: bm-ean-zoom-in 0.18s ease-out;
                 }
                 .bm-chart-dialog-header {
                     display: flex;
                     flex: 0 0 auto;
                     align-items: center;
+                    justify-content: space-between;
                     gap: 1rem;
                     min-height: 64px;
-                    padding: 0.8rem 4.25rem 0.8rem 1.25rem;
+                    padding: 0.8rem 1.25rem;
                     border-bottom: 1px solid #ddd;
                     background: #fff;
                     box-shadow: none !important;
@@ -4168,30 +5063,34 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     color: #222 !important;
                 }
                 .bm-chart-dialog-close {
-                    position: absolute;
-                    top: 0.65rem;
-                    right: 0.8rem;
-                    display: inline-flex;
-                    width: 40px;
-                    height: 40px;
-                    align-items: center;
-                    justify-content: center;
-                    margin: 0;
-                    padding: 0;
-                    border: 0;
-                    background: #f7eaea;
-                    color: #800;
-                    border-radius: 4px;
-                    font-size: 1.8rem;
-                    font-weight: bold;
-                    line-height: 1;
+                    position: relative;
+                    display: inline-flex !important;
+                    width: 32px !important;
+                    min-width: 32px !important;
+                    height: 32px !important;
+                    flex: 0 0 32px !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    margin: 0 0 0 auto !important;
+                    padding: 0 !important;
+                    border: 0 !important;
+                    border-radius: 16px !important;
+                    background: #F1F5F9 !important;
+                    color: #64748B !important;
+                    font-size: 1.25rem !important;
+                    font-weight: bold !important;
+                    line-height: 1 !important;
                     text-shadow: none !important;
-                    cursor: pointer;
+                    box-shadow: none !important;
+                    -webkit-appearance: none !important;
+                    appearance: none !important;
+                    cursor: pointer !important;
                 }
                 .bm-chart-dialog-close:hover,
                 .bm-chart-dialog-close:focus {
-                    background: #b00;
-                    color: #fff;
+                    background: #E2E8F0 !important;
+                    color: #0F172A !important;
+                    outline: none !important;
                 }
                 .bm-chart-dialog-content {
                     min-height: 0;
@@ -4279,12 +5178,12 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 #chartdiv2.bm-chart-detail-trigger a[href*="amcharts"]:hover,
                 #chartdiv2.bm-chart-detail-trigger a[href*="amcharts"]:focus-visible {
                     background: #fff !important;
-                    color: #b00000 !important;
+                    color: #B80000 !important;
                     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
                     outline: none;
                 }
                 #chartdiv2.bm-chart-detail-trigger:focus-visible {
-                    outline: 2px solid #b00;
+                    outline: 2px solid #B80000;
                     outline-offset: 2px;
                 }
                 #chartTrigger.bm-native-chart-loader {
@@ -4361,7 +5260,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         display: none !important;
                         content: none !important;
                     }
-                    .content.setdetails .bm-detail-layout > .bm-full-product-description {
+                    .content.setdetails .bm-detail-layout > .bm-full-product-description,
+                    .content.setdetails .bm-detail-layout > .bm-detail-warning {
                         grid-column: 1 / -1;
                         width: 100% !important;
                         float: none !important;
@@ -4507,7 +5407,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     .bm-offer-video-link {
                         display: block;
                         margin: 0 0 0.55rem;
-                        color: #b00;
+                        color: #B80000;
                         font-size: 0.72rem;
                         line-height: 1.25;
                         text-decoration: underline;
@@ -4537,7 +5437,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     .bm-sidebar-instruction-link {
                         display: block;
                         min-width: 0;
-                        color: #b00;
+                        color: #B80000;
                         font-size: 0.66rem;
                         line-height: 1.2;
                         text-align: center;
@@ -4557,14 +5457,14 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     .bm-sidebar-instructions-more {
                         display: inline-block;
                         margin-top: 0.75rem;
-                        color: #b00;
+                        color: #B80000;
                         font-size: 0.72rem;
                         line-height: 1.25;
                         text-decoration: underline;
                     }
                     #ol2nd .bm-sidebar-warning {
                         display: block;
-                        margin: 0 0 1.25rem;
+                        margin: 0.4rem 0 0.5rem;
                         text-align: left;
                     }
                     #ol2nd .bm-sidebar-warning .bm-safety-warning-block {
@@ -4573,14 +5473,26 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         border-top: none;
                     }
                     .bm-detail-warning {
+                        display: block !important;
+                        margin: 0.25rem 0 0.35rem !important;
+                        padding-top: 0.25rem !important;
+                        border-top: 1px solid #eee;
+                        text-align: left;
+                    }
+                    .bm-detail-warning .bm-safety-warning-block {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        border: none !important;
+                    }
+                    .bm-detail-warning + div[style*="height"] {
                         display: none !important;
                     }
                     .bm-instruction-source .bm-safety-warning-block {
                         display: flex;
                         align-items: center;
                         gap: 0.65rem;
-                        margin: 1rem 0;
-                        padding-top: 0.75rem;
+                        margin: 0.4rem 0;
+                        padding-top: 0.4rem;
                         border-top: 1px solid #eee;
                     }
                     #ol2nd .bm-sidebar-parts {
@@ -4618,7 +5530,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         gap: 0.4rem;
                         min-width: 0;
                         padding: 0.35rem 0.45rem;
-                        color: #b00;
+                        color: #B80000;
                         font-size: 0.72rem;
                         line-height: 1.25;
                         text-decoration: none;
@@ -4626,7 +5538,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     }
                     .bm-sidebar-parts-link:hover {
                         color: #fff;
-                        background: #b00;
+                        background: #B80000;
                     }
                     .bm-sidebar-parts-link img {
                         flex: 0 0 auto;
@@ -4645,8 +5557,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     display: flex;
                     align-items: center;
                     gap: 0.65rem;
-                    margin-top: 0.85rem;
-                    padding-top: 0.75rem;
+                    margin-top: 0.4rem;
+                    padding-top: 0.4rem;
                     border-top: 1px solid #eee;
                     text-align: left;
                     box-sizing: border-box;
@@ -4674,7 +5586,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
                 .bm-sidebar-warning {
                     display: block;
-                    margin: 0.75rem 0 1.25rem;
+                    margin: 0.4rem 0 0.5rem;
                     text-align: left;
                 }
                 .bm-sidebar-warning .bm-safety-warning-block {
@@ -4684,7 +5596,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
                 .bm-detail-warning {
                     display: block;
-                    margin: 0.75rem 0 1rem;
+                    margin: 0.25rem 0 0.35rem !important;
+                    padding-top: 0.25rem !important;
+                    border-top: 1px solid #eee;
                     text-align: left;
                 }
                 .bm-detail-warning .bm-safety-warning-block {
@@ -4692,12 +5606,18 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     padding-top: 0;
                     border-top: none;
                 }
+                .bm-detail-warning + div[style*="height"] {
+                    display: none !important;
+                }
+                .content.setdetails .padDoubleBottom {
+                    padding-bottom: 0.25rem !important;
+                }
                 .bm-instruction-source .bm-safety-warning-block {
                     display: flex;
                     align-items: center;
                     gap: 0.65rem;
-                    margin: 1rem 0;
-                    padding-top: 0.75rem;
+                    margin: 0.4rem 0;
+                    padding-top: 0.4rem;
                     border-top: 1px solid #eee;
                 }
                 .bm-offer-toolbar {
@@ -4853,34 +5773,88 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         min-height: 104px;
                     }
                     .bm-chart-overlay {
-                        padding: 0;
+                        padding: 0 !important;
                     }
                     .bm-chart-dialog {
-                        width: 100vw;
-                        height: 100vh;
-                        height: 100dvh;
+                        width: 100vw !important;
+                        height: 100vh !important;
+                        height: 100dvh !important;
                         border-top-width: 4px;
-                        border-radius: 0;
+                        border-radius: 0 !important;
                     }
                     .bm-chart-dialog-header {
                         min-height: 0;
                         flex-wrap: wrap;
                         gap: 0.4rem;
-                        padding: calc(1.35rem + env(safe-area-inset-top, 0px)) 3.75rem 0.55rem 1rem;
-                    }
-                    .bm-chart-dialog-close {
-                        top: calc(0.85rem + env(safe-area-inset-top, 0px));
+                        padding: max(10px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 0.55rem max(12px, env(safe-area-inset-left, 0px));
                     }
                     .bm-chart-dialog-title {
-                        width: 100%;
+                        flex: 1 1 auto;
+                        width: auto;
                         font-size: 1rem;
+                    }
+                    .bm-chart-dialog-close {
+                        position: relative !important;
+                        top: auto !important;
+                        right: auto !important;
+                        margin-left: auto !important;
                     }
                     .bm-chart-periods {
                         width: 100%;
                         flex-basis: 100%;
+                        order: 3;
                     }
                     .bm-chart-dialog-content {
                         padding: 0.75rem;
+                    }
+                }
+                html.bm-android-app .bm-chart-overlay {
+                    padding: 0 !important;
+                }
+                html.bm-android-app .bm-chart-dialog {
+                    width: 100vw !important;
+                    height: 100vh !important;
+                    height: 100dvh !important;
+                    border-radius: 0 !important;
+                }
+                @media screen and (max-height: 550px) and (orientation: landscape), (hover: none) and (max-width: 1024px) and (orientation: landscape) {
+                    .bm-chart-overlay {
+                        padding: 0 !important;
+                    }
+                    .bm-chart-dialog {
+                        width: 100vw !important;
+                        height: 100vh !important;
+                        height: 100dvh !important;
+                        border-radius: 0 !important;
+                    }
+                    .bm-chart-dialog-header {
+                        min-height: 40px !important;
+                        flex-wrap: nowrap !important;
+                        gap: 0.5rem !important;
+                        padding: max(6px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 6px max(12px, env(safe-area-inset-left, 0px)) !important;
+                    }
+                    .bm-chart-dialog-close {
+                        position: relative !important;
+                        top: auto !important;
+                        right: auto !important;
+                        margin-left: auto !important;
+                        width: 30px !important;
+                        height: 30px !important;
+                        flex: 0 0 30px !important;
+                    }
+                    .bm-chart-dialog-title {
+                        width: auto !important;
+                        font-size: 0.92rem !important;
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                    }
+                    .bm-chart-periods {
+                        width: auto !important;
+                        flex: 1 1 auto !important;
+                    }
+                    .bm-chart-dialog-content {
+                        padding: 0.35rem 0.5rem !important;
                     }
                 }
                 .bm-discount-toolbar-control {
@@ -4930,7 +5904,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 .bm-discount-settings-trigger:hover,
                 .bm-discount-settings-trigger:focus {
                     background: transparent !important;
-                    color: #b00000 !important;
+                    color: #B80000 !important;
                     text-decoration: underline !important;
                     text-underline-offset: 0.18rem;
                     outline: none;
@@ -4951,7 +5925,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     align-items: center;
                     justify-content: center;
                     padding: 1rem;
-                    background: rgba(0, 0, 0, 0.64);
+                    background: rgba(15, 23, 42, 0.6);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
+                    box-sizing: border-box;
                 }
                 .bm-settings-overlay.is-open {
                     display: flex;
@@ -4960,15 +5937,15 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 .bm-settings-dialog {
                     width: min(40rem, 100%);
                     max-height: calc(100vh - 2rem);
+                    max-height: calc(100dvh - 2rem);
                     display: flex;
                     flex-direction: column;
                     overflow: hidden;
                     background: #fff;
                     border: 0;
-                    border-top: 5px solid #b00;
-                    border-radius: 4px;
-                    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
-                    color: #333;
+                    border-radius: 20px;
+                    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+                    color: #0F172A;
                     animation: bm-ean-zoom-in 0.18s ease-out;
                 }
                 .bm-settings-header,
@@ -4980,47 +5957,50 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
                 .bm-settings-header {
                     justify-content: space-between;
-                    min-height: 64px;
+                    min-height: 56px;
                     background: #fff;
-                    border-bottom: 1px solid #ddd;
+                    border-bottom: 1px solid #F1F5F9;
+                    padding: 1rem 1.25rem;
                     box-shadow: none !important;
                     box-sizing: border-box;
                 }
                 .bm-settings-header h3 {
                     margin: 0 !important;
-                    color: #333 !important;
-                    font-size: 1.25rem !important;
+                    color: #0F172A !important;
+                    font-size: 1.2rem !important;
                     font-weight: 700 !important;
                     line-height: 1.2 !important;
                     text-shadow: none !important;
                 }
                 .bm-settings-close {
                     display: inline-flex !important;
-                    width: 40px;
-                    height: 40px;
+                    width: 32px !important;
+                    height: 32px !important;
+                    min-width: 32px !important;
                     align-items: center;
                     justify-content: center;
                     margin: 0 !important;
                     padding: 0 !important;
                     border: 0 !important;
-                    border-radius: 4px !important;
-                    background: #f7eaea !important;
-                    color: #800 !important;
-                    font-size: 1.8rem !important;
+                    border-radius: 16px !important;
+                    background: #F1F5F9 !important;
+                    color: #64748B !important;
+                    font-size: 1.25rem !important;
                     font-weight: bold !important;
                     line-height: 1 !important;
                     text-shadow: none !important;
+                    cursor: pointer;
                 }
                 .bm-settings-close:hover,
                 .bm-settings-close:focus {
-                    background: #b00 !important;
-                    color: #fff !important;
+                    background: #E2E8F0 !important;
+                    color: #0F172A !important;
                 }
                 .bm-settings-body {
                     flex: 1 1 auto;
                     min-height: 0;
                     overflow: auto;
-                    padding: 0 1rem;
+                    padding: 0.5rem 1.25rem;
                 }
                 .bm-settings-row {
                     display: grid;
@@ -5028,22 +6008,27 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     align-items: center;
                     gap: 0.75rem;
                     min-height: 2.8rem;
-                    border-bottom: 1px solid #e5e5e5;
+                    border-bottom: 1px solid #F1F5F9;
                 }
                 .bm-settings-row:last-child {
                     border-bottom: 0;
                 }
                 .bm-settings-row label {
                     margin: 0;
-                    color: #1f5fa8;
-                    font-size: 0.82rem;
-                    font-weight: normal;
+                    color: #1E293B;
+                    font-size: 0.85rem;
+                    font-weight: 600;
                 }
                 .bm-settings-row input[type="number"] {
                     width: 4.8rem;
-                    height: 2.15rem;
+                    height: 2.2rem;
                     margin: 0;
-                    padding: 0.3rem 0.4rem;
+                    padding: 0.3rem 0.5rem;
+                    border: 1px solid #CBD5E1;
+                    border-radius: 8px;
+                    background: #F8FAFC;
+                    color: #0F172A;
+                    font-weight: 600;
                 }
                 .bm-settings-percent {
                     display: flex;
@@ -5052,29 +6037,29 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     white-space: nowrap;
                 }
                 .bm-settings-actions {
+                    display: flex;
                     justify-content: flex-end;
-                    background: #f3f3f3;
-                    border-top: 1px solid #ddd;
+                    align-items: center;
+                    gap: 0.5rem;
+                    background: #F8FAFC;
+                    border-top: 1px solid #F1F5F9;
+                    padding: 0.8rem 1.25rem;
                 }
                 .bm-settings-actions .button {
                     margin: 0 !important;
-                    border-radius: 1px !important;
-                }
-                .bm-settings-save {
-                    background: #b00000 !important;
-                    color: #fff !important;
+                    border-radius: 10px !important;
+                    font-weight: 600 !important;
                 }
                 @media screen and (max-width: 640px) {
                     .bm-settings-overlay {
-                        align-items: stretch;
-                        padding: 0;
+                        align-items: center;
+                        padding: 0.75rem;
                     }
                     .bm-settings-dialog {
-                        width: 100vw;
-                        height: 100vh;
-                        height: 100dvh;
-                        max-height: none;
-                        border-radius: 0;
+                        width: 100%;
+                        max-height: 90vh;
+                        max-height: 90dvh;
+                        border-radius: 20px;
                     }
                     .bm-settings-row {
                         grid-template-columns: minmax(6rem, 1fr) auto 5.4rem;
@@ -5092,10 +6077,4306 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     pointer-events: none !important;
                     background-image: none !important;
                 }
+
+                /* Breadcrumb-Abstand zur Kopfzeile in der App */
+                html.bm-android-app #wrap > *:first-child,
+                html.bm-android-app #wrap > .content:first-child,
+                html.bm-android-app .content.setdetails,
+                html.bm-android-app .content.noPadBottom,
+                html.bm-android-app .setdetails {
+                    margin-top: 0 !important;
+                    padding-top: 8px !important;
+                }
+                html.bm-android-app [itemscope][itemtype*="BreadcrumbList"],
+                html.bm-android-app .breadcrumb,
+                html.bm-android-app nav[aria-label="breadcrumb"],
+                html.bm-android-app .breadcrumbs,
+                html.bm-android-app nav.breadcrumbs,
+                html.bm-android-app .content.setdetails [itemscope][itemtype*="BreadcrumbList"],
+                html.bm-android-app #headlinerow,
+                html.bm-android-app #headlinerow h1,
+                html.bm-android-app .content.setdetails h1,
+                html.bm-android-app .setdetails h1 {
+                    display: none !important;
+                }
+
+                /* Rote Leiste oberhalb Kacheln überall entfernt: nahtlos weiß */
+                #productrowcontainer,
+                #productrow,
+                .productrow,
+                #productrowcontainer > .bm-view-switcher,
+                .bm-view-switcher {
+                    background: #FFFFFF !important;
+                }
+
+                .bm-view-switcher {
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-end;
+                    gap: 6px;
+                    padding: 4px 8px 8px;
+                    margin: 0 auto;
+                    max-width: 62.5rem;
+                    width: 100%;
+                    box-sizing: border-box;
+                    background: #FFFFFF !important;
+                }
+                @media screen and (min-width: 769px) {
+                    .bm-view-switcher {
+                        display: none !important;
+                    }
+                }
+                body:has(.wrapper.merchants) .bm-view-switcher,
+                body:has(.wrapper.themen) .bm-view-switcher,
+                body:has(.wrapper.brickstores) .bm-view-switcher,
+                body:has(#offerlist) .bm-view-switcher,
+                .content.setdetails ~ * .bm-view-switcher,
+                .wrapper.merchants ~ .bm-view-switcher,
+                .wrapper.themen ~ .bm-view-switcher,
+                .wrapper.brickstores ~ .bm-view-switcher {
+                    display: none !important;
+                }
+                .bm-view-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 5px;
+                    padding: 5px 10px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: #64748B;
+                    background: #F8FAFC;
+                    border: 1px solid #CBD5E1;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    text-decoration: none;
+                    line-height: 1;
+                    transition: all 0.15s ease;
+                }
+                .bm-view-btn:active {
+                    transform: scale(0.96);
+                }
+                .bm-view-btn.is-active {
+                    color: #B80000;
+                    background: #FEF2F2;
+                    border-color: #FECACA;
+                    font-weight: 700;
+                }
+                .bm-view-btn svg {
+                    display: block;
+                    flex-shrink: 0;
+                }
+
+                /* Kompakte Listenansicht für Sets (ausschließlich auf Mobilgeräten aktiv, auf Desktop entfernt) */
+                @media screen and (max-width: 768px) {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores),
+                html.bm-view-list :is(#productrow, .productrow) .wrapper#wrappernormal:not(.merchants):not(.themen):not(.brickstores),
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores),
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper#wrappernormal:not(.merchants):not(.themen):not(.brickstores) {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    gap: 8px !important;
+                    padding: 4px 6px 20px !important;
+                    width: 100% !important;
+                    box-sizing: border-box !important;
+                    float: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::before,
+                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::after,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::before,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::after {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    min-width: 0 !important;
+                    margin: 0 !important;
+                    padding: 7px 10px 7px 7px !important;
+                    float: none !important;
+                    display: grid !important;
+                    grid-template-columns: 82px minmax(0, 1fr) !important;
+                    grid-template-areas:
+                        "thumb header"
+                        "thumb price" !important;
+                    column-gap: 12px !important;
+                    row-gap: 4px !important;
+                    align-items: center !important;
+                    position: relative !important;
+                    background: #FFFFFF !important;
+                    border: 1px solid #E2E8F0 !important;
+                    border-radius: 12px !important;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+                    box-sizing: border-box !important;
+                    min-height: 84px !important;
+                    cursor: pointer !important;
+                    transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide:hover,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide:hover {
+                    background: #F8FAFC !important;
+                    border-color: #CBD5E1 !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide:active,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide:active {
+                    background: #F1F5F9 !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productimg,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productimg {
+                    grid-area: thumb !important;
+                    width: 82px !important;
+                    height: 82px !important;
+                    min-height: 82px !important;
+                    max-height: 82px !important;
+                    background: #F8FAFC !important;
+                    border: 1px solid #F1F5F9 !important;
+                    border-radius: 8px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    margin: 0 !important;
+                    padding: 3px !important;
+                    box-sizing: border-box !important;
+                    position: relative !important;
+                    float: none !important;
+                    overflow: hidden !important;
+                    cursor: pointer !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productimg a,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productimg a {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productimg img,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productimg img {
+                    max-width: 76px !important;
+                    max-height: 76px !important;
+                    width: auto !important;
+                    height: auto !important;
+                    object-fit: contain !important;
+                    margin: 0 auto !important;
+                    display: block !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > .off,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide > .off {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .offerbox .off,
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-off,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .offerbox .off,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-list-off {
+                    position: static !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    width: auto !important;
+                    height: auto !important;
+                    min-width: 0 !important;
+                    min-height: 0 !important;
+                    margin: 0 !important;
+                    z-index: 1 !important;
+                    font-size: 10.5px !important;
+                    font-weight: 800 !important;
+                    line-height: 1.1 !important;
+                    padding: 1.5px 5px !important;
+                    border-radius: 4px !important;
+                    background: #DC2626 !important;
+                    color: #FFFFFF !important;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+                    letter-spacing: -0.2px !important;
+                    white-space: nowrap !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-slidebadge,
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide a[id^="merk"],
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide a[id^="a"],
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide a[id^="dp"],
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-slidebadge,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide a[id^="merk"],
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide a[id^="a"],
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide a[id^="dp"] {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttitle,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .producttitle {
+                    grid-area: header !important;
+                    font-size: 13.5px !important;
+                    font-weight: 700 !important;
+                    line-height: 1.25 !important;
+                    margin: 0 !important;
+                    padding-right: 0 !important;
+                    max-height: 2.6em !important;
+                    overflow: hidden !important;
+                    display: -webkit-box !important;
+                    -webkit-line-clamp: 2 !important;
+                    -webkit-box-orient: vertical !important;
+                    text-align: left !important;
+                    cursor: pointer !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttitle a.detail,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .producttitle a.detail {
+                    font-weight: 700 !important;
+                    color: #0F172A !important;
+                    text-decoration: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttitle a.button,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .producttitle a.button {
+                    display: inline-block !important;
+                    font-size: 10px !important;
+                    font-weight: 600 !important;
+                    padding: 1px 5px !important;
+                    margin-right: 4px !important;
+                    line-height: 1.2 !important;
+                    background: #E2E8F0 !important;
+                    color: #475569 !important;
+                    border-radius: 4px !important;
+                    vertical-align: middle !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttag,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .producttag {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > a.detail:has(.dealheat),
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > a:has(.dealheat),
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .dealheat,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide > a.detail:has(.dealheat),
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide > a:has(.dealheat),
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .dealheat {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice {
+                    grid-area: price !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    font-size: 11px !important;
+                    line-height: 1.3 !important;
+                    color: #475569 !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox {
+                    min-height: 0 !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    flex-wrap: wrap !important;
+                    gap: 6px !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .theprice,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .theprice {
+                    font-size: 16.5px !important;
+                    font-weight: 800 !important;
+                    color: #B80000 !important;
+                    letter-spacing: -0.3px;
+                    line-height: 1 !important;
+                    cursor: pointer !important;
+                    pointer-events: auto !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .stroke,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .stroke {
+                    font-size: 11px !important;
+                    color: #64748B !important;
+                    text-decoration: line-through !important;
+                    margin: 0 !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice a[href="#info"],
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice a[href="#info"] {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice br,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice br,
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .small:not(.stroke),
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .small:not(.stroke) {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-eol,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-list-eol {
+                    position: absolute !important;
+                    top: 4px !important;
+                    left: 4px !important;
+                    z-index: 5 !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    font-size: 10px !important;
+                    font-weight: 700 !important;
+                    padding: 1.5px 5px !important;
+                    border-radius: 4px !important;
+                    background: #FEF3C7 !important;
+                    color: #92400E !important;
+                    border: 1px solid #FDE68A !important;
+                    white-space: nowrap !important;
+                    line-height: 1.2 !important;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-eol:empty,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-list-eol:empty {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-card-top-badge,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-card-top-badge {
+                    display: none !important;
+                }
+                }
+
+                /* Klassische Kachel: Merk-, Alarm- und Depot-Icons ausblenden (spart Platz) */
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide a[id^="merk"],
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide a[id^="a"],
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide a[id^="dp"],
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-slidebadge {
+                    display: none !important;
+                }
+
+                /* Klassische Kachel: Badge oben rechts über dem Produktbild (z.B. Händlerzahl sinkt, Bestpreis etc.) */
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide,
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg {
+                    position: relative !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide {
+                    height: auto !important;
+                    min-height: 0 !important;
+                    padding: 6px 6px 4px !important;
+                    box-sizing: border-box !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-card-top-badge {
+                    position: absolute !important;
+                    top: 4px !important;
+                    right: 4px !important;
+                    z-index: 5 !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    font-size: 9.5px !important;
+                    font-weight: 700 !important;
+                    padding: 1.5px 5px !important;
+                    border-radius: 4px !important;
+                    background: #FEF3C7 !important;
+                    color: #92400E !important;
+                    border: 1px solid #FDE68A !important;
+                    white-space: nowrap !important;
+                    line-height: 1.2 !important;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-card-top-badge:empty {
+                    display: none !important;
+                }
+
+                /* Klassische Kachel: Rabatt-Badge (.off) bleibt oben links auf dem Produktbild */
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .off {
+                    position: absolute !important;
+                    top: 6px !important;
+                    left: 6px !important;
+                    z-index: 5 !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 36px !important;
+                    height: 36px !important;
+                    min-width: 36px !important;
+                    min-height: 36px !important;
+                    padding: 0 !important;
+                    border: none !important;
+                    border-radius: 999px !important;
+                    background: #B80000 !important;
+                    color: #FFFFFF !important;
+                    font-size: 12px !important;
+                    font-weight: 800 !important;
+                    line-height: 1 !important;
+                    text-align: center !important;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+                }
+
+                /* Klassische Kachel: Kompakte Bild-Bühne (mehr Raum für das Bild, reines Weiß ohne grauen Bereich) */
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    height: 155px !important;
+                    min-height: 155px !important;
+                    max-height: 165px !important;
+                    overflow: hidden !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    background: #FFFFFF !important;
+                    border-radius: 8px !important;
+                    border: none !important;
+                    box-sizing: border-box !important;
+                    padding: 6px !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg img {
+                    max-height: 145px !important;
+                    max-width: 96% !important;
+                    width: auto !important;
+                    height: auto !important;
+                    object-fit: contain !important;
+                }
+
+                /* Klassische Kachel: Titel (1 Zeile, truncate) */
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .producttitle {
+                    font-size: 12px !important;
+                    font-weight: 700 !important;
+                    color: #1E293B !important;
+                    white-space: nowrap !important;
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
+                    margin: 5px 8px 0 !important;
+                    line-height: 1.3 !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .producttitle a.detail {
+                    color: #1E293B !important;
+                    text-decoration: none !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .producttitle a.button {
+                    font-size: 9.5px !important;
+                    font-weight: 600 !important;
+                    color: #64748B !important;
+                    background: #F1F5F9 !important;
+                    padding: 1px 4px !important;
+                    border-radius: 3px !important;
+                    margin-right: 3px !important;
+                    vertical-align: middle !important;
+                    text-decoration: none !important;
+                }
+
+                /* Klassische Kachel: Preis + UVP auf der linken Seite, EOL-Datum immer unten rechts */
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice {
+                    height: auto !important;
+                    min-height: 0 !important;
+                    margin: 4px 8px 0 !important;
+                    padding: 0 !important;
+                    line-height: 1.2 !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .offerbox {
+                    display: flex !important;
+                    align-items: baseline !important;
+                    justify-content: space-between !important;
+                    flex-wrap: nowrap !important;
+                    gap: 5px !important;
+                    min-height: 0 !important;
+                    height: auto !important;
+                    width: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .theprice {
+                    font-size: 14.5px !important;
+                    font-weight: 900 !important;
+                    color: #0F172A !important;
+                    letter-spacing: -0.3px !important;
+                    line-height: 1.1 !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .stroke {
+                    font-size: 10.5px !important;
+                    color: #94A3B8 !important;
+                    text-decoration: line-through !important;
+                    line-height: 1.1 !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .bm-list-eol {
+                    position: static !important;
+                    margin-left: auto !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    font-size: 9.5px !important;
+                    font-weight: 700 !important;
+                    padding: 1px 5px !important;
+                    border-radius: 4px !important;
+                    background: #FEF3C7 !important;
+                    color: #92400E !important;
+                    border: 1px solid #FDE68A !important;
+                    white-space: nowrap !important;
+                    line-height: 1.2 !important;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .bm-list-eol:empty {
+                    display: none !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice br,
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice a[href="#info"] {
+                    display: none !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .bm-list-off {
+                    display: none !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .bm-list-merchant {
+                    display: none !important;
+                }
+
+                /* Klassische Kachel: Unerwünschte Leerzeilen, alten Moosgrün-Balken und dealheat ausblenden */
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide > a.detail:has(.dealheat),
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide > a:has(.dealheat),
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .dealheat,
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .pricerow,
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide div.pricerow,
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide p:empty,
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide br {
+                    display: none !important;
+                }
+
+                /* Klassische Kachel: Split-CTA (↗ Shop-Direktlink + Angebote-Vergleich) direkt unter der Preiszeile */
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-split-cta {
+                    display: grid !important;
+                    grid-template-columns: 1fr 1fr !important;
+                    gap: 5px !important;
+                    margin: 5px 8px 8px !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-btn-shop,
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-btn-offers {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 3px !important;
+                    padding: 6px 5px !important;
+                    font-size: 11px !important;
+                    font-weight: 700 !important;
+                    border-radius: 8px !important;
+                    text-decoration: none !important;
+                    white-space: nowrap !important;
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
+                    line-height: 1.1 !important;
+                    min-height: 32px !important;
+                    box-sizing: border-box !important;
+                    cursor: pointer !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-btn-shop {
+                    background: #F1F5F9 !important;
+                    color: #475569 !important;
+                    border: 1px solid #CBD5E1 !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-btn-shop[data-bm-loading] {
+                    color: #94A3B8 !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-btn-offers {
+                    background: #059669 !important;
+                    color: #FFFFFF !important;
+                    border: 1px solid transparent !important;
+                }
+
+                /* Split-CTA in Listen- und 2-Spalten-Ansicht verstecken (da dort eigenes Layout) */
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-split-cta,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-split-cta {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-list-merchant,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-list-merchant,
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-overview-effective-source,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-overview-effective-source {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    font-size: 11px !important;
+                    font-weight: 600 !important;
+                    color: #0369A1 !important;
+                    background: #F0F9FF !important;
+                    border: 1px solid #BAE6FD !important;
+                    padding: 1px 6px !important;
+                    border-radius: 4px !important;
+                    white-space: nowrap !important;
+                    line-height: 1.2 !important;
+                    text-decoration: none !important;
+                    cursor: pointer !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-list-merchant:empty,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-list-merchant:empty {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide strong:not(.theprice),
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide strong:not(.theprice) {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .pricerow,
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide div.pricerow,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .pricerow,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide div.pricerow {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > span:not(.off):not(.small):not(.bm-list-eol),
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > meta,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide > span:not(.off):not(.small):not(.bm-list-eol),
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide > meta {
+                    display: none !important;
+                }
+                html.bm-view-list :is(#productrow, .productrow) .wrapper .nextpage,
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.nextpage,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper .nextpage,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.nextpage {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    min-height: 50px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    background: #F8FAFC !important;
+                    border: 1px dashed #CBD5E1 !important;
+                    border-radius: 12px !important;
+                    padding: 12px !important;
+                    margin-top: 4px !important;
+                }
+
+                /* Go-to-Top Button: kein weißer Rand */
+                #toTop {
+                    border: none !important;
+                    outline: none !important;
+                }
+
+                /* Mobile Breadcrumbs ausblenden */
+                @media (max-width: 64em) {
+                    .breadcrumbs,
+                    .breadcrumb,
+                    nav[aria-label="breadcrumb"],
+                    [itemscope][itemtype*="BreadcrumbList"],
+                    nav.breadcrumbs {
+                        display: none !important;
+                    }
+                }
+                html.bm-android-app .breadcrumbs,
+                html.bm-android-app .breadcrumb,
+                html.bm-android-app nav[aria-label="breadcrumb"],
+                html.bm-android-app [itemscope][itemtype*="BreadcrumbList"],
+                html.bm-android-app nav.breadcrumbs,
+                html.bm-android-app #headlinerow,
+                html.bm-android-app #headlinerow h1,
+                html.bm-android-app .content.setdetails h1,
+                html.bm-android-app .setdetails h1 {
+                    display: none !important;
+                }
+
+                /* Händler-, Themen- und Steinelisten zweispaltig mit gleich hohen Kacheln */
+                html.bm-android-app .wrapper.merchants,
+                html.bm-android-app .wrapper.themen,
+                html.bm-android-app .wrapper.brickstores {
+                    display: grid !important;
+                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                    gap: 10px !important;
+                    align-items: stretch !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin: 0 auto !important;
+                    padding: 0.5rem 0.75rem 1.5rem !important;
+                    float: none !important;
+                    box-sizing: border-box !important;
+                }
+                html.bm-android-app .wrapper.merchants::before,
+                html.bm-android-app .wrapper.merchants::after,
+                html.bm-android-app .wrapper.themen::before,
+                html.bm-android-app .wrapper.themen::after,
+                html.bm-android-app .wrapper.brickstores::before,
+                html.bm-android-app .wrapper.brickstores::after {
+                    display: none !important;
+                    content: none !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide,
+                html.bm-android-app .wrapper.themen .slide,
+                html.bm-android-app .wrapper.brickstores .slide {
+                    display: flex !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    min-width: 0 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    float: none !important;
+                    border: none !important;
+                    box-sizing: border-box !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide a,
+                html.bm-android-app .wrapper.themen .slide a,
+                html.bm-android-app .wrapper.brickstores .slide a {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    min-height: 96px !important;
+                    margin: 0 !important;
+                    padding: 10px 8px 8px !important;
+                    border: 1px solid #E2E8F0 !important;
+                    border-radius: 12px !important;
+                    background: #FFFFFF !important;
+                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+                    box-sizing: border-box !important;
+                    text-align: center !important;
+                    text-decoration: none !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide .img,
+                html.bm-android-app .wrapper.themen .slide .img,
+                html.bm-android-app .wrapper.brickstores .slide .img {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 100% !important;
+                    height: 44px !important;
+                    margin: 0 0 6px !important;
+                    float: none !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide img,
+                html.bm-android-app .wrapper.themen .slide img,
+                html.bm-android-app .wrapper.brickstores .slide img {
+                    display: block !important;
+                    width: auto !important;
+                    max-width: 100% !important;
+                    height: auto !important;
+                    max-height: 40px !important;
+                    margin: 0 auto !important;
+                    object-fit: contain !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide .img img,
+                html.bm-android-app .wrapper.themen .slide .img img,
+                html.bm-android-app .wrapper.brickstores .slide .img img {
+                    margin: 0 !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide a > span:last-child,
+                html.bm-android-app .wrapper.themen .slide a > span:last-child,
+                html.bm-android-app .wrapper.brickstores .slide a > span:last-child {
+                    display: block !important;
+                    margin-top: auto !important;
+                    font-size: 12px !important;
+                    font-weight: 600 !important;
+                    line-height: 1.25 !important;
+                    color: #1E293B !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide a:active,
+                html.bm-android-app .wrapper.themen .slide a:active,
+                html.bm-android-app .wrapper.brickstores .slide a:active {
+                    background: #F8FAFC !important;
+                    transform: scale(0.97) !important;
+                }
+
+                /* Startseite (Preisvergleichs-Seite): SEO-Content raus & Kacheln ab Deal-Alarm zentriert */
+                .content.isIntro .setdetails.noMarg,
+                .content.isIntro > .row:has(.setdetails.noMarg),
+                .content.isIntro .small-12:has(h1 + p),
+                .content.isIntro p.showmore,
+                .content.isIntro p.more,
+                .content.isIntro .showmore,
+                #headlinerow:has(p.lead) {
+                    display: none !important;
+                }
+                .content.isIntro [id^="highlights"],
+                .content.isIntro [id^="produktbilder"],
+                .content.isIntro [id^="bauanleitungen"],
+                .content.isIntro [id^="brickmerge_telegram"],
+                #highlights,
+                #produktbilder,
+                #bauanleitungen,
+                #brickmerge_telegram,
+                .bmh-jumps,
+                :target {
+                    scroll-margin-top: calc(var(--bm-status-top, 0px) + 75px) !important;
+                }
+                .content.isIntro .row,
+                .content.isIntro .bmh,
+                .content.isIntro .bmh-actionsRow,
+                .bmh,
+                .bmh-actionsRow,
+                :is(#productrow, .productrow) .columns.left,
+                :is(#productrow, .productrow) .medium-8,
+                :is(#productrow, .productrow) .large-9,
+                :is(#productrow, .productrow) > .columns {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    float: none !important;
+                    margin-left: auto !important;
+                    margin-right: auto !important;
+                    justify-content: center !important;
+                    text-align: center !important;
+                }
+                :is(#productrow, .productrow) > .columns.right:not(:has(.slide)) {
+                    display: none !important;
+                }
+                :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores),
+                :is(#productrow, .productrow) .wrapper#wrappernormal:not(.merchants):not(.themen):not(.brickstores) {
+                    margin-left: auto !important;
+                    margin-right: auto !important;
+                    justify-content: center !important;
+                    display: flex !important;
+                    flex-wrap: wrap !important;
+                }
+
+                /* Händler-, Themen- und Steinelisten zweispaltig mit gleich hohen Kacheln */
+
+                /* Händler-, Themen- und Steinelisten zweispaltig mit gleich hohen Kacheln */
+                html.bm-android-app .wrapper.merchants,
+                html.bm-android-app .wrapper.themen,
+                html.bm-android-app .wrapper.brickstores {
+                    display: grid !important;
+                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                    gap: 10px !important;
+                    align-items: stretch !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin: 0 auto !important;
+                    padding: 0.5rem 0.75rem 1.5rem !important;
+                    float: none !important;
+                    box-sizing: border-box !important;
+                }
+                html.bm-android-app .wrapper.merchants::before,
+                html.bm-android-app .wrapper.merchants::after,
+                html.bm-android-app .wrapper.themen::before,
+                html.bm-android-app .wrapper.themen::after,
+                html.bm-android-app .wrapper.brickstores::before,
+                html.bm-android-app .wrapper.brickstores::after {
+                    display: none !important;
+                    content: none !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide,
+                html.bm-android-app .wrapper.themen .slide,
+                html.bm-android-app .wrapper.brickstores .slide {
+                    display: flex !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    min-width: 0 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    float: none !important;
+                    border: none !important;
+                    box-sizing: border-box !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide a,
+                html.bm-android-app .wrapper.themen .slide a,
+                html.bm-android-app .wrapper.brickstores .slide a {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    min-height: 96px !important;
+                    margin: 0 !important;
+                    padding: 10px 8px 8px !important;
+                    border: 1px solid #E2E8F0 !important;
+                    border-radius: 12px !important;
+                    background: #FFFFFF !important;
+                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+                    box-sizing: border-box !important;
+                    text-align: center !important;
+                    text-decoration: none !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide .img,
+                html.bm-android-app .wrapper.themen .slide .img,
+                html.bm-android-app .wrapper.brickstores .slide .img {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 100% !important;
+                    height: 44px !important;
+                    margin: 0 0 6px !important;
+                    float: none !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide img,
+                html.bm-android-app .wrapper.themen .slide img,
+                html.bm-android-app .wrapper.brickstores .slide img {
+                    display: block !important;
+                    width: auto !important;
+                    max-width: 100% !important;
+                    height: auto !important;
+                    max-height: 40px !important;
+                    margin: 0 auto !important;
+                    object-fit: contain !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide .img img,
+                html.bm-android-app .wrapper.themen .slide .img img,
+                html.bm-android-app .wrapper.brickstores .slide .img img {
+                    margin: 0 !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide a > span:last-child,
+                html.bm-android-app .wrapper.themen .slide a > span:last-child,
+                html.bm-android-app .wrapper.brickstores .slide a > span:last-child {
+                    display: block !important;
+                    margin-top: auto !important;
+                    font-size: 12px !important;
+                    font-weight: 600 !important;
+                    line-height: 1.25 !important;
+                    color: #1E293B !important;
+                }
+                html.bm-android-app .wrapper.merchants .slide a:active,
+                html.bm-android-app .wrapper.themen .slide a:active,
+                html.bm-android-app .wrapper.brickstores .slide a:active {
+                    background: #F8FAFC !important;
+                    transform: scale(0.97) !important;
+                }
+
+                /* Startseite: "Top LEGO Themen" zweispaltig statt 120px-Floats */
+                html.bm-android-app .themenIntro {
+                    display: grid !important;
+                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                    gap: 10px !important;
+                    align-items: stretch !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin: 0 auto !important;
+                    padding: 0.5rem 0.75rem 1.5rem !important;
+                    float: none !important;
+                    box-sizing: border-box !important;
+                }
+                html.bm-android-app .themenIntro .slide {
+                    display: flex !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    min-width: 0 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    float: none !important;
+                    border: none !important;
+                    box-sizing: border-box !important;
+                }
+                html.bm-android-app .themenIntro .slide a.themeimg {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    align-items: stretch !important;
+                    justify-content: flex-start !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 0 10px !important;
+                    overflow: hidden !important;
+                    border: 1px solid #E2E8F0 !important;
+                    border-radius: 12px !important;
+                    background: #FFFFFF !important;
+                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+                    box-sizing: border-box !important;
+                    text-decoration: none !important;
+                }
+                html.bm-android-app .themenIntro .slide a.themeimg img {
+                    display: block !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    height: auto !important;
+                    margin: 0 !important;
+                    object-fit: cover !important;
+                    border-radius: 11px 11px 0 0 !important;
+                }
+                html.bm-android-app .themenIntro .slide a.themeimg span {
+                    display: block !important;
+                    margin: 8px 0 0 !important;
+                    padding: 0 10px !important;
+                    font-size: 0.9em !important;
+                    font-weight: 600 !important;
+                    line-height: 1.25 !important;
+                    color: #1E293B !important;
+                    text-align: center !important;
+                }
+                html.bm-android-app .themenIntro .slide a.themeimg:active {
+                    background: #F8FAFC !important;
+                    transform: scale(0.98) !important;
+                }
+
+                /* Händler-, Themen- und Steinelisten zweispaltig mit gleich hohen Kacheln */
+                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) {
+                    display: grid !important;
+                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                    gap: 10px !important;
+                    align-items: stretch !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin: 0 auto !important;
+                    padding: 0.5rem 0.75rem 1.5rem !important;
+                    float: none !important;
+                    box-sizing: border-box !important;
+                }
+                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores)::before,
+                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores)::after {
+                    display: none !important;
+                    content: none !important;
+                }
+                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide {
+                    display: flex !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    min-width: 0 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    float: none !important;
+                    border: none !important;
+                    box-sizing: border-box !important;
+                }
+                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide a {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    min-height: 96px !important;
+                    margin: 0 !important;
+                    padding: 10px 8px 8px !important;
+                    border: 1px solid #E2E8F0 !important;
+                    border-radius: 12px !important;
+                    background: #FFFFFF !important;
+                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+                    box-sizing: border-box !important;
+                    text-align: center !important;
+                    text-decoration: none !important;
+                }
+                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide .img {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 100% !important;
+                    height: 44px !important;
+                    margin: 0 0 6px !important;
+                    float: none !important;
+                }
+                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide img {
+                    display: block !important;
+                    width: auto !important;
+                    max-width: 100% !important;
+                    height: auto !important;
+                    max-height: 40px !important;
+                    margin: 0 auto !important;
+                    object-fit: contain !important;
+                }
+                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide .img img {
+                    margin: 0 !important;
+                }
+                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide a > span:last-child {
+                    display: block !important;
+                    margin-top: auto !important;
+                    font-size: 12px !important;
+                    font-weight: 600 !important;
+                    line-height: 1.25 !important;
+                    color: #1E293B !important;
+                }
+                html.bm-android-app :is(.wrapper.merchants, .wrapper.themen, .wrapper.brickstores) .slide a:active {
+                    background: #F8FAFC !important;
+                    transform: scale(0.97) !important;
+                }
+
+
+                /* Schwarze Bubble auf Kachelansicht (Abstand zum 2. besten Angebot) */
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-card-black-bubble {
+                    position: absolute !important;
+                    top: 46px !important;
+                    left: 6px !important;
+                    z-index: 5 !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 36px !important;
+                    height: 36px !important;
+                    min-width: 36px !important;
+                    min-height: 36px !important;
+                    padding: 0 !important;
+                    border: 1.5px solid #0F172A !important;
+                    border-radius: 999px !important;
+                    background: #0F172A !important;
+                    color: #FFFFFF !important;
+                    font-size: 11.5px !important;
+                    font-weight: 800 !important;
+                    line-height: 1 !important;
+                    text-align: center !important;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg:not(:has(.off)) .bm-card-black-bubble,
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg:has(.off[hidden]) .bm-card-black-bubble,
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg:has(.off[style*="display: none"]) .bm-card-black-bubble {
+                    top: 6px !important;
+                }
+
+                /* Schwarze Bubble in Listenansicht (inline in der offerbox) */
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-black-bubble,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-list-black-bubble {
+                    position: static !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    width: auto !important;
+                    height: auto !important;
+                    min-width: 0 !important;
+                    min-height: 0 !important;
+                    margin: 0 !important;
+                    z-index: 1 !important;
+                    font-size: 10.5px !important;
+                    font-weight: 800 !important;
+                    line-height: 1.1 !important;
+                    padding: 1.5px 5px !important;
+                    border-radius: 4px !important;
+                    background: #0F172A !important;
+                    color: #FFFFFF !important;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+                    letter-spacing: -0.2px !important;
+                    white-space: nowrap !important;
+                }
+
+                /* Ausblenden der schwarzen Bubble in der jeweils anderen Ansicht */
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-card-black-bubble,
+                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-card-black-bubble {
+                    display: none !important;
+                }
+                html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .bm-list-black-bubble {
+                    display: none !important;
+                }
+
+                /* Animation beim Zählen */
+                .bm-bubble-updating {
+                    transform: scale(1.18) !important;
+                    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+                }
+        /* Minifiguren-Tooltip auf Mobile Touchgeräten deaktivieren */
+                @media (max-width: 64em), (pointer: coarse), (hover: none) {
+                    .bm-minifig-tooltip,
+                    .bm-minifig-count-link > .bm-minifig-tooltip,
+                    .tooltipster-base,
+                    .tooltipster-box,
+                    .tooltipster-fall {
+                        display: none !important;
+                        visibility: hidden !important;
+                        opacity: 0 !important;
+                        pointer-events: none !important;
+                    }
+                }
+                html.bm-android-app .bm-minifig-tooltip,
+                html.bm-android-app .bm-minifig-count-link > .bm-minifig-tooltip,
+                html.bm-android-app .tooltipster-base,
+                html.bm-android-app .tooltipster-box,
+                html.bm-android-app .tooltipster-fall {
+                    display: none !important;
+                    visibility: hidden !important;
+                    opacity: 0 !important;
+                    pointer-events: none !important;
+                }
+
+                /* Detailseite: Horizontale 4er-Aktionszeile (Preisalarm, Wunschliste, Depot, ROI-Rechner) */
+                .bm-detail-action-buttons-row {
+                    display: grid !important;
+                    grid-template-columns: repeat(4, 1fr) !important;
+                    gap: 8px !important;
+                    width: 100% !important;
+                    margin: 10px 0 16px !important;
+                    box-sizing: border-box !important;
+                }
+                @media (max-width: 480px) {
+                    .bm-detail-action-buttons-row {
+                        gap: 5px !important;
+                    }
+                }
+                .bm-detail-action-buttons-row .bmd-open-button {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 4px !important;
+                    width: 100% !important;
+                    padding: 8px 3px !important;
+                    font-size: 11px !important;
+                    font-weight: 700 !important;
+                    border-radius: 8px !important;
+                    border: 1px solid #E2E8F0 !important;
+                    background: #F8FAFC !important;
+                    color: #B80000 !important;
+                    text-align: center !important;
+                    white-space: nowrap !important;
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
+                    box-sizing: border-box !important;
+                    margin: 0 !important;
+                    text-decoration: none !important;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+                    cursor: pointer !important;
+                    transition: all 0.15s ease-in-out !important;
+                }
+                .bm-detail-action-buttons-row .bmd-open-button:hover,
+                .bm-detail-action-buttons-row .bmd-open-button:focus {
+                    background: #B80000 !important;
+                    color: #FFFFFF !important;
+                    border-color: #B80000 !important;
+                    outline: none !important;
+                }
+                .bm-detail-action-buttons-row .bmd-open-button:hover .bmd-button-icon svg,
+                .bm-detail-action-buttons-row .bmd-open-button:focus .bmd-button-icon svg {
+                    stroke: #FFFFFF !important;
+                }
+                .bm-detail-action-buttons-row .bmd-open-button .bmd-button-icon {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 14px !important;
+                    height: 14px !important;
+                    flex: 0 0 14px !important;
+                    margin: 0 !important;
+                }
+                .bm-detail-action-buttons-row .bmd-open-button .bmd-button-icon svg {
+                    display: block !important;
+                    width: 14px !important;
+                    height: 14px !important;
+                    fill: none !important;
+                    stroke: currentColor !important;
+                    stroke-width: 2 !important;
+                    stroke-linecap: round !important;
+                    stroke-linejoin: round !important;
+                }
+
+                /* Tools-Zeile: Die vier Aktionsbuttons (Preisalarm, Wunschliste,
+                   ROI-Rechner, Depot) stehen nicht mehr unter der Angebotsliste,
+                   sondern als eigene Zeile "Tools" in der Linkleiste. Die Huelle
+                   bleibt im DOM (Query-Selektoren der übrigen Logik greifen weiter),
+                   wird aber per display:contents aus dem Fluss genommen, damit die
+                   Buttons direkt in der Link-Zeile liegen. */
+                .bm-detail-action-buttons-row.bmd-in-link-panel {
+                    display: contents !important;
+                    margin: 0 !important;
+                }
+                .bm-info-links.bmd-tools-row {
+                    display: flex !important;
+                    flex-wrap: nowrap !important;
+                    width: max-content !important;
+                    gap: 5px 8px !important;
+                    padding: 0 !important;
+                }
+                .bm-info-links.bmd-tools-row .bmd-open-button,
+                .bm-info-links.bmd-tools-row button.bm-link,
+                .bmd-tools-row .bmd-open-button,
+                .bmd-tools-row button.bm-link {
+                    display: inline-flex !important;
+                    flex: 0 0 auto !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: auto !important;
+                    min-width: 0 !important;
+                    height: 26px !important;
+                    min-height: 26px !important;
+                    max-height: 26px !important;
+                    margin: 0 !important;
+                    padding: 2px 7px 2px 5px !important;
+                    border: 1px solid #ccc !important;
+                    border-radius: 5px !important;
+                    background: #fff !important;
+                    color: #222 !important;
+                    font-size: 0.78rem !important;
+                    font-weight: 400 !important;
+                    line-height: 1.15 !important;
+                    font-family: inherit !important;
+                    text-decoration: none !important;
+                    box-shadow: none !important;
+                    text-shadow: none !important;
+                    box-sizing: border-box !important;
+                    cursor: pointer !important;
+                    -webkit-appearance: none !important;
+                    gap: 0 !important;
+                    transition: none !important;
+                }
+                .bm-info-links.bmd-tools-row .bmd-open-button:hover,
+                .bm-info-links.bmd-tools-row .bmd-open-button:focus,
+                .bmd-tools-row .bmd-open-button:hover,
+                .bmd-tools-row .bmd-open-button:focus {
+                    background: #fff !important;
+                    border-color: #ccc !important;
+                    color: #222 !important;
+                    box-shadow: none !important;
+                    outline: none !important;
+                }
+                .bm-info-links.bmd-tools-row .bmd-open-button:hover span,
+                .bm-info-links.bmd-tools-row .bmd-open-button:focus span,
+                .bmd-tools-row .bmd-open-button:hover span,
+                .bmd-tools-row .bmd-open-button:focus span {
+                    text-decoration: underline !important;
+                }
+                .bm-info-links.bmd-tools-row .bmd-open-button:hover .bmd-button-icon svg,
+                .bm-info-links.bmd-tools-row .bmd-open-button:focus .bmd-button-icon svg,
+                .bmd-tools-row .bmd-open-button:hover .bmd-button-icon svg,
+                .bmd-tools-row .bmd-open-button:focus .bmd-button-icon svg {
+                    stroke: #222 !important;
+                }
+                .bm-info-links.bmd-tools-row .bmd-open-button:active,
+                .bmd-tools-row .bmd-open-button:active {
+                    background: #f4f4f4 !important;
+                }
+                .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-content,
+                .bmd-tools-row .bmd-open-button .bmd-button-content {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    height: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    gap: 0 !important;
+                    line-height: 1.2 !important;
+                }
+                .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-icon,
+                .bmd-tools-row .bmd-open-button .bmd-button-icon {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 15px !important;
+                    height: 15px !important;
+                    min-width: 15px !important;
+                    min-height: 15px !important;
+                    flex: 0 0 15px !important;
+                    margin: 0 4px 0 0 !important;
+                    padding: 0 !important;
+                    line-height: 1 !important;
+                }
+                .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-icon svg,
+                .bmd-tools-row .bmd-open-button .bmd-button-icon svg {
+                    display: block !important;
+                    width: 14px !important;
+                    height: 14px !important;
+                    stroke: #222 !important;
+                    fill: none !important;
+                    stroke-width: 1.8 !important;
+                    stroke-linecap: round !important;
+                    stroke-linejoin: round !important;
+                }
+                .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-label-full,
+                .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-label-mobile,
+                .bmd-tools-row .bmd-open-button .bmd-button-label-full,
+                .bmd-tools-row .bmd-open-button .bmd-button-label-mobile {
+                    font-size: 0.78rem !important;
+                    font-weight: 400 !important;
+                    color: #222 !important;
+                    line-height: 1.15 !important;
+                }
+                @media (max-width: 480px) {
+                    .bm-info-links.bmd-tools-row .bmd-open-button,
+                    .bmd-tools-row .bmd-open-button {
+                        font-size: 0.78rem !important;
+                        height: 26px !important;
+                        min-height: 26px !important;
+                        padding: 2px 7px 2px 5px !important;
+                        margin: 0 !important;
+                    }
+                    .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-label-full,
+                    .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-label-mobile,
+                    .bmd-tools-row .bmd-open-button .bmd-button-label-full,
+                    .bmd-tools-row .bmd-open-button .bmd-button-label-mobile {
+                        font-size: 0.78rem !important;
+                        font-weight: 400 !important;
+                        color: #222 !important;
+                        line-height: 1.15 !important;
+                    }
+                }
+
+
+                /* Mobile Filterleiste: Alle 6 Filter sofort sichtbar im 3x2 Grid, kein Scrolling */
+                @media (max-width: 768px) {
+                    #contenttoprow {
+                        padding: 4px 6px 6px !important;
+                        margin: 0 0 4px !important;
+                        position: relative !important;
+                        z-index: 20 !important;
+                        width: 100% !important;
+                        box-sizing: border-box !important;
+                        background: transparent !important;
+                    }
+                    #contenttoprow .small-12.columns {
+                        display: grid !important;
+                        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                        gap: 5px 6px !important;
+                        padding: 0 !important;
+                        width: 100% !important;
+                        box-sizing: border-box !important;
+                        overflow: visible !important;
+                    }
+                    #contenttoprow .small-12.columns::-webkit-scrollbar {
+                        display: none !important;
+                    }
+                    #contenttoprow .small-12.columns > div {
+                        display: flex !important;
+                        width: 100% !important;
+                        min-width: 0 !important;
+                        float: none !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        position: static !important;
+                    }
+                    #contenttoprow .small-12.columns > div > br {
+                        display: none !important;
+                    }
+                    #contenttoprow a.button.small.dropdown.viewDropDown,
+                    #contenttoprow a.button.small.viewDropDown,
+                    #contenttoprow a.button.viewDropDown,
+                    #contenttoprow .viewDropDown {
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        gap: 4px !important;
+                        width: 100% !important;
+                        min-width: 0 !important;
+                        height: 38px !important;
+                        min-height: 38px !important;
+                        max-height: 38px !important;
+                        padding: 0 5px !important;
+                        margin: 0 !important;
+                        background: #FFFFFF !important;
+                        border: 1px solid #CBD5E1 !important;
+                        border-radius: 8px !important;
+                        color: #334155 !important;
+                        font-size: 12px !important;
+                        font-weight: 600 !important;
+                        box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+                        text-align: center !important;
+                        box-sizing: border-box !important;
+                        position: relative !important;
+                        text-decoration: none !important;
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        cursor: pointer !important;
+                        user-select: none !important;
+                        -webkit-tap-highlight-color: transparent !important;
+                    }
+                    #contenttoprow .viewDropDown .bm-filter-icon {
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        flex-shrink: 0 !important;
+                        color: #64748B !important;
+                    }
+                    #contenttoprow .viewDropDown .bm-filter-svg {
+                        width: 13px !important;
+                        height: 13px !important;
+                        display: block !important;
+                    }
+                    #contenttoprow .viewDropDown span.bm-filter-label,
+                    #contenttoprow .viewDropDown span:not(.bm-filter-icon) {
+                        display: inline-block !important;
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                        max-width: 100% !important;
+                        flex: 1 1 auto !important;
+                        text-align: center !important;
+                    }
+                    .dropdown.button::before,
+                    .dropdown.button::after,
+                    button.dropdown::before,
+                    button.dropdown::after,
+                    a.button.dropdown::before,
+                    a.button.dropdown::after,
+                    .viewDropDown::before,
+                    .viewDropDown::after,
+                    #contenttoprow a.button.dropdown::before,
+                    #contenttoprow a.button.dropdown::after,
+                    #contenttoprow button.dropdown::before,
+                    #contenttoprow button.dropdown::after,
+                    #contenttoprow .viewDropDown::before,
+                    #contenttoprow .viewDropDown::after,
+                    a.button.dropdown.viewDropDown::before,
+                    a.button.dropdown.viewDropDown::after {
+                        display: none !important;
+                        content: none !important;
+                        border: none !important;
+                        width: 0 !important;
+                        height: 0 !important;
+                        opacity: 0 !important;
+                        visibility: hidden !important;
+                        pointer-events: none !important;
+                    }
+                    #contenttoprow .viewDropDown.bm-filter-active {
+                        background: #FEF2F2 !important;
+                        border-color: #B80000 !important;
+                        color: #B80000 !important;
+                        font-weight: 700 !important;
+                    }
+                    #contenttoprow .viewDropDown.bm-filter-active .bm-filter-icon {
+                        color: #B80000 !important;
+                    }
+                    #contenttoprow .viewDropDown:active {
+                        transform: scale(0.97) !important;
+                        background: #F1F5F9 !important;
+                    }
+                    #contenttoprow .bm-filter-toggle {
+                        display: none !important;
+                    }
+                    /* Bestpreis-Schalter auf Händlerseiten (z. B. "Nur Baby-Walz Bestpreisangebote zeigen") */
+                    #contenttoprow .small-12.columns > .button:has(form[name="sctoggle"]),
+                    #contenttoprow .small-12.columns > div:has(form[name="sctoggle"]),
+                    #contenttoprow .small-12.columns > .bm-bestprice-toggle,
+                    #contenttoprow .bm-bestprice-toggle {
+                        grid-column: 1 / -1 !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: space-between !important;
+                        width: 100% !important;
+                        min-width: 0 !important;
+                        float: none !important;
+                        background: #FFFFFF !important;
+                        border: 1px solid #E2E8F0 !important;
+                        border-radius: 10px !important;
+                        padding: 7px 12px !important;
+                        margin: 5px 0 2px !important;
+                        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+                        box-sizing: border-box !important;
+                        text-transform: none !important;
+                        letter-spacing: normal !important;
+                        cursor: pointer !important;
+                        user-select: none !important;
+                        -webkit-tap-highlight-color: transparent !important;
+                        transition: background 0.15s ease, border-color 0.15s ease !important;
+                    }
+                    #contenttoprow .bm-bestprice-toggle.bm-bestprice-active,
+                    #contenttoprow .small-12.columns > .button:has(form[name="sctoggle"]).bm-bestprice-active,
+                    #contenttoprow .small-12.columns > div:has(form[name="sctoggle"]).bm-bestprice-active {
+                        background: #FFFFFF !important;
+                        border-color: #B80000 !important;
+                        box-shadow: 0 1px 3px rgba(184, 0, 0, 0.12) !important;
+                    }
+                    #contenttoprow .bm-bestprice-toggle.bm-bestprice-active a,
+                    #contenttoprow .bm-bestprice-toggle.bm-bestprice-active .bm-bestprice-toggle-label {
+                        color: #B80000 !important;
+                        font-weight: 700 !important;
+                    }
+                    #contenttoprow .bm-bestprice-toggle.bm-bestprice-active form[name="sctoggle"] .slider.round {
+                        background-color: #B80000 !important;
+                    }
+                    #contenttoprow .bm-bestprice-toggle.bm-bestprice-active form[name="sctoggle"] .slider.round::before {
+                        transform: translateX(16px) !important;
+                    }
+                    #contenttoprow .small-12.columns > .button:has(form[name="sctoggle"]) a,
+                    #contenttoprow .small-12.columns > div:has(form[name="sctoggle"]) a,
+                    #contenttoprow .bm-bestprice-toggle a,
+                    #contenttoprow .bm-bestprice-toggle .bm-bestprice-toggle-label {
+                        order: 1 !important;
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        gap: 4px !important;
+                        color: #1E293B !important;
+                        font-size: 12.5px !important;
+                        font-weight: 600 !important;
+                        line-height: 1.3 !important;
+                        text-decoration: none !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        flex: 1 1 auto !important;
+                        min-width: 0 !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                        white-space: nowrap !important;
+                    }
+                    #contenttoprow .small-12.columns > .button:has(form[name="sctoggle"]) > div,
+                    #contenttoprow .small-12.columns > div:has(form[name="sctoggle"]) > div,
+                    #contenttoprow .bm-bestprice-toggle > div:has(form[name="sctoggle"]),
+                    #contenttoprow .bm-bestprice-toggle .bm-bestprice-switch-wrapper {
+                        order: 2 !important;
+                        float: none !important;
+                        padding: 0 !important;
+                        margin: 0 0 0 10px !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        flex-shrink: 0 !important;
+                    }
+                    #contenttoprow form[name="sctoggle"] {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        display: flex !important;
+                        align-items: center !important;
+                    }
+                    #contenttoprow form[name="sctoggle"] .switch {
+                        position: relative !important;
+                        display: inline-block !important;
+                        width: 38px !important;
+                        height: 22px !important;
+                        min-height: 22px !important;
+                        margin: 0 !important;
+                        flex-shrink: 0 !important;
+                    }
+                    #contenttoprow form[name="sctoggle"] .switch input {
+                        opacity: 0 !important;
+                        width: 0 !important;
+                        height: 0 !important;
+                        position: absolute !important;
+                        margin: 0 !important;
+                    }
+                    #contenttoprow form[name="sctoggle"] .slider.round {
+                        position: absolute !important;
+                        cursor: pointer !important;
+                        inset: 0 !important;
+                        background-color: #CBD5E1 !important;
+                        transition: 0.25s ease !important;
+                        border-radius: 22px !important;
+                    }
+                    #contenttoprow form[name="sctoggle"] .slider.round::before {
+                        position: absolute !important;
+                        content: "" !important;
+                        height: 16px !important;
+                        width: 16px !important;
+                        left: 3px !important;
+                        bottom: 3px !important;
+                        background-color: #FFFFFF !important;
+                        transition: 0.25s ease !important;
+                        border-radius: 50% !important;
+                        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+                    }
+                    #contenttoprow form[name="sctoggle"] input:checked + .slider.round {
+                        background-color: #B80000 !important;
+                    }
+                    #contenttoprow form[name="sctoggle"] input:checked + .slider.round::before {
+                        transform: translateX(16px) !important;
+                    }
+                    @media (min-width: 600px) and (max-width: 768px) {
+                        #contenttoprow .small-12.columns {
+                            grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+                        }
+                    }
+                    /* Altes Desktop-Dropdown von Foundation mobil unterbinden */
+                    .f-dropdown.open {
+                        display: none !important;
+                    }
+                }
+
+                /* Modernes natives Bottom-Sheet für Filterauswahl */
+                .bm-filter-sheet-overlay {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 2147483640;
+                    background: rgba(15, 23, 42, 0.5);
+                    backdrop-filter: blur(2px);
+                    -webkit-backdrop-filter: blur(2px);
+                    display: flex;
+                    align-items: flex-end;
+                    justify-content: center;
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity 0.2s ease-out;
+                }
+                .bm-filter-sheet-overlay.is-open {
+                    opacity: 1;
+                    pointer-events: auto;
+                }
+                .bm-filter-sheet {
+                    width: 100%;
+                    max-width: 540px;
+                    max-height: 80vh;
+                    max-height: 80dvh;
+                    background: #FFFFFF;
+                    border-radius: 20px 20px 0 0;
+                    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18);
+                    display: flex;
+                    flex-direction: column;
+                    transform: translateY(100%);
+                    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+                    overflow: hidden;
+                    box-sizing: border-box;
+                }
+                .bm-filter-sheet-overlay.is-open .bm-filter-sheet {
+                    transform: translateY(0);
+                }
+                .bm-filter-sheet-handle {
+                    width: 40px;
+                    height: 4px;
+                    background: #CBD5E1;
+                    border-radius: 2px;
+                    margin: 10px auto 4px;
+                    cursor: pointer;
+                    flex-shrink: 0;
+                }
+                .bm-filter-sheet-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 8px 18px 12px;
+                    border-bottom: 1px solid #F1F5F9;
+                    flex-shrink: 0;
+                }
+                .bm-filter-sheet-title {
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: #0F172A;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                .bm-filter-sheet-close {
+                    background: #F1F5F9;
+                    border: none;
+                    border-radius: 50%;
+                    width: 32px;
+                    height: 32px;
+                    font-size: 18px;
+                    line-height: 1;
+                    color: #64748B;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0;
+                }
+                .bm-filter-sheet-close:active {
+                    background: #E2E8F0;
+                }
+                .bm-filter-sheet-list {
+                    overflow-y: auto;
+                    -webkit-overflow-scrolling: touch;
+                    padding: 6px 0 24px;
+                    display: flex;
+                    flex-direction: column;
+                }
+                .bm-filter-sheet-item {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 13px 20px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #1E293B;
+                    text-decoration: none;
+                    border-bottom: 1px solid #F8FAFC;
+                    transition: background 0.1s ease;
+                    -webkit-tap-highlight-color: transparent;
+                }
+                .bm-filter-sheet-item:active {
+                    background: #F1F5F9;
+                }
+                .bm-filter-sheet-item.is-active {
+                    font-weight: 700;
+                    color: #B80000;
+                    background: #FEF2F2;
+                }
+                .bm-filter-sheet-check {
+                    font-size: 16px;
+                    font-weight: 800;
+                    color: #B80000;
+                    margin-left: 8px;
+                }
+
+                /* Modal Dialoge (Rabatt-Alarm, Deal-Alarm, Login, Depot) zentrieren & modern gestalten */
+                .reveal-modal,
+                #myModal,
+                .bm-modal,
+                .bmd-modal,
+                div[data-reveal] {
+                    position: fixed !important;
+                    top: 0 !important;
+                    right: 0 !important;
+                    bottom: 0 !important;
+                    left: 0 !important;
+                    margin: auto !important;
+                    transform: none !important;
+                    width: calc(100vw - 32px) !important;
+                    max-width: 440px !important;
+                    max-height: 85vh !important;
+                    max-height: 85dvh !important;
+                    height: fit-content !important;
+                    overflow-y: auto !important;
+                    -webkit-overflow-scrolling: touch !important;
+                    scrollbar-width: none !important;
+                    -ms-overflow-style: none !important;
+                    box-sizing: border-box !important;
+                    border-radius: 20px !important;
+                    border: none !important;
+                    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35) !important;
+                    padding: 0 0 16px 0 !important;
+                    background: #FFFFFF !important;
+                    z-index: 2147483640 !important;
+                }
+                .reveal-modal::-webkit-scrollbar,
+                #myModal::-webkit-scrollbar,
+                .bm-modal::-webkit-scrollbar,
+                .bmd-modal::-webkit-scrollbar,
+                div[data-reveal]::-webkit-scrollbar {
+                    display: none !important;
+                    width: 0 !important;
+                    height: 0 !important;
+                }
+                .reveal-modal-bg {
+                    position: fixed !important;
+                    inset: 0 !important;
+                    width: 100vw !important;
+                    height: 100vh !important;
+                    height: 100dvh !important;
+                    background: rgba(15, 23, 42, 0.6) !important;
+                    backdrop-filter: blur(4px) !important;
+                    -webkit-backdrop-filter: blur(4px) !important;
+                    z-index: 2147483630 !important;
+                }
+                #myModal .modalheader {
+                    background: #B80000 !important;
+                    border-radius: 20px 20px 0 0 !important;
+                    padding: 14px 20px !important;
+                    margin: 0 !important;
+                    text-align: center !important;
+                    position: relative !important;
+                }
+                #myModal .modalheader h2 {
+                    color: #FFFFFF !important;
+                    background: transparent !important;
+                    font-size: 18px !important;
+                    font-weight: 700 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    letter-spacing: -0.3px !important;
+                }
+                #myModal .close-reveal-modal {
+                    position: absolute !important;
+                    top: 10px !important;
+                    right: 12px !important;
+                    width: 32px !important;
+                    height: 32px !important;
+                    border-radius: 16px !important;
+                    background: rgba(255, 255, 255, 0.25) !important;
+                    color: #FFFFFF !important;
+                    font-size: 20px !important;
+                    line-height: 32px !important;
+                    text-align: center !important;
+                    cursor: pointer !important;
+                    z-index: 20 !important;
+                    text-decoration: none !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                }
+                #myModal .close-reveal-modal:active {
+                    background: rgba(255, 255, 255, 0.4) !important;
+                }
+                #myModal .modalrow {
+                    padding: 14px 18px 8px !important;
+                    margin: 0 !important;
+                    width: 100% !important;
+                    box-sizing: border-box !important;
+                }
+                #myModal .modalrow .columns {
+                    padding: 0 !important;
+                    width: 100% !important;
+                    float: none !important;
+                }
+                #myModal .modalform label {
+                    font-size: 13px !important;
+                    font-weight: 700 !important;
+                    color: #334155 !important;
+                    margin: 6px 0 4px !important;
+                    display: block !important;
+                }
+                #myModal .modalform select,
+                #myModal .modalform input[type="text"],
+                #myModal .modalform input[type="number"],
+                #myModal .modalform input[type="email"],
+                #myModal .modalform input[type="password"] {
+                    width: 100% !important;
+                    height: 42px !important;
+                    min-height: 42px !important;
+                    background: #F8FAFC !important;
+                    border: 1.5px solid #E2E8F0 !important;
+                    border-radius: 10px !important;
+                    padding: 0 12px !important;
+                    font-size: 14px !important;
+                    color: #0F172A !important;
+                    box-sizing: border-box !important;
+                    outline: none !important;
+                    margin-bottom: 8px !important;
+                }
+                #myModal .modalform select:focus,
+                #myModal .modalform input:focus {
+                    border-color: #B80000 !important;
+                    background: #FFFFFF !important;
+                    box-shadow: 0 0 0 3px rgba(184, 0, 0, 0.1) !important;
+                }
+                #myModal input[type="submit"],
+                #myModal button[type="submit"],
+                #myModal .button.expand {
+                    width: 100% !important;
+                    height: 46px !important;
+                    background: #B80000 !important;
+                    color: #FFFFFF !important;
+                    border: none !important;
+                    border-radius: 12px !important;
+                    font-size: 15px !important;
+                    font-weight: 700 !important;
+                    letter-spacing: 0.5px !important;
+                    margin-top: 10px !important;
+                    margin-bottom: 6px !important;
+                    cursor: pointer !important;
+                    box-shadow: 0 4px 12px rgba(184, 0, 0, 0.25) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    text-transform: uppercase !important;
+                }
+                #myModal input[type="submit"]:active,
+                #myModal button[type="submit"]:active,
+                #myModal .button.expand:active {
+                    transform: scale(0.98) !important;
+                    background: #990000 !important;
+                }
+
+                /* Mobile Vollflächige Overlays & Ausblendung von Kopf-/Fußzeile */
+                html.bm-android-app .reveal-modal,
+                html.bm-android-app #myModal,
+                html.bm-android-app .bm-modal,
+                html.bm-android-app .bmd-modal,
+                html.bm-android-app div[data-reveal],
+                html.bm-android-app .bm-settings-dialog,
+                html.bm-android-app .bm-filter-sheet,
+                html.bm-android-app .bm-ean-dialog,
+                html.bm-android-app .bm-minifig-modal,
+                html.bm-android-app .bm-chart-dialog,
+                html.bm-android-app .bmd-dialog {
+                    position: fixed !important;
+                    inset: 0 !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    bottom: 0 !important;
+                    transform: none !important;
+                    width: 100vw !important;
+                    max-width: 100vw !important;
+                    min-width: 100vw !important;
+                    height: 100vh !important;
+                    height: 100dvh !important;
+                    max-height: 100vh !important;
+                    max-height: 100dvh !important;
+                    margin: 0 !important;
+                    border-radius: 0 !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    box-sizing: border-box !important;
+                    z-index: 2147483640 !important;
+                    overflow-y: auto !important;
+                    -webkit-overflow-scrolling: touch !important;
+                }
+
+                html.bm-android-app .bm-minifig-modal,
+                html.bm-android-app .bm-ean-dialog,
+                html.bm-android-app .bm-chart-dialog {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    overflow: hidden !important;
+                }
+
+                html.bm-android-app .bm-minifig-header,
+                html.bm-android-app .bm-ean-header,
+                html.bm-android-app .bm-chart-dialog-header {
+                    flex: 0 0 auto !important;
+                    width: 100% !important;
+                    box-sizing: border-box !important;
+                    background: #B80000 !important;
+                    color: #FFFFFF !important;
+                }
+
+                html.bm-android-app .bm-minifig-content,
+                html.bm-android-app .bm-ean-content,
+                html.bm-android-app .bm-chart-dialog-content {
+                    flex: 1 1 auto !important;
+                    min-height: 0 !important;
+                    overflow-y: auto !important;
+                    -webkit-overflow-scrolling: touch !important;
+                }
+
+                html.bm-android-app .bm-minifig-close,
+                html.bm-android-app .bm-ean-close {
+                    display: inline-flex !important;
+                    flex: 0 0 32px !important;
+                    width: 32px !important;
+                    height: 32px !important;
+                    border-radius: 16px !important;
+                    background: rgba(255, 255, 255, 0.25) !important;
+                    color: #FFFFFF !important;
+                    font: bold 1.25rem/1 Arial, sans-serif !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    cursor: pointer !important;
+                    border: none !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    text-shadow: none !important;
+                    z-index: 20 !important;
+                }
+
+                html.bm-android-app .reveal-modal-bg {
+                    display: none !important;
+                }
+
+                html.bm-android-app .bm-settings-overlay,
+                html.bm-android-app .bm-filter-sheet-overlay,
+                html.bm-android-app .bm-ean-overlay,
+                html.bm-android-app .bm-minifig-overlay,
+                html.bm-android-app .bm-chart-overlay,
+                html.bm-android-app .bmd-overlay {
+                    position: fixed !important;
+                    inset: 0 !important;
+                    width: 100vw !important;
+                    height: 100vh !important;
+                    height: 100dvh !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    background: #FFFFFF !important;
+                    align-items: stretch !important;
+                    justify-content: stretch !important;
+                    z-index: 2147483630 !important;
+                }
+
+                html.bm-android-app .bm-filter-sheet-handle {
+                    display: none !important;
+                }
+
+                html.bm-android-app #myModal .modalheader,
+                html.bm-android-app .reveal-modal .modalheader,
+                html.bm-android-app .bm-settings-header,
+                html.bm-android-app .bm-filter-sheet-header,
+                html.bm-android-app .bm-ean-header,
+                html.bm-android-app .bm-minifig-header,
+                html.bm-android-app .bm-chart-dialog-header,
+                html.bm-android-app .bmd-dialog-header {
+                    border-radius: 0 !important;
+                    padding-top: calc(var(--bm-status-top, 44px) + 14px) !important;
+                    margin: 0 !important;
+                }
+
+                html.bm-android-app #myModal .modalheader,
+                html.bm-android-app .reveal-modal .modalheader,
+                html.bm-android-app .bm-minifig-header,
+                html.bm-android-app .bm-ean-header,
+                html.bm-android-app .bm-chart-dialog-header {
+                    background: #B80000 !important;
+                    color: #FFFFFF !important;
+                }
+
+                html.bm-android-app #myModal .close-reveal-modal,
+                html.bm-android-app .reveal-modal .close-reveal-modal {
+                    top: calc(var(--bm-status-top, 44px) + 10px) !important;
+                    right: 14px !important;
+                }
+
+                html.bm-android-app #myModal .modalrow,
+                html.bm-android-app .reveal-modal .modalrow,
+                html.bm-android-app #myModal .modalform,
+                html.bm-android-app .reveal-modal .modalform {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin: 0 !important;
+                    border-radius: 0 !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    background: #FFFFFF !important;
+                    padding: 16px 20px !important;
+                    box-sizing: border-box !important;
+                }
+
+                html.bm-android-app #myModal .modalrow .columns,
+                html.bm-android-app .reveal-modal .modalrow .columns {
+                    padding: 0 !important;
+                    width: 100% !important;
+                    float: none !important;
+                }
+
+                html.bm-android-app #myModal .modalrow,
+                html.bm-android-app .reveal-modal .modalrow,
+                html.bm-android-app .bm-settings-actions,
+                html.bm-android-app .bm-filter-sheet-list,
+                html.bm-android-app .bm-ean-content,
+                html.bm-android-app .bm-minifig-content,
+                html.bm-android-app .bmd-dialog-body {
+                    padding-bottom: max(24px, var(--bm-nav-bottom, 0px), env(safe-area-inset-bottom, 0px)) !important;
+                }
+
+                html.bm-android-app,
+                html.bm-android-app body {
+                    overscroll-behavior-y: none !important;
+                }
+
+                .bm-pull-indicator {
+                    position: fixed !important;
+                    top: var(--bm-appbar-top, var(--bm-status-top, 0px)) !important;
+                    left: 50% !important;
+                    transform: translate(-50%, -60px);
+                    z-index: 2147483550 !important;
+                    width: 40px !important;
+                    height: 40px !important;
+                    border-radius: 20px !important;
+                    background: #FFFFFF !important;
+                    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    pointer-events: none !important;
+                    /* Ruhezustand: vollständig unsichtbar. Ohne diese Sperre blieb der
+                       Indikator außerhalb der App (kein --bm-status-top) als halber
+                       Kreis am oberen Rand stehen. */
+                    opacity: 0 !important;
+                    visibility: hidden !important;
+                    transition: transform 0.2s cubic-bezier(0.1, 0.9, 0.2, 1), background-color 0.2s ease, color 0.2s ease, opacity 0.15s ease;
+                    color: #64748B !important;
+                }
+                .bm-pull-indicator.is-active {
+                    opacity: 1 !important;
+                    visibility: visible !important;
+                }
+                .bm-pull-indicator.is-ready {
+                    background: #B80000 !important;
+                    color: #FFFFFF !important;
+                    box-shadow: 0 6px 20px rgba(184, 0, 0, 0.35) !important;
+                    transform: translate(-50%, 16px) scale(1.08) !important;
+                }
+                .bm-pull-indicator.is-refreshing {
+                    background: #FFFFFF !important;
+                    color: #B80000 !important;
+                    transform: translate(-50%, 16px) !important;
+                }
+                .bm-pull-indicator .bm-pull-icon-box {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 20px;
+                    height: 20px;
+                    transition: transform 0.05s linear;
+                }
+                .bm-pull-indicator.is-refreshing .bm-pull-icon-box {
+                    animation: bm-pull-spin 0.7s linear infinite;
+                }
+                @keyframes bm-pull-spin {
+                    to { transform: rotate(360deg); }
+                }
+
+                html.bm-android-app body {
+                    padding-top: var(--bm-appbar-top, var(--bm-status-top, 44px)) !important;
+                    padding-bottom: var(--bm-appbar-bottom, 0px) !important;
+                }
+
+                .bm-status-bar-scrim {
+                    position: fixed !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    height: var(--bm-status-top, 44px) !important;
+                    z-index: 2147483600 !important;
+                    background: rgba(255, 255, 255, 0.85) !important;
+                    backdrop-filter: blur(16px) saturate(180%) !important;
+                    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+                    pointer-events: none !important;
+                }
+
+                html.bm-overlay-active .bm-status-bar-scrim,
+                html.bm-toolbar-top .bm-status-bar-scrim {
+                    display: none !important;
+                }
+
+                @media screen and (max-width: 768px) {
+                    .reveal-modal,
+                    #myModal,
+                    .bm-modal,
+                    .bmd-modal,
+                    div[data-reveal],
+                    .bm-settings-dialog,
+                    .bm-filter-sheet,
+                    .bm-ean-dialog,
+                    .bm-minifig-modal,
+                    .bm-chart-dialog,
+                    .bmd-dialog {
+                        position: fixed !important;
+                        inset: 0 !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        right: 0 !important;
+                        bottom: 0 !important;
+                        transform: none !important;
+                        width: 100vw !important;
+                        max-width: 100vw !important;
+                        min-width: 100vw !important;
+                        height: 100vh !important;
+                        height: 100dvh !important;
+                        max-height: 100vh !important;
+                        max-height: 100dvh !important;
+                        margin: 0 !important;
+                        border-radius: 0 !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                        box-sizing: border-box !important;
+                        z-index: 2147483640 !important;
+                        overflow-y: auto !important;
+                        -webkit-overflow-scrolling: touch !important;
+                    }
+
+                    .bm-minifig-modal,
+                    .bm-ean-dialog,
+                    .bm-chart-dialog {
+                        display: flex !important;
+                        flex-direction: column !important;
+                        overflow: hidden !important;
+                    }
+
+                    .bm-minifig-header,
+                    .bm-ean-header,
+                    .bm-chart-dialog-header {
+                        flex: 0 0 auto !important;
+                        width: 100% !important;
+                        box-sizing: border-box !important;
+                        background: #B80000 !important;
+                        color: #FFFFFF !important;
+                    }
+
+                    .bm-minifig-content,
+                    .bm-ean-content,
+                    .bm-chart-dialog-content {
+                        flex: 1 1 auto !important;
+                        min-height: 0 !important;
+                        overflow-y: auto !important;
+                        -webkit-overflow-scrolling: touch !important;
+                    }
+
+                    .bm-minifig-close,
+                    .bm-ean-close {
+                        display: inline-flex !important;
+                        flex: 0 0 32px !important;
+                        width: 32px !important;
+                        height: 32px !important;
+                        border-radius: 16px !important;
+                        background: rgba(255, 255, 255, 0.25) !important;
+                        color: #FFFFFF !important;
+                        font: bold 1.25rem/1 Arial, sans-serif !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        cursor: pointer !important;
+                        border: none !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        text-shadow: none !important;
+                        z-index: 20 !important;
+                    }
+
+                    .reveal-modal-bg {
+                        display: none !important;
+                    }
+
+                    .bm-settings-overlay,
+                    .bm-filter-sheet-overlay,
+                    .bm-ean-overlay,
+                    .bm-minifig-overlay,
+                    .bm-chart-overlay,
+                    .bmd-overlay {
+                        position: fixed !important;
+                        inset: 0 !important;
+                        width: 100vw !important;
+                        height: 100vh !important;
+                        height: 100dvh !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        background: #FFFFFF !important;
+                        align-items: stretch !important;
+                        justify-content: stretch !important;
+                        z-index: 2147483630 !important;
+                    }
+
+                    .bm-filter-sheet-handle {
+                        display: none !important;
+                    }
+
+                    #myModal .modalheader,
+                    .reveal-modal .modalheader,
+                    .bm-settings-header,
+                    .bm-filter-sheet-header,
+                    .bm-ean-header,
+                    .bm-minifig-header,
+                    .bm-chart-dialog-header,
+                    .bmd-dialog-header {
+                        border-radius: 0 !important;
+                        padding-top: calc(var(--bm-status-top, 0px) + max(14px, env(safe-area-inset-top, 0px))) !important;
+                        margin: 0 !important;
+                    }
+
+                    #myModal .modalheader,
+                    .reveal-modal .modalheader,
+                    .bm-minifig-header,
+                    .bm-ean-header,
+                    .bm-chart-dialog-header {
+                        background: #B80000 !important;
+                        color: #FFFFFF !important;
+                    }
+
+                    #myModal .close-reveal-modal,
+                    .reveal-modal .close-reveal-modal {
+                        top: calc(var(--bm-status-top, 0px) + max(10px, env(safe-area-inset-top, 0px))) !important;
+                        right: max(12px, env(safe-area-inset-right, 0px)) !important;
+                    }
+
+                    #myModal .modalrow,
+                    .reveal-modal .modalrow,
+                    #myModal .modalform,
+                    .reveal-modal .modalform {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                        border-radius: 0 !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                        background: #FFFFFF !important;
+                        padding: 16px 20px !important;
+                        box-sizing: border-box !important;
+                    }
+
+                    #myModal .modalrow .columns,
+                    .reveal-modal .modalrow .columns {
+                        padding: 0 !important;
+                        width: 100% !important;
+                        float: none !important;
+                    }
+
+                    #myModal .modalrow,
+                    .reveal-modal .modalrow,
+                    .bm-settings-actions,
+                    .bm-filter-sheet-list,
+                    .bm-ean-content,
+                    .bm-minifig-content,
+                    .bmd-dialog-body {
+                        padding-bottom: max(24px, var(--bm-nav-bottom, 0px), env(safe-area-inset-bottom, 0px)) !important;
+                    }
+                }
+
+                html.bm-overlay-active #header,
+                html.bm-overlay-active #headlinerow,
+                html.bm-overlay-active .header:not([class*="bm-"]):not([class*="modal"]):not([class*="dialog"]),
+                html.bm-overlay-active header:not([class*="bm-"]):not([class*="modal"]):not([class*="dialog"]),
+                html.bm-overlay-active body > header,
+                html.bm-overlay-active #contenttoprow,
+                html.bm-overlay-active .top-bar,
+                html.bm-overlay-active .top-tab,
+                html.bm-overlay-active .row.top-tab,
+                html.bm-overlay-active .bm-nav5,
+                html.bm-overlay-active .bm-usernav,
+                html.bm-overlay-active .breadcrumbs,
+                html.bm-overlay-active nav.breadcrumbs,
+                html.bm-overlay-active nav[aria-label="breadcrumb"],
+                html.bm-overlay-active [itemscope][itemtype*="BreadcrumbList"],
+                html.bm-overlay-active .bm-view-switcher,
+                html.bm-overlay-active .bm-search-row,
+                html.bm-overlay-active .bm-filter-bar,
+                html.bm-overlay-active #footer,
+                html.bm-overlay-active footer,
+                html.bm-overlay-active .footer,
+                html.bm-overlay-active #feedback,
+                html.bm-overlay-active #toTop,
+                html.bm-overlay-active .dealheat {
+                    display: none !important;
+                    opacity: 0 !important;
+                    visibility: hidden !important;
+                    pointer-events: none !important;
+                }
+
+                /* Overlays und modale Kopfzeilen schützen: niemals durch Overlay-Cleaner ausblenden */
+                html.bm-overlay-active .bm-minifig-header,
+                html.bm-overlay-active .bm-ean-header,
+                html.bm-overlay-active .bm-chart-dialog-header,
+                html.bm-overlay-active header.bm-minifig-header,
+                html.bm-overlay-active header.bm-ean-header,
+                .bm-minifig-header,
+                .bm-ean-header {
+                    display: flex !important;
+                    opacity: 1 !important;
+                    visibility: visible !important;
+                    pointer-events: auto !important;
+                }
+
+                html.bm-overlay-active,
+                html.bm-overlay-active body {
+                    overflow: hidden !important;
+                    padding-top: 0 !important;
+                    padding-bottom: 0 !important;
+                }
             `;
             const globalStyle = document.createElement("style");
             globalStyle.textContent = globalCss;
             document.head.appendChild(globalStyle);
+
+            function ensureStatusBarScrim() {
+                if (!document.documentElement.classList.contains('bm-android-app')) return;
+                if (document.getElementById('bm-status-bar-scrim')) return;
+                const scrim = document.createElement('div');
+                scrim.id = 'bm-status-bar-scrim';
+                scrim.className = 'bm-status-bar-scrim';
+                scrim.setAttribute('aria-hidden', 'true');
+                (document.body || document.documentElement).appendChild(scrim);
+            }
+            ensureStatusBarScrim();
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', ensureStatusBarScrim, { once: true });
+            }
+
+            // --- Overlay Active State Tracker ---
+            let overlayCheckPending = false;
+            const updateOverlayActiveState = () => {
+                let isOverlayOpen = false;
+
+                if (document.body && (
+                    document.body.classList.contains('bm-ean-overlay-open') ||
+                    document.body.classList.contains('bm-chart-overlay-open') ||
+                    document.body.classList.contains('bm-minifig-overlay-open')
+                )) {
+                    isOverlayOpen = true;
+                }
+
+                if (!isOverlayOpen) {
+                    const openEl = document.querySelector(
+                        '.reveal-modal.open, #myModal.open, div[data-reveal].open, ' +
+                        '.bm-settings-overlay.is-open, .bm-filter-sheet-overlay.is-open, ' +
+                        '.bm-chart-overlay.bm-open, .bmd-overlay.is-open, ' +
+                        '.bm-ean-overlay, .bm-minifig-overlay, dialog[open]'
+                    );
+                    if (openEl) {
+                        isOverlayOpen = true;
+                    }
+                }
+
+                if (!isOverlayOpen) {
+                    const modal = document.getElementById('myModal') || document.querySelector('.reveal-modal');
+                    if (modal) {
+                        if (modal.classList.contains('open')) {
+                            isOverlayOpen = true;
+                        } else if (modal.style && modal.style.display && modal.style.display !== 'none') {
+                            isOverlayOpen = true;
+                        }
+                    }
+                }
+
+                if (!isOverlayOpen) {
+                    const bg = document.querySelector('.reveal-modal-bg');
+                    if (bg && bg.style && bg.style.display && bg.style.display !== 'none') {
+                        isOverlayOpen = true;
+                    }
+                }
+
+                const root = document.documentElement;
+                const currentlyActive = root.classList.contains('bm-overlay-active');
+                if (isOverlayOpen !== currentlyActive) {
+                    if (isOverlayOpen) {
+                        root.classList.add('bm-overlay-active');
+                    } else {
+                        root.classList.remove('bm-overlay-active');
+                    }
+                    if (window.BrickmergeNative && typeof window.BrickmergeNative.setOverlayVisible === 'function') {
+                        try {
+                            const isRedHeader = Boolean(
+                                document.querySelector(
+                                    '.reveal-modal.open, #myModal.open, div[data-reveal].open, ' +
+                                    '.bm-minifig-overlay, .bm-ean-overlay, .bm-chart-overlay'
+                                ) ||
+                                (document.body && (
+                                    document.body.classList.contains('bm-minifig-overlay-open') ||
+                                    document.body.classList.contains('bm-ean-overlay-open') ||
+                                    document.body.classList.contains('bm-chart-overlay-open')
+                                ))
+                            );
+                            window.BrickmergeNative.setOverlayVisible(isOverlayOpen, isRedHeader ? 'dark' : 'light');
+                        } catch (e) {}
+                    }
+                }
+            };
+
+            const scheduleOverlayCheck = () => {
+                if (overlayCheckPending) return;
+                overlayCheckPending = true;
+                requestAnimationFrame(() => {
+                    overlayCheckPending = false;
+                    updateOverlayActiveState();
+                });
+            };
+
+            try {
+                if (!window.__bmOverlayObserverInitialized) {
+                    window.__bmOverlayObserverInitialized = true;
+                    const overlayObserver = new MutationObserver(scheduleOverlayCheck);
+                    overlayObserver.observe(document.documentElement, {
+                        childList: true,
+                        subtree: true,
+                        attributes: true,
+                        attributeFilter: ['class', 'style', 'open']
+                    });
+                    document.addEventListener('transitionend', scheduleOverlayCheck, { passive: true });
+                    updateOverlayActiveState();
+                }
+            } catch (e) {}
+
+            // Pull-to-Refresh ist eine Touch-Geste (Android-App, mobiles Userscript).
+            // In der Chrome-Erweiterung auf dem Desktop gibt es keine Touch-Geste –
+            // dort wurde der Indikator trotzdem in den DOM gehängt und war als halber
+            // Kreis am oberen Rand sichtbar.
+            const supportsPullToRefresh = () => {
+                try {
+                    if (document.documentElement.classList.contains('bm-android-app')) {
+                        return true;
+                    }
+                    return Boolean(
+                        window.matchMedia?.('(pointer: coarse)').matches ||
+                        window.matchMedia?.('(hover: none)').matches ||
+                        navigator.maxTouchPoints > 0
+                    );
+                } catch (error) {
+                    return false;
+                }
+            };
+
+            function initPullToRefresh() {
+                if (window.__bmPullToRefreshInitialized) return;
+                if (!supportsPullToRefresh()) return;
+                window.__bmPullToRefreshInitialized = true;
+
+                let startY = 0;
+                let startX = 0;
+                let isPulling = false;
+                let currentPullDistance = 0;
+                const PULL_THRESHOLD = 95;
+                const MAX_PULL = 130;
+                let isRefreshing = false;
+
+                const indicator = document.createElement('div');
+                indicator.id = 'bm-pull-indicator';
+                indicator.className = 'bm-pull-indicator';
+                indicator.innerHTML = `
+                    <div class="bm-pull-icon-box">
+                        <svg class="bm-pull-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                        </svg>
+                    </div>
+                `;
+                const mount = () => {
+                    if (!document.getElementById('bm-pull-indicator') && document.body) {
+                        document.body.appendChild(indicator);
+                    }
+                };
+                if (document.body) mount();
+                else window.addEventListener('DOMContentLoaded', mount, { once: true });
+
+                const isOverlayActive = () => {
+                    return document.documentElement.classList.contains('bm-overlay-active') ||
+                        document.body.classList.contains('bm-minifig-overlay-open') ||
+                        document.querySelector('.bm-minifig-overlay, .reveal-modal-bg, .bm-settings-overlay.is-open, .bm-filter-sheet-overlay.is-open, .bm-chart-overlay.bm-open, .bm-ean-overlay, .bmd-overlay.is-open, dialog[open]') !== null;
+                };
+
+                const updateIndicator = (dist) => {
+                    if (dist <= 0) {
+                        indicator.style.transform = 'translate(-50%, -60px)';
+                        indicator.classList.remove('is-ready', 'is-refreshing', 'is-active');
+                        return;
+                    }
+                    indicator.classList.add('is-active');
+                    const dampened = Math.min(MAX_PULL, Math.pow(dist, 0.88) * 2.2);
+                    indicator.style.transform = `translate(-50%, ${dampened - 50}px)`;
+                    const rotation = Math.min(360, (dist / PULL_THRESHOLD) * 360);
+                    const iconBox = indicator.querySelector('.bm-pull-icon-box');
+                    if (iconBox) iconBox.style.transform = `rotate(${rotation}deg)`;
+
+                    if (dist >= PULL_THRESHOLD) {
+                        if (!indicator.classList.contains('is-ready')) {
+                            indicator.classList.add('is-ready');
+                            try { navigator.vibrate?.(12); } catch (e) {}
+                        }
+                    } else {
+                        indicator.classList.remove('is-ready');
+                    }
+                };
+
+                window.addEventListener('touchstart', (e) => {
+                    if (isRefreshing || isOverlayActive()) return;
+                    if (window.scrollY > 1 || document.documentElement.scrollTop > 1) return;
+                    if (e.touches.length !== 1) return;
+
+                    startY = e.touches[0].clientY;
+                    startX = e.touches[0].clientX;
+                    isPulling = false;
+                    currentPullDistance = 0;
+                }, { passive: true });
+
+                window.addEventListener('touchmove', (e) => {
+                    if (isRefreshing || isOverlayActive()) return;
+                    if (window.scrollY > 1 || document.documentElement.scrollTop > 1) {
+                        if (isPulling) {
+                            isPulling = false;
+                            updateIndicator(0);
+                        }
+                        return;
+                    }
+                    if (e.touches.length !== 1) return;
+
+                    const currentY = e.touches[0].clientY;
+                    const currentX = e.touches[0].clientX;
+                    const dy = currentY - startY;
+                    const dx = currentX - startX;
+
+                    if (!isPulling) {
+                        if (dy > 18 && dy > Math.abs(dx) * 2.5) {
+                            isPulling = true;
+                        } else if (Math.abs(dx) > 15 || dy < -5) {
+                            return;
+                        }
+                    }
+
+                    if (isPulling && dy > 0) {
+                        currentPullDistance = dy;
+                        updateIndicator(currentPullDistance);
+                        if (e.cancelable && dy > 25) {
+                            e.preventDefault();
+                        }
+                    }
+                }, { passive: false });
+
+                const finishPull = () => {
+                    if (!isPulling) return;
+                    isPulling = false;
+
+                    if (currentPullDistance >= PULL_THRESHOLD) {
+                        isRefreshing = true;
+                        indicator.classList.remove('is-ready');
+                        indicator.classList.add('is-refreshing', 'is-active');
+                        indicator.style.transform = 'translate(-50%, 16px)';
+                        try { navigator.vibrate?.(20); } catch (e) {}
+                        window.setTimeout(() => {
+                            window.location.reload();
+                        }, 200);
+                    } else {
+                        updateIndicator(0);
+                    }
+                    currentPullDistance = 0;
+                };
+
+                window.addEventListener('touchend', finishPull, { passive: true });
+                window.addEventListener('touchcancel', finishPull, { passive: true });
+            }
+
+            try {
+                initPullToRefresh();
+            } catch (e) {}
+
+            window.bmTweaker = window.bmTweaker || {};
+            window.bmTweaker.closeAllOverlays = () => {
+                const btn = document.querySelector(
+                    '.reveal-modal.open .close-reveal-modal, #myModal.open .close-reveal-modal, ' +
+                    '.close-reveal-modal, ' +
+                    '.bm-settings-overlay.is-open .bm-settings-close, ' +
+                    '.bm-filter-sheet-overlay.is-open .bm-filter-sheet-close, ' +
+                    '.bm-ean-close, .bm-chart-dialog-close, .bm-chart-close, .bm-minifig-close, .bmd-close'
+                );
+                if (btn) {
+                    btn.click();
+                    return true;
+                }
+                if (typeof $ !== 'undefined' && $('#myModal').length && typeof $('#myModal').foundation === 'function') {
+                    $('#myModal').foundation('reveal', 'close');
+                    return true;
+                }
+                return false;
+            };
+
+            function openFilterBottomSheet(btn, targetUl) {
+                document.querySelectorAll('.bm-filter-sheet-overlay').forEach(el => el.remove());
+
+                let title = 'Filter wählen';
+                const labelEl = btn.querySelector('.bm-filter-label');
+                const rawText = labelEl ? labelEl.textContent.trim() : btn.textContent.trim();
+                const dropdownId = btn.getAttribute('data-dropdown') || '';
+                if (dropdownId === 'drop1' || !btn.id) title = '🏷️ Thema wählen';
+                else if (dropdownId === 'drop2' || btn.id === 'sortdropdwn') title = '↕️ Sortierung';
+                else if (dropdownId === 'dropCn' || btn.id === 'sortdropdwncn') title = '🏬 Händler wählen';
+                else if (dropdownId === 'drop4' || btn.id === 'sortdropdwn4') title = '✨ Auswahl & Tags';
+                else if (dropdownId === 'drop5' || btn.id === 'sortdropdwn5') title = '💶 Preisbereich';
+                else if (dropdownId === 'drop6' || btn.id === 'sortdropdwn6') title = '🎂 Alter';
+
+                const overlay = document.createElement('div');
+                overlay.className = 'bm-filter-sheet-overlay';
+
+                const sheet = document.createElement('div');
+                sheet.className = 'bm-filter-sheet';
+
+                const handle = document.createElement('div');
+                handle.className = 'bm-filter-sheet-handle';
+
+                const header = document.createElement('div');
+                header.className = 'bm-filter-sheet-header';
+
+                const titleEl = document.createElement('div');
+                titleEl.className = 'bm-filter-sheet-title';
+                titleEl.textContent = title;
+
+                const closeBtn = document.createElement('button');
+                closeBtn.type = 'button';
+                closeBtn.className = 'bm-filter-sheet-close';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.setAttribute('aria-label', 'Schließen');
+
+                header.appendChild(titleEl);
+                header.appendChild(closeBtn);
+
+                const list = document.createElement('div');
+                list.className = 'bm-filter-sheet-list';
+
+                const items = targetUl.querySelectorAll('li > a');
+                items.forEach(link => {
+                    const item = document.createElement('a');
+                    item.className = 'bm-filter-sheet-item';
+                    item.href = link.href;
+
+                    const labelSpan = document.createElement('span');
+                    labelSpan.textContent = link.textContent.trim();
+                    item.appendChild(labelSpan);
+
+                    let isSelected = link.parentElement?.classList.contains('selected') ||
+                                     (window.location.href === link.href);
+                    if (!isSelected && rawText) {
+                        const linkText = link.textContent.trim().toLowerCase();
+                        const btnText = rawText.toLowerCase();
+                        if (linkText === btnText || linkText.includes(btnText) || btnText.includes(linkText)) {
+                            isSelected = true;
+                        }
+                    }
+                    if (isSelected) {
+                        item.classList.add('is-active');
+                        const check = document.createElement('span');
+                        check.className = 'bm-filter-sheet-check';
+                        check.textContent = '✓';
+                        item.appendChild(check);
+                    }
+
+                    item.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        overlay.classList.remove('is-open');
+                        setTimeout(() => {
+                            overlay.remove();
+                            window.location.href = link.href;
+                        }, 100);
+                    });
+
+                    list.appendChild(item);
+                });
+
+                sheet.appendChild(handle);
+                sheet.appendChild(header);
+                sheet.appendChild(list);
+                overlay.appendChild(sheet);
+                document.body.appendChild(overlay);
+
+                requestAnimationFrame(() => {
+                    overlay.classList.add('is-open');
+                });
+
+                const close = () => {
+                    overlay.classList.remove('is-open');
+                    setTimeout(() => overlay.remove(), 200);
+                };
+
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) close();
+                });
+                closeBtn.addEventListener('click', close);
+                handle.addEventListener('click', close);
+            }
+
+            function setupMobileFilterBar() {
+                if (typeof window !== 'undefined' && window.innerWidth > 768) {
+                    if (!window._bmFilterResizeListenerBound) {
+                        window._bmFilterResizeListenerBound = true;
+                        window.addEventListener('resize', () => {
+                            if (window.innerWidth <= 768) {
+                                setupMobileFilterBar();
+                            }
+                        });
+                    }
+                    return;
+                }
+                const filterRow = document.getElementById('contenttoprow');
+                if (!filterRow || filterRow.dataset.bmEnhanced === 'true') return;
+                filterRow.dataset.bmEnhanced = 'true';
+
+                const filterConfigs = [
+                    {
+                        key: 'theme',
+                        btn: filterRow.querySelector('[data-dropdown="drop1"], .viewDropDown:not([id])'),
+                        defaultLabel: 'Themen',
+                        params: ['theme'],
+                        icon: '<svg class="bm-filter-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></svg>',
+                        cleanText: (t) => {
+                            if (!t || t.includes('Thema wählen') || t.toLowerCase() === 'themen') return 'Themen';
+                            return t.replace(/^LEGO\s+/i, '').trim();
+                        }
+                    },
+                    {
+                        key: 'sort',
+                        btn: document.getElementById('sortdropdwn') || filterRow.querySelector('[data-dropdown="drop2"]'),
+                        defaultLabel: 'Sortierung',
+                        params: ['sort'],
+                        icon: '<svg class="bm-filter-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/></svg>',
+                        cleanText: (t) => {
+                            if (!t || t.includes('Ersparnis zum UVP') || t.toLowerCase() === 'sortierung') return 'Ersparnis';
+                            if (t.includes('bestes Angebot')) return 'Best %';
+                            if (t.includes('Deal-Score')) return 'Deal-Score';
+                            if (t.includes('pro Stein')) return 'Cent/Stein';
+                            if (t.includes('pro Gramm')) return 'Cent/Gramm';
+                            if (t.includes('Preis absteigend')) return 'Preis ↓';
+                            if (t.includes('Preis aufsteigend')) return 'Preis ↑';
+                            if (t.includes('UVP aufsteigend')) return 'UVP ↑';
+                            if (t.includes('UVP absteigend')) return 'UVP ↓';
+                            if (t.includes('Jahr')) return 'Jahr/Set';
+                            return t.trim();
+                        }
+                    },
+                    {
+                        key: 'shop',
+                        btn: document.getElementById('sortdropdwncn') || filterRow.querySelector('[data-dropdown="dropCn"]'),
+                        defaultLabel: 'Shops',
+                        params: ['fm', 'filter'],
+                        icon: '<svg class="bm-filter-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M4 14v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6"/></svg>',
+                        cleanText: (t) => {
+                            if (!t || t.toLowerCase().includes('alle shops') || t.toLowerCase() === 'shops') return 'Shops';
+                            return t.trim();
+                        }
+                    },
+                    {
+                        key: 'auswahl',
+                        btn: document.getElementById('sortdropdwn4') || filterRow.querySelector('[data-dropdown="drop4"]'),
+                        defaultLabel: 'Auswahl',
+                        params: ['filterTag'],
+                        icon: '<svg class="bm-filter-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="20" cy="14" r="2"/></svg>',
+                        cleanText: (t) => {
+                            if (!t || t.toLowerCase() === 'auswahl' || t.toLowerCase() === 'alle artikel') return 'Auswahl';
+                            if (t.includes('Auslaufartikel')) return 'EOL';
+                            if (t.includes('Neuerscheinung')) return 'NEU';
+                            if (t.includes('exklusiv')) return 'Exklusiv';
+                            if (t.includes('selten')) return 'Selten';
+                            return t.replace(/vsl\.\s*/i, '').trim();
+                        }
+                    },
+                    {
+                        key: 'price',
+                        btn: document.getElementById('sortdropdwn5') || filterRow.querySelector('[data-dropdown="drop5"]'),
+                        defaultLabel: 'Preis',
+                        params: ['filterPrice'],
+                        icon: '<svg class="bm-filter-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M14.5 9a3.5 3.5 0 0 0-5 0v6a3.5 3.5 0 0 0 5 0"/><line x1="6.5" y1="10.5" x2="12.5" y2="10.5"/><line x1="6.5" y1="13.5" x2="12.5" y2="13.5"/></svg>',
+                        cleanText: (t) => {
+                            if (!t || t.toLowerCase() === 'preis' || t.toLowerCase() === 'alle preise') return 'Preis';
+                            return t.replace(/\s*EUR/i, ' €').replace(/unter\s*/i, '< ').replace(/über\s*/i, '> ').trim();
+                        }
+                    },
+                    {
+                        key: 'age',
+                        btn: document.getElementById('sortdropdwn6') || filterRow.querySelector('[data-dropdown="drop6"]'),
+                        defaultLabel: 'Alter',
+                        params: ['filterAge'],
+                        icon: '<svg class="bm-filter-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+                        cleanText: (t) => {
+                            if (!t || t.toLowerCase() === 'alter' || t.toLowerCase() === 'alle altersklassen') return 'Alter';
+                            return t.replace(/\s*Jahre/i, ' J.').trim();
+                        }
+                    }
+                ];
+
+                filterConfigs.forEach(cfg => {
+                    const btn = cfg.btn;
+                    if (!btn) return;
+
+                    let isActive = false;
+                    try {
+                        const url = new URL(window.location.href);
+                        for (const p of cfg.params) {
+                            if (url.searchParams.has(p)) { isActive = true; break; }
+                        }
+                    } catch (e) {}
+
+                    const rawText = btn.textContent.trim();
+                    if (cfg.defaultLabel && !rawText.toLowerCase().includes(cfg.defaultLabel.toLowerCase())) {
+                        isActive = true;
+                    }
+                    btn.classList.toggle('bm-filter-active', isActive);
+
+                    // Icon einbetten
+                    let iconEl = btn.querySelector('.bm-filter-icon');
+                    if (!iconEl) {
+                        iconEl = document.createElement('span');
+                        iconEl.className = 'bm-filter-icon';
+                    }
+                    iconEl.innerHTML = cfg.icon;
+
+                    // Label formatieren & Text ermitteln
+                    let labelEl = btn.querySelector('.bm-filter-label');
+                    const sourceText = (labelEl ? labelEl.textContent : rawText).trim();
+                    const cleanedText = cfg.cleanText(sourceText);
+                    if (!labelEl) {
+                        labelEl = document.createElement('span');
+                        labelEl.className = 'bm-filter-label';
+                    }
+                    labelEl.textContent = cleanedText;
+
+                    // Stray TextNodes und alte Kind-Elemente vollständig entfernen
+                    btn.innerHTML = '';
+                    btn.appendChild(iconEl);
+                    btn.appendChild(labelEl);
+
+                    // Foundation 'dropdown' Klasse entfernen, damit CSS-Caret-Pfeile niemals greifen
+                    btn.classList.remove('dropdown');
+                });
+
+                const buttons = filterRow.querySelectorAll('a.button.viewDropDown, a.viewDropDown');
+                buttons.forEach(btn => {
+                    const dropdownId = btn.getAttribute('data-dropdown');
+                    const targetUl = dropdownId ? document.getElementById(dropdownId) : null;
+                    if (!targetUl) return;
+
+                    btn.addEventListener('click', (e) => {
+                        if (window.innerWidth <= 768) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            openFilterBottomSheet(btn, targetUl);
+                        }
+                    }, true);
+                });
+
+                // Bestpreis-Toggle auf Händlerseiten modernisieren
+                const sctoggleForm = filterRow.querySelector('form[name="sctoggle"]');
+                const sctoggleWrapper = sctoggleForm?.closest('#contenttoprow .small-12.columns > div, #contenttoprow .small-12.columns > .button');
+                if (sctoggleWrapper) {
+                    if (!sctoggleWrapper.classList.contains('bm-bestprice-toggle')) {
+                        sctoggleWrapper.classList.add('bm-bestprice-toggle');
+                    }
+
+                    const link = sctoggleWrapper.querySelector('a');
+                    if (link) {
+                        link.classList.add('bm-bestprice-toggle-label');
+                    }
+
+                    const chk = sctoggleWrapper.querySelector('input[type="checkbox"]');
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const isScParamActive = urlParams.get('sc') === '1' || urlParams.get('sc') === 'true';
+                    const linkText = (link?.textContent || sctoggleWrapper.textContent || '');
+                    const isTextActive = /(?:Keine|Alle)\s+.*?Bestpreis/i.test(linkText);
+                    const isChecked = chk ? chk.checked : false;
+                    const isActive = isScParamActive || isTextActive || isChecked;
+
+                    sctoggleWrapper.classList.toggle('bm-bestprice-active', isActive);
+                    if (chk) {
+                        chk.checked = isActive;
+                    }
+
+                    // Bestpreis-Stern entfernen: ältere App-Versionen haben hier ein
+                    // <span class="bm-bestprice-star-icon"> (roter SVG-Stern) ins Label
+                    // eingefügt. Der Bereich wird deshalb großzügig abgeräumt, zusätzlich
+                    // wird ein Stern-Zeichen am Textanfang entfernt.
+                    if (link) {
+                        sctoggleWrapper
+                            .querySelectorAll('.bm-bestprice-star-icon, [class*="star" i]')
+                            .forEach(el => el.remove());
+                        if (link.firstChild && link.firstChild.nodeType === 3) {
+                            link.firstChild.nodeValue = link.firstChild.nodeValue
+                                .replace(/^[\s\u2605\u2606\u2b50\u2729\u272a\u272f]+/, '');
+                        }
+                    }
+
+                    if (!sctoggleWrapper.dataset.bmToggleBound) {
+                        sctoggleWrapper.dataset.bmToggleBound = 'true';
+
+                        const executeToggle = (e) => {
+                            if (e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                e.stopImmediatePropagation();
+                            }
+                            const isCurrentlyActive = sctoggleWrapper.classList.contains('bm-bestprice-active') ||
+                                new URLSearchParams(window.location.search).get('sc') === '1' ||
+                                (chk ? chk.checked : false);
+                            const nextActive = !isCurrentlyActive;
+                            if (chk) chk.checked = nextActive;
+                            sctoggleWrapper.classList.toggle('bm-bestprice-active', nextActive);
+
+                            let targetUrl = '';
+                            if (link && link.getAttribute('href') && !link.getAttribute('href').startsWith('#')) {
+                                try {
+                                    const parsed = new URL(link.href, window.location.origin);
+                                    targetUrl = parsed.toString();
+                                } catch (err) {}
+                            }
+                            if (!targetUrl) {
+                                try {
+                                    const cur = new URL(window.location.href);
+                                    if (isCurrentlyActive) {
+                                        cur.searchParams.delete('sc');
+                                    } else {
+                                        cur.searchParams.set('sc', '1');
+                                    }
+                                    targetUrl = cur.toString();
+                                } catch (err) {}
+                            }
+
+                            if (targetUrl) {
+                                window.location.href = targetUrl;
+                            } else if (sctoggleForm) {
+                                sctoggleForm.submit();
+                            }
+                        };
+
+                        sctoggleWrapper.addEventListener('click', executeToggle, true);
+                        if (chk) {
+                            chk.addEventListener('change', executeToggle, true);
+                        }
+                    }
+                }
+            }
+
+            const bmListMerchantCache = new Map();
+            const bmListEolCache = new Map();
+            const bmListShopUrlCache = new Map(); // Shop-Direktlinks aus Detailseiten-Fetch
+            const bmListRedDiscountCache = new Map();
+            const bmListBlackDiscountCache = new Map();
+            let bmListMerchantObserver = null;
+            const bmPendingMerchantFetches = [];
+            let bmActiveMerchantFetches = 0;
+            const BM_MAX_CONCURRENT_FETCHES = 2;
+
+            function bmExtractCheapestMerchantFromHtml(html) {
+                if (!html) return '';
+                const topMatch = html.match(/class=["']topprice["'][\s\S]*?<img[^>]+alt=["']([^"']+)["']/i);
+                if (topMatch && topMatch[1]) return topMatch[1].trim();
+
+                const titleMatch = html.match(/title=["']Link zu ([^-"]+)\s*-\s*\d+/i);
+                if (titleMatch && titleMatch[1]) return titleMatch[1].trim();
+
+                const offerMatch = html.match(/id=["']offerlist["'][\s\S]*?<img[^>]+src=["'][^"']*merchants\/[^"']*["'][^>]+alt=["']([^"']+)["']/i);
+                if (offerMatch && offerMatch[1]) return offerMatch[1].trim();
+
+                return '';
+            }
+
+            function bmExtractShopUrlFromHtml(html) {
+                if (!html) return '';
+                let rawUrl = '';
+                // Strategie 1: href im topprice-Block
+                const topBlockMatch = html.match(/class=["']topprice[^"']*["'][\s\S]{0,800}?href=["']([^"']+)["']/i)
+                    || html.match(/href=["']([^"']+)["'][\s\S]{0,300}?class=["'][^"']*topprice/i);
+                if (topBlockMatch && topBlockMatch[1] && !topBlockMatch[1].startsWith('#')) {
+                    rawUrl = topBlockMatch[1].trim();
+                }
+                // Strategie 2: <a href="..." title="Link zu [Händlername] ...">
+                if (!rawUrl) {
+                    const titleLinkMatch = html.match(/href=["']([^"']+)["'][^>]*title=["']Link zu [^"']+["']/i)
+                        || html.match(/title=["']Link zu [^"']+["'][^>]*href=["']([^"']+)["']/i);
+                    if (titleLinkMatch && titleLinkMatch[1]) rawUrl = titleLinkMatch[1].trim();
+                }
+                // Strategie 3: Erster Track-/Shop-Link in #offerlist (go2i/go2m oder /go2/)
+                if (!rawUrl) {
+                    const offerLinkMatch = html.match(/id=["']offerlist["'][\s\S]*?href=["']([^"']*(?:go2i=|go2m=|\/go2\/)[^"']*)["']/i);
+                    if (offerLinkMatch && offerLinkMatch[1]) rawUrl = offerLinkMatch[1].trim();
+                }
+                if (!rawUrl) return '';
+                rawUrl = rawUrl.replace(/&amp;/g, '&').replace(/&#0*38;/g, '&');
+                try {
+                    return new URL(rawUrl, 'https://www.brickmerge.de').href.replace(/&amp;/g, '&');
+                } catch (e) {
+                    return rawUrl;
+                }
+            }
+
+            function bmExtractEolFromHtml(html) {
+                if (!html) return '';
+
+                // 1. Spezifikationszeile auf der Set-Detailseite: Release: ..., EOL: <strong>&asymp;12/2026</strong>
+                // Flexibel für verschiedene Formatierungen (mit/ohne <strong>, mit/ohne &asymp;, span, etc.)
+                const specMatch = html.match(/EOL\s*[:]\s*(?:<[^>]+>\s*)*(?:&asymp;|≈)?\s*(?:<[^>]+>\s*)*([^<,;\n\r]+)/i);
+                if (specMatch && specMatch[1]) {
+                    let val = specMatch[1].replace(/&asymp;|≈/g, '').trim();
+                    const dateMatch = val.match(/(?:(q[1-4])\s*[\/ ]?\s*(?:20)?(\d{2}))/i)
+                        || val.match(/(\d{1,2})\s*[\/.]\s*(?:20)?(\d{2})/i)
+                        || val.match(/\b(20\d{2})\b/);
+                    if (dateMatch) {
+                        if (dateMatch[1] && dateMatch[2]) {
+                            const part1 = dateMatch[1].toUpperCase();
+                            return `EOL ${part1}/${dateMatch[2]}`;
+                        }
+                        const clean = (dateMatch[1] || dateMatch[0]).replace(/\s+/g, '');
+                        const normalized = clean.replace(/^(\d{1,2})[\/.](?:20)?(\d{2})$/, '$1/$2');
+                        return `EOL ${normalized}`;
+                    }
+                    if (val && !/unbekannt/i.test(val)) {
+                        return `EOL ${val}`;
+                    }
+                }
+
+                // 2. Auslaufartikel-Badge / Producttag im Detail-HTML
+                const tagMatch = html.match(/class=["'][^"']*producttag[^"']*["'][^>]*>([^<]*(?:auslauf|eol|end of life)[^<]*)<\/[a-z0-9]+>/i)
+                    || html.match(/class=["']producttag["'][^>]*>([^<]*(?:auslauf|eol|end of life)[^<]*)<\/a>/i);
+                if (tagMatch && tagMatch[1]) {
+                    const dateMatch = tagMatch[1].match(/(?:(q[1-4])\s*[\/ ]?\s*(?:20)?(\d{2}))/i)
+                        || tagMatch[1].match(/(\d{1,2})\s*[\/.]\s*(?:20)?(\d{2})/i)
+                        || tagMatch[1].match(/\b(20\d{2})\b/);
+                    if (dateMatch) {
+                        if (dateMatch[1] && dateMatch[2]) {
+                            const part1 = dateMatch[1].toUpperCase();
+                            return `EOL ${part1}/${dateMatch[2]}`;
+                        }
+                        const clean = (dateMatch[1] || dateMatch[0]).replace(/\s+/g, '');
+                        const normalized = clean.replace(/^(\d{1,2})[\/.](?:20)?(\d{2})$/, '$1/$2');
+                        return `EOL ${normalized}`;
+                    }
+                    return 'EOL';
+                }
+
+                // 3. Textuelle Erwähnung im Beschreibungstext
+                const textMatch = html.match(/geht\s+(?:vermutlich\s+)?(?:bereits\s+)?(?:Ende\s+)?([A-Za-zäöüÄÖÜ]+\s+(?:20)?\d{2})\s+EOL/i)
+                    || html.match(/Ende\s+([A-Za-zäöüÄÖÜ]+\s+(?:20)?\d{2})\s+aus dem Programm/i);
+                if (textMatch && textMatch[1]) {
+                    const months = {
+                        januar: '01', februar: '02', märz: '03', maerz: '03', april: '04',
+                        mai: '05', juni: '06', juli: '07', august: '08', september: '09',
+                        oktober: '10', november: '11', dezember: '12'
+                    };
+                    const parts = textMatch[1].toLowerCase().split(/\s+/);
+                    if (parts.length === 2 && months[parts[0]]) {
+                        const yr = parts[1].slice(-2);
+                        return `EOL ${months[parts[0]]}/${yr}`;
+                    }
+                    return `EOL ${textMatch[1]}`;
+                }
+
+                // 4. Allgemeiner Auslaufartikel-Status
+                if (/Auslaufartikel/i.test(html) && !/Kein\s+Auslaufartikel/i.test(html)) {
+                    return 'EOL';
+                }
+
+                return '';
+            }
+
+            function bmApplyEolToAllCards(setKey, eol) {
+                if (!setKey || !eol) return;
+                const baseKey = String(setKey).replace(/-\d+$/, '');
+                const matchingCards = document.querySelectorAll(
+                    `div.slide[id="set${setKey}"], div.slide[id="set${baseKey}-1"], div.slide[id="set${baseKey}"], div.slide[data-bm-set-key="${setKey}"], div.slide[data-bm-set-key="${baseKey}"]`
+                );
+                matchingCards.forEach(card => {
+                    const badge = card.querySelector('.bm-list-eol');
+                    if (badge) {
+                        badge.textContent = eol;
+                        badge.style.display = 'inline-flex';
+                    }
+                });
+            }
+
+            function bmApplyMerchantToCard(card, merchant) {
+                if (!card || !merchant) return;
+                const cleanMerchant = String(merchant).replace(/^bei\s+/i, '').trim();
+                if (!cleanMerchant) return;
+
+                // 1. Listenansicht: Badge in .offerbox als klickbarer Link
+                const listBadge = card.querySelector('.bm-list-merchant');
+                if (listBadge) {
+                    listBadge.textContent = cleanMerchant;
+                    listBadge.style.display = 'inline-flex';
+                    const k = card.dataset?.bmSetKey || String(card.id || '').replace(/^set/, '');
+                    const cachedShop = k ? (bmListShopUrlCache.get(k) || sessionStorage.getItem(`bm_shop_${k}`)) : '';
+                    if (cachedShop) {
+                        listBadge.href = cachedShop;
+                        listBadge.target = '_blank';
+                        listBadge.rel = 'noopener noreferrer';
+                    }
+                }
+
+                // 2. Kachelansicht: Split-CTA Shop-Button (.bm-btn-shop) — Text aktualisieren
+                const shopBtn = card.querySelector('.bm-btn-shop');
+                if (shopBtn) {
+                    shopBtn.textContent = `↗ ${cleanMerchant}`;
+                    // href und target werden durch bmApplyShopUrlToCard gesetzt, sobald der echte Link bekannt ist
+                }
+            }
+
+            function bmApplyMerchantToAllCards(setKey, merchant) {
+                if (!setKey || !merchant) return;
+                const baseKey = String(setKey).replace(/-\d+$/, '');
+                const matchingCards = document.querySelectorAll(
+                    `div.slide[id="set${setKey}"], div.slide[id="set${baseKey}-1"], div.slide[id="set${baseKey}"], div.slide[data-bm-set-key="${setKey}"], div.slide[data-bm-set-key="${baseKey}"]`
+                );
+                matchingCards.forEach(card => bmApplyMerchantToCard(card, merchant));
+            }
+
+            function bmApplyShopUrlToCard(card, shopUrl, merchant) {
+                if (!card || !shopUrl) return;
+                const cleanUrl = String(shopUrl).replace(/&amp;/g, '&').replace(/&#0*38;/g, '&');
+                const shopBtn = card.querySelector('.bm-btn-shop');
+                if (shopBtn) {
+                    shopBtn.href = cleanUrl;
+                    shopBtn.target = '_blank';
+                    shopBtn.rel = 'noopener noreferrer';
+                    if (merchant) shopBtn.textContent = `↗ ${String(merchant).replace(/^bei\s+/i, '').trim()}`;
+                    delete shopBtn.dataset.bmLoading;
+                }
+                const listBadge = card.querySelector('.bm-list-merchant');
+                if (listBadge) {
+                    listBadge.href = cleanUrl;
+                    listBadge.target = '_blank';
+                    listBadge.rel = 'noopener noreferrer';
+                }
+            }
+
+            function bmApplyShopUrlToAllCards(setKey, shopUrl, merchant) {
+                if (!setKey || !shopUrl) return;
+                const baseKey = String(setKey).replace(/-\d+$/, '');
+                const matchingCards = document.querySelectorAll(
+                    `div.slide[id="set${setKey}"], div.slide[id="set${baseKey}-1"], div.slide[id="set${baseKey}"], div.slide[data-bm-set-key="${setKey}"], div.slide[data-bm-set-key="${baseKey}"]`
+                );
+                matchingCards.forEach(card => bmApplyShopUrlToCard(card, shopUrl, merchant));
+            }
+
+            function bmExtractRedDiscountFromHtml(html) {
+                if (!html) return 0;
+                const match = html.match(/Ersparnis:[\s\S]*?(\d+)%/i)
+                    || html.match(/class=["']topprice["'][\s\S]*?>(\d+)%<\/span>/i)
+                    || html.match(/class=["']off["'][^>]*>(\d+)%/i);
+                if (match && match[1]) {
+                    const num = parseInt(match[1], 10);
+                    if (num > 0) return num;
+                }
+                const lowPriceMatch = html.match(/itemprop=["']lowPrice["']\s+content=["']([\d.]+)["']/i);
+                const uvpMatch = html.match(/UVP\s*([\d.,]+)\s*(?:&euro;|€)/i);
+                if (lowPriceMatch && uvpMatch) {
+                    const low = parseFloat(lowPriceMatch[1]);
+                    const uvp = parseFloat(uvpMatch[1].replace(/\./g, '').replace(',', '.'));
+                    if (uvp > low && low > 0) {
+                        return Math.round(((uvp - low) / uvp) * 100);
+                    }
+                }
+                return 0;
+            }
+
+            function bmExtractBlackDiscountFromHtml(html) {
+                if (!html) return 0;
+                try {
+                    if (typeof DOMParser !== 'undefined') {
+                        const doc = new DOMParser().parseFromString(html, 'text/html');
+                        const prices = [];
+                        const topPriceText = doc.querySelector('.topprice')?.textContent;
+                        const topMatch = topPriceText?.match(/(\d+[\d.,]*)\s*€/);
+                        if (topMatch) {
+                            const p = parseFloat(topMatch[1].replace(/\./g, '').replace(',', '.'));
+                            if (p > 0) prices.push(p);
+                        }
+                        doc.querySelectorAll('#offerlist .pricerow span.price').forEach(span => {
+                            const clone = span.cloneNode(true);
+                            clone.querySelectorAll('.merchant, [style*="position"]').forEach(c => c.remove());
+                            const m = clone.textContent.match(/(\d+[\d.,]*)\s*€/);
+                            if (m) {
+                                const p = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+                                if (p > 0) prices.push(p);
+                            }
+                        });
+                        const unique = [...new Set(prices)].sort((a, b) => a - b);
+                        if (unique.length >= 2 && unique[1] > unique[0]) {
+                            return Math.round((1 - (unique[0] / unique[1])) * 100);
+                        }
+                    }
+                } catch (e) {}
+
+                const priceBlocks = [...html.matchAll(/class=["']price["'][^>]*>([\s\S]*?)<\/span>\s*<\/a>/gi)];
+                const prices = [];
+                for (const b of priceBlocks) {
+                    const clean = b[1].replace(/<span class=["']show-for-small-only merchant["']>[\s\S]*?<\/span>/gi, '');
+                    const m = clean.match(/(\d+[\d\s.,]*)\s*(?:&euro;|€)/);
+                    if (m) {
+                        const p = parseFloat(m[1].replace(/\s/g, '').replace(/\./g, '').replace(',', '.'));
+                        if (Number.isFinite(p) && p > 0) prices.push(p);
+                    }
+                }
+                const unique = [...new Set(prices)].sort((a, b) => a - b);
+                if (unique.length >= 2 && unique[1] > unique[0]) {
+                    return Math.round((1 - (unique[0] / unique[1])) * 100);
+                }
+                return 0;
+            }
+
+            function bmAnimateNumber(element, startVal, endVal, suffix = '%', duration = 600) {
+                if (!element) return;
+                const start = parseInt(startVal, 10);
+                const end = parseInt(endVal, 10);
+                if (!Number.isFinite(start) || !Number.isFinite(end) || start === end) {
+                    element.textContent = `${endVal}${suffix}`;
+                    return;
+                }
+                if (element.__bmAnimFrame) cancelAnimationFrame(element.__bmAnimFrame);
+
+                element.classList.add('bm-bubble-updating');
+                const startTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+                const diff = end - start;
+
+                function step(now) {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const ease = 1 - Math.pow(1 - progress, 3);
+                    const current = Math.round(start + diff * ease);
+                    element.textContent = `${current}${suffix}`;
+
+                    if (progress < 1) {
+                        element.__bmAnimFrame = requestAnimationFrame(step);
+                    } else {
+                        element.textContent = `${end}${suffix}`;
+                        element.__bmAnimFrame = null;
+                        setTimeout(() => {
+                            element.classList.remove('bm-bubble-updating');
+                        }, 200);
+                    }
+                }
+                element.__bmAnimFrame = requestAnimationFrame(step);
+            }
+            globalThis.BM_animateNumber = bmAnimateNumber;
+            globalThis.BM_extractRedDiscountFromHtml = bmExtractRedDiscountFromHtml;
+            globalThis.BM_extractBlackDiscountFromHtml = bmExtractBlackDiscountFromHtml;
+            globalThis.BM_applyDiscountsToCard = bmApplyDiscountsToCard;
+            globalThis.BM_applyDiscountsToAllCards = bmApplyDiscountsToAllCards;
+
+            function bmApplyDiscountsToCard(card, redDiscount, blackDiscount) {
+                if (!card) return;
+                const isList = document.documentElement.classList.contains('bm-view-list');
+                const productImg = card.querySelector('.productimg') || card;
+                const offerBox = card.querySelector('.offerbox') || card.querySelector('.productprice');
+
+                if (redDiscount && redDiscount > 0) {
+                    let redBubble = card.querySelector(':scope > .off, .productimg > .off, .offerbox .off, .off');
+                    if (!redBubble) {
+                        redBubble = document.createElement('div');
+                        redBubble.className = 'off';
+                        if (isList && offerBox) {
+                            redBubble.classList.add('bm-list-off');
+                            offerBox.appendChild(redBubble);
+                        } else {
+                            productImg.prepend(redBubble);
+                        }
+                    }
+                    const oldVal = parseInt(redBubble.textContent || '', 10);
+                    if (Number.isFinite(oldVal) && oldVal > 0 && oldVal !== redDiscount) {
+                        bmAnimateNumber(redBubble, oldVal, redDiscount, '%');
+                    } else {
+                        redBubble.textContent = `${redDiscount}%`;
+                    }
+                    redBubble.hidden = false;
+                    redBubble.style.display = isList ? 'inline-flex' : 'inline-flex';
+                    if (isList) {
+                        redBubble.classList.add('bm-list-off');
+                        if (offerBox && !offerBox.contains(redBubble)) {
+                            offerBox.appendChild(redBubble);
+                        }
+                    } else {
+                        redBubble.classList.remove('bm-list-off');
+                        if (productImg && !productImg.contains(redBubble)) {
+                            productImg.prepend(redBubble);
+                        }
+                    }
+                    card.dataset.bmRedDiscount = String(redDiscount);
+                }
+
+                if (blackDiscount && blackDiscount > 0) {
+                    let blackBubble = card.querySelector('.bm-card-black-bubble, .bm-list-black-bubble');
+                    if (!blackBubble) {
+                        blackBubble = document.createElement('span');
+                        blackBubble.className = isList ? 'bm-list-black-bubble' : 'bm-card-black-bubble';
+                        blackBubble.title = `${blackDiscount}% günstiger als das nächstteurere Angebot`;
+                        if (isList && offerBox) {
+                            offerBox.appendChild(blackBubble);
+                        } else {
+                            productImg.appendChild(blackBubble);
+                        }
+                    }
+                    blackBubble.title = `${blackDiscount}% günstiger als das nächstteurere Angebot`;
+                    const oldBlack = parseInt(blackBubble.textContent || '', 10);
+                    if (Number.isFinite(oldBlack) && oldBlack > 0 && oldBlack !== blackDiscount) {
+                        bmAnimateNumber(blackBubble, oldBlack, blackDiscount, '%');
+                    } else {
+                        blackBubble.textContent = `${blackDiscount}%`;
+                    }
+                    blackBubble.style.display = 'inline-flex';
+                    if (isList) {
+                        blackBubble.className = 'bm-list-black-bubble';
+                        if (offerBox && !offerBox.contains(blackBubble)) {
+                            offerBox.appendChild(blackBubble);
+                        }
+                    } else {
+                        blackBubble.className = 'bm-card-black-bubble';
+                        if (productImg && !productImg.contains(blackBubble)) {
+                            productImg.appendChild(blackBubble);
+                        }
+                    }
+                    card.dataset.bmBlackDiscount = String(blackDiscount);
+                }
+            }
+
+            function bmApplyDiscountsToAllCards(setKey, redDiscount, blackDiscount) {
+                if (!setKey) return;
+                const baseKey = String(setKey).replace(/-\d+$/, '');
+                const matchingCards = document.querySelectorAll(
+                    `div.slide[id="set${setKey}"], div.slide[id="set${baseKey}-1"], div.slide[id="set${baseKey}"], div.slide[data-bm-set-key="${setKey}"], div.slide[data-bm-set-key="${baseKey}"]`
+                );
+                matchingCards.forEach(card => bmApplyDiscountsToCard(card, redDiscount, blackDiscount));
+            }
+
+            function bmProcessMerchantQueue() {
+                if (bmActiveMerchantFetches >= BM_MAX_CONCURRENT_FETCHES || bmPendingMerchantFetches.length === 0) return;
+                const task = bmPendingMerchantFetches.shift();
+                if (!task) return;
+
+                bmActiveMerchantFetches++;
+                // WICHTIG: Ausschließlich same-origin GET-Anfrage an brickmerge.de für rohes HTML.
+                // Keine Skriptausführung, keinerlei externe Abfragen (kein Bricklink, kein eBay, keine externen APIs).
+                fetch(task.url, { credentials: 'same-origin' })
+                    .then(res => res.ok ? res.text() : '')
+                    .then(html => {
+                        if (!html) return;
+                        const merchant = bmExtractCheapestMerchantFromHtml(html);
+                        if (merchant) {
+                            bmListMerchantCache.set(task.setKey, merchant);
+                            try {
+                                sessionStorage.setItem(`bm_mch_${task.setKey}`, merchant);
+                            } catch (e) {}
+                            if (task.onSuccess) task.onSuccess(merchant);
+                            bmApplyMerchantToAllCards(task.setKey, merchant);
+                        }
+                        const shopUrl = bmExtractShopUrlFromHtml(html);
+                        if (shopUrl) {
+                            bmListShopUrlCache.set(task.setKey, shopUrl);
+                            try {
+                                sessionStorage.setItem(`bm_shop_${task.setKey}`, shopUrl);
+                            } catch (e) {}
+                            bmApplyShopUrlToAllCards(task.setKey, shopUrl, merchant);
+                        }
+                        const eol = bmExtractEolFromHtml(html);
+                        if (eol) {
+                            bmListEolCache.set(task.setKey, eol);
+                            try {
+                                sessionStorage.setItem(`bm_eol_${task.setKey}`, eol);
+                            } catch (e) {}
+                            if (task.onSuccessEol) task.onSuccessEol(eol);
+                            bmApplyEolToAllCards(task.setKey, eol);
+                        }
+                        const redDiscount = bmExtractRedDiscountFromHtml(html);
+                        const blackDiscount = bmExtractBlackDiscountFromHtml(html);
+                        if (redDiscount > 0) {
+                            bmListRedDiscountCache.set(task.setKey, redDiscount);
+                            try { sessionStorage.setItem(`bm_red_${task.setKey}`, String(redDiscount)); } catch (e) {}
+                        }
+                        if (blackDiscount > 0) {
+                            bmListBlackDiscountCache.set(task.setKey, blackDiscount);
+                            try { sessionStorage.setItem(`bm_blk_${task.setKey}`, String(blackDiscount)); } catch (e) {}
+                        }
+                        if (redDiscount > 0 || blackDiscount > 0) {
+                            bmApplyDiscountsToAllCards(task.setKey, redDiscount, blackDiscount);
+                        }
+                    })
+                    .catch(() => {})
+                    .finally(() => {
+                        bmActiveMerchantFetches--;
+                        setTimeout(bmProcessMerchantQueue, 150);
+                    });
+            }
+
+            function bmQueueMerchantFetch(setKey, url, onSuccess, onSuccessEol) {
+                if (!url || !setKey) return;
+                const existing = bmPendingMerchantFetches.find(t => t.setKey === setKey);
+                if (existing) {
+                    if (onSuccess && !existing.onSuccess) existing.onSuccess = onSuccess;
+                    if (onSuccessEol && !existing.onSuccessEol) existing.onSuccessEol = onSuccessEol;
+                    return;
+                }
+                bmPendingMerchantFetches.push({ setKey, url, onSuccess, onSuccessEol });
+                bmProcessMerchantQueue();
+            }
+
+            function bmGetPageMerchantName() {
+                // 1. Aus dem Bestpreis-Schalter ("Nur [Händler] Bestpreisangebote zeigen" / "Keine [Händler] ...")
+                const toggleLink = document.querySelector('form[name="sctoggle"]')?.parentElement?.parentElement?.querySelector('a')
+                    || document.querySelector('form[name="sctoggle"]')?.closest('.button, div')?.querySelector('a')
+                    || document.querySelector('#contenttoprow a[href*="sctoggle"], #contenttoprow [name="sctoggle"]')?.closest('div, .button')?.querySelector('a');
+                if (toggleLink && toggleLink.textContent) {
+                    const toggleMatch = toggleLink.textContent.match(/(?:Nur|Keine)\s+(.*?)\s+Bestpreis/i);
+                    if (toggleMatch && toggleMatch[1] && !/weitere|andere/i.test(toggleMatch[1])) {
+                        return toggleMatch[1].trim();
+                    }
+                }
+
+                // 2. Aus dem aktiven Shop-Filter im DOM (#contenttopfiltercn, #dropCn oder Button sortdropdwncn)
+                const activeFilterStrong = document.querySelector('#contenttopfiltercn strong, #dropCn .show-for-small-only strong');
+                if (activeFilterStrong && activeFilterStrong.textContent) {
+                    const txt = activeFilterStrong.textContent.trim();
+                    if (txt && !/^(?:alle\s*shops|shops)$/i.test(txt)) return txt;
+                }
+
+                const selectedShopItem = document.querySelector('#dropCn li.selected > a, #dropCn li.active > a');
+                if (selectedShopItem && selectedShopItem.textContent) {
+                    const txt = selectedShopItem.textContent.trim();
+                    if (txt && !/^(?:alle\s*shops|shops)$/i.test(txt)) return txt;
+                }
+
+                const shopBtn = document.getElementById('sortdropdwncn') || document.querySelector('#contenttoprow [data-dropdown="dropCn"]');
+                if (shopBtn) {
+                    const label = shopBtn.querySelector('.bm-filter-label')?.textContent?.trim() || shopBtn.textContent?.trim();
+                    if (label && !/^(?:shops|alle\s*shops)$/i.test(label) && !label.includes('Händler wählen')) {
+                        return label;
+                    }
+                }
+
+                // 3. Aus dem Seitentitel "LEGO® bei [Händler] im Preisvergleich | Brickmerge"
+                const titleMatch = (document.title || '').match(/LEGO[®]?\s+bei\s+([^|]+?)(?:\s+im\s+Preisvergleich|\s*\|)/i);
+                if (titleMatch && titleMatch[1]) {
+                    return titleMatch[1].trim();
+                }
+
+                // 4. Aus URL-Parametern (z.B. merchant=Baby-Walz oder m=Baby-Walz)
+                try {
+                    const pageUrl = new URL(window.location.href);
+                    const mParam = pageUrl.searchParams.get('merchant') || pageUrl.searchParams.get('m');
+                    if (mParam) return mParam.replace(/^bei\s+/i, '').trim();
+                } catch (e) {}
+
+                return '';
+            }
+
+            function bmResolveCardMerchant(card, merchantBadge, detailUrl, setKey, eolBadge) {
+                const targetEolBadge = eolBadge || card.querySelector('.bm-list-eol');
+                const currentEol = targetEolBadge?.textContent?.trim() || '';
+                const hasFullEol = /^EOL\s+(?:(?:Q[1-4]|\d{1,2})\/\d{2,4}|\d{4})$/i.test(currentEol) && currentEol !== 'EOL';
+                let needsEol = !targetEolBadge || !currentEol || !hasFullEol;
+                let needsMerchant = true;
+
+                // 1. Wenn wir auf einer Händler-Seite sind (fm=... oder Händler-Filter aktiv),
+                // gilt dieser Händler für alle Kacheln auf dieser Seite!
+                const pageMerchant = bmGetPageMerchantName();
+                if (pageMerchant) {
+                    bmApplyMerchantToCard(card, pageMerchant);
+                    needsMerchant = false;
+                }
+
+                // 2. Aus übergeordneter Kachelinformation (.bm-overview-effective-source)
+                if (needsMerchant) {
+                    const effectiveSource = card.querySelector('.bm-overview-effective-source');
+                    if (effectiveSource && effectiveSource.textContent.trim()) {
+                        const src = effectiveSource.textContent.trim().replace(/^bei\s+/i, '');
+                        bmApplyMerchantToCard(card, src);
+                        needsMerchant = false;
+                    }
+                }
+
+                // 3. Aus lokalem Session-Cache
+                if (needsMerchant) {
+                    let cachedMerchant = bmListMerchantCache.get(setKey);
+                    if (!cachedMerchant) {
+                        try {
+                            cachedMerchant = sessionStorage.getItem(`bm_mch_${setKey}`);
+                            if (cachedMerchant) bmListMerchantCache.set(setKey, cachedMerchant);
+                        } catch (e) {}
+                    }
+                    if (cachedMerchant) {
+                        bmApplyMerchantToCard(card, cachedMerchant);
+                        needsMerchant = false;
+                    }
+                }
+
+                let cachedShopUrl = bmListShopUrlCache.get(setKey);
+                if (!cachedShopUrl && setKey) {
+                    try {
+                        cachedShopUrl = sessionStorage.getItem(`bm_shop_${setKey}`);
+                        if (cachedShopUrl) bmListShopUrlCache.set(setKey, cachedShopUrl);
+                    } catch (e) {}
+                }
+                if (cachedShopUrl) {
+                    bmApplyShopUrlToCard(card, cachedShopUrl);
+                }
+
+                // EOL aus Cache oder Depot prüfen
+                if (needsEol && targetEolBadge) {
+                    let cachedEol = bmListEolCache.get(setKey);
+                    if (!cachedEol) {
+                        try {
+                            cachedEol = sessionStorage.getItem(`bm_eol_${setKey}`);
+                            if (cachedEol) bmListEolCache.set(setKey, cachedEol);
+                        } catch (e) {}
+                    }
+                    if (!cachedEol) {
+                        try {
+                            const depotRaw = localStorage.getItem('bmd_records');
+                            if (depotRaw) {
+                                const records = JSON.parse(depotRaw);
+                                const match = (Array.isArray(records) ? records : []).find(r => r.item === setKey || r.setNumber === setKey);
+                                if (match && match.eol && !/unbekannt/i.test(match.eol)) {
+                                    cachedEol = match.eol.startsWith('EOL') ? match.eol : `EOL ${match.eol}`;
+                                    bmListEolCache.set(setKey, cachedEol);
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                    if (cachedEol) {
+                        targetEolBadge.textContent = cachedEol;
+                        targetEolBadge.style.display = 'inline-flex';
+                        if (/^EOL\s+(?:(?:Q[1-4]|\d{1,2})\/\d{2,4}|\d{4})$/i.test(cachedEol) && cachedEol !== 'EOL') {
+                            needsEol = false;
+                        }
+                    }
+                }
+
+                // Rabatte (rot & schwarz) aus Cache prüfen und anwenden
+                let cachedRed = bmListRedDiscountCache.get(setKey);
+                let cachedBlk = bmListBlackDiscountCache.get(setKey);
+                if (!cachedRed && setKey) {
+                    try {
+                        const sRed = sessionStorage.getItem(`bm_red_${setKey}`);
+                        if (sRed) { cachedRed = parseInt(sRed, 10); bmListRedDiscountCache.set(setKey, cachedRed); }
+                    } catch (e) {}
+                }
+                if (!cachedBlk && setKey) {
+                    try {
+                        const sBlk = sessionStorage.getItem(`bm_blk_${setKey}`);
+                        if (sBlk) { cachedBlk = parseInt(sBlk, 10); bmListBlackDiscountCache.set(setKey, cachedBlk); }
+                    } catch (e) {}
+                }
+                if (cachedRed || cachedBlk) {
+                    bmApplyDiscountsToCard(card, cachedRed, cachedBlk);
+                }
+                const hasRedBubble = Boolean(card.querySelector('.off')?.textContent?.trim());
+                const needsDiscounts = !cachedRed || !cachedBlk || !hasRedBubble;
+
+                const fetchUrl = detailUrl || (setKey ? `/${setKey}` : '');
+                if ((!needsMerchant && !needsEol && !needsDiscounts) || !fetchUrl) return;
+
+                if (typeof IntersectionObserver !== 'undefined') {
+                    if (!bmListMerchantObserver) {
+                        bmListMerchantObserver = new IntersectionObserver((entries, obs) => {
+                            entries.forEach(entry => {
+                                if (entry.isIntersecting) {
+                                    obs.unobserve(entry.target);
+                                    const tCard = entry.target;
+                                    const tUrl = tCard.dataset.bmDetailUrl;
+                                    const tKey = tCard.dataset.bmSetKey;
+                                    const tEol = tCard.querySelector('.bm-list-eol');
+                                    const curNeedsMerchant = tCard.dataset.bmNeedsMerchant === 'true';
+                                    const curNeedsEol = tCard.dataset.bmNeedsEol === 'true';
+                                    const curNeedsDiscounts = tCard.dataset.bmNeedsDiscounts === 'true';
+                                    if (tUrl && tKey && (curNeedsMerchant || curNeedsEol || curNeedsDiscounts)) {
+                                        bmQueueMerchantFetch(
+                                            tKey,
+                                            tUrl,
+                                            curNeedsMerchant ? merchant => {
+                                                bmApplyMerchantToCard(tCard, merchant);
+                                            } : null,
+                                            (curNeedsEol && tEol) ? eol => {
+                                                tEol.textContent = eol;
+                                                tEol.style.display = 'inline-flex';
+                                            } : null
+                                        );
+                                    }
+                                }
+                            });
+                        }, { rootMargin: '200px 0px' });
+                    }
+                    card.dataset.bmDetailUrl = fetchUrl;
+                    card.dataset.bmSetKey = setKey;
+                    card.dataset.bmNeedsMerchant = needsMerchant ? 'true' : 'false';
+                    card.dataset.bmNeedsEol = needsEol ? 'true' : 'false';
+                    card.dataset.bmNeedsDiscounts = needsDiscounts ? 'true' : 'false';
+                    bmListMerchantObserver.observe(card);
+                }
+            }
+
+            function bmEnhanceListViewCards(root = document) {
+                const selector = 'div.slide[id^="set"]:not([data-bm-list-enhanced="true"])';
+                let cards;
+                if (root === document || root === document.documentElement || root === document.body) {
+                    cards = root.querySelectorAll(`#productrow ${selector}, .wrapper ${selector}, ${selector}`);
+                } else if (root.matches && root.matches(selector)) {
+                    cards = [root];
+                } else {
+                    cards = root.querySelectorAll(selector);
+                }
+                if (!cards || !cards.length) return;
+
+                // Falls wir auf einer Händler-Seite sind, stellen wir sicher, dass auch bereits vorhandene Kacheln
+                // ohne Händler sofort den Seitennamen erhalten
+                const pageMerchant = bmGetPageMerchantName();
+                if (pageMerchant) {
+                    const emptyBadges = root.querySelectorAll?.('.bm-list-merchant:empty, .bm-list-merchant[style*="display: none"]');
+                    emptyBadges?.forEach?.(badge => {
+                        if (!badge.textContent.trim()) {
+                            badge.textContent = pageMerchant;
+                            badge.style.display = 'inline-flex';
+                        }
+                    });
+                }
+
+                // Auch für bereits aufbereitete Kacheln EOL aus Cache/Depot nachziehen
+                const emptyEolBadges = root.querySelectorAll?.('.bm-list-eol:empty, .bm-list-eol[style*="display: none"]');
+                emptyEolBadges?.forEach?.(badge => {
+                    const c = badge.closest('div.slide[id^="set"], div.slide[data-bm-set-key]');
+                    const k = c ? (c.dataset?.bmSetKey || String(c.id || '').replace(/^set/, '')) : '';
+                    if (k) {
+                        let cachedEol = bmListEolCache.get(k);
+                        if (!cachedEol) {
+                            try {
+                                cachedEol = sessionStorage.getItem(`bm_eol_${k}`);
+                            } catch (e) {}
+                        }
+                        if (!cachedEol) {
+                            try {
+                                const depotRaw = localStorage.getItem('bmd_records');
+                                if (depotRaw) {
+                                    const records = JSON.parse(depotRaw);
+                                    const match = (Array.isArray(records) ? records : []).find(r => r.item === k || r.setNumber === k);
+                                    if (match && match.eol && !/unbekannt/i.test(match.eol)) {
+                                        cachedEol = match.eol.startsWith('EOL') ? match.eol : `EOL ${match.eol}`;
+                                        bmListEolCache.set(k, cachedEol);
+                                    }
+                                }
+                            } catch (e) {}
+                        }
+                        if (cachedEol) {
+                            badge.textContent = cachedEol;
+                            badge.style.display = 'inline-flex';
+                        }
+                    }
+                });
+
+                cards.forEach(card => {
+                    const dealheat = card.querySelector('.dealheat');
+                    if (dealheat) {
+                        dealheat.closest('a')?.remove?.() || dealheat.remove();
+                    }
+
+                    // 0. EOL-Jahreszahl aus URL/Titel/Headings ermitteln (z.B. EOL-2026)
+                    let pageEolYear = '';
+                    const pageText = `${window.location.href} ${document.title} ${document.querySelector('#contenttoprow, h1, .content, .breadcrumbs')?.textContent || ''}`;
+                    const urlEolMatch = pageText.match(/(?:EOL|Auslauf(?:modelle|artikel)?)[-_ ]*(20\d{2})/i);
+                    if (urlEolMatch && urlEolMatch[1]) {
+                        pageEolYear = urlEolMatch[1];
+                    }
+
+                    let eolText = '';
+                    // 1. Aus Datenattributen prüfen (falls vorhanden)
+                    const cardEolAttr = card.dataset?.eol || card.getAttribute('data-eol') || card.querySelector('[data-eol]')?.getAttribute('data-eol');
+                    if (cardEolAttr && !/unbekannt/i.test(cardEolAttr)) {
+                        eolText = cardEolAttr.startsWith('EOL') ? cardEolAttr : `EOL ${cardEolAttr}`;
+                    }
+
+                    // 2. Alle Tags auf der Karte prüfen (nicht nur den ersten), um EOL-Datum zuverlässig zu finden
+                    let topBadgeText = '';
+                    const tagContainers = card.querySelectorAll('.producttag, [class*="producttag"], .bm-product-tag');
+                    tagContainers.forEach(tagContainer => {
+                        const spanText = (tagContainer.textContent || '').trim();
+                        if (!eolText && /auslauf|eol|end of life/i.test(spanText)) {
+                            const dateMatch = spanText.match(/(?:(q[1-4])\s*[\/ ]?\s*(?:20)?(\d{2}))/i)
+                                || spanText.match(/(\d{1,2})\s*[\/.]\s*(?:20)?(\d{2})/i)
+                                || spanText.match(/\b(20\d{2})\b/);
+                            if (dateMatch) {
+                                if (dateMatch[1] && dateMatch[2]) {
+                                    const part1 = dateMatch[1].toUpperCase();
+                                    eolText = `EOL ${part1}/${dateMatch[2]}`;
+                                } else {
+                                    const raw = (dateMatch[1] || dateMatch[0]).replace(/\s+/g, '');
+                                    const normalized = raw.replace(/^(\d{1,2})[\/.](?:20)?(\d{2})$/, '$1/$2');
+                                    eolText = `EOL ${normalized}`;
+                                }
+                            } else if (pageEolYear) {
+                                eolText = `EOL ${pageEolYear}`;
+                            } else {
+                                eolText = 'EOL';
+                            }
+                        } else if (spanText && !topBadgeText && !/auslauf|eol|end of life/i.test(spanText)) {
+                            topBadgeText = spanText;
+                        }
+                        tagContainer.remove();
+                    });
+
+                    let setKey = String(card.id || '').replace(/^set/, '');
+                    let detailLink = card.querySelector('.producttitle a:not(.button), .productimg a, a.detail, .producttitle a')?.getAttribute('href') || '';
+                    if (!setKey && detailLink) {
+                        const numMatch = detailLink.match(/\/(\d{4,7}(-\d+)?)/);
+                        if (numMatch) setKey = numMatch[1];
+                    }
+                    if (!detailLink && setKey) {
+                        detailLink = `/${setKey}`;
+                    }
+
+                    if (detailLink && !card.dataset.bmCardClickAttached) {
+                        card.dataset.bmCardClickAttached = 'true';
+                        card.addEventListener('click', (e) => {
+                            const merchantLink = e.target.closest('.bm-list-merchant, .bm-btn-shop, .bm-overview-effective-source, a[target="_blank"]');
+                            if (merchantLink) {
+                                return;
+                            }
+                            const detailAnchor = e.target.closest('.producttitle a, .productimg a, a.detail');
+                            if (detailAnchor) {
+                                return;
+                            }
+                            if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+                                e.preventDefault();
+                                window.location.href = detailLink;
+                            } else if ((e.button === 1 || e.ctrlKey || e.metaKey) && detailLink) {
+                                window.open(detailLink, '_blank');
+                            }
+                        });
+                        card.addEventListener('auxclick', (e) => {
+                            if (e.button === 1 && detailLink) {
+                                const merchantLink = e.target.closest('.bm-list-merchant, .bm-btn-shop, .bm-overview-effective-source, a[target="_blank"]');
+                                if (!merchantLink) {
+                                    e.preventDefault();
+                                    window.open(detailLink, '_blank');
+                                }
+                            }
+                        });
+                    }
+
+                    // 3. Aus Depot prüfen
+                    if (!eolText && setKey) {
+                        try {
+                            const depotRaw = localStorage.getItem('bmd_records');
+                            if (depotRaw) {
+                                const records = JSON.parse(depotRaw);
+                                const match = (Array.isArray(records) ? records : []).find(r => r.item === setKey || r.setNumber === setKey);
+                                if (match && match.eol && !/unbekannt/i.test(match.eol)) {
+                                    eolText = match.eol.startsWith('EOL') ? match.eol : `EOL ${match.eol}`;
+                                }
+                            }
+                        } catch (e) {}
+                    }
+
+                    if (setKey) {
+                        let cachedEol = bmListEolCache.get(setKey);
+                        if (!cachedEol) {
+                            try {
+                                cachedEol = sessionStorage.getItem(`bm_eol_${setKey}`);
+                                if (cachedEol) bmListEolCache.set(setKey, cachedEol);
+                            } catch (e) {}
+                        }
+                        if (cachedEol) {
+                            if (!eolText || (!/\d/.test(eolText) && /\d/.test(cachedEol))) {
+                                eolText = cachedEol;
+                            }
+                        }
+                    }
+
+                    if (eolText) {
+                        bmListEolCache.set(setKey, eolText);
+                        try {
+                            sessionStorage.setItem(`bm_eol_${setKey}`, eolText);
+                        } catch (e) {}
+                    }
+
+                    // Badge oben rechts über Bild (Design B: Händlerzahl sinkt, Bestpreis etc.)
+                    let topBadge = card.querySelector('.bm-card-top-badge');
+                    if (!topBadge && topBadgeText) {
+                        topBadge = document.createElement('span');
+                        topBadge.className = 'bm-card-top-badge';
+                        const targetContainer = card.querySelector('.productimg') || card;
+                        targetContainer.appendChild(topBadge);
+                    }
+                    if (topBadge) {
+                        if (topBadgeText) {
+                            topBadge.textContent = topBadgeText;
+                            topBadge.style.display = 'inline-flex';
+                        } else {
+                            topBadge.style.display = 'none';
+                        }
+                    }
+
+                    const priceArea = card.querySelector('.productprice');
+                    let offerBox = priceArea?.querySelector('.offerbox') || card.querySelector('.offerbox');
+                    if (!offerBox && priceArea && !card.dataset.bmListEnhanced) {
+                        offerBox = document.createElement('div');
+                        offerBox.className = 'offerbox';
+                        const directThePrice = priceArea.querySelector('.theprice');
+                        const directStroke = priceArea.querySelector('.stroke');
+                        let foundPrice = directThePrice?.textContent?.trim() || '';
+                        let foundUvp = directStroke?.textContent?.trim() || '';
+                        if (!foundPrice) {
+                            const priceMatch = priceArea.textContent.match(/(?:ab\s*)?(\d+[\d\s.,]*\s*€)/i);
+                            if (priceMatch) foundPrice = priceMatch[1].trim();
+                        }
+                        if (!foundUvp) {
+                            const uvpMatch = priceArea.textContent.match(/UVP\s*([\d\s.,]*\s*€)/i);
+                            if (uvpMatch) foundUvp = `UVP ${uvpMatch[1].trim()}`;
+                        }
+                        if (foundPrice) {
+                            const p = document.createElement('span');
+                            p.className = 'theprice';
+                            p.textContent = foundPrice;
+                            offerBox.appendChild(p);
+                        }
+                        if (foundUvp) {
+                            const u = document.createElement('span');
+                            u.className = 'stroke';
+                            u.textContent = foundUvp;
+                            offerBox.appendChild(u);
+                        }
+                        priceArea.replaceChildren(offerBox);
+                    }
+                    if (offerBox && !card.dataset.bmListEnhanced) {
+                        card.dataset.bmListEnhanced = 'true';
+
+                        offerBox.querySelectorAll('a[href="#info"], .tooltipster:not(.bm-slidebadge)').forEach(a => {
+                            if (a.textContent.trim() === '*' || a.getAttribute('href') === '#info') a.remove();
+                        });
+
+                        const thePrice = offerBox.querySelector('.theprice');
+                        const stroke = offerBox.querySelector('.stroke');
+                        const priceText = thePrice ? thePrice.textContent.trim() : '';
+                        const uvpText = stroke ? stroke.textContent.trim() : '';
+
+                        // 1. EOL-Badge: immer unten rechts im Angebotspreis-Bereich (.offerbox)
+                        let eolBadge = card.querySelector('.bm-list-eol');
+                        if (!eolBadge) {
+                            eolBadge = document.createElement('span');
+                            eolBadge.className = 'bm-list-eol';
+                        }
+                        if (eolText) {
+                            eolBadge.textContent = eolText;
+                            eolBadge.style.display = 'inline-flex';
+                        } else {
+                            eolBadge.style.display = 'none';
+                        }
+
+                        // 2. Rabatt-Badge (.off) erfassen
+                        const offBadge = card.querySelector(':scope > .off, .off');
+
+                        offerBox.replaceChildren();
+
+                        const fragment = document.createDocumentFragment();
+
+                        if (priceText) {
+                            const priceSpan = document.createElement('span');
+                            priceSpan.className = 'theprice';
+                            priceSpan.textContent = priceText;
+                            fragment.appendChild(priceSpan);
+                        }
+
+                        if (uvpText) {
+                            const uvpSpan = document.createElement('span');
+                            uvpSpan.className = 'stroke bm-list-uvp';
+                            uvpSpan.textContent = uvpText.replace(/\s+/g, ' ');
+                            fragment.appendChild(uvpSpan);
+                        }
+
+                        let redVal = offBadge ? parseInt(offBadge.textContent || '', 10) : 0;
+                        if (!redVal && setKey) {
+                            redVal = bmListRedDiscountCache.get(setKey) || parseInt(sessionStorage.getItem(`bm_red_${setKey}`) || '0', 10);
+                        }
+                        let blkVal = setKey ? (bmListBlackDiscountCache.get(setKey) || parseInt(sessionStorage.getItem(`bm_blk_${setKey}`) || '0', 10)) : 0;
+
+                        if (!offBadge && redVal > 0) {
+                            offBadge = document.createElement('div');
+                            offBadge.className = 'off';
+                            offBadge.textContent = `${redVal}%`;
+                        }
+
+                        if (document.documentElement.classList.contains('bm-view-list')) {
+                            if (offBadge && offBadge.textContent.trim()) {
+                                offBadge.classList.add('bm-list-off');
+                                fragment.appendChild(offBadge);
+                            }
+                            if (blkVal > 0) {
+                                let blackBadge = card.querySelector('.bm-list-black-bubble');
+                                if (!blackBadge) {
+                                    blackBadge = document.createElement('span');
+                                    blackBadge.className = 'bm-list-black-bubble';
+                                    blackBadge.title = `${blkVal}% günstiger als das nächstteurere Angebot`;
+                                }
+                                blackBadge.textContent = `${blkVal}%`;
+                                fragment.appendChild(blackBadge);
+                            }
+                        } else {
+                            if (offBadge) {
+                                offBadge.classList.remove('bm-list-off');
+                                const productImg = card.querySelector('.productimg') || card;
+                                if (!productImg.contains(offBadge)) {
+                                    productImg.prepend(offBadge);
+                                }
+                            }
+                            if (blkVal > 0) {
+                                let blackBadge = card.querySelector('.bm-card-black-bubble');
+                                if (!blackBadge) {
+                                    blackBadge = document.createElement('span');
+                                    blackBadge.className = 'bm-card-black-bubble';
+                                    blackBadge.title = `${blkVal}% günstiger als das nächstteurere Angebot`;
+                                }
+                                blackBadge.textContent = `${blkVal}%`;
+                                const productImg = card.querySelector('.productimg') || card;
+                                if (!productImg.contains(blackBadge)) {
+                                    productImg.appendChild(blackBadge);
+                                }
+                            }
+                        }
+
+                        const cachedMerchant = setKey ? (bmListMerchantCache.get(setKey) || sessionStorage.getItem(`bm_mch_${setKey}`) || '') : '';
+                        const cachedShopUrl = setKey ? (bmListShopUrlCache.get(setKey) || sessionStorage.getItem(`bm_shop_${setKey}`) || '') : '';
+
+                        // Listenansicht: Händler direkt klickbar als <a>
+                        const merchantBadge = document.createElement('a');
+                        merchantBadge.className = 'bm-list-merchant';
+                        merchantBadge.target = '_blank';
+                        merchantBadge.rel = 'noopener noreferrer';
+                        merchantBadge.href = cachedShopUrl || detailLink || '#';
+                        merchantBadge.textContent = cachedMerchant || '';
+                        merchantBadge.style.display = cachedMerchant ? 'inline-flex' : 'none';
+                        merchantBadge.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                        });
+                        fragment.appendChild(merchantBadge);
+
+                        // EOL-Datum in offerbox
+                        fragment.appendChild(eolBadge);
+
+                        offerBox.appendChild(fragment);
+
+                        // Split-CTA für Kachelansicht erzeugen (Shop-Direktlink + Angebote-Vergleich)
+                        let splitCta = card.querySelector('.bm-split-cta');
+                        if (!splitCta) {
+                            splitCta = document.createElement('div');
+                            splitCta.className = 'bm-split-cta';
+
+                            const cachedMerchant = setKey ? (bmListMerchantCache.get(setKey) || sessionStorage.getItem(`bm_mch_${setKey}`) || '') : '';
+                            const rawShopUrl = setKey ? (bmListShopUrlCache.get(setKey) || sessionStorage.getItem(`bm_shop_${setKey}`) || '') : '';
+                            const cachedShopUrl = rawShopUrl ? String(rawShopUrl).replace(/&amp;/g, '&').replace(/&#0*38;/g, '&') : '';
+
+                            // Button 1: Direktlink zum günstigsten Shop (neuer Tab) mit Fallback-Text "↗ Shop"
+                            const shopBtn = document.createElement('a');
+                            shopBtn.className = 'bm-btn-shop';
+                            shopBtn.href = cachedShopUrl || detailLink || '#';
+                            shopBtn.target = '_blank';
+                            shopBtn.rel = 'noopener noreferrer';
+                            shopBtn.textContent = cachedMerchant ? `↗ ${cachedMerchant}` : '↗ Shop';
+                            if (!cachedShopUrl) {
+                                shopBtn.dataset.bmLoading = 'true';
+                            }
+
+                            // Button 2: Brickmerge Angebote-Vergleich (Set-Detailseite)
+                            const offersBtn = document.createElement('a');
+                            offersBtn.className = 'bm-btn-offers';
+                            offersBtn.href = detailLink || '#';
+
+                            // Angebotstext ermitteln: z.B. "> 12 Angebote anzeigen" -> "12 Angebote ›"
+                            const viewShopLink = card.querySelector('.pricerow.viewShop a, .pricerow a');
+                            const rawOfferText = viewShopLink ? viewShopLink.textContent : '';
+                            const offerCountMatch = rawOfferText.match(/(\d+)\s+Angebot/i);
+                            if (offerCountMatch) {
+                                const count = offerCountMatch[1];
+                                offersBtn.textContent = `${count} Angebot${count === '1' ? '' : 'e'} ›`;
+                            } else {
+                                offersBtn.textContent = 'Angebote ›';
+                            }
+
+                            splitCta.appendChild(shopBtn);
+                            splitCta.appendChild(offersBtn);
+
+                            if (priceArea && priceArea.parentNode === card) {
+                                priceArea.after(splitCta);
+                            } else {
+                                card.appendChild(splitCta);
+                            }
+                        }
+
+                        if (document.documentElement.classList.contains('bm-view-list')) {
+                            card.querySelectorAll('a[id^="merk"], a[id^="a"], a[id^="dp"], .bm-slidebadge').forEach(el => el.remove());
+                        }
+
+                        bmResolveCardMerchant(card, merchantBadge, detailLink, setKey, eolBadge);
+                    }
+                });
+            }
+
+            function setupListingView(settings) {
+                const isListActive = () => {
+                    return document.documentElement.classList.contains('bm-view-list');
+                };
+
+                const isNonOfferListingPage = () => {
+                    if (document.querySelector('.wrapper.merchants, .wrapper.themen, .wrapper.brickstores')) {
+                        return true;
+                    }
+                    const pathAndQuery = (window.location.pathname || '') + (window.location.search || '');
+                    if (/H%C3%A4ndler|haendler|merchants|LEGO-Themen|themen(?!\w)|brickstores/i.test(pathAndQuery)) {
+                        return true;
+                    }
+                    try {
+                        if (decodeURIComponent(pathAndQuery).toLowerCase().includes('händler')) {
+                            return true;
+                        }
+                    } catch (e) {}
+                    if (document.getElementById('offerlist') || document.getElementById('setdetails') ||
+                        (typeof BM_getBrickmergeSetNumber === 'function' && BM_getBrickmergeSetNumber(window.location.href))) {
+                        return true;
+                    }
+                    return false;
+                };
+
+                if (isNonOfferListingPage()) {
+                    document.querySelector('.bm-view-switcher')?.remove();
+                    document.documentElement.classList.remove('bm-view-list', 'bm-grid-2col');
+                    return;
+                }
+
+                // Auf Desktop (> 768px) ist die Listenansicht komplett entfernt (Desktop nutzt immer Kacheln)
+                if (window.innerWidth > 768) {
+                    document.querySelector('.bm-view-switcher')?.remove();
+                    document.documentElement.classList.remove('bm-view-list', 'bm-grid-2col');
+                    const productRow = document.getElementById('productrow') || document.getElementById('productrowcontainer');
+                    if (productRow) {
+                        bmEnhanceListViewCards(productRow);
+                        if (typeof MutationObserver !== 'undefined' && !productRow.dataset.bmListCardObserver) {
+                            productRow.dataset.bmListCardObserver = 'true';
+                            let listEnhanceRaf = null;
+                            const listCardObserver = new MutationObserver(() => {
+                                if (listEnhanceRaf) cancelAnimationFrame(listEnhanceRaf);
+                                listEnhanceRaf = requestAnimationFrame(() => {
+                                    listEnhanceRaf = null;
+                                    bmEnhanceListViewCards(productRow);
+                                });
+                            });
+                            listCardObserver.observe(productRow, { childList: true, subtree: true });
+                        }
+                    }
+                    if (!window.__bmListingResizeAttached) {
+                        window.__bmListingResizeAttached = true;
+                        window.addEventListener('resize', () => {
+                            if (window.innerWidth <= 768) {
+                                setupListingView(settings);
+                            } else {
+                                document.querySelector('.bm-view-switcher')?.remove();
+                                document.documentElement.classList.remove('bm-view-list', 'bm-grid-2col');
+                            }
+                        });
+                    }
+                    return;
+                }
+
+                const applyViewMode = (mode, persist = false) => {
+                    if (window.innerWidth > 768) {
+                        document.documentElement.classList.remove('bm-view-list', 'bm-grid-2col');
+                        document.querySelector('.bm-view-switcher')?.remove();
+                        bmEnhanceListViewCards();
+                        return;
+                    }
+                    const isList = mode === 'list';
+                    document.documentElement.classList.toggle('bm-view-list', isList);
+                    document.documentElement.classList.remove('bm-grid-2col');
+                    bmEnhanceListViewCards();
+                    document.querySelectorAll('div.slide[id^="set"]').forEach(card => {
+                        const red = card.dataset.bmRedDiscount ? parseInt(card.dataset.bmRedDiscount, 10) : parseInt(card.querySelector('.off')?.textContent || '0', 10);
+                        const blk = card.dataset.bmBlackDiscount ? parseInt(card.dataset.bmBlackDiscount, 10) : parseInt(card.querySelector('.bm-card-black-bubble, .bm-list-black-bubble')?.textContent || '0', 10);
+                        if (red > 0 || blk > 0) {
+                            bmApplyDiscountsToCard(card, red, blk);
+                        }
+                    });
+                    const switcher = document.querySelector('.bm-view-switcher');
+                    if (switcher) {
+                        const btnList = switcher.querySelector('.bm-view-list');
+                        const btnGrid = switcher.querySelector('.bm-view-grid');
+                        btnList?.classList.toggle('is-active', isList);
+                        btnGrid?.classList.toggle('is-active', !isList);
+                        btnList?.setAttribute('aria-pressed', isList.toString());
+                        btnGrid?.setAttribute('aria-pressed', (!isList).toString());
+                    }
+                    if (persist) {
+                        try {
+                            localStorage.setItem('bm-view-mode', mode);
+                            localStorage.setItem('bm-grid-2col', 'false');
+                        } catch (e) {}
+                        if (typeof BM_MOBILE_CHROME !== 'undefined' && BM_MOBILE_CHROME.storage?.local) {
+                            BM_MOBILE_CHROME.storage.local.get('settings').then(({ settings: cur }) => {
+                                const merged = (typeof BM_mergeSettings === 'function')
+                                    ? BM_mergeSettings(cur)
+                                    : (cur || {});
+                                merged.listView = isList;
+                                merged.twoColumnGrid = false;
+                                BM_MOBILE_CHROME.storage.local.set({ settings: merged }).catch(() => {});
+                            }).catch(() => {});
+                        }
+                        if (window.BrickmergeNative && typeof window.BrickmergeNative.setValue === 'function') {
+                            try {
+                                window.BrickmergeNative.setValue('setting_listView', isList ? 'true' : 'false');
+                                window.BrickmergeNative.setValue('setting_twoColumnGrid', 'false');
+                            } catch (e) {}
+                        }
+                    }
+                };
+
+                let initialMode = 'list';
+                if (typeof localStorage !== 'undefined') {
+                    const saved = localStorage.getItem('bm-view-mode');
+                    if (saved === 'grid') {
+                        initialMode = 'grid';
+                    } else if (saved === 'list') {
+                        initialMode = 'list';
+                    } else if (settings?.listView === false) {
+                        initialMode = 'grid';
+                    }
+                } else if (settings?.listView === false) {
+                    initialMode = 'grid';
+                }
+
+                setupMobileFilterBar();
+
+                const productRow = document.getElementById('productrow') || document.getElementById('productrowcontainer');
+                if (!productRow) return;
+
+                // Prüfen, ob die Seite tatsächlich Set-Inserate enthält
+                const hasSetOffers = Boolean(productRow.querySelector('.wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide[id^="set"], div.slide[id^="set"]'));
+
+                if (!hasSetOffers) {
+                    // Keine Inserate vorhanden -> Switcher entfernen und nicht anzeigen
+                    document.querySelector('.bm-view-switcher')?.remove();
+                    // Falls später Inserate asynchron geladen werden (z. B. Filter-Ajax/Infinite Scroll):
+                    if (typeof MutationObserver !== 'undefined' && !productRow.dataset.bmListingObserver) {
+                        productRow.dataset.bmListingObserver = 'true';
+                        const loadObserver = new MutationObserver(() => {
+                            if (productRow.querySelector('div.slide[id^="set"]')) {
+                                loadObserver.disconnect();
+                                setupListingView(settings);
+                            }
+                        });
+                        loadObserver.observe(productRow, { childList: true, subtree: true });
+                    }
+                    return;
+                }
+
+                // Seite hat echte Set-Inserate: View-Modus anwenden!
+                applyViewMode(initialMode, false);
+
+                // Observe future loaded cards for list enhancement
+                if (typeof MutationObserver !== 'undefined' && !productRow.dataset.bmListCardObserver) {
+                    productRow.dataset.bmListCardObserver = 'true';
+                    let listEnhanceRaf = null;
+                    const listCardObserver = new MutationObserver(() => {
+                        if (listEnhanceRaf) cancelAnimationFrame(listEnhanceRaf);
+                        listEnhanceRaf = requestAnimationFrame(() => {
+                            listEnhanceRaf = null;
+                            bmEnhanceListViewCards(productRow);
+                        });
+                    });
+                    listCardObserver.observe(productRow, { childList: true, subtree: true });
+                }
+
+                if (document.querySelector('.bm-view-switcher')) {
+                    applyViewMode(isListActive() ? 'list' : 'grid', false);
+                    return;
+                }
+
+                const switcher = document.createElement('div');
+                switcher.className = 'bm-view-switcher';
+                switcher.setAttribute('role', 'group');
+                switcher.setAttribute('aria-label', 'Ansicht umschalten');
+
+                const btnList = document.createElement('button');
+                btnList.type = 'button';
+                btnList.className = 'bm-view-btn bm-view-list' + (initialMode === 'list' ? ' is-active' : '');
+                btnList.setAttribute('aria-pressed', (initialMode === 'list').toString());
+                btnList.title = 'Kompakte Listenansicht';
+                btnList.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg><span>Liste</span>';
+                btnList.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    applyViewMode('list', true);
+                });
+
+                const btnGrid = document.createElement('button');
+                btnGrid.type = 'button';
+                btnGrid.className = 'bm-view-btn bm-view-grid' + (initialMode === 'grid' ? ' is-active' : '');
+                btnGrid.setAttribute('aria-pressed', (initialMode === 'grid').toString());
+                btnGrid.title = 'Klassische Kacheln';
+                btnGrid.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="1.5" y="2" width="5.5" height="5.5" rx="1.5"/><rect x="9" y="2" width="5.5" height="5.5" rx="1.5"/><rect x="1.5" y="8.5" width="5.5" height="5.5" rx="1.5"/><rect x="9" y="8.5" width="5.5" height="5.5" rx="1.5"/></svg><span>Kacheln</span>';
+                btnGrid.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    applyViewMode('grid', true);
+                });
+
+                switcher.appendChild(btnList);
+                switcher.appendChild(btnGrid);
+
+                const targetParent = productRow.parentElement || productRow;
+                targetParent.insertBefore(switcher, productRow);
+
+                if (!window.__bmListingResizeAttached) {
+                    window.__bmListingResizeAttached = true;
+                    window.addEventListener('resize', () => {
+                        if (window.innerWidth > 768) {
+                            document.querySelector('.bm-view-switcher')?.remove();
+                            document.documentElement.classList.remove('bm-view-list', 'bm-grid-2col');
+                        } else {
+                            setupListingView(settings);
+                        }
+                    });
+                }
+            }
+
+            const setupTwoColumnGrid = setupListingView;
+
+            setupListingView(BM_SETTINGS);
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => setupListingView(BM_SETTINGS), { once: true });
+            }
+            window.addEventListener('load', () => setupListingView(BM_SETTINGS), { once: true });
 
             const setNum = BM_getBrickmergeSetNumber(window.location.href);
             const DISMISSED_OFFERS_KEY = 'brickmerge-tools-dismissed-offers-v1';
@@ -5400,7 +10681,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
             function removeThemePromoBlock() {
                 const isThemePage = /^\/LEGO-[^/]+\/?$/i.test(window.location.pathname);
                 const isFindPage = /(?:^|[?&])find=/.test(window.location.search);
-                if (setNum || (!isThemePage && !isFindPage)) {
+                const isStartPage = window.location.pathname === '/' || /^\/(?:index\.php)?$/i.test(window.location.pathname) || Boolean(document.querySelector('.content.isIntro'));
+                if (setNum || (!isThemePage && !isFindPage && !isStartPage)) {
                     return;
                 }
                 document.querySelectorAll('.small-12.medium-4.large-3.right').forEach(block => {
@@ -5409,10 +10691,44 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         block.remove();
                     }
                 });
+                if (isStartPage) {
+                    document.querySelectorAll('.content.isIntro p.showmore, .content.isIntro p.more, .content.isIntro .showmore, .content.isIntro .setdetails.noMarg, .content.isIntro p.lead').forEach(el => el.remove());
+                }
             }
 
             removeThemePromoBlock();
             [400, 1200, 2500].forEach(delay => window.setTimeout(removeThemePromoBlock, delay));
+
+            function setupJumpLinks() {
+                document.querySelectorAll('.bmh-jump, a[href^="#"]').forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (!href || href === '#' || href.startsWith('#bm-') || link.dataset.bmJumpBound === 'true') return;
+                    link.dataset.bmJumpBound = 'true';
+                    link.addEventListener('click', event => {
+                        const targetId = href.slice(1);
+                        const target = document.getElementById(targetId) || document.querySelector(`[name="${targetId}"]`);
+                        if (!target) return;
+                        event.preventDefault();
+                        const statusTop = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bm-status-top') || '0', 10);
+                        const headerOffset = (Number.isFinite(statusTop) ? statusTop : 0) + 75;
+                        const elementPosition = target.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                        window.scrollTo({
+                            top: Math.max(0, offsetPosition),
+                            behavior: 'smooth'
+                        });
+                        try {
+                            history.pushState(null, '', href);
+                        } catch {}
+                    });
+                });
+            }
+
+            setupJumpLinks();
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', setupJumpLinks, { once: true });
+            }
+            [400, 1200].forEach(delay => window.setTimeout(setupJumpLinks, delay));
 
             function setupSearchResultsFallback() {
                 if (setNum) return;
@@ -6276,7 +11592,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 document.getElementById('bm-discount-settings')?.remove();
                 document.body.style.removeProperty('overflow');
 
-                const firstOffer = offerlist?.querySelector('.row.collapse');
+                const firstOffer = offerlist?.querySelector('.row.collapse:has(.pricerow)') ||
+                    offerlist?.querySelector('.row.collapse');
                 if (!offerlist || !firstOffer?.parentElement) return;
 
                 const toolbar = document.createElement('div');
@@ -6315,9 +11632,6 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         <div class="bm-settings-actions">
                             <button type="button" class="button secondary bm-settings-reset">
                                 Standardwerte
-                            </button>
-                            <button type="button" class="button bm-settings-save">
-                                Speichern
                             </button>
                         </div>
                     </div>
@@ -6362,6 +11676,34 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     .replace(/"/g, '&quot;')
                     .replace(/'/g, '&#039;');
 
+                const saveAndApplyCurrentSettings = () => {
+                    const previousSettings = loadPersonalDiscountSettings();
+                    const settings = {
+                        enabled: personalEnabledInput.checked,
+                        retailers: { ...previousSettings.retailers }
+                    };
+                    overlay.querySelectorAll('.bm-settings-row').forEach(row => {
+                        const rawPercent = Number(row.querySelector('.bm-settings-rate').value);
+                        settings.retailers[row.dataset.key] = {
+                            enabled: row.querySelector('.bm-settings-enabled').checked,
+                            percent: Number.isFinite(rawPercent)
+                                ? Math.min(100, Math.max(0, rawPercent))
+                                : 0
+                        };
+                    });
+                    // Alte getrennte eBay-Einträge nicht weiter mitschleppen: ab jetzt
+                    // ist ausschließlich settings.retailers.ebay maßgeblich.
+                    Object.keys(settings.retailers)
+                        .filter(key => key !== 'ebay' && /ebay/i.test(key))
+                        .forEach(key => delete settings.retailers[key]);
+                    savePersonalDiscountSettings(settings);
+                    document.querySelectorAll('#offerlist .pricerow[data-bm-discount-applied]')
+                        .forEach(row => {
+                            delete row.dataset.bmDiscountApplied;
+                        });
+                    applyOfferPresentation();
+                };
+
                 const populate = settings => {
                     body.innerHTML = '';
                     getRetailerCatalog().forEach(([key, discount], index) => {
@@ -6392,6 +11734,13 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         rateInput.disabled = !enabledInput.checked;
                         enabledInput.addEventListener('change', () => {
                             rateInput.disabled = !enabledInput.checked;
+                            saveAndApplyCurrentSettings();
+                        });
+                        rateInput.addEventListener('input', () => {
+                            saveAndApplyCurrentSettings();
+                        });
+                        rateInput.addEventListener('change', () => {
+                            saveAndApplyCurrentSettings();
                         });
                     });
 
@@ -6435,34 +11784,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 });
                 overlay.querySelector('.bm-settings-reset').addEventListener('click', () => {
                     populate(getDefaultPersonalDiscountSettings());
-                });
-                overlay.querySelector('.bm-settings-save').addEventListener('click', () => {
-                    const previousSettings = loadPersonalDiscountSettings();
-                    const settings = {
-                        enabled: personalEnabledInput.checked,
-                        retailers: { ...previousSettings.retailers }
-                    };
-                    overlay.querySelectorAll('.bm-settings-row').forEach(row => {
-                        const rawPercent = Number(row.querySelector('.bm-settings-rate').value);
-                        settings.retailers[row.dataset.key] = {
-                            enabled: row.querySelector('.bm-settings-enabled').checked,
-                            percent: Number.isFinite(rawPercent)
-                                ? Math.min(100, Math.max(0, rawPercent))
-                                : 0
-                        };
-                    });
-                    // Alte getrennte eBay-Einträge nicht weiter mitschleppen: ab jetzt
-                    // ist ausschließlich settings.retailers.ebay maßgeblich.
-                    Object.keys(settings.retailers)
-                        .filter(key => key !== 'ebay' && /ebay/i.test(key))
-                        .forEach(key => delete settings.retailers[key]);
-                    savePersonalDiscountSettings(settings);
-                    document.querySelectorAll('#offerlist .pricerow[data-bm-discount-applied]')
-                        .forEach(row => {
-                            delete row.dataset.bmDiscountApplied;
-                        });
-                    applyOfferPresentation();
-                    close();
+                    saveAndApplyCurrentSettings();
                 });
             }
 
@@ -6489,6 +11811,11 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
 
             // Tap-Overlay / "komische Hand" auf Produktbildern entfernen (läuft auf ALLEN Seiten)
             document.querySelectorAll('span.tap, .tap').forEach(el => el.remove());
+            // Subnavigation auf Depot/Wunschlisten/Alarme-Seiten entfernen
+            document.querySelectorAll('.bm-usernav').forEach(el => el.remove());
+            if (BM_SETTINGS.cleaner) {
+                document.querySelectorAll('.content.noPadBottom > .row:first-child .small-12.column > .small-12:not(.setdetails)').forEach(el => el.remove());
+            }
 
             // 1b. Cleaner (nur auf Detailseiten)
             function cleaner() {
@@ -6560,6 +11887,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         if (p && p.tagName === 'P') p.remove();
                     }
                 });
+                getCurrentSetUvp();
                 const productrow = document.getElementById('productrowcontainer');
                 if (productrow) productrow.remove();
                 let firstH2 = null;
@@ -6593,18 +11921,51 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         }
                     });
                     offerlist.querySelectorAll('*').forEach(el => {
+                        if (el.classList?.contains('pricerow') || el.classList?.contains('price') || el.classList?.contains('row')) {
+                            return;
+                        }
+                        const txt = el.textContent?.trim() || '';
+                        if (/^(?:>|&gt;)?\s*hier\s+klicken!?\s*$/i.test(txt)) {
+                            el.remove();
+                            return;
+                        }
                         if (el.textContent?.toLowerCase().includes('hier klicken')) {
                             if (el.querySelector('img[src*="/img/info_"]') || el.innerHTML.includes('info_') || el.textContent.includes('Preisübersicht') || el.textContent.includes('scrollen')) el.remove();
                         }
                     });
+                    const hkWalker = document.createTreeWalker(offerlist, NodeFilter.SHOW_TEXT);
+                    let hkNode;
+                    while ((hkNode = hkWalker.nextNode())) {
+                        if (/(?:>|&gt;)?\s*hier\s+klicken!?/i.test(hkNode.nodeValue)) {
+                            hkNode.nodeValue = hkNode.nodeValue.replace(/(?:>|&gt;)?\s*hier\s+klicken!?/gi, '').trim();
+                        }
+                    }
                     offerlist.querySelectorAll('a.button').forEach(a => {
-                        if (a.textContent.includes('Verfügbarkeit bei LEGO') || a.textContent.includes('Hier die Verfügbarkeit bei LEGO prüfen')) a.remove();
+                        if (a.textContent.includes('Verfügbarkeit bei LEGO') || a.textContent.includes('Hier die Verfügbarkeit bei LEGO prüfen')) {
+                            const p = a.closest('p');
+                            a.remove();
+                            if (p && !p.textContent.trim()) p.remove();
+                        }
                     });
 
                     // "> Hier zu X!"-Spalte entfernen (reiner Duplikat-Link, der Preis selbst
                     // ist ja bereits verlinkt). Nur die .goto.medium-7-Textspalte betrifft das,
                     // NICHT die .goto.medium-1-Logospalte, die bleibt erhalten.
                     offerlist.querySelectorAll('.goto.medium-7').forEach(el => el.remove());
+
+                    // Leere .row.collapse ohne pricerow oder goto entfernen (z. B. natives Info-Banner)
+                    offerlist.querySelectorAll('.row.collapse').forEach(row => {
+                        if (!row.querySelector('.pricerow, .goto, [data-mid]')) {
+                            row.remove();
+                        }
+                    });
+
+                    // Leere p-Tags innerhalb der Angebotsliste entfernen
+                    offerlist.querySelectorAll('p').forEach(p => {
+                        if (!p.textContent.trim() && !p.querySelector('*')) {
+                            p.remove();
+                        }
+                    });
                 }
                 removeSidebarHistoryLinks();
                 // Hinweis: der frühere Selektor für einen einzelnen <span> im Breadcrumb-Bereich
@@ -6640,6 +12001,28 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         else p.remove();
                     }
                 });
+                document.querySelectorAll('a, button, input[type="button"]').forEach(el => {
+                    const txt = (el.textContent || el.value || '').trim().toLowerCase();
+                    const href = (el.getAttribute?.('href') || '').toLowerCase();
+                    const dataReveal = (el.getAttribute?.('data-reveal-id') || '').toLowerCase();
+                    if (txt === 'preisfehler melden' || txt.includes('preisfehler') || href.includes('preisfehler') || dataReveal.includes('preisfehler')) {
+                        if (el.parentElement && el.parentElement.tagName === 'P' && el.parentElement.children.length === 1) {
+                            el.parentElement.remove();
+                        } else {
+                            el.remove();
+                        }
+                    }
+                });
+
+                // Leere oder angebotslose SoldOut-Container entfernen
+                const soldOutContainer = document.getElementById('SoldOutContainer');
+                if (soldOutContainer && !soldOutContainer.querySelector('.pricerow')) {
+                    soldOutContainer.remove();
+                }
+                const soldOut = document.getElementById('soldOut');
+                if (soldOut && !soldOut.querySelector('.pricerow')) {
+                    soldOut.remove();
+                }
             }
 
             if (setNum && BM_SETTINGS.cleaner) cleaner();
@@ -7031,6 +12414,21 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
             function showEanOverlay(ean, trigger) {
                 document.querySelector('.bm-ean-overlay')?.remove();
 
+                const activeSetMatch = location.pathname.match(/\/(\d{4,7}(?:-\d+)?)(?:_|$)/);
+                const activeSetNum = activeSetMatch ? activeSetMatch[1] : '';
+                const titleCandidate = document.querySelector('h1')?.textContent?.trim() ||
+                    document.querySelector('.headline h1')?.textContent?.trim() ||
+                    document.title || '';
+                let rawTitle = titleCandidate.split('|')[0].trim().replace(/\s*preisvergleich.*$/i, '').trim();
+                if (activeSetNum) {
+                    const escaped = String(activeSetNum).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    rawTitle = rawTitle.replace(new RegExp(`^lego(?:\\s+set)?\\s+${escaped}\\s*`, 'i'), `${activeSetNum} `).trim();
+                } else {
+                    rawTitle = rawTitle.replace(/^(?:LEGO\s+)+/i, '').trim();
+                }
+                const setLabel = rawTitle || (activeSetNum ? `LEGO Set ${activeSetNum}` : '');
+                const subtitleText = setLabel ? `${ean} · ${setLabel}` : String(ean);
+
                 const overlay = document.createElement('div');
                 overlay.id = 'bm-ean-overlay';
                 overlay.className = 'bm-ean-overlay';
@@ -7042,7 +12440,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         <header class="bm-ean-header">
                             <div class="bm-ean-heading">
                                 <h2 id="bm-ean-title" class="bm-ean-title">EAN Barcode</h2>
-                                <div class="bm-ean-subtitle">${ean}</div>
+                                <div class="bm-ean-subtitle">${subtitleText}</div>
                             </div>
                             <button type="button" class="bm-ean-close"
                                 title="Schließen" aria-label="Schließen">×</button>
@@ -7062,8 +12460,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     content.appendChild(fallback);
                 }
 
+                const previousBodyOverflow = document.body.style.overflow;
                 const close = () => {
                     document.removeEventListener('keydown', onKeydown);
+                    document.body.style.overflow = previousBodyOverflow;
                     document.body.classList.remove('bm-ean-overlay-open');
                     overlay.remove();
                     trigger?.focus?.();
@@ -7071,14 +12471,17 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 const onKeydown = event => {
                     if (event.key === 'Escape') close();
                 };
-                overlay.querySelector('.bm-ean-close').addEventListener('click', close);
+                const closeButton = overlay.querySelector('.bm-ean-close');
+                closeButton.onclick = close;
+                closeButton.addEventListener('click', close);
                 overlay.addEventListener('click', event => {
                     if (event.target === overlay) close();
                 });
                 document.addEventListener('keydown', onKeydown);
+                document.body.style.overflow = 'hidden';
                 document.body.classList.add('bm-ean-overlay-open');
                 document.body.appendChild(overlay);
-                overlay.querySelector('.bm-ean-close').focus();
+                closeButton.focus();
             }
 
             function setupEanBarcode() {
@@ -7319,16 +12722,24 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     '#ol1st img[src*="/img/instructions/"]'
                 )?.closest('section');
                 const sideColumn = document.getElementById('ol2nd');
+                const descHeading = document.querySelector('h2.long_description') ||
+                    document.getElementById('Beschreibung') ||
+                    Array.from(document.querySelectorAll(
+                        '#ol1st h2, #ol1st h3, .content.setdetails h2, .content.setdetails h3'
+                    )).find(heading => /Produktbeschreibung|Beschreibung/i.test(heading.textContent || ''));
+                const descSection = descHeading?.closest('section') || descHeading?.parentElement;
 
-                // A. Desktop Sidebar Instructions
+                // A. Desktop Sidebar Instructions: nur wenn keine Produktbeschreibung existiert
                 if (sidebarInstructions) {
                     const existingStandalone = sideColumn?.querySelector('.bm-sidebar-warning');
                     if (existingStandalone) existingStandalone.remove();
-                    if (!sidebarInstructions.querySelector('.bm-safety-warning-block')) {
+                    if (!descSection && !sidebarInstructions.querySelector('.bm-safety-warning-block')) {
                         sidebarInstructions.appendChild(warningBlock);
+                    } else if (descSection) {
+                        sidebarInstructions.querySelector('.bm-safety-warning-block')?.remove();
                     }
-                } else if (sideColumn && !sideColumn.querySelector('.bm-safety-warning-block')) {
-                    // Wenn keine Bauanleitungen vorhanden sind: Standalone in der rechten Desktop-Spalte
+                } else if (!descSection && sideColumn && !sideColumn.querySelector('.bm-safety-warning-block')) {
+                    // Wenn keine Bauanleitungen und keine Produktbeschreibung vorhanden sind: Standalone in der rechten Desktop-Spalte
                     const standaloneSection = document.createElement('section');
                     standaloneSection.className = 'bm-sidebar-warning';
                     standaloneSection.appendChild(warningBlock);
@@ -7342,10 +12753,12 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     } else {
                         sideColumn.prepend(standaloneSection);
                     }
+                } else if (descSection && sideColumn) {
+                    sideColumn.querySelector('.bm-sidebar-warning')?.remove();
                 }
 
-                // B. Mobilansicht: Warnhinweis NACH den Bauanleitungen bzw. nach „Zum Bestand hinzufügen“
-                // Keinesfalls IN die Bauanleitungs-Section einhängen, damit er nicht zwischen den Anleitungen landet.
+                // B. Warnhinweis ganz nach unten unter die Produktbeschreibung von LEGO
+                // Fallback: nach den Bauanleitungen bzw. nach „Zum Bestand hinzufügen“
                 const existingInInstructions = document.querySelectorAll(
                     '#ol1st .bm-instruction-source .bm-safety-warning-block, #ol1st .bm-instruction-section .bm-safety-warning-block'
                 );
@@ -7369,7 +12782,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 const fallbackTarget = document.querySelector('.content.setdetails .productprice') ||
                     document.querySelector('.content.setdetails p');
 
-                const mobileTarget = mobileStockWrap || partsSection || moreParagraph || instructionSection || fallbackTarget;
+                const mobileTarget = descSection || mobileStockWrap || partsSection || moreParagraph || instructionSection || fallbackTarget;
 
                 let detailWarning = document.querySelector('.bm-detail-warning');
                 if (!detailWarning) {
@@ -7380,6 +12793,21 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
 
                 if (mobileTarget && detailWarning.previousElementSibling !== mobileTarget) {
                     mobileTarget.insertAdjacentElement('afterend', detailWarning);
+                }
+
+                // Collapse preceding padDoubleBottom spacing if present
+                if (mobileTarget?.classList?.contains('padDoubleBottom')) {
+                    mobileTarget.style.paddingBottom = '0.25rem';
+                } else {
+                    const padPreceding = detailWarning.previousElementSibling?.querySelector?.('.padDoubleBottom') ||
+                                         detailWarning.closest?.('.padDoubleBottom');
+                    if (padPreceding) padPreceding.style.paddingBottom = '0.25rem';
+                }
+
+                // Hide immediately following empty spacer div if present
+                const nextSpacer = detailWarning.nextElementSibling;
+                if (nextSpacer && (nextSpacer.getAttribute('style')?.includes('height') || nextSpacer.innerHTML?.trim() === '&nbsp;')) {
+                    nextSpacer.style.display = 'none';
                 }
             }
 
@@ -7481,10 +12909,11 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     list.appendChild(link);
                 });
 
-                const stockButton = document.querySelector('.bmd-open-button');
-                if (stockButton) list.appendChild(stockButton);
                 const mobileWrap = document.querySelector('.bm-mobile-parts-stock-wrap');
-                if (mobileWrap && !mobileWrap.hasChildNodes()) mobileWrap.remove();
+                if (mobileWrap) mobileWrap.remove();
+
+                // Die Einzelteileliste darf NUR Links zu BrickLink/Rebrickable/Brickset enthalten, niemals Aktionsbuttons
+                list.querySelectorAll('button, .bmd-open-button, .bmd-parts-stock-button, .bmd-depot-button').forEach(b => b.remove());
 
                 panel.append(heading, list);
 
@@ -7534,6 +12963,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     'columns'
                 );
                 columnsRow.appendChild(descriptionSection);
+                const detailWarning = document.querySelector('.bm-detail-warning');
+                if (detailWarning) {
+                    columnsRow.appendChild(detailWarning);
+                }
             }
 
             function linkLegoArticleNumber() {
@@ -7552,6 +12985,83 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 );
                 link.appendChild(line.range.extractContents());
                 line.range.insertNode(link);
+            }
+
+            function insertThemeUnderArticleNumber() {
+                const details = Array.from(
+                    document.querySelectorAll('.content.setdetails p, #ol2nd p')
+                ).find(paragraph => /Artikel-Nr\s*:/i.test(paragraph.textContent || ''));
+                if (!details || details.querySelector('.bm-theme-row')) return;
+
+                // Theme aus Breadcrumbs ermitteln
+                const breadcrumbLinks = Array.from(
+                    document.querySelectorAll('.breadcrumbs a, nav.breadcrumbs a, [itemscope][itemtype*="BreadcrumbList"] a')
+                );
+                let themeName = '';
+                let themeHref = '';
+                const isExcluded = (txt, hr) =>
+                    /home|start|lego sets|sets|themen|depot|deal-score/i.test(txt) ||
+                    /depot|deal-score|themen|merch|fuer-erwachsene|neuheiten|auslaufartikel/i.test(hr);
+
+                for (let i = breadcrumbLinks.length - 1; i >= 0; i--) {
+                    const a = breadcrumbLinks[i];
+                    const href = a.getAttribute('href') || '';
+                    const text = (a.textContent || '').replace(/^[<«‹\s]+/, '').trim();
+                    if (!text || isExcluded(text, href)) continue;
+                    if (setNum && text.includes(setNum)) continue;
+                    if (/LEGO-[^/]+/i.test(href) || /themen|thema/i.test(href) || /th=/i.test(href) || (!themeName && i > 0)) {
+                        themeName = text;
+                        themeHref = href;
+                        break;
+                    }
+                }
+
+                if (!themeName) {
+                    // Fallback 1: Thema aus Produktbeschreibung / Content
+                    const descThemeLink = Array.from(document.querySelectorAll('#short a[href*="LEGO-"], .setdetails a[href*="LEGO-"]')).find(a => {
+                        const h = a.getAttribute('href') || '';
+                        const t = (a.textContent || '').trim();
+                        return !isExcluded(t, h);
+                    });
+                    if (descThemeLink) {
+                        themeName = (descThemeLink.textContent || '').trim();
+                        themeHref = descThemeLink.getAttribute('href') || '';
+                    }
+                }
+
+                if (!themeName) {
+                    const h1 = document.querySelector('h1')?.textContent || '';
+                    const m = h1.match(/LEGO[®]?\s+([A-Za-z0-9\s]+?)\s+\d{4,7}/i);
+                    if (m && m[1]) {
+                        themeName = m[1].trim();
+                        themeHref = `/LEGO-${encodeURIComponent(themeName)}`;
+                    }
+                }
+
+                if (!themeName) return;
+
+                const cleanThemeName = themeName.replace(/^[<«‹\s]+/, '').replace(/^LEGO[®]?\s+/i, '').trim();
+                if (!cleanThemeName) return;
+                const articleLink = details.querySelector('.bm-lego-article-link') || details.querySelector('a[href*="lego.com/de-de/product/"]');
+                const themeSpan = document.createElement('span');
+                themeSpan.className = 'bm-theme-row';
+                themeSpan.innerHTML = `&nbsp;| Theme: <a class="bm-theme-link" href="${themeHref || '#'}" title="Themenseite ${cleanThemeName} aufrufen"><strong>${cleanThemeName}</strong></a><br>`;
+
+                if (articleLink) {
+                    const nextNode = articleLink.nextSibling;
+                    if (nextNode && nextNode.nodeName === 'BR') {
+                        nextNode.after(themeSpan);
+                    } else {
+                        articleLink.after(themeSpan);
+                    }
+                } else {
+                    const line = findDetailsLineRange(details, /Artikel-Nr\s*:/i);
+                    if (line && line.followingBreak) {
+                        line.followingBreak.after(themeSpan);
+                    } else {
+                        details.prepend(themeSpan);
+                    }
+                }
             }
 
             function findDetailsLineRange(details, linePattern, options = {}) {
@@ -7666,8 +13176,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     const query = `site:brickmerge.de Designer: ${designer}`;
                     const link = document.createElement('a');
                     link.className = 'bm-lego-article-link bm-designer-link';
-                    link.href =
-                        `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+                    link.href = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
                     link.target = '_blank';
                     link.rel = 'noopener noreferrer';
                     link.title = `Brickmerge-Sets von ${designer} in Google Bilder suchen`;
@@ -7719,10 +13228,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 const details = Array.from(
                     document.querySelectorAll('.content.setdetails p')
                 ).find(paragraph =>
-                    /(?:Box-)?Maße\s*:/i.test(paragraph.textContent || '') &&
-                    /Setgewicht\s*:/i.test(paragraph.textContent || '')
+                    /(?:Box-)?Maße\s*:/i.test(paragraph.textContent || '') ||
+                    /Abmessungen(?:\s*\([^)]+\))?\s*:/i.test(paragraph.textContent || '')
                 );
-                if (!details || details.querySelector('.bm-package-dimensions-link')) return;
+                if (!details) return;
 
                 const text = (details.textContent || '').replace(/\s+/g, ' ');
                 const dimensionsMatch = text.match(
@@ -7731,7 +13240,6 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 const weightMatch = text.match(
                     /Setgewicht\s*:\s*[≈~]?\s*([\d.,]+)\s*(kg|g)\b/i
                 );
-                if (!dimensionsMatch || !weightMatch) return;
 
                 const parseDecimalValue = value => {
                     const raw = String(value || '').replace(/\s/g, '');
@@ -7760,51 +13268,57 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     return formatDimensionCm(dimension + clearancePerSide * 2);
                 };
 
-                const width = parseDecimalValue(dimensionsMatch[1]);
-                const length = parseDecimalValue(dimensionsMatch[2]);
-                const height = parseDecimalValue(dimensionsMatch[3]);
-                const weightKg = parseWeightKg(weightMatch[1], weightMatch[2]);
-                if (![width, length, height, weightKg].every(value =>
-                    Number.isFinite(value) && value > 0
-                )) {
-                    return;
+                let width = null;
+                let length = null;
+                let height = null;
+                let weightKg = null;
+                if (dimensionsMatch) {
+                    width = parseDecimalValue(dimensionsMatch[1]);
+                    length = parseDecimalValue(dimensionsMatch[2]);
+                    height = parseDecimalValue(dimensionsMatch[3]);
+                }
+                if (weightMatch) {
+                    weightKg = parseWeightKg(weightMatch[1], weightMatch[2]);
                 }
 
-                const url = new URL('https://www.paketda.de/paket-preis-rechner.php');
-                url.searchParams.set('action', 'submit');
-                url.searchParams.set('breite', formatPackedDimensionCm(width));
-                url.searchParams.set('laenge', formatPackedDimensionCm(length));
-                url.searchParams.set('hoehe', formatPackedDimensionCm(height));
-                url.searchParams.set('gewicht', formatParam(weightKg * 1.1));
-                url.hash = 'ergebnis';
+                let link = details.querySelector('.bm-package-dimensions-link');
+                if (!link && dimensionsMatch && [width, length, height, weightKg].every(value => Number.isFinite(value) && value > 0)) {
+                    const url = new URL('https://www.paketda.de/paket-preis-rechner.php');
+                    url.searchParams.set('action', 'submit');
+                    url.searchParams.set('breite', formatPackedDimensionCm(width));
+                    url.searchParams.set('laenge', formatPackedDimensionCm(length));
+                    url.searchParams.set('hoehe', formatPackedDimensionCm(height));
+                    url.searchParams.set('gewicht', formatParam(weightKg * 1.1));
+                    url.hash = 'ergebnis';
 
-                const dimensionTextPattern = new RegExp(
-                    `${dimensionsMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[x×]\\s*` +
-                    `${dimensionsMatch[2].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[x×]\\s*` +
-                    `${dimensionsMatch[3].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*cm`,
-                    'i'
-                );
+                    const dimensionTextPattern = new RegExp(
+                        `${dimensionsMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[x×]\\s*` +
+                        `${dimensionsMatch[2].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[x×]\\s*` +
+                        `${dimensionsMatch[3].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*cm`,
+                        'i'
+                    );
 
-                const line = findDetailsLineRange(details, /(?:Box-)?Maße\s*:/i);
-                if (!line || !dimensionTextPattern.test(line.text)) return;
-
-                const link = createDetailsLineLink(
-                    'bm-package-dimensions-link',
-                    url.href,
-                    'Paketpreis mit mindestens 2 cm Luft je Seite, maximal 15 cm ' +
-                    'je Seite und 10% Gewichtszuschlag berechnen'
-                );
-                const fragment = line.range.extractContents();
-                const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_TEXT);
-                let textNode;
-                while (textNode = walker.nextNode()) {
-                    if (/Box-Maße\s*:/i.test(textNode.nodeValue || '')) {
-                        textNode.nodeValue = textNode.nodeValue.replace(/Box-Maße\s*:/i, 'Maße:');
-                        break;
+                    const line = findDetailsLineRange(details, /(?:Box-)?Maße\s*:/i);
+                    if (line && dimensionTextPattern.test(line.text)) {
+                        link = createDetailsLineLink(
+                            'bm-package-dimensions-link',
+                            url.href,
+                            'Paketpreis mit mindestens 2 cm Luft je Seite, maximal 15 cm ' +
+                            'je Seite und 10% Gewichtszuschlag berechnen'
+                        );
+                        const fragment = line.range.extractContents();
+                        const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_TEXT);
+                        let textNode;
+                        while (textNode = walker.nextNode()) {
+                            if (/Box-Maße\s*:/i.test(textNode.nodeValue || '')) {
+                                textNode.nodeValue = textNode.nodeValue.replace(/Box-Maße\s*:/i, 'Maße:');
+                                break;
+                            }
+                        }
+                        link.appendChild(fragment);
+                        line.range.insertNode(link);
                     }
                 }
-                link.appendChild(fragment);
-                line.range.insertNode(link);
 
                 let toggleBtn = null;
                 let dimensionsWrapper = null;
@@ -7897,13 +13411,27 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         toggleDimensions(event);
                     });
 
-                    link.after(toggleBtn);
+                    const linkEl = details.querySelector('.bm-package-dimensions-link');
+                    if (linkEl) {
+                        linkEl.after(toggleBtn);
+                    } else {
+                        const maßeLine = findDetailsLineRange(details, /(?:Box-)?Maße\s*:/i);
+                        if (maßeLine?.followingBreak) {
+                            maßeLine.followingBreak.before(toggleBtn);
+                        } else {
+                            details.appendChild(toggleBtn);
+                        }
+                    }
                     toggleBtn.after(dimensionsWrapper);
                 } else {
                     dimensionsWrapper = details.querySelector('.bm-model-dimensions-wrapper');
                     toggleBtn = details.querySelector('.bm-dimensions-toggle-btn');
                 }
 
+                if (!width || !length || !height || width <= 0 || length <= 0 || height <= 0) return;
+                document.querySelectorAll(
+                    '.content.setdetails > .bm-volume-line, .content.setdetails > br + .bm-volume-line'
+                ).forEach(el => el.remove());
                 const existingVolumeLine = details.querySelector('.bm-volume-line');
                 const volumeLiters = width * length * height / 1000;
                 if (!Number.isFinite(volumeLiters) || volumeLiters <= 0) return;
@@ -7938,8 +13466,19 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
 
                 const targetAnchor = dimensionsWrapper || toggleBtn || link;
                 const lineBreak = document.createElement('br');
-                targetAnchor.after(lineBreak);
-                lineBreak.after(volumeLine);
+                if (targetAnchor) {
+                    targetAnchor.after(lineBreak);
+                    lineBreak.after(volumeLine);
+                } else {
+                    const maßeLine = findDetailsLineRange(details, /(?:Box-)?Maße\s*:/i);
+                    if (maßeLine?.followingBreak) {
+                        maßeLine.followingBreak.after(volumeLine);
+                        volumeLine.after(lineBreak);
+                    } else {
+                        details.appendChild(lineBreak);
+                        details.appendChild(volumeLine);
+                    }
+                }
 
                 syncGlobalPriceBasisToggle();
             }
@@ -7964,24 +13503,22 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
             }
 
-            const CALC_PRICE_BASIS_STORAGE_KEY = 'bm-calc-price-basis';
+            function linkMinifigureDetails() {
+                const s = setNum || BM_getBrickmergeSetNumber(window.location.href);
+                if (s && typeof linkMinifigureCount === 'function') {
+                    linkMinifigureCount(s);
+                }
+            }
 
             function getPriceBasisMode() {
-                try {
-                    const stored = localStorage.getItem(CALC_PRICE_BASIS_STORAGE_KEY);
-                    if (stored === 'retailer' || stored === 'overall') return stored;
-                } catch {
-                    // LocalStorage fallback
+                if (BM_SETTINGS.marketplacesInOfferlist === false) {
+                    return 'retailer';
                 }
                 return 'overall';
             }
 
-            function setPriceBasisMode(mode) {
-                try {
-                    localStorage.setItem(CALC_PRICE_BASIS_STORAGE_KEY, mode);
-                } catch {
-                    // LocalStorage fallback
-                }
+            function setPriceBasisMode(_mode) {
+                // Calculation basis is now controlled via Settings (marketplacesInOfferlist)
             }
 
             function getOfferRowPrice(priceRow, priceSpan) {
@@ -8020,7 +13557,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
 
                 const retailerPriceRows = Array.from(offerlist.querySelectorAll(
-                    '.pricerow:not([data-bm-marketplace="true"])'
+                    '.pricerow:not([data-bm-marketplace="true"]):not([data-bm-depot-inventory="true"])'
                 )).filter(priceRow =>
                     priceRow.querySelector('span.price') &&
                     !priceRow.closest('#soldOut') &&
@@ -8061,7 +13598,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 const retailerBest = retailerBestOffer?.price ?? fallbackRetailer;
 
                 const marketplaceRows = Array.from(offerlist.querySelectorAll(
-                    '.pricerow[data-bm-marketplace="true"]'
+                    '.pricerow[data-bm-marketplace="true"]:not([data-bm-depot-inventory="true"])'
                 )).filter(priceRow =>
                     priceRow.querySelector('span.price') &&
                     !priceRow.closest('#soldOut') &&
@@ -8230,82 +13767,15 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 return copyBtn;
             }
 
-            function createPriceBasisToggle() {
-                const toggle = document.createElement('span');
-                toggle.className = 'bm-price-basis-toggle bm-global-price-basis-toggle';
-                toggle.setAttribute('role', 'button');
-                toggle.tabIndex = 0;
-                toggle.innerHTML = `
-                    <svg class="bm-price-basis-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M4.5 12V4m0 0L2 6.5m2.5-2.5L7 6.5m4.5-2.5v8m0 0l2.5-2.5m-2.5 2.5L9 9.5"/>
-                    </svg>
-                `.trim();
-                const toggleHandler = event => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    const currentMode = getPriceBasisMode();
-                    const nextMode = currentMode === 'retailer' ? 'overall' : 'retailer';
-                    setPriceBasisMode(nextMode);
-                    syncPriceBasisCalculations();
-                };
-                toggle.addEventListener('click', toggleHandler);
-                toggle.addEventListener('keydown', event => {
-                    if (event.key !== 'Enter' && event.key !== ' ') return;
-                    toggleHandler(event);
-                });
-                return toggle;
-            }
-
             function syncGlobalPriceBasisToggle() {
-                if (!setNum || !BM_SETTINGS.priceCalculations) {
-                    document.querySelectorAll('.bm-price-basis-toggle').forEach(el => el.remove());
-                    return;
-                }
-
+                document.querySelectorAll('.bm-price-basis-toggle').forEach(el => el.remove());
                 const h1 = document.querySelector('.content.setdetails h1, h1');
                 if (h1) {
                     h1.querySelectorAll('.bm-copy-btn:not(.bm-ean-copy-btn), .bm-price-basis-toggle').forEach(el => el.remove());
                 }
-                const detailsCopyBtn = BM_SETTINGS.copyAndMinifigures ? ensureDetailsNameCopyButton() : null;
-                const detailsNameElement = detailsCopyBtn?.parentElement || getDetailsNameElement();
-
-                const targets = [];
-                if (detailsNameElement) {
-                    targets.push({
-                        container: detailsNameElement,
-                        anchor: detailsCopyBtn || detailsNameElement.querySelector('.bm-copy-btn:not(.bm-ean-copy-btn)')
-                    });
+                if (BM_SETTINGS.copyAndMinifigures) {
+                    ensureDetailsNameCopyButton();
                 }
-
-                targets.forEach(({ container, anchor }) => {
-                    let toggle = container.querySelector(':scope > .bm-price-basis-toggle, .bm-price-basis-toggle');
-                    if (!toggle && anchor && anchor.nextElementSibling?.classList.contains('bm-price-basis-toggle')) {
-                        toggle = anchor.nextElementSibling;
-                    }
-                    if (!toggle) {
-                        toggle = createPriceBasisToggle();
-                        if (anchor) {
-                            anchor.after(toggle);
-                        } else {
-                            container.appendChild(toggle);
-                        }
-                    } else if (anchor && anchor.nextElementSibling !== toggle) {
-                        anchor.after(toggle);
-                    }
-                });
-
-                const prices = getBestOfferPrices();
-                const mode = getPriceBasisMode();
-                const currentBasis = mode === 'retailer' ? 'Händler-Bestpreis' : 'Echter Bestpreis (inkl. Marktplatz)';
-                const nextBasis = mode === 'retailer' ? 'Echter Bestpreis (inkl. Marktplatz)' : 'Händler-Bestpreis';
-                const nextPrice = mode === 'retailer' ? prices.overallBest : prices.retailerBest;
-                const tooltip = `Berechnungsgrundlage: ${currentBasis}. Klick zum Umschalten auf ${nextBasis}${nextPrice !== null ? ` (${formatEuroValue(nextPrice)} €)` : ''}.`;
-
-                document.querySelectorAll('.bm-price-basis-toggle').forEach(toggle => {
-                    toggle.title = tooltip;
-                    toggle.setAttribute('aria-label', tooltip);
-                    toggle.dataset.bmMode = mode;
-                });
             }
 
             function syncPriceBasisCalculations() {
@@ -8326,6 +13796,17 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             volumeLine.dataset.bmPricePerLiter = 'true';
                         }
                     }
+                }
+                if (lastMinifigTotalValue === null && setNum) {
+                    try {
+                        const storedVal = sessionStorage.getItem('bm_minifig_val_' + setNum);
+                        if (storedVal) {
+                            const parsed = parseFloat(storedVal);
+                            if (Number.isFinite(parsed) && parsed > 0) {
+                                lastMinifigTotalValue = parsed;
+                            }
+                        }
+                    } catch (e) {}
                 }
                 if (lastMinifigTotalValue !== null) {
                     updateMinifigureValueInDataBox(lastMinifigTotalValue, false, lastMinifigPriceSnapshot);
@@ -8428,13 +13909,15 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     setupDesktopOfferGallery,
                     setupEanBarcode,
                     setupDesktopSidebarInstructions,
-                    replaceSafetyWarningWithPictograms,
                     setupDesktopSidebarParts,
                     expandProductDescription,
+                    replaceSafetyWarningWithPictograms,
                     linkLegoArticleNumber,
+                    insertThemeUnderArticleNumber,
                     linkDesignerName,
                     cleanMinifigureExclusiveText,
                     linkPackageDimensionsCalculator,
+                    linkMinifigureDetails,
                     renameHistoricalBestPriceLabel,
                     setupAtbTooltip,
                     renameAktBrickmergePreisLabel,
@@ -8889,6 +14372,19 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         closeOverlay();
                     }
                 });
+                window.addEventListener('orientationchange', () => {
+                    if (overlay.classList.contains('bm-open')) {
+                        window.setTimeout(() => {
+                            normalizeNativeChartState();
+                            window.dispatchEvent(new Event('resize'));
+                        }, 100);
+                    }
+                });
+                window.addEventListener('resize', () => {
+                    if (overlay.classList.contains('bm-open')) {
+                        normalizeNativeChartState();
+                    }
+                });
             }
 
             if (setNum && BM_SETTINGS.detailLayout) {
@@ -8957,7 +14453,13 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     const mergeLoadedSoldOutOffers = () => {
                         if (!mergeSoldOutOffersIntoOfferList()) return;
                         soldOutObserver.disconnect();
-                        window.setTimeout(applyOfferPresentation, 0);
+                        window.setTimeout(() => {
+                            if (typeof globalThis.BM_scheduleOfferPresentation === 'function') {
+                                globalThis.BM_scheduleOfferPresentation();
+                            } else if (typeof globalThis.applyOfferPresentation === 'function') {
+                                globalThis.applyOfferPresentation();
+                            }
+                        }, 0);
                     };
                     const soldOutObserver = new MutationObserver(mergeLoadedSoldOutOffers);
                     soldOutObserver.observe(soldOutContainer, { childList: true, subtree: true });
@@ -9142,6 +14644,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 ];
 
                 const css = `
+                .bm-link-panel {
+                    box-sizing: border-box;
+                    padding: 0;
+                }
                 .bm-info-group {
                     margin: 1.3em 0 1.4em 0;
                     animation: bm-info-group-in .22s ease-out both;
@@ -9162,8 +14668,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     -webkit-overflow-scrolling: touch;
                 }
                 .bm-link-viewport::-webkit-scrollbar { display: none; }
-                .bm-info-links { display: flex; flex-wrap: nowrap; width: max-content; gap: 7px 11px; }
-                .bm-link { display: inline-flex; flex: 0 0 auto; align-items: center; text-decoration: none; font-size: 0.93em; color: #222; font-weight: 500; background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 4px 8px 4px 6px; line-height: 1.2;}
+                .bm-info-links { display: flex; flex-wrap: nowrap; width: max-content; gap: 5px 8px; }
+                .bm-link { display: inline-flex; flex: 0 0 auto; align-items: center; text-decoration: none; font-size: 0.78rem; color: #222; font-weight: 400; background: #fff; border: 1px solid #ccc; border-radius: 5px; padding: 2px 7px 2px 5px; line-height: 1.15; height: 26px; min-height: 26px; max-height: 26px; box-sizing: border-box;}
                 .bm-link:hover,
                 .bm-link:focus {
                     background: #fff !important;
@@ -9171,17 +14677,18 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     color: #222 !important;
                 }
                 .bm-link[hidden] { display: none !important; }
-                .bm-link > img { width: 20px; height: 20px; object-fit: contain; border-radius: 3px; margin-right: 6px; }
+                .bm-link > img { width: 15px; height: 15px; min-width: 15px; object-fit: contain; border-radius: 3px; margin-right: 4px; }
                 .bm-link-icons {
                     display: inline-flex;
                     flex: 0 0 auto;
                     align-items: center;
                     gap: 2px;
-                    margin-right: 6px;
+                    margin-right: 4px;
                 }
                 .bm-link-icons img {
-                    width: 20px;
-                    height: 20px;
+                    width: 15px;
+                    height: 15px;
+                    min-width: 15px;
                     margin: 0;
                     border-radius: 3px;
                     object-fit: contain;
@@ -9197,7 +14704,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     justify-content: center;
                     margin-left: 0.38rem;
                     border-radius: 50%;
-                    background: #b00000;
+                    background: #EF4444;
                     color: #fff !important;
                     font: 700 0.72rem/1 Arial, sans-serif;
                     text-decoration: none !important;
@@ -9216,16 +14723,17 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
                 .bm-kleinanzeigen-site-link {
                     display: inline-flex;
-                    min-height: 30px;
+                    min-height: 26px;
                     align-items: center;
-                    padding: 4px 7px 4px 6px;
+                    padding: 2px 7px 2px 5px;
                     color: #222 !important;
                     text-decoration: none !important;
                 }
                 .bm-kleinanzeigen-site-link img {
-                    width: 20px;
-                    height: 20px;
-                    margin-right: 6px;
+                    width: 15px;
+                    height: 15px;
+                    min-width: 15px;
+                    margin-right: 4px;
                     border-radius: 3px;
                     object-fit: contain;
                 }
@@ -9254,9 +14762,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
                 .bm-kleinanzeigen-load {
                     display: inline-flex !important;
-                    width: 28px;
-                    min-width: 28px;
-                    min-height: 30px;
+                    width: 22px;
+                    min-width: 22px;
+                    min-height: 26px;
+                    height: 26px;
                     align-items: center;
                     justify-content: center;
                     margin: 0 !important;
@@ -9265,7 +14774,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     border-left: 1px solid #d5d5d5 !important;
                     border-radius: 0 !important;
                     background: #fff !important;
-                    color: #b00 !important;
+                    color: #B80000 !important;
                     font: 700 0.75rem/1 Arial, sans-serif !important;
                     text-shadow: none !important;
                     position: relative;
@@ -9273,7 +14782,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 .bm-kleinanzeigen-load:hover,
                 .bm-kleinanzeigen-load:focus {
                     background: #fff !important;
-                    color: #b00 !important;
+                    color: #B80000 !important;
                 }
                 .bm-kleinanzeigen-load.is-loading {
                     color: transparent !important;
@@ -9286,16 +14795,16 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     width: 13px;
                     height: 13px;
                     border: 2px solid #ddd;
-                    border-top-color: #b00;
+                    border-top-color: #B80000;
                     border-radius: 50%;
                     box-sizing: border-box;
                     animation: bm-kleinanzeigen-spin .7s linear infinite;
                 }
                 .bm-kleinanzeigen-load.is-done {
-                    color: #18733d !important;
+                    color: #16A34A !important;
                 }
                 .bm-kleinanzeigen-load.is-error {
-                    color: #b00 !important;
+                    color: #EF4444 !important;
                 }
                 .bm-kleinanzeigen-load.is-empty {
                     color: #777 !important;
@@ -9314,9 +14823,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
                 .bm-meta-dual-link > a {
                     display: inline-flex;
-                    min-height: 28px;
+                    min-height: 26px;
                     align-items: center;
-                    padding: 4px 6px;
+                    padding: 2px 5px;
                     color: #222 !important;
                     text-decoration: none;
                     box-sizing: border-box;
@@ -9327,14 +14836,15 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     color: #222 !important;
                 }
                 .bm-meta-dual-link img {
-                    width: 20px;
-                    height: 20px;
+                    width: 15px;
+                    height: 15px;
+                    min-width: 15px;
                     margin: 0;
                     border-radius: 3px;
                     object-fit: contain;
                 }
                 .bm-meta-site-link {
-                    gap: 6px;
+                    gap: 4px;
                 }
                 .bm-meta-gpt-trigger {
                     border-left: 1px solid #d5d5d5;
@@ -9350,7 +14860,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 .bm-link-scroll {
                     position: absolute;
                     top: 50%;
-                    z-index: 5;
+                    z-index: 20;
                     display: none;
                     align-items: center;
                     justify-content: center;
@@ -9367,6 +14877,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     font-size: 1.25rem !important;
                     font-weight: bold !important;
                     line-height: 1 !important;
+                    cursor: pointer;
                 }
                 .bm-link-scroll > span {
                     display: block;
@@ -9490,7 +15001,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                 display: 'none',
                                 position: 'absolute',
                                 top: '50%',
-                                zIndex: '5',
+                                zIndex: '20',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 width: '1.65rem',
@@ -9506,7 +15017,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                 boxShadow: '0 1px 4px rgba(0, 0, 0, 0.22)',
                                 color: '#a80000',
                                 lineHeight: '1',
-                                boxSizing: 'border-box'
+                                boxSizing: 'border-box',
+                                cursor: 'pointer'
                             };
                             Object.entries(fixedStyles).forEach(([property, value]) => {
                                 control.style.setProperty(
@@ -9633,53 +15145,84 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     });
                 }
 
-                function setupLinkSliders(container) {
-                    container.querySelectorAll('.bm-link-slider').forEach(slider => {
-                        const viewport = slider.querySelector('.bm-link-viewport');
-                        const previous = slider.querySelector('.bm-link-scroll-prev');
-                        const next = slider.querySelector('.bm-link-scroll-next');
+                function setupSingleSlider(slider) {
+                    if (!slider) return;
+                    const viewport = slider.querySelector('.bm-link-viewport');
+                    const previous = slider.querySelector('.bm-link-scroll-prev');
+                    const next = slider.querySelector('.bm-link-scroll-next');
+                    const linksRow = slider.querySelector('.bm-info-links');
+                    if (!viewport || !previous || !next) return;
 
-                        const update = () => {
-                            const maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
-                            const showPrevious = viewport.scrollLeft > 2;
-                            const showNext = viewport.scrollLeft < maxScroll - 2;
-                            previous.classList.toggle('is-visible', showPrevious);
-                            next.classList.toggle('is-visible', showNext);
-                            previous.style.setProperty(
-                                'display',
-                                showPrevious ? 'flex' : 'none',
-                                'important'
-                            );
-                            next.style.setProperty(
-                                'display',
-                                showNext ? 'flex' : 'none',
-                                'important'
-                            );
-                        };
-                        const scroll = direction => {
-                            viewport.scrollBy({
-                                left: direction * Math.max(160, viewport.clientWidth * 0.75),
-                                behavior: 'smooth'
-                            });
-                        };
+                    const update = () => {
+                        if (viewport.clientWidth <= 0) return;
+                        const maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+                        const showPrevious = viewport.scrollLeft > 2;
+                        const showNext = viewport.scrollLeft < maxScroll - 2;
+                        previous.classList.toggle('is-visible', showPrevious);
+                        next.classList.toggle('is-visible', showNext);
+                        previous.style.setProperty(
+                            'display',
+                            showPrevious ? 'flex' : 'none',
+                            'important'
+                        );
+                        next.style.setProperty(
+                            'display',
+                            showNext ? 'flex' : 'none',
+                            'important'
+                        );
+                    };
+                    const scroll = direction => {
+                        viewport.scrollBy({
+                            left: direction * Math.max(160, viewport.clientWidth * 0.75),
+                            behavior: 'smooth'
+                        });
+                    };
 
+                    if (slider.dataset.bmSliderBound !== 'true') {
+                        slider.dataset.bmSliderBound = 'true';
                         previous.addEventListener('click', () => scroll(-1));
                         next.addEventListener('click', () => scroll(1));
                         viewport.addEventListener('scroll', update, { passive: true });
+                        viewport.addEventListener('touchmove', update, { passive: true });
+                        viewport.addEventListener('touchend', update, { passive: true });
                         window.addEventListener('resize', update);
                         if (typeof ResizeObserver === 'function') {
                             const resizeObserver = new ResizeObserver(update);
                             resizeObserver.observe(viewport);
-                            resizeObserver.observe(viewport.querySelector('.bm-info-links'));
+                            if (linksRow) resizeObserver.observe(linksRow);
                         }
-                        requestAnimationFrame(update);
-                    });
+                        slider.querySelectorAll('img').forEach(img => {
+                            if (!img.complete) {
+                                img.addEventListener('load', update, { once: true });
+                            }
+                        });
+                    }
+
+                    requestAnimationFrame(update);
+                    [50, 150, 300, 600, 1200].forEach(ms => window.setTimeout(update, ms));
                 }
+
+                function setupLinkSliders(container) {
+                    if (!container) return;
+                    if (container.classList?.contains('bm-link-slider')) {
+                        setupSingleSlider(container);
+                    }
+                    container.querySelectorAll('.bm-link-slider').forEach(setupSingleSlider);
+                }
+                window.bmSetupLinkSliders = setupLinkSliders;
 
                 function injectBox() {
                     if (!BM_SETTINGS.linkPanel) {
                         removeDuplicateLinkPanels();
                         fetchAndInjectPrices(setNum);
+                        // Linkleiste aus: Aktionsbuttons bleiben unter der Angebotsliste.
+                        window.setTimeout(() => {
+                            if (typeof globalThis.bmSetupDetailButton === 'function') {
+                                globalThis.bmSetupDetailButton();
+                            } else if (typeof window.setupDetailButton === 'function') {
+                                window.setupDetailButton();
+                            }
+                        }, 0);
                         return;
                     }
                     let container = document.querySelector('div[id^="chartdiv"]')?.closest('.large-9.columns');
@@ -9692,6 +15235,15 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         removeDuplicateLinkPanels(existingPanel);
                         syncMarketplaceShortcutLinks();
                         fetchAndInjectPrices(setNum);
+                        setupLinkSliders(existingPanel);
+                        // Tools-Zeile nach jedem Panel-Lauf neu einhängen.
+                        window.setTimeout(() => {
+                            if (typeof globalThis.bmSetupDetailButton === 'function') {
+                                globalThis.bmSetupDetailButton();
+                            } else if (typeof window.setupDetailButton === 'function') {
+                                window.setupDetailButton();
+                            }
+                        }, 0);
                         return;
                     }
                     removeDuplicateLinkPanels();
@@ -9703,6 +15255,14 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         container.appendChild(box);
                     }
                     removeDuplicateLinkPanels(box);
+                    // Die vier Aktionsbuttons wandern als Zeile "Tools" in die Linkleiste.
+                    window.setTimeout(() => {
+                        if (typeof globalThis.bmSetupDetailButton === 'function') {
+                            globalThis.bmSetupDetailButton();
+                        } else if (typeof window.setupDetailButton === 'function') {
+                            window.setupDetailButton();
+                        }
+                    }, 0);
                     const linkPanelParent = box.parentElement;
                     if (linkPanelParent) {
                         const duplicatePanelObserver = new MutationObserver(() => {
@@ -9759,11 +15319,20 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         .trim();
                     const getNativeMerchantEntries = () => Array.from(document.querySelectorAll(
                             '#offerlist .medium-4.small-9.columns.pricerow[data-mid]' +
-                            ':not([data-bm-marketplace="true"])'
-                        )).filter(priceRow =>
-                            !priceRow.closest('#soldOut') &&
-                            priceRow.dataset.bmSoldOut !== 'true'
-                        ).map(priceRow => {
+                            ':not([data-bm-marketplace="true"]):not([data-bm-depot-inventory="true"])'
+                        )).filter(priceRow => {
+                            if (priceRow.closest('#soldOut') || priceRow.dataset.bmSoldOut === 'true') return false;
+                            const link = priceRow.querySelector(':scope > a');
+                            const tooltip = link?.dataset.bmOriginalTooltip ||
+                                link?.getAttribute('title') ||
+                                '';
+                            if (globalThis.BM_isExcludedOfferTitle?.(`${priceRow.textContent || ''} ${tooltip}`)) {
+                                const row = priceRow.closest('.row.collapse');
+                                if (row) row.style.display = 'none';
+                                return false;
+                            }
+                            return true;
+                        }).map(priceRow => {
                             const mid = priceRow.dataset.mid;
                             const merchant = priceRow.querySelector('.merchant')?.textContent || '';
                             const logo = mid
@@ -10075,6 +15644,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         const button = document.querySelector(`a[data-bmid="${buttonId}"]`);
                         const targetUrl = extra.url || button?.href || '';
                         if (!targetUrl || !priceText) return null;
+                        if (extra.title && globalThis.BM_isExcludedOfferTitle?.(extra.title)) return null;
+                        if (priceSource && globalThis.BM_isExcludedOfferTitle?.(priceSource)) return null;
                         const configuredSearchUrl = groups
                             .flatMap(group => group.links)
                             .find(link => link.id === buttonId)?.url || '';
@@ -10097,10 +15668,15 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         const prices = Array.from(document.querySelectorAll(
                             '#offerlist .medium-4.small-9.columns.pricerow' +
                             ':not([data-bm-marketplace="true"])'
-                        )).filter(priceRow =>
-                            !priceRow.closest('#soldOut') &&
-                            priceRow.dataset.bmSoldOut !== 'true'
-                        ).map(priceRow => {
+                        )).filter(priceRow => {
+                            if (priceRow.closest('#soldOut') || priceRow.dataset.bmSoldOut === 'true') return false;
+                            const link = priceRow.querySelector(':scope > a');
+                            const tooltip = link?.dataset.bmOriginalTooltip ||
+                                link?.getAttribute('title') ||
+                                '';
+                            if (globalThis.BM_isExcludedOfferTitle?.(`${priceRow.textContent || ''} ${tooltip}`)) return false;
+                            return true;
+                        }).map(priceRow => {
                             const priceSpan = priceRow.querySelector('span.price');
                             return priceSpan ? getBaseOfferPrice(priceSpan) : null;
                         }).filter(price => Number.isFinite(price) && price > 0);
@@ -10708,13 +16284,15 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                             publishIdealoRequestState('empty');
                                             return;
                                         }
-                                        const plausibleOffers = result.offers.filter(entry =>
-                                            BM_isMarketplacePricePlausible(
+                                        const plausibleOffers = result.offers.filter(entry => {
+                                            const title = entry?.title || entry?.name || '';
+                                            if (title && globalThis.BM_isExcludedOfferTitle?.(title)) return false;
+                                            return BM_isMarketplacePricePlausible(
                                                 'idealo',
                                                 Number(entry?.price ?? entry?.total),
                                                 brickmergeBestPrice
-                                            )
-                                        );
+                                            );
+                                        });
                                         if (plausibleOffers.length === 0) {
                                             console.info(
                                                 'Brickmerge Tweaker: Idealo-Angebote unterhalb der 50%-Plausibilitätsgrenze verworfen.'
@@ -11491,10 +17069,104 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4.1 0-7 2.1-7 5v1h14v-1c0-2.9-2.9-5-7-5z"/></svg>';
                 stage.appendChild(marker);
             }
+
+            function createEbayLogoHtml(options = {}) {
+                const {
+                    sellerType = 'commercial',
+                    sellerName = '',
+                    captionText = '',
+                    isFrance = false
+                } = options;
+                const normalizedType = normalizeEbaySellerAccountType(sellerType);
+                const kind = normalizedType === 'BUSINESS' ? 'commercial' : (normalizedType === 'INDIVIDUAL' ? 'private' : 'commercial');
+                const kindClass = `bm-ebay-${kind}`;
+                const caption = captionText && captionText !== 'gewerblich' && captionText !== 'eBay FR' && captionText !== 'privat'
+                    ? captionText
+                    : '';
+                const iconSvg = kind === 'commercial'
+                    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1.2 5 3.2 10-5 3-5-3 3.2-10L9 3zm2.2 2 0.7 2h0.2l0.7-2h-1.6z"/></svg>'
+                    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4.1 0-7 2.1-7 5v1h14v-1c0-2.9-2.9-5-7-5z"/></svg>';
+                const iconTitle = kind === 'commercial' ? 'Gewerblicher eBay-Verkäufer' : 'Privater eBay-Verkäufer';
+                const flagHtml = isFrance ? '<span class="bm-marketplace-country-flag bm-marketplace-country-flag-fr" title="Frankreich" aria-label="Frankreich"><svg viewBox="0 0 3 2" width="16" height="11" style="display:inline-block;vertical-align:middle;border-radius:1px;box-shadow:0 0 0 1px rgba(0,0,0,0.18);overflow:hidden;"><rect width="1" height="2" fill="#002395"/><rect x="1" width="1" height="2" fill="#FFFFFF"/><rect x="2" width="1" height="2" fill="#ED2939"/></svg></span>' : '';
+                const sellerBadgeHtml = (!isFrance && (kind === 'commercial' || kind === 'private'))
+                    ? `<span class="bm-ebay-seller-type-icon ${kindClass}-icon" title="${iconTitle}" aria-label="${iconTitle}">${iconSvg}</span>`
+                    : flagHtml;
+                const metaHtml = caption
+                    ? `<span class="bm-marketplace-logo-meta"><span class="bm-marketplace-logo-caption" title="${caption}">${caption}</span></span>`
+                    : '';
+
+                return `<span class="bm-marketplace-logo-stage"><svg class="bm-marketplace-logo bm-ebay-wordmark" viewBox="0 0 1000 400.75098" role="img" aria-label="eBay"><path d="m633.07803 212.53323c-45.43873 1.48929-73.6715 9.689-73.6715 39.61897 0 19.37591 15.44713 40.38162 54.66334 40.38162 52.57698 0 80.64259-28.65902 80.64259-75.66331l.003-5.16994c-18.43302 0-41.16414.16089-61.63704.83266zm111.75103 62.10248c0 14.58313.42155 28.9782 1.69406 41.94092h-46.61408c-1.24325-10.67368-1.6972-21.27945-1.6972-31.56656-25.20195 30.97941-55.17735 39.88537-96.76149 39.88537-61.67674 0-94.70072-32.59982-94.70072-70.30689 0-54.61215 44.91583-73.86739 122.89013-75.65391 21.32332-.48686 45.27419-.55894 65.07531-.55894l-.003-5.33606c0-36.56098-23.44364-51.59335-64.06765-51.59335-30.15876 0-52.38579 12.48057-54.6764 34.0468h-52.65168c5.57217-53.77165 62.06643-67.37115 111.74005-67.37115 59.50837 0 109.77228 21.17288 109.77228 84.11481z"/><path d="m199.63633 185.86602c-1.94427-46.87735-35.77951-64.41973-71.94139-64.41973-38.99421 0-70.12667 19.7327-75.58026 64.41973zm-148.601922 33.32488c2.704332 45.48365 34.069782 72.38437 77.197532 72.38437 29.88033 0 56.45979-12.17498 65.35948-38.66041h51.68424c-10.05205 53.73979-67.15384 71.98058-116.303 71.98058C39.606424 324.89544 0 275.67889 0 209.30653 0 136.24203 40.965642 88.12194 129.78809 88.12194c70.69867 0 122.49992 36.99926 122.49992 117.75572v13.31324z"/><path d="m380.83181 290.6235c46.57228 0 78.44078-33.52181 78.44078-84.10854 0-50.58203-31.8685-84.10854-78.44078-84.10854-46.31058 0-78.44392 33.52651-78.44392 84.10854 0 50.58673 32.13334 84.10854 78.44392 84.10854zM252.2854 0h50.10249l-.005 125.87707c24.55682-29.25975 58.38892-37.75513 91.68976-37.75513 55.83503 0 117.85132 37.6773 117.85132 119.02875 0 68.12232-49.32155 117.74475-118.78114 117.74475-36.35726 0-70.58062-13.04265-91.68663-38.88294 0 10.32107-.57618 20.72364-1.70503 30.56413h-49.17162c.85513-15.90944 1.70555-35.7184 1.70555-51.74693z"/><path d="M1000 96.45747 845.05541 400.75099h-56.10615l44.54652-84.4951-116.60545-219.79842h58.6266l85.80469 171.73057 85.56283-171.73057z"/></svg>${sellerBadgeHtml}</span>${metaHtml}`;
+            }
+
+            function decorateNativeToppriceEbayLogo() {
+                const topPrices = document.querySelectorAll('.content.setdetails .topprice:not(.bm-overall-bestprice)');
+                topPrices.forEach(topPrice => {
+                    if (!topPrice || topPrice.dataset.bmReplacedRetailer === 'true') return;
+                    const logoCell = topPrice.querySelector('div[style*="table-cell"]:first-child, .bm-topprice-logo-cell, a > div:first-child');
+                    if (!logoCell) return;
+                    logoCell.classList.add('bm-topprice-logo-cell');
+                    const priceCell = topPrice.querySelector('div[style*="table-cell"]:nth-child(2), .bm-topprice-price-cell, a > div:nth-child(2)');
+                    if (priceCell) priceCell.classList.add('bm-topprice-price-cell');
+                    if (logoCell.querySelector('.bm-ebay-wordmark')) return;
+                    logoCell.classList.remove('bm-has-meta', 'bm-marketplace-logo-link');
+                    logoCell.querySelectorAll('.bm-marketplace-logo-meta, .bm-marketplace-logo-caption').forEach(el => el.remove());
+                    const link = topPrice.querySelector('a');
+                    const img = logoCell.querySelector('img');
+                    const isEbay = (link && /ebay/i.test(`${link.title || ''} ${link.href || ''}`))
+                        || (img && /ebay/i.test(`${img.alt || ''} ${img.src || ''}`));
+                    if (isEbay) {
+                        let isPrivate = false;
+                        let isFrance = false;
+                        const midMatch = (link?.href || '').match(/mid\/(\d+)/i)?.[1];
+                        let matchingRow = midMatch ? document.querySelector(`#offerlist .pricerow[data-mid="${midMatch}"]`) : null;
+                        if (!matchingRow) {
+                            matchingRow = document.querySelector('#offerlist .pricerow[data-mid]:not([data-bm-marketplace="true"])');
+                        }
+                        if (!matchingRow) {
+                            const allRows = Array.from(document.querySelectorAll('#offerlist .row.collapse'));
+                            matchingRow = allRows.find(r => /ebay/i.test(r.textContent || '') || r.querySelector('.bm-ebay-logo-link, img[src*="ebay"], img[alt*="ebay"]'));
+                        }
+                        if (matchingRow) {
+                            const wrapper = matchingRow.closest('.row.collapse') || matchingRow;
+                            isFrance = Boolean(wrapper.querySelector('.bm-marketplace-country-flag-fr, .bm-ebay-fr-source')) || /ebay\s*(?:fr|frankreich)/i.test(wrapper.textContent || '');
+                            isPrivate = Boolean(wrapper.querySelector('.bm-ebay-private, .bm-ebay-private-icon')) || /privat/i.test(wrapper.querySelector('.bm-marketplace-logo-caption, .merchant')?.textContent || '');
+                        }
+                        logoCell.classList.add('bm-topprice-logo-cell', 'bm-ebay-logo-link');
+                        if (isFrance) {
+                            logoCell.classList.add('bm-ebay-fr-source');
+                        } else {
+                            logoCell.classList.add('bm-ebay-de-source');
+                        }
+                        const logoHtml = createEbayLogoHtml({
+                            sellerType: isPrivate ? 'INDIVIDUAL' : 'BUSINESS',
+                            captionText: '',
+                            isFrance
+                        });
+                        const cellLink = logoCell.querySelector('a');
+                        if (cellLink) {
+                            cellLink.classList.add('bm-marketplace-logo-link', 'bm-ebay-logo-link');
+                            cellLink.innerHTML = logoHtml;
+                        } else {
+                            logoCell.innerHTML = logoHtml;
+                        }
+                        return;
+                    }
+                    if (img) {
+                        img.style.maxWidth = '84px';
+                        img.style.maxHeight = '31px';
+                        img.style.width = 'auto';
+                        img.style.height = 'auto';
+                        img.style.objectFit = 'contain';
+                        img.style.display = 'inline-block';
+                        img.style.verticalAlign = 'middle';
+                    }
+                });
+            }
+
             function labelNativeEbayOffer() {
                 const nativePriceRows = document.querySelectorAll(
                     '#offerlist .medium-4.small-9.columns.pricerow[data-mid]' +
-                    ':not([data-bm-marketplace="true"])'
+                    ':not([data-bm-marketplace="true"]):not([data-bm-depot-inventory="true"])'
                 );
                 nativePriceRows.forEach(priceRow => {
                     if (priceRow.closest('#soldOut') ||
@@ -11539,26 +17211,20 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         'bm-ebay-logo-link',
                         'bm-ebay-native-source'
                     );
-                    logoLink.classList.add('bm-has-caption');
-                    let caption = logoLink.querySelector('.bm-marketplace-logo-caption');
-                    if (!caption) {
-                        caption = document.createElement('span');
-                        caption.className = 'bm-marketplace-logo-caption';
-                        logoImage.after(caption);
-                    }
                     // Brickmerge liefert für das eigene eBay-Angebot keinen Verkäufer.
-                    // Laut Brickmerge handelt es sich bei dieser Quelle um ein
-                    // gewerbliches Händlerangebot.
+                    // Es ist ein reguläres gewerbliches Händlerangebot im Preisvergleich – kein störender "gewerblich"-Zusatz.
                     const offerType = 'commercial';
-                    const offerTypeLabel = 'gewerblich';
                     logoLink.classList.remove(
                         'bm-ebay-standard',
                         'bm-ebay-commercial',
-                        'bm-ebay-private'
+                        'bm-ebay-private',
+                        'bm-has-caption'
                     );
                     logoLink.classList.add(`bm-ebay-${offerType}`);
-                    caption.textContent = offerTypeLabel;
-                    caption.title = `eBay-DE-Angebot: ${offerTypeLabel}`;
+                    let caption = logoLink.querySelector('.bm-marketplace-logo-caption');
+                    if (caption) {
+                        caption.remove();
+                    }
                     if (merchantElement) {
                         merchantElement.replaceChildren(
                             document.createTextNode('eBay'),
@@ -11674,13 +17340,61 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         return;
                     }
 
+                    if (link.hasAttribute('onclick') || link.closest('.pricerow')?.querySelector('.code')) {
+                        return;
+                    }
+
                     const directUrl = new URL('/go2/', window.location.origin);
-                    directUrl.searchParams.set('m', merchantId);
-                    directUrl.searchParams.set('i', itemNumber);
+                    trackedUrl.searchParams.forEach((val, key) => {
+                        if (key === 'go2i') directUrl.searchParams.set('i', val);
+                        else if (key === 'go2m') directUrl.searchParams.set('m', val);
+                        else directUrl.searchParams.set(key, val);
+                    });
+                    if (!directUrl.searchParams.has('i')) directUrl.searchParams.set('i', itemNumber);
+                    if (!directUrl.searchParams.has('m')) directUrl.searchParams.set('m', merchantId);
+
                     link.href = directUrl.href;
                     link.removeAttribute('onclick');
                     link.dataset.bmDirectOfferLink = 'true';
                 });
+            }
+            function moveSeasonalBadgeToTitle() {
+                const h1 = document.querySelector('.content.setdetails h1, h1');
+                if (!h1) return;
+
+                const imageArea = document.querySelector('#moreimages')?.parentElement || document.querySelector('.large-3.medium-4.columns.hide-for-small, .imagebox, #contenttoprow');
+                if (!imageArea) return;
+
+                const candidateBadges = Array.from(imageArea.querySelectorAll('div, span'))
+                    .filter(el => {
+                        const text = el.textContent.trim().toLowerCase();
+                        if (!text.includes('seasonal') && !text.includes('saisonal')) return false;
+                        const style = window.getComputedStyle(el);
+                        return style.position === 'absolute';
+                    });
+
+                if (candidateBadges.length > 0) {
+                    // Find the outermost absolute container to move
+                    let badgeToMove = candidateBadges[0];
+                    while (badgeToMove.parentElement && window.getComputedStyle(badgeToMove.parentElement).position === 'absolute') {
+                        badgeToMove = badgeToMove.parentElement;
+                    }
+
+                    badgeToMove.style.position = 'static';
+                    badgeToMove.style.display = 'inline-block';
+                    badgeToMove.style.verticalAlign = 'middle';
+                    badgeToMove.style.margin = '0 10px 0 0';
+
+                    // Adjust the red circle if it has negative margins or block display
+                    const redCircle = badgeToMove.querySelector('.radius.alert.label, [style*="border-radius"], [class*="alert"]');
+                    if (redCircle) {
+                        redCircle.style.display = 'inline-block';
+                        redCircle.style.verticalAlign = 'middle';
+                        redCircle.style.margin = '0 0 0 5px';
+                    }
+
+                    h1.insertBefore(badgeToMove, h1.firstChild);
+                }
             }
 
             function runOfferPresentationSteps() {
@@ -11688,9 +17402,11 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     [BM_SETTINGS.cleaner, removeCorrectionReportButtons],
                     [BM_SETTINGS.shippingAndSorting, removeOfferListPriceDecorations],
                     [true, normalizeBrickmergeTrackedOfferLinks],
+                    [true, moveSeasonalBadgeToTitle],
                     [true, syncDismissedOfferRows],
                     [true, labelNativeEbayOffer],
                     [true, decorateOfferLogoLinks],
+                    [true, decorateNativeToppriceEbayLogo],
                     [BM_SETTINGS.shippingAndSorting, injectShippingCostsFromOfferTitles],
                     [BM_SETTINGS.priceCalculations, applyRetailerDiscounts],
                     [BM_SETTINGS.shippingAndSorting, sortOffersByConfiguredPrice],
@@ -11787,7 +17503,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                 ontimeout: () => reject(new Error('Zeitüberschreitung'))
                             });
                         }),
-                        value => Array.isArray(value)
+                        // Leere Antworten nicht cachen: ein einzelner leerer Treffer
+                        // hätte die Liste sonst 24 Stunden lang als "keine Figuren"
+                        // festgeschrieben.
+                        value => Array.isArray(value) && value.length > 0
                     );
                 }
 
@@ -11807,9 +17526,18 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                         reject(new Error(`HTTP ${response.status}`));
                                         return;
                                     }
-                                    const payload = JSON.parse(
-                                        response.responseText || '{}'
-                                    );
+                                    // JSON.parse muss im try stehen: eine HTML-Fehlerseite
+                                    // ließ das Promise sonst unbeantwortet hängen und die
+                                    // Liste blieb dauerhaft bei "wird geladen".
+                                    let payload;
+                                    try {
+                                        payload = JSON.parse(
+                                            response.responseText || '{}'
+                                        );
+                                    } catch (error) {
+                                        reject(new Error('Ungültige Worker-Antwort'));
+                                        return;
+                                    }
                                     if (Array.isArray(payload?.items)) {
                                         resolve(payload.items.filter(item => item?.itemNo));
                                         return;
@@ -11826,7 +17554,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                 ontimeout: () => reject(new Error('Zeitüberschreitung'))
                             });
                         }),
-                        value => Array.isArray(value)
+                        value => Array.isArray(value) && value.length > 0
                     );
                 }
 
@@ -12208,6 +17936,11 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 ) {
                     if (!Number.isFinite(totalValue) || totalValue <= 0) return;
                     lastMinifigTotalValue = totalValue;
+                    if (setNum) {
+                        try {
+                            sessionStorage.setItem('bm_minifig_val_' + setNum, String(totalValue));
+                        } catch (e) {}
+                    }
                     if (priceSnapshot instanceof Map) {
                         lastMinifigPriceSnapshot = priceSnapshot;
                         priceSnapshot.forEach((price, itemNo) =>
@@ -12258,6 +17991,16 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     valueLine.innerHTML =
                         `&nbsp;| <strong>${formatEuroValue(totalValue)} €</strong>`;
                     valueLine.removeAttribute('title');
+                    if (valueLine.dataset.bmMinifigBound !== 'true') {
+                        valueLine.dataset.bmMinifigBound = 'true';
+                        valueLine.style.cursor = 'pointer';
+                        valueLine.addEventListener('click', event => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const activeSetNum = setNum || BM_getBrickmergeSetNumber(window.location.href);
+                            showMinifigOverlay(valueLine, activeSetNum);
+                        });
+                    }
                     syncGlobalPriceBasisToggle();
 
                     const tooltipParts = [
@@ -12296,23 +18039,38 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         );
                     }
                     const tooltipText = tooltipParts.join(' · ');
+                    valueLine.removeAttribute('title');
                     if (minifigureLink) {
-                        let tooltip = minifigureLink.querySelector(
-                            ':scope > .bm-minifig-tooltip'
-                        );
-                        if (!tooltip) {
-                            tooltip = document.createElement('span');
-                            tooltip.className = 'bm-minifig-tooltip';
-                            tooltip.setAttribute('role', 'tooltip');
-                            tooltip.id = `bm-minifig-tooltip-${setNum}`;
-                            minifigureLink.appendChild(tooltip);
+                        const isTouchOrMobile =
+                            document.documentElement.classList.contains('bm-android-app') ||
+                            window.matchMedia?.('(pointer: coarse)').matches ||
+                            window.matchMedia?.('(hover: none)').matches ||
+                            window.matchMedia?.('(max-width: 64em)').matches ||
+                            window.innerWidth <= 1024;
+                        if (!isTouchOrMobile) {
+                            let tooltip = minifigureLink.querySelector(
+                                ':scope > .bm-minifig-tooltip'
+                            );
+                            if (!tooltip) {
+                                tooltip = document.createElement('span');
+                                tooltip.className = 'bm-minifig-tooltip';
+                                tooltip.setAttribute('role', 'tooltip');
+                                tooltip.id = `bm-minifig-tooltip-${setNum}`;
+                                minifigureLink.appendChild(tooltip);
+                            }
+                            tooltip.textContent = tooltipText;
+                            minifigureLink.setAttribute('aria-describedby', tooltip.id);
+                        } else {
+                            minifigureLink.querySelector(':scope > .bm-minifig-tooltip')?.remove();
+                            minifigureLink.removeAttribute('aria-describedby');
                         }
-                        tooltip.textContent = tooltipText;
-                        minifigureLink.setAttribute('aria-describedby', tooltip.id);
                         minifigureLink.removeAttribute('title');
+                        minifigureLink.querySelectorAll('[title]').forEach(t => t.removeAttribute('title'));
                         minifigureLink.classList.remove('tooltipster', 'tooltipstered');
-                    } else {
-                        valueLine.setAttribute('title', tooltipText);
+                        minifigureLink.querySelectorAll('.tooltipster, .tooltipstered').forEach(t => t.classList.remove('tooltipster', 'tooltipstered'));
+                        try {
+                            window.$(minifigureLink).tooltipster?.('destroy');
+                        } catch (e) {}
                     }
                     details.querySelector('.bm-minifig-value-load')?.remove();
                     if (saveToCache) {
@@ -12667,11 +18425,12 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
 
                 function replaceMinifigurenWithLink(setNum) {
+                    const activeSetNum = setNum || BM_getBrickmergeSetNumber(window.location.href);
                     const scan = () => {
                         document.querySelectorAll('.bm-minifig-link').forEach(link => {
                             link.replaceWith(document.createTextNode(link.textContent || 'Minifiguren'));
                         });
-                        linkMinifigureCount(setNum);
+                        linkMinifigureCount(activeSetNum);
                         ensureMinifigureValueLoadButton();
                     };
                     scan();
@@ -12679,10 +18438,12 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     if (!document.body.dataset.bmMinifigClickHandler) {
                         document.body.dataset.bmMinifigClickHandler = 'true';
                         document.body.addEventListener('click', function (e) {
-                            const link = e.target?.closest?.('.bm-minifig-count-link');
+                            const link = e.target?.closest?.('.bm-minifig-count-link, .bm-minifig-total-value');
                             if (link) {
                                 e.preventDefault();
-                                showMinifigOverlay(link, setNum);
+                                link.blur?.();
+                                const currentSet = activeSetNum || BM_getBrickmergeSetNumber(window.location.href);
+                                showMinifigOverlay(link, currentSet);
                             }
                         });
                     }
@@ -12737,9 +18498,21 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     );
                     if (!details) return;
 
+                    const targetSetNum = setNum || BM_getBrickmergeSetNumber(window.location.href);
+                    const bindClick = el => {
+                        if (!el || el.dataset.bmMinifigBound === 'true') return;
+                        el.dataset.bmMinifigBound = 'true';
+                        el.addEventListener('click', event => {
+                            event.preventDefault();
+                            el.blur?.();
+                            showMinifigOverlay(el, targetSetNum);
+                        });
+                    };
+
                     const existingLink = details.querySelector('.bm-minifig-count-link');
                     if (existingLink) {
                         cleanMinifigureExclusiveText(existingLink);
+                        bindClick(existingLink);
                         return;
                     }
 
@@ -12754,28 +18527,75 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         ''
                     );
                     const link = document.createElement('a');
-                    link.href = '#';
+                    link.href = '#bm-minifig-overlay';
                     link.className = 'bm-detail-line-link bm-minifig-count-link';
                     link.setAttribute(
                         'aria-label',
                         `${linkedText} – Minifiguren anzeigen`
                     );
                     link.appendChild(fragment);
-                    const tooltip = document.createElement('span');
-                    tooltip.className = 'bm-minifig-tooltip';
-                    tooltip.id = `bm-minifig-tooltip-${setNum}`;
-                    tooltip.setAttribute('role', 'tooltip');
-                    tooltip.textContent =
-                        'Minifiguren anzeigen · Basis: niedrigster aktueller ' +
-                        'BrickLink-EU-Neupreis je Figur, ohne Versand';
-                    link.setAttribute('aria-describedby', tooltip.id);
-                    link.appendChild(tooltip);
+                    bindClick(link);
+                    const isTouchOrMobile =
+                        document.documentElement.classList.contains('bm-android-app') ||
+                        window.matchMedia?.('(pointer: coarse)').matches ||
+                        window.matchMedia?.('(hover: none)').matches ||
+                        window.matchMedia?.('(max-width: 64em)').matches ||
+                        window.innerWidth <= 1024;
+                    if (!isTouchOrMobile) {
+                        const tooltip = document.createElement('span');
+                        tooltip.className = 'bm-minifig-tooltip';
+                        tooltip.id = `bm-minifig-tooltip-${targetSetNum || 'set'}`;
+                        tooltip.setAttribute('role', 'tooltip');
+                        tooltip.textContent =
+                            'Minifiguren anzeigen · Basis: niedrigster aktueller ' +
+                            'BrickLink-EU-Neupreis je Figur, ohne Versand';
+                        link.setAttribute('aria-describedby', tooltip.id);
+                        link.appendChild(tooltip);
+                    }
+                    link.removeAttribute('title');
+                    link.querySelectorAll('[title]').forEach(t => t.removeAttribute('title'));
+                    link.classList.remove('tooltipster', 'tooltipstered');
+                    link.querySelectorAll('.tooltipster, .tooltipstered').forEach(t => t.classList.remove('tooltipster', 'tooltipstered'));
+                    try {
+                        window.$(link).tooltipster?.('destroy');
+                    } catch (e) {}
                     line.range.insertNode(link);
                     ensureMinifigureValueLoadButton();
                 }
 
                 function showMinifigOverlay(link, setNum) {
+                    const activeSetNum = setNum || BM_getBrickmergeSetNumber(window.location.href);
                     document.querySelector('.bm-minifig-overlay .bm-minifig-close')?.click();
+                    document.querySelectorAll('.bm-minifig-tooltip, .tooltipster-base, .tooltipster-box, div[class*="tooltipster"]').forEach(el => {
+                        el.remove();
+                    });
+                    try {
+                        window.$?.('.tooltipstered')?.tooltipster?.('hide');
+                        window.$?.('.tooltipstered')?.tooltipster?.('close');
+                    } catch (e) {}
+
+                    const getDetailSetTitle = setNumber => {
+                        const h1 = document.querySelector('.content.setdetails h1, h1');
+                        let raw = (h1?.textContent || document.title || '')
+                            .replace(/[\u00AE\u2122]/g, '')
+                            .replace(/\s+/g, ' ')
+                            .replace(/\s*[|·]\s*brickmerge.*$/i, '')
+                            .replace(/\s+[-–—]\s+brickmerge.*$/i, '')
+                            .replace(/\s*[-–—|·/]?\s*[\(\[]?\s*UVP\b.*$/i, '')
+                            .replace(/\s+(?:im\s+)?preisvergleich.*$/i, '')
+                            .replace(/\s*[-–—|·/]?\s*[\(\[]?\s*ab\s+\d+[\d.,]*\s*(?:€|EUR).*$/i, '')
+                            .trim();
+                        const setMatch = raw.match(/^(?:LEGO\s+)?(?:.*?\s+)?(?=\d{4,7}(?:-\d+)?\b)/i);
+                        if (setMatch && setMatch[0]) {
+                            raw = raw.slice(setMatch[0].length).trim();
+                        } else {
+                            raw = raw.replace(/^(?:LEGO\s+)+/i, '').trim();
+                        }
+                        return raw;
+                    };
+
+                    const setTitle = getDetailSetTitle(activeSetNum);
+                    const setLabel = setTitle || (activeSetNum ? `LEGO Set ${activeSetNum}` : 'LEGO Set');
 
                     const overlay = document.createElement('div');
                     overlay.className = 'bm-minifig-overlay';
@@ -12786,7 +18606,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                 <div class="bm-minifig-heading">
                                     <h2 id="bm-minifig-title">Minifiguren</h2>
                                     <div class="bm-minifig-subtitle-row">
-                                        <div class="bm-minifig-subtitle">LEGO Set ${setNum}</div>
+                                        <div class="bm-minifig-subtitle">${setLabel}</div>
                                         <span class="bm-minifig-price-spinner" role="status"
                                             aria-label="BrickLink-Preise werden geladen"></span>
                                     </div>
@@ -12804,7 +18624,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         style.textContent = `
                         .bm-minifig-overlay {
                             position:fixed;
-                            z-index:99999;
+                            z-index:2147483500;
                             inset:0;
                             width:100vw;
                             height:100vh;
@@ -12828,9 +18648,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             max-height:min(84vh,760px);
                             overflow:hidden;
                             background:#fff;
-                            border-top:5px solid #b00;
-                            border-radius:4px;
-                            box-shadow:0 18px 48px rgba(0,0,0,0.32);
+                            border-top:4px solid #B80000;
+                            border-radius:20px;
+                            box-shadow:0 16px 48px rgba(0,0,0,0.35);
                             z-index:1;
                             animation:bmzoom 0.16s ease-out;
                         }
@@ -12840,9 +18660,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             justify-content:space-between;
                             flex:0 0 auto;
                             min-height:64px;
-                            padding:0.8rem 0.8rem 0.8rem 1.25rem;
-                            border-bottom:1px solid #ddd;
-                            background:#fff !important;
+                            padding:0.8rem 1rem 0.8rem 1.25rem;
+                            border-bottom:1px solid #990000;
+                            background:#B80000 !important;
                             box-shadow:none !important;
                         }
                         .bm-minifig-heading {
@@ -12851,8 +18671,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         .bm-minifig-header h2 {
                             margin:0;
                             padding:0;
-                            color:#333 !important;
-                            -webkit-text-fill-color:#333 !important;
+                            color:#ffffff !important;
+                            -webkit-text-fill-color:#ffffff !important;
                             -webkit-background-clip:border-box !important;
                             background-clip:border-box !important;
                             background-color:transparent !important;
@@ -12870,7 +18690,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         }
                         .bm-minifig-subtitle {
                             margin-top:3px;
-                            color:#777;
+                            color:rgba(255, 255, 255, 0.85);
                             font-size:0.75rem;
                             line-height:1.2;
                         }
@@ -12879,8 +18699,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             flex:0 0 13px;
                             width:13px;
                             height:13px;
-                            border:2px solid #d8d8d8;
-                            border-top-color:#b00;
+                            border:2px solid rgba(255,255,255,0.3);
+                            border-top-color:#ffffff;
                             border-radius:50%;
                             box-sizing:border-box;
                             animation:bm-minifig-price-spin 0.7s linear infinite;
@@ -12892,26 +18712,26 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             to { transform:rotate(360deg); }
                         }
                         .bm-minifig-close {
-                            display:flex;
+                            display:inline-flex!important;
                             align-items:center;
                             justify-content:center;
-                            flex:0 0 40px;
-                            width:40px;
-                            height:40px;
-                            margin:0;
-                            padding:0;
-                            border:0;
-                            border-radius:4px;
-                            background:#f7eaea;
-                            color:#800;
+                            flex:0 0 32px;
+                            width:32px;
+                            height:32px;
+                            margin:0!important;
+                            padding:0!important;
+                            border:0!important;
+                            border-radius:16px!important;
+                            background:rgba(255, 255, 255, 0.2)!important;
+                            color:#ffffff!important;
                             cursor:pointer;
-                            font:bold 1.8rem/1 Arial,sans-serif;
+                            font:bold 1.25rem/1 Arial,sans-serif!important;
                             text-shadow:none !important;
                         }
                         .bm-minifig-close:hover,
                         .bm-minifig-close:focus {
-                            background:#b00;
-                            color:#fff;
+                            background:rgba(255, 255, 255, 0.3)!important;
+                            color:#ffffff!important;
                             outline:none;
                         }
                         .bm-minifig-content {
@@ -12923,7 +18743,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         .bm-minifig-status {
                             margin:28px 24px;
                             padding:14px 16px;
-                            border-left:3px solid #b00;
+                            border-left:3px solid #B80000;
                             background:#f5f5f5;
                             color:#555;
                             font-size:0.88rem;
@@ -12935,8 +18755,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             margin:12px 0 0;
                             padding:7px 12px;
                             border:0;
-                            border-radius:3px;
-                            background:#b00;
+                            border-radius:8px;
+                            background:#B80000;
                             color:#fff;
                             cursor:pointer;
                             font:inherit;
@@ -12944,7 +18764,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         }
                         .bm-minifig-retry:hover,
                         .bm-minifig-retry:focus {
-                            background:#800;
+                            background:#990000;
                             color:#fff;
                             outline:none;
                         }
@@ -12977,7 +18797,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             background:#fff8f6 !important;
                         }
                         .bm-minifig-content tr.bm-minifig-row-link:focus-visible td:first-child {
-                            box-shadow:inset 3px 0 #b00;
+                            box-shadow:inset 3px 0 #B80000;
                         }
                         .bm-minifig-content th,
                         .bm-minifig-content td {
@@ -13021,7 +18841,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         .bm-minifig-content a,
                         .bm-minifig-content a font,
                         .bm-minifig-content a span {
-                            color:#b00 !important;
+                            color:#B80000 !important;
                             text-decoration:none;
                         }
                         .bm-minifig-content a:hover,
@@ -13125,7 +18945,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         .bm-minifig-price.is-loading {
                             font-weight:400;
                         }
-                        @media screen and (max-width:640px) {
+                        @media screen and (max-width:640px), screen and (max-height: 550px) and (orientation: landscape), (hover: none) and (max-width: 1024px) {
                             .bm-minifig-modal {
                                 left:0;
                                 top:0;
@@ -13206,6 +19026,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
 
                     const previousBodyOverflow = document.body.style.overflow;
                     document.body.appendChild(overlay);
+                    document.body.classList.add('bm-minifig-overlay-open');
 
                     const requestHandles = new Set();
                     const closeButton = overlay.querySelector('.bm-minifig-close');
@@ -13220,8 +19041,22 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         });
                         requestHandles.clear();
                         document.body.style.overflow = previousBodyOverflow;
+                        document.body.classList.remove('bm-minifig-overlay-open');
                         overlay.remove();
                         link?.focus();
+                        if (Number.isFinite(lastMinifigTotalValue) && lastMinifigTotalValue > 0) {
+                            updateMinifigureValueInDataBox(lastMinifigTotalValue, false, lastMinifigPriceSnapshot);
+                        } else if (activeSetNum) {
+                            try {
+                                const storedVal = sessionStorage.getItem('bm_minifig_val_' + activeSetNum);
+                                if (storedVal) {
+                                    const parsed = parseFloat(storedVal);
+                                    if (Number.isFinite(parsed) && parsed > 0) {
+                                        updateMinifigureValueInDataBox(parsed, false);
+                                    }
+                                }
+                            } catch (e) {}
+                        }
                     };
                     const handleKeydown = event => {
                         if (event.key === 'Escape') close();
@@ -13241,7 +19076,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     const content = overlay.querySelector('.bm-minifig-content');
                     const subtitle = overlay.querySelector('.bm-minifig-subtitle');
                     const priceSpinner = overlay.querySelector('.bm-minifig-price-spinner');
-                    const cacheKey = `bm-minifigures-v13-${setNum}`;
+                    const cacheKey = `bm-minifigures-v13-${activeSetNum || 'set'}`;
                     const cacheMaxAge = 6 * 60 * 60 * 1000;
                     let loadSequence = 0;
 
@@ -13268,6 +19103,27 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             status.appendChild(retry);
                         }
                         content.appendChild(status);
+                    };
+
+                    // Sind alle Quellen gescheitert, ist "keine Minifiguren enthalten"
+                    // eine falsche Aussage. Die Detailseite kennt die Anzahl bereits –
+                    // sie entscheidet, ob es ein leerer Zustand oder ein Ladefehler ist.
+                    const applyUnavailableState = () => {
+                        if (!overlay.isConnected) return;
+                        const pageCount = getPageMinifigureCount();
+                        if (pageCount > 0) {
+                            subtitle.textContent =
+                                `${pageCount} ${pageCount === 1 ? 'Figur' : 'Figuren'} · ` +
+                                setLabel;
+                            setStatus(
+                                'Die Minifigurenliste konnte nicht geladen werden. ' +
+                                'Bitte erneut versuchen.',
+                                true
+                            );
+                            return;
+                        }
+                        subtitle.textContent = `0 Figuren · ${setLabel}`;
+                        setStatus('Keine Minifiguren in diesem Set enthalten.');
                     };
 
                     const makeAbsoluteUrl = value => {
@@ -13397,13 +19253,21 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         let accessibleText =
                             `Aktueller ${regionName} BrickLink-Preis wird geladen`;
                         if (state === 'available') {
+                            label.dataset.bmPrice = String(price);
+                            label.dataset.bmQuantity = String(quantity);
+                            label.dataset.bmRegion = region;
                             visibleText = `${formatEuroValue(price)} €`;
                             accessibleText =
                                 `Aktueller ${regionName} BrickLink-Preis: ${visibleText}`;
                         } else if (state === 'unavailable') {
+                            delete label.dataset.bmPrice;
+                            delete label.dataset.bmQuantity;
                             visibleText = 'nicht verfügbar';
                             accessibleText =
                                 `Aktueller ${regionName} BrickLink-Preis nicht verfügbar`;
+                        } else {
+                            delete label.dataset.bmPrice;
+                            delete label.dataset.bmQuantity;
                         }
                         label.replaceChildren(
                             countryBadge,
@@ -13521,11 +19385,15 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         ));
                     };
 
+                    const isEbayMinifigEnabled = () =>
+                        BM_SETTINGS.marketplacesInOfferlist !== false &&
+                        BM_isOfferShopEnabled('ebay-minifig');
+
                     const loadEbayMinifigPrice = async (actions, rawItemNo) => {
                         const label = actions?.querySelector('.bm-minifig-ebay-price');
                         const itemNo = String(rawItemNo || '').trim();
                         if (!label || !itemNo || label.dataset.bmLoaded === itemNo ||
-                            !BM_isOfferShopEnabled('ebay-minifig')) return;
+                            !isEbayMinifigEnabled()) return;
                         label.dataset.bmLoaded = itemNo;
 
                         try {
@@ -13564,6 +19432,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         targetUrl = buildBrickLinkOfferUrl(brickLinkItemNo)
                     ) => {
                         let actions = descriptionCell.querySelector('.bm-minifig-actions');
+                        const ebayEnabled = isEbayMinifigEnabled();
+
                         if (!actions) {
                             actions = document.createElement('div');
                             actions.className = 'bm-minifig-actions';
@@ -13585,44 +19455,73 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                 actions.appendChild(priceLink);
                             });
 
-                            const ebayLink = document.createElement('a');
-                            ebayLink.className = 'bm-minifig-ebay-link';
-                            ebayLink.target = '_blank';
-                            ebayLink.rel = 'noopener noreferrer';
-                            ebayLink.title = 'LEGO Minifigur bei eBay suchen (Sofort-Kaufen)';
-                            ebayLink.setAttribute(
-                                'aria-label',
-                                'LEGO Minifigur bei eBay suchen, nur Sofort-Kaufen'
-                            );
-                            const ebayIcon = document.createElement('img');
-                            ebayIcon.className = 'bm-minifig-ebay-icon';
-                            ebayIcon.src = BM_MOBILE_CHROME.runtime.getURL(
-                                'icons/logo-ebay-minifig.png'
-                            );
-                            ebayIcon.alt = 'eBay';
-                            ebayIcon.loading = 'lazy';
-                            ebayLink.appendChild(ebayIcon);
-                            const ebayPrice = document.createElement('span');
-                            ebayPrice.className = 'bm-minifig-ebay-price';
-                            ebayPrice.textContent = 'wird geladen …';
-                            ebayLink.appendChild(ebayPrice);
-                            actions.appendChild(ebayLink);
+                            if (ebayEnabled) {
+                                const ebayLink = document.createElement('a');
+                                ebayLink.className = 'bm-minifig-ebay-link';
+                                ebayLink.target = '_blank';
+                                ebayLink.rel = 'noopener noreferrer';
+                                ebayLink.title = 'LEGO Minifigur bei eBay suchen (Sofort-Kaufen)';
+                                ebayLink.setAttribute(
+                                    'aria-label',
+                                    'LEGO Minifigur bei eBay suchen, nur Sofort-Kaufen'
+                                );
+                                const ebayIcon = document.createElement('img');
+                                ebayIcon.className = 'bm-minifig-ebay-icon';
+                                ebayIcon.src = BM_MOBILE_CHROME.runtime.getURL(
+                                    'icons/logo-ebay-minifig.png'
+                                );
+                                ebayIcon.alt = 'eBay';
+                                ebayIcon.loading = 'lazy';
+                                ebayLink.appendChild(ebayIcon);
+                                const ebayPrice = document.createElement('span');
+                                ebayPrice.className = 'bm-minifig-ebay-price';
+                                ebayPrice.textContent = 'wird geladen …';
+                                ebayLink.appendChild(ebayPrice);
+                                actions.appendChild(ebayLink);
+                            }
                             descriptionCell.appendChild(actions);
                         }
 
                         actions.querySelectorAll('.bm-minifig-price').forEach(link => {
                             link.href = targetUrl;
                         });
-                        const ebayLink = actions.querySelector('.bm-minifig-ebay-link');
-                        if (ebayLink) {
+
+                        let ebayLink = actions.querySelector('.bm-minifig-ebay-link');
+                        if (!ebayEnabled) {
+                            ebayLink?.remove();
+                        } else {
+                            if (!ebayLink) {
+                                ebayLink = document.createElement('a');
+                                ebayLink.className = 'bm-minifig-ebay-link';
+                                ebayLink.target = '_blank';
+                                ebayLink.rel = 'noopener noreferrer';
+                                ebayLink.title = 'LEGO Minifigur bei eBay suchen (Sofort-Kaufen)';
+                                ebayLink.setAttribute(
+                                    'aria-label',
+                                    'LEGO Minifigur bei eBay suchen, nur Sofort-Kaufen'
+                                );
+                                const ebayIcon = document.createElement('img');
+                                ebayIcon.className = 'bm-minifig-ebay-icon';
+                                ebayIcon.src = BM_MOBILE_CHROME.runtime.getURL(
+                                    'icons/logo-ebay-minifig.png'
+                                );
+                                ebayIcon.alt = 'eBay';
+                                ebayIcon.loading = 'lazy';
+                                ebayLink.appendChild(ebayIcon);
+                                const ebayPrice = document.createElement('span');
+                                ebayPrice.className = 'bm-minifig-ebay-price';
+                                ebayPrice.textContent = 'wird geladen …';
+                                ebayLink.appendChild(ebayPrice);
+                                actions.appendChild(ebayLink);
+                            }
                             ebayLink.href = 'https://www.ebay.de/sch/i.html?' +
                                 new URLSearchParams({
                                     _nkw: `LEGO ${brickLinkItemNo}`,
                                     LH_BIN: '1'
                                 }).toString();
-                        }
-                        if (!/^fig-/i.test(brickLinkItemNo)) {
-                            void loadEbayMinifigPrice(actions, brickLinkItemNo);
+                            if (!/^fig-/i.test(brickLinkItemNo)) {
+                                void loadEbayMinifigPrice(actions, brickLinkItemNo);
+                            }
                         }
                         return actions;
                     };
@@ -13633,7 +19532,18 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         targetUrl
                     ) => {
                         if (!descriptionCell || !brickLinkItemNo) return;
-                        const title = descriptionCell.querySelector('strong, b');
+                        let title = descriptionCell.querySelector('strong, b');
+                        if (!title) {
+                            const rawText = Array.from(descriptionCell.childNodes)
+                                .filter(n => n.nodeType === Node.TEXT_NODE || (n.nodeType === Node.ELEMENT_NODE && !n.classList?.contains('bm-minifig-actions') && !n.classList?.contains('bm-minifig-catalog-link')))
+                                .map(n => n.textContent || '')
+                                .join(' ')
+                                .trim();
+                            if (rawText) {
+                                title = document.createElement('strong');
+                                title.textContent = rawText;
+                            }
+                        }
                         if (!title) return;
                         title.textContent = title.textContent.trim();
 
@@ -13869,10 +19779,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                 }
                             });
 
-                            if (
-                                valuedFigureCount > 0 &&
-                                valuedFigureCount === expectedFigureCount
-                            ) {
+                            if (valuedFigureCount > 0 && totalValue > 0) {
                                 updateMinifigureValueInDataBox(
                                     Math.round((totalValue + Number.EPSILON) * 100) / 100,
                                     true,
@@ -13993,7 +19900,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         subtitle.textContent =
                             `${result.figureCount} ` +
                             `${result.figureCount === 1 ? 'Figur' : 'Figuren'} · ` +
-                            `LEGO Set ${setNum}`;
+                            setLabel;
                         content.replaceChildren(result.table);
                         void loadFigurePrices(result.table, sequence).catch(error => {
                             console.warn('BrickLink-Minifigurenpreise konnten nicht geladen werden:', error);
@@ -14056,9 +19963,14 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                 requestHandles.delete(request);
                                 if (sequence !== loadSequence || !overlay.isConnected) return;
                                 const body = String(response.responseText || '');
-                                const parsed = response.status === 200 && body.length > 200
-                                    ? parseResponse(body)
-                                    : null;
+                                let parsed = null;
+                                if (response.status === 200 && body.length > 200) {
+                                    try {
+                                        parsed = parseResponse(body) || null;
+                                    } catch (error) {
+                                        parsed = null;
+                                    }
+                                }
                                 if (parsed) {
                                     finished = true;
                                     onSuccess(parsed);
@@ -14094,12 +20006,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             onFallback(rebrickableChecked);
                             return;
                         }
-                        if (rebrickableChecked) {
-                            subtitle.textContent = `0 Figuren · LEGO Set ${setNum}`;
-                            setStatus('Keine Minifiguren in diesem Set enthalten.');
-                            return;
-                        }
-                        setStatus('Rebrickable konnte das Inventar momentan nicht laden. Bitte versuche es erneut.', true);
+                        applyUnavailableState();
                     };
 
                     const loadBrickLinkApiInventory = async (sequence, onFallback) => {
@@ -14125,29 +20032,25 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             onFallback(brickLinkChecked);
                             return;
                         }
-                        subtitle.textContent = `0 Figuren · LEGO Set ${setNum}`;
-                        setStatus('Keine Minifiguren in diesem Set enthalten.');
+                        applyUnavailableState();
                     };
 
                     const loadLegacyInventory = sequence => {
                         const legacyUrl =
-                            `https://www.bricklink.com/catalogItemInv.asp?S=${setNum}-1` +
+                            `https://www.bricklink.com/catalogItemInv.asp?S=${activeSetNum}-1` +
                             '&viewItemType=M';
                         requestWithRetry(
                             legacyUrl,
                             parseLegacyInventory,
                             sequence,
                             result => renderResult(result, sequence),
-                            () => {
-                                subtitle.textContent = `0 Figuren · LEGO Set ${setNum}`;
-                                setStatus('Keine Minifiguren in diesem Set enthalten.');
-                            }
+                            () => applyUnavailableState()
                         );
                     };
 
                     const loadModernInventory = sequence => {
                         const catalogUrl =
-                            `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setNum}-1`;
+                            `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${activeSetNum}-1`;
                         requestWithRetry(
                             catalogUrl,
                             html => {
@@ -14163,14 +20066,14 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                     `?idItem=${encodeURIComponent(itemId)}` +
                                     '&st=1&show_invid=0&show_matchcolor=0' +
                                     '&show_pglink=0&show_pcc=0&show_missingpcc=0' +
-                                    `&itemNoSeq=${encodeURIComponent(`${setNum}-1`)}`;
+                                    `&itemNoSeq=${encodeURIComponent(`${activeSetNum}-1`)}`;
                                 requestWithRetry(
                                     inventoryUrl,
                                     parseModernInventory,
                                     sequence,
                                     result => {
                                         if (result.kind === 'none') {
-                                            setStatus('Keine Minifiguren in diesem Set enthalten.');
+                                            applyUnavailableState();
                                             return;
                                         }
                                         renderResult(result, sequence);
@@ -14218,7 +20121,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                 // Continue without cache invalidation.
                             }
                         }
-                        subtitle.textContent = `LEGO Set ${setNum}`;
+                        subtitle.textContent = setLabel;
                         setStatus('Minifiguren werden geladen …');
                         void loadPreferredInventory(sequence);
                     };
@@ -14254,8 +20157,16 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
             function getCurrentSetUvp() {
                 if (resolvedSetUvp !== null) return resolvedSetUvp;
 
+                if (typeof chartData !== 'undefined' && Array.isArray(chartData) && chartData.length > 0) {
+                    const chartUvp = Number(chartData[0]?.UVP);
+                    if (Number.isFinite(chartUvp) && chartUvp > 0) {
+                        resolvedSetUvp = chartUvp;
+                        return chartUvp;
+                    }
+                }
+
                 const candidates = document.querySelectorAll(
-                    '.stroke[title*="unverbindliche Preisempfehlung"], [title="unverbindliche Preisempfehlung"]'
+                    '.stroke[title*="unverbindliche Preisempfehlung"], [title="unverbindliche Preisempfehlung"], [title*="unverbindliche Preisempfehlung"], .uvp'
                 );
                 for (const candidate of candidates) {
                     const value = parseEuroValue(candidate.textContent);
@@ -14264,6 +20175,16 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         return value;
                     }
                 }
+
+                const textMatches = (document.body?.textContent || '').match(/(?:UVP|Preisempfehlung)[^\d]*(\d+[.,]\d+)\s*€/i);
+                if (textMatches) {
+                    const value = parseEuroValue(textMatches[1] + ' €');
+                    if (value !== null && value > 0) {
+                        resolvedSetUvp = value;
+                        return value;
+                    }
+                }
+
                 return null;
             }
 
@@ -14564,7 +20485,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     if (
                         discountRow?.dataset.bmSoldOut === 'true' ||
                         discountRow?.closest('.bm-sold-out-offer') ||
-                        discountRow?.closest('#soldOut')
+                        discountRow?.closest('#soldOut') ||
+                        discountRow?.dataset.bmDepotInventory === 'true'
                     ) {
                         if (discountRow) {
                             delete discountRow.dataset.bmDiscountApplied;
@@ -14891,6 +20813,65 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     targetTopprice.style.setProperty('position', 'relative');
             }
 
+            function restoreDetailImageDiscountBubbles() {
+                const bubbles = document.querySelectorAll(
+                    '.content.setdetails .large-3.medium-4.columns.hide-for-small .off, ' +
+                    '.content.setdetails .show-for-small-only.text-center .off'
+                );
+                bubbles.forEach(bubble => {
+                    if (bubble.classList.contains('bm-bestprice-black-bubble') || bubble.classList.contains('black-discount-bubble')) return;
+                    if (bubble.dataset.bmCreated === 'true') {
+                        bubble.remove();
+                        return;
+                    }
+                    if (bubble.dataset.bmOriginalDiscount !== undefined) {
+                        bubble.textContent = bubble.dataset.bmOriginalDiscount;
+                        delete bubble.dataset.bmOriginalDiscount;
+                    }
+                    if (bubble.dataset.bmOriginalTitle !== undefined) {
+                        if (bubble.dataset.bmOriginalTitle) {
+                            bubble.setAttribute('title', bubble.dataset.bmOriginalTitle);
+                        } else {
+                            bubble.removeAttribute('title');
+                        }
+                        delete bubble.dataset.bmOriginalTitle;
+                    }
+                });
+            }
+
+            function updateDetailImageDiscountBubbles(discountPercent) {
+                if (!discountPercent || discountPercent <= 0) {
+                    restoreDetailImageDiscountBubbles();
+                    return;
+                }
+                const containers = [
+                    document.querySelector('.content.setdetails .large-3.medium-4.columns.hide-for-small'),
+                    document.querySelector('.content.setdetails .show-for-small-only.text-center')
+                ].filter(Boolean);
+
+                containers.forEach(container => {
+                    let bubble = container.querySelector(
+                        ':scope > .off:not(.bm-bestprice-black-bubble):not(.black-discount-bubble), ' +
+                        '.off:not(.bm-bestprice-black-bubble):not(.black-discount-bubble)'
+                    );
+                    if (!bubble) {
+                        bubble = document.createElement('div');
+                        bubble.className = 'off';
+                        bubble.dataset.bmCreated = 'true';
+                        container.prepend(bubble);
+                    }
+                    if (bubble.dataset.bmOriginalDiscount === undefined && bubble.dataset.bmCreated !== 'true') {
+                        bubble.dataset.bmOriginalDiscount = bubble.textContent.trim();
+                    }
+                    if (bubble.dataset.bmOriginalTitle === undefined && bubble.dataset.bmCreated !== 'true') {
+                        bubble.dataset.bmOriginalTitle = bubble.getAttribute('title') || '';
+                    }
+                    const hasMinus = (bubble.dataset.bmOriginalDiscount && bubble.dataset.bmOriginalDiscount.startsWith('-'));
+                    bubble.textContent = hasMinus ? `-${discountPercent}%` : `${discountPercent}%`;
+                    bubble.title = `${discountPercent}% unter UVP (Bestpreis)`;
+                });
+            }
+
             function syncOverallBestPriceBox() {
                 const prices = getBestOfferPrices();
                 const productPrice = document.querySelector('.content.setdetails .productprice');
@@ -14925,7 +20906,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
 
                 productPrice.querySelector('.bm-marketplace-deal-badge')?.remove();
 
-                if (!prices.isMarketplaceCheaper || !prices.marketplaceBest) {
+                if (!BM_SETTINGS.marketplacesInOfferlist || !prices.isMarketplaceCheaper || !prices.marketplaceBest) {
+                    restoreDetailImageDiscountBubbles();
                     if (retailerLabel) {
                         retailerLabel.classList.remove('bm-retailer-bestprice-label');
                         retailerLabel.textContent = 'Bestpreis:';
@@ -14943,14 +20925,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 if (retailerLabel) {
                     retailerLabel.classList.add('bm-retailer-bestprice-label');
                     retailerLabel.textContent = 'Brickmerge-Bestpreis:';
-                    retailerLabel.title = 'Klick, um Brickmerge-Bestpreis als Berechnungsgrundlage zu wählen';
-                    retailerLabel.style.cursor = 'pointer';
-                    retailerLabel.onclick = () => {
-                        if (getPriceBasisMode() !== 'retailer') {
-                            setPriceBasisMode('retailer');
-                            syncPriceBasisCalculations();
-                        }
-                    };
+                    retailerLabel.removeAttribute('title');
+                    retailerLabel.style.removeProperty('cursor');
+                    retailerLabel.onclick = null;
                 }
 
                 const { retailerBest, marketplaceBest } = prices;
@@ -14963,10 +20940,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     discountPercent = Math.round((1 - (marketplaceBest.price / uvp)) * 100);
                     bubbleText = `${discountPercent}%`;
                     bubbleTooltip = `${discountPercent}% unter UVP (${formatEuroValue(uvp - marketplaceBest.price)} € Ersparnis)`;
-                } else if (retailerBest !== null && retailerBest > marketplaceBest.price) {
-                    discountPercent = Math.round((1 - (marketplaceBest.price / retailerBest)) * 100);
-                    bubbleText = `-${discountPercent}%`;
-                    bubbleTooltip = `${discountPercent}% günstiger als Brickmerge-Bestpreis (${formatEuroValue(retailerBest - marketplaceBest.price)} € Ersparnis)`;
+                    updateDetailImageDiscountBubbles(discountPercent);
+                } else {
+                    restoreDetailImageDiscountBubbles();
                 }
 
                 if (!bestPriceLabel) {
@@ -14976,14 +20952,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     bestPriceLabel.style.margin = '0';
                     bestPriceLabel.textContent = 'Bestpreis:';
                 }
-                bestPriceLabel.title = 'Klick, um Bestpreis als Berechnungsgrundlage zu wählen';
-                bestPriceLabel.style.cursor = 'pointer';
-                bestPriceLabel.onclick = () => {
-                    if (getPriceBasisMode() !== 'overall') {
-                        setPriceBasisMode('overall');
-                        syncPriceBasisCalculations();
-                    }
-                };
+                bestPriceLabel.removeAttribute('title');
+                bestPriceLabel.style.removeProperty('cursor');
+                bestPriceLabel.onclick = null;
 
                 if (!bestPriceBox) {
                     bestPriceBox = document.createElement('div');
@@ -15003,16 +20974,31 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
 
                 let logoHtml = '';
+                let logoCellClass = 'bm-topprice-logo-cell';
                 const wrapper = marketplaceBest.wrapper;
-                const existingLogoImg = wrapper?.querySelector('.bm-marketplace-logo, .goto img');
-                const existingWordmark = wrapper?.querySelector('.bm-marketplace-logo-stage, .bm-marketplace-logo');
+                const sourceKey = String(marketplaceBest.sourceKey || '').toLowerCase();
+                const isFrance = sourceKey === 'ebay-fr' || /france|frankreich|\bfr\b/i.test(marketplaceBest.label || '') || Boolean(wrapper?.querySelector('.bm-marketplace-country-flag-fr, .bm-ebay-fr-source'));
+                const isEbay = sourceKey.startsWith('ebay') || /ebay/i.test(marketplaceBest.label || '') || /ebay/i.test(prices.marketplaceBest?.label || '');
+                const isPrivate = Boolean(wrapper?.querySelector('.bm-ebay-private, .bm-ebay-private-icon')) || /privat/i.test(wrapper?.querySelector('.bm-marketplace-logo-caption')?.textContent || '');
 
-                if (existingLogoImg?.src) {
-                    logoHtml = `<img src="${existingLogoImg.src}" alt="${marketplaceBest.label}" style="max-width: 84px; max-height: 31px; width: auto; height: auto; object-fit: contain; vertical-align: middle; display: inline-block;" />`;
-                } else if (existingWordmark && existingWordmark.textContent.trim()) {
-                    logoHtml = `<span class="bm-marketplace-logo" style="color: #222 !important; font-size: 0.95rem !important; font-weight: 700 !important; line-height: 31px !important; display: inline-block;">${existingWordmark.textContent.trim()}</span>`;
+                if (isEbay) {
+                    const sellerType = isPrivate ? 'INDIVIDUAL' : 'BUSINESS';
+                    logoCellClass += ` bm-marketplace-logo-link bm-ebay-logo-link ${isPrivate ? 'bm-ebay-private' : 'bm-ebay-commercial'} ${isFrance ? 'bm-ebay-fr-source' : 'bm-ebay-de-source'}`;
+                    logoHtml = createEbayLogoHtml({
+                        sellerType,
+                        captionText: '',
+                        isFrance
+                    });
                 } else {
-                    logoHtml = `<span class="bm-marketplace-logo" style="color: #222 !important; font-size: 0.95rem !important; font-weight: 700 !important; line-height: 31px !important; display: inline-block;">${prices.marketplaceBest.label}</span>`;
+                    const existingLogoImg = wrapper?.querySelector('img.bm-marketplace-logo, .goto img');
+                    const existingWordmark = wrapper?.querySelector('.bm-marketplace-logo-stage, .bm-marketplace-logo');
+                    if (existingLogoImg?.src) {
+                        logoHtml = `<img src="${existingLogoImg.src}" alt="${marketplaceBest.label}" style="max-width: 84px; max-height: 31px; width: auto; height: auto; object-fit: contain; vertical-align: middle; display: inline-block;" />`;
+                    } else if (existingWordmark && existingWordmark.textContent.trim()) {
+                        logoHtml = `<span class="bm-marketplace-logo" style="color: #222 !important; font-size: 0.95rem !important; font-weight: 700 !important; line-height: 31px !important; display: inline-block;">${existingWordmark.textContent.trim()}</span>`;
+                    } else {
+                        logoHtml = `<span class="bm-marketplace-logo" style="color: #222 !important; font-size: 0.95rem !important; font-weight: 700 !important; line-height: 31px !important; display: inline-block;">${prices.marketplaceBest.label}</span>`;
+                    }
                 }
 
                 const targetAnchorId = marketplaceBest.wrapper?.dataset.mid || 'offerlist';
@@ -15024,19 +21010,19 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 const existingBlackBubble = bestPriceBox.querySelector('.bm-bestprice-black-bubble');
 
                 const priceCellContent = (marketplaceBest.rate > 0 && marketplaceBest.basePrice)
-                    ? `${formatEuroValue(marketplaceBest.basePrice)} € <span class="bm-effective-info bm-topprice-effective-info" title="Persönlicher Rabatt: ${formatPercentValue(marketplaceBest.rate * 100, 2, 0)}%">(effektiv ${formatEuroValue(marketplaceBest.price)} €)</span>`
-                    : `${formatEuroValue(marketplaceBest.price)} €`;
+                    ? `<span class="bm-original-price" style="white-space: nowrap; flex-shrink: 0;">${formatEuroValue(marketplaceBest.basePrice)}&nbsp;€</span> <span class="bm-effective-info bm-topprice-effective-info" title="Persönlicher Rabatt: ${formatPercentValue(marketplaceBest.rate * 100, 2, 0)}%" style="white-space: nowrap; flex-shrink: 0;">(effektiv ${formatEuroValue(marketplaceBest.price)}&nbsp;€)</span>`
+                    : `<span class="bm-original-price" style="white-space: nowrap; flex-shrink: 0;">${formatEuroValue(marketplaceBest.price)}&nbsp;€</span>`;
 
                 bestPriceBox.innerHTML = `
-                    <a href="${targetUrl}" ${marketplaceBest.url ? 'target="_blank" rel="noopener noreferrer nofollow"' : ''} class="tooltipster bm-overall-bestprice-link" title="${linkTitle}" style="display: flex; align-items: center; width: 100%; min-height: 35px; text-decoration: none; color: inherit;">
-                        <div class="bm-topprice-logo-cell" style="width: 88px; min-width: 88px; max-width: 88px; background-color: #fff; display: flex; align-items: center; justify-content: center; padding: 2px; align-self: stretch; box-sizing: border-box;">
+                    <a href="${targetUrl}" ${marketplaceBest.url ? 'target="_blank" rel="noopener noreferrer nofollow"' : ''} class="tooltipster bm-overall-bestprice-link" title="${linkTitle}" style="display: flex; align-items: stretch; width: 100%; min-height: 35px; text-decoration: none; color: inherit;">
+                        <div class="${logoCellClass}" style="width: 22.5%; min-width: 22.5%; max-width: 22.5%; flex: 0 0 22.5%; background-color: #fff; display: flex; align-items: center; justify-content: center; padding: 2px; align-self: stretch; height: auto; min-height: 100%; box-sizing: border-box;">
                             ${logoHtml}
                         </div>
-                        <div class="bm-topprice-price-cell" style="flex: 1 1 auto; min-width: 0; padding: 0.5rem 5.5rem 0.5rem 0.6rem; vertical-align: middle; box-sizing: border-box;">
+                        <div class="bm-topprice-price-cell" style="flex: 1 1 77.5%; width: 77.5%; min-width: 0; padding: 0.5rem 4.5rem 0.5rem 0.6rem; vertical-align: middle; box-sizing: border-box; white-space: nowrap; display: flex; align-items: center; flex-wrap: nowrap; gap: 0.25rem;">
                             ${priceCellContent}
                         </div>
                         ${bubbleText ? `
-                            <span class="bm-bestprice-bubble" style="position: absolute; border-radius: 1000px; background-color: #b00; color: #fff; font-size: 0.7rem; font-weight: bold; min-height: 28px; min-width: 28px; text-align: center; line-height: 28px; margin: 0; right: 0.65rem;" title="${bubbleTooltip}">
+                            <span class="bm-bestprice-bubble" style="position: absolute; border-radius: 1000px; background-color: #B80000; color: #fff; font-size: 0.7rem; font-weight: bold; min-height: 28px; min-width: 28px; text-align: center; line-height: 28px; margin: 0; right: 0.65rem;" title="${bubbleTooltip}">
                                 ${bubbleText}
                             </span>
                         ` : ''}
@@ -15075,7 +21061,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 let originalPrice = detailsCell.querySelector(':scope > .bm-original-price, .bm-original-price');
                 if (originalPrice) {
                     if (basePrice !== null && Number.isFinite(basePrice) && basePrice > 0) {
-                        const formatted = `${formatEuroValue(basePrice)} €`;
+                        const formatted = `${formatEuroValue(basePrice)}\u00a0€`;
                         if (originalPrice.textContent !== formatted) originalPrice.textContent = formatted;
                     }
                     return originalPrice;
@@ -15091,50 +21077,134 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 const val = (Number.isFinite(basePrice) && basePrice > 0)
                     ? basePrice
                     : parseEuroValue(priceTextNode.textContent);
-                originalPrice.textContent = `${formatEuroValue(val)} €`;
+                originalPrice.textContent = `${formatEuroValue(val)}\u00a0€`;
                 priceTextNode.replaceWith(originalPrice);
                 return originalPrice;
             }
 
+            function normalizeMerchantName(name) {
+                if (!name) return '';
+                return name.trim().toLowerCase()
+                    .replace(/\.(de|com|at|fr|nl|es|it)\b/gi, '')
+                    .replace(/[^a-z0-9]/gi, '');
+            }
+
             function syncTopPriceEffectiveValues() {
                 const productPrice = document.querySelector('.content.setdetails .productprice');
-                const retailerTopPrice = productPrice?.querySelector(
-                    '.topprice:not(.bm-overall-bestprice)'
+                const allRetailerTopPrices = Array.from(
+                    productPrice?.querySelectorAll('.topprice:not(.bm-overall-bestprice)') || []
                 );
-                if (!productPrice || !retailerTopPrice) return;
+                if (!productPrice || allRetailerTopPrices.length === 0) return;
+
+                allRetailerTopPrices.forEach((bar, index) => {
+                    if (!bar.dataset.bmNativeOrder) {
+                        bar.dataset.bmNativeOrder = String(index);
+                    }
+                });
 
                 const personalSettings = loadPersonalDiscountSettings();
-                const personalEnabled = Boolean(personalSettings && personalSettings.enabled !== false);
+                const personalEnabled = Boolean(personalSettings && personalSettings.enabled === true);
                 const prices = getBestOfferPrices();
                 const bestRetailer = prices.retailerBestOffer;
                 const uvp = getCurrentSetUvp();
 
-                function restoreNativeRetailer() {
-                    if (retailerTopPrice.dataset.bmOriginalHtml) {
-                        retailerTopPrice.innerHTML = retailerTopPrice.dataset.bmOriginalHtml;
-                        delete retailerTopPrice.dataset.bmOriginalHtml;
-                        delete retailerTopPrice.dataset.bmReplacedRetailer;
+                function extractMidFromElementOrUrl(target) {
+                    if (!target) return null;
+                    if (typeof target === 'string') {
+                        const match = target.match(/(?:[?&](?:go2m|fm|mid|m)=|\/mid\/|\/go2\/\?m=)(\d+)/i)
+                            || target.match(/\bm=(\d+)\b/i);
+                        return match ? match[1] : null;
                     }
-                    retailerTopPrice.querySelectorAll('.bm-topprice-effective-info').forEach(el => el.remove());
-                    const redBubble = Array.from(
-                        retailerTopPrice.querySelectorAll('.off, span[style*="position"], div[style*="position"], .bm-bestprice-bubble')
-                    ).find(element => {
-                        if (element.classList.contains('black-discount-bubble') || element.classList.contains('bm-bestprice-black-bubble')) return false;
-                        return /%/.test(element.textContent || '');
-                    });
-                    if (redBubble) {
-                        if (redBubble.dataset.bmOriginalDiscount) {
-                            redBubble.textContent = redBubble.dataset.bmOriginalDiscount;
-                            delete redBubble.dataset.bmOriginalDiscount;
+                    const el = target;
+                    if (el.dataset?.mid) return el.dataset.mid;
+                    if (el.dataset?.bmNativeMid) return el.dataset.bmNativeMid;
+                    const href = el.getAttribute?.('href') || el.href || '';
+                    const onclick = el.getAttribute?.('onclick') || '';
+                    const imgSrc = el.querySelector?.('img')?.src || '';
+                    const match = (href + ' ' + onclick).match(/(?:[?&](?:go2m|fm|mid|m)=|\/mid\/|\/go2\/\?m=)(\d+)/i)
+                        || (href + ' ' + onclick).match(/\bm=(\d+)\b/i)
+                        || imgSrc.match(/\/(\d+)\.(?:png|jpg|webp|svg)/i);
+                    return match ? match[1] : null;
+                }
+
+                function getBarMerchantIdentifier(bar) {
+                    if (!bar) return '';
+                    const anchor = bar.querySelector(':scope > a, a');
+                    const mid = bar.dataset.bmNativeMid || extractMidFromElementOrUrl(anchor) || extractMidFromElementOrUrl(bar);
+                    if (mid) return `mid:${mid}`;
+                    const img = anchor?.querySelector('img[alt]');
+                    const alt = img?.alt?.trim();
+                    if (alt) return `name:${normalizeMerchantName(alt)}`;
+                    const title = anchor?.getAttribute('title') || '';
+                    const titleMatch = title.match(/Link zu (.+?)(?:\s+-\s+|$)/i);
+                    if (titleMatch && titleMatch[1]) return `name:${normalizeMerchantName(titleMatch[1])}`;
+                    if (bar.dataset.bmNativeLabel) return `name:${normalizeMerchantName(bar.dataset.bmNativeLabel)}`;
+                    const textLogo = bar.querySelector('.bm-topprice-logo-cell, div[style*="table-cell"]:first-child')?.textContent?.trim();
+                    if (textLogo) return `name:${normalizeMerchantName(textLogo)}`;
+                    return '';
+                }
+
+                function matchesActiveBest(bar, active) {
+                    if (!bar || !active) return false;
+                    const barMid = bar.dataset.bmNativeMid || extractMidFromElementOrUrl(bar.querySelector('a')) || extractMidFromElementOrUrl(bar);
+                    if (active.mid && barMid && String(active.mid) === String(barMid)) return true;
+                    const barIdent = getBarMerchantIdentifier(bar);
+                    const activeIdent = active.mid ? `mid:${active.mid}` : (active.label ? `name:${normalizeMerchantName(active.label)}` : '');
+                    if (barIdent && activeIdent && barIdent === activeIdent) return true;
+                    const barNorm = normalizeMerchantName(bar.dataset?.bmNativeLabel || bar.querySelector('img[alt]')?.alt || '');
+                    const activeNorm = normalizeMerchantName(active.label || '');
+                    if (barNorm && activeNorm && barNorm === activeNorm) return true;
+                    return false;
+                }
+
+                function restoreNativeRetailer() {
+                    const bars = Array.from(productPrice.querySelectorAll('.topprice:not(.bm-overall-bestprice)'));
+                    bars.forEach(bar => {
+                        if (bar.dataset.bmOriginalHtml) {
+                            bar.innerHTML = bar.dataset.bmOriginalHtml;
+                            delete bar.dataset.bmOriginalHtml;
+                            delete bar.dataset.bmReplacedRetailer;
                         }
-                        if (redBubble.dataset.bmOriginalTitle !== undefined) {
-                            if (redBubble.dataset.bmOriginalTitle) {
-                                redBubble.setAttribute('title', redBubble.dataset.bmOriginalTitle);
-                            } else {
-                                redBubble.removeAttribute('title');
+                        delete bar.dataset.bmNativeMid;
+                        delete bar.dataset.bmNativeLabel;
+                        bar.querySelectorAll('.bm-topprice-effective-info').forEach(el => el.remove());
+                        const redBubble = Array.from(
+                            bar.querySelectorAll('.off, span[style*="position"], div[style*="position"], .bm-bestprice-bubble')
+                        ).find(element => {
+                            if (element.classList.contains('black-discount-bubble') || element.classList.contains('bm-bestprice-black-bubble')) return false;
+                            return /%/.test(element.textContent || '');
+                        });
+                        if (redBubble) {
+                            if (redBubble.dataset.bmOriginalDiscount) {
+                                redBubble.textContent = redBubble.dataset.bmOriginalDiscount;
+                                delete redBubble.dataset.bmOriginalDiscount;
                             }
-                            delete redBubble.dataset.bmOriginalTitle;
+                            if (redBubble.dataset.bmOriginalTitle !== undefined) {
+                                if (redBubble.dataset.bmOriginalTitle) {
+                                    redBubble.setAttribute('title', redBubble.dataset.bmOriginalTitle);
+                                } else {
+                                    redBubble.removeAttribute('title');
+                                }
+                                delete redBubble.dataset.bmOriginalTitle;
+                            }
                         }
+                    });
+
+                    if (bars.some(b => b.dataset.bmNativeOrder !== undefined)) {
+                        bars.sort((a, b) => {
+                            const orderA = parseInt(a.dataset.bmNativeOrder ?? '0', 10);
+                            const orderB = parseInt(b.dataset.bmNativeOrder ?? '0', 10);
+                            return orderA - orderB;
+                        });
+                        for (let i = 1; i < bars.length; i++) {
+                            bars[i - 1].after(bars[i]);
+                        }
+                        bars.forEach(b => delete b.dataset.bmNativeOrder);
+                    }
+
+                    decorateNativeToppriceEbayLogo();
+                    if (!prices.isMarketplaceCheaper) {
+                        restoreDetailImageDiscountBubbles();
                     }
                 }
 
@@ -15145,7 +21215,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
 
                 let activeBest = bestRetailer;
                 if (!activeBest) {
-                    const anchor = retailerTopPrice.querySelector('a');
+                    const firstBar = allRetailerTopPrices[0];
+                    const anchor = firstBar?.querySelector('a');
                     const candidates = [];
                     const img = anchor?.querySelector('img[alt]');
                     if (img?.alt) candidates.push(img.alt.trim());
@@ -15153,8 +21224,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     const titleMatch = title.match(/Link zu (.+?)(?:\s+-\s+|$)/i);
                     if (titleMatch && titleMatch[1]) candidates.push(titleMatch[1].trim());
 
-                    const midMatch = anchor?.href?.match(/go2m=(\d+)/i) || anchor?.getAttribute('onclick')?.match(/m=(\d+)/i);
-                    const mid = midMatch ? midMatch[1] : null;
+                    const mid = extractMidFromElementOrUrl(anchor);
 
                     const configuredEntries = getConfiguredRetailerDiscounts();
                     let matchedRate = 0;
@@ -15170,8 +21240,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             }
                         }
                     }
-                    if (matchedRate > 0) {
-                        const clone = retailerTopPrice.cloneNode(true);
+                    if (matchedRate > 0 && firstBar) {
+                        const clone = firstBar.cloneNode(true);
                         clone.querySelectorAll('.bm-effective-info, .black-discount-bubble, .bm-bestprice-black-bubble').forEach(child => child.remove());
                         const basePrice = parseEuroValue(clone.textContent);
                         if (basePrice) {
@@ -15183,7 +21253,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                 label: candidates[0] || 'Händler',
                                 logoSrc: img?.src || '',
                                 url: anchor?.href || '',
-                                hasCode: /\[Code\]/i.test(retailerTopPrice.textContent)
+                                hasCode: /\[Code\]/i.test(firstBar.textContent)
                             };
                         }
                     }
@@ -15194,24 +21264,39 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     return;
                 }
 
+                // If activeBest matches an existing topprice bar at index > 0, move that bar to the top
+                const existingBarIndex = allRetailerTopPrices.findIndex(bar => matchesActiveBest(bar, activeBest));
+                if (existingBarIndex > 0) {
+                    const existingBar = allRetailerTopPrices[existingBarIndex];
+                    allRetailerTopPrices[0].before(existingBar);
+                    allRetailerTopPrices.splice(existingBarIndex, 1);
+                    allRetailerTopPrices.unshift(existingBar);
+                }
+
+                const retailerTopPrice = allRetailerTopPrices[0];
                 const anchor = retailerTopPrice.querySelector(':scope > a') || retailerTopPrice.querySelector('a');
                 if (!anchor) return;
 
                 if (!retailerTopPrice.dataset.bmNativeMid) {
-                    const nativeMidMatch = anchor.href?.match(/go2m=(\d+)/i) || anchor.getAttribute('onclick')?.match(/m=(\d+)/i);
-                    if (nativeMidMatch) {
-                        retailerTopPrice.dataset.bmNativeMid = nativeMidMatch[1];
+                    const nativeMid = extractMidFromElementOrUrl(anchor);
+                    if (nativeMid) {
+                        retailerTopPrice.dataset.bmNativeMid = nativeMid;
+                    }
+                }
+                if (!retailerTopPrice.dataset.bmNativeLabel) {
+                    const img = anchor.querySelector('img[alt]');
+                    const title = anchor.getAttribute('title') || '';
+                    const titleMatch = title.match(/Link zu (.+?)(?:\s+-\s+|$)/i);
+                    const label = img?.alt?.trim() || titleMatch?.[1]?.trim() || '';
+                    if (label) {
+                        retailerTopPrice.dataset.bmNativeLabel = label;
                     }
                 }
                 if (!retailerTopPrice.dataset.bmOriginalHtml) {
                     retailerTopPrice.dataset.bmOriginalHtml = retailerTopPrice.innerHTML;
                 }
 
-                const isDifferentRetailer = Boolean(
-                    activeBest.mid &&
-                    retailerTopPrice.dataset.bmNativeMid &&
-                    activeBest.mid !== retailerTopPrice.dataset.bmNativeMid
-                );
+                const isDifferentRetailer = !matchesActiveBest(retailerTopPrice, activeBest);
 
                 if (isDifferentRetailer) {
                     retailerTopPrice.dataset.bmReplacedRetailer = 'true';
@@ -15223,10 +21308,22 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         discountPercent = Math.round((1 - (activeBest.price / uvp)) * 100);
                         bubbleText = `${discountPercent}%`;
                         bubbleTooltip = `${discountPercent}% unter UVP (${formatEuroValue(uvp - activeBest.price)} € Ersparnis durch persönlichen Rabatt)`;
+                        updateDetailImageDiscountBubbles(discountPercent);
                     }
 
                     let logoHtml = '';
-                    if (activeBest.logoSrc) {
+                    let logoCellClass = 'bm-topprice-logo-cell';
+                    const isEbay = /ebay/i.test(activeBest.label || '') || /ebay/i.test(activeBest.logoSrc || '');
+                    if (isEbay) {
+                        const isPrivate = /privat/i.test(activeBest.label || '') || Boolean(activeBest.isPrivate);
+                        const isFrance = /fr|frankreich/i.test(activeBest.label || '') || Boolean(activeBest.isFrance);
+                        logoCellClass += ` bm-marketplace-logo-link bm-ebay-logo-link ${isPrivate ? 'bm-ebay-private' : 'bm-ebay-commercial'} ${isFrance ? 'bm-ebay-fr-source' : 'bm-ebay-de-source'}`;
+                        logoHtml = createEbayLogoHtml({
+                            sellerType: isPrivate ? 'INDIVIDUAL' : 'BUSINESS',
+                            captionText: '',
+                            isFrance
+                        });
+                    } else if (activeBest.logoSrc) {
                         logoHtml = `<img src="${activeBest.logoSrc}" alt="${activeBest.label}" width="88" height="31" style="max-width: 84px; max-height: 31px; width: auto; height: auto; object-fit: contain; vertical-align: middle; display: inline-block;" />`;
                     } else {
                         logoHtml = `<span style="color: #222 !important; font-size: 0.95rem !important; font-weight: 700 !important; display: inline-block;">${activeBest.label}</span>`;
@@ -15238,16 +21335,16 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     const existingBlackBubble = retailerTopPrice.querySelector('.bm-bestprice-black-bubble');
 
                     retailerTopPrice.innerHTML = `
-                        <a href="${targetUrl}" ${activeBest.url ? 'target="_blank" rel="nofollow sponsored"' : ''} class="tooltipster" title="${linkTitle}" style="display: table; width: 100%; min-height: 35px; text-decoration: none; color: inherit;">
-                            <div class="bm-topprice-logo-cell" style="display: table-cell; width: 88px; min-width: 88px; max-width: 88px; background-color: #fff; vertical-align: middle; text-align: center; padding: 2px; box-sizing: border-box;">
+                        <a href="${targetUrl}" ${activeBest.url ? 'target="_blank" rel="nofollow sponsored"' : ''} class="tooltipster" title="${linkTitle}" style="display: flex; align-items: stretch; width: 100%; min-height: 35px; text-decoration: none; color: inherit;">
+                            <div class="${logoCellClass}" style="width: 22.5%; min-width: 22.5%; max-width: 22.5%; flex: 0 0 22.5%; background-color: #fff; display: flex; align-items: center; justify-content: center; padding: 2px; align-self: stretch; height: auto; min-height: 100%; box-sizing: border-box;">
                                 ${logoHtml}
                             </div>
-                            <div class="bm-topprice-price-cell" style="display: table-cell; padding: 0.5rem 5.5rem 0.5rem 0.3rem; vertical-align: middle; box-sizing: border-box;">
-                                <span class="bm-original-price">${formatEuroValue(activeBest.basePrice)} €</span>
+                            <div class="bm-topprice-price-cell" style="flex: 1 1 77.5%; width: 77.5%; min-width: 0; padding: 0.5rem 2.4rem 0.5rem 0.3rem; vertical-align: middle; box-sizing: border-box; white-space: nowrap; display: flex; align-items: center; flex-wrap: nowrap; gap: 0.25rem;">
+                                <span class="bm-original-price">${formatEuroValue(activeBest.basePrice)}&nbsp;€</span>
                                 ${activeBest.hasCode ? '<span class="small">[Code]</span>' : ''}
-                                <span class="bm-effective-info bm-topprice-effective-info" title="Persönlicher Rabatt: ${formatPercentValue(activeBest.rate * 100, 2, 0)}%">(effektiv ${formatEuroValue(activeBest.price)} €)</span>
+                                <span class="bm-effective-info bm-topprice-effective-info" title="Persönlicher Rabatt: ${formatPercentValue(activeBest.rate * 100, 2, 0)}%">(effektiv&nbsp;${formatEuroValue(activeBest.price)}&nbsp;€)</span>
                                 ${bubbleText ? `
-                                    <span class="bm-bestprice-bubble" style="position: absolute; border-radius: 1000px; background-color: #b00; color: #fff; font-size: 0.7rem; font-weight: bold; min-height: 28px; min-width: 28px; text-align: center; line-height: 28px; margin: 0; right: 0.65rem;" title="${bubbleTooltip}">
+                                    <span class="bm-bestprice-bubble" style="position: absolute; border-radius: 1000px; background-color: #B80000; color: #fff; font-size: 0.7rem; font-weight: bold; min-height: 28px; min-width: 28px; text-align: center; line-height: 28px; margin: 0; right: 0.65rem;" title="${bubbleTooltip}">
                                         ${bubbleText}
                                     </span>
                                 ` : ''}
@@ -15285,6 +21382,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     const detailsCell = anchorEl?.querySelector(':scope > div:nth-child(2), .bm-topprice-price-cell') || anchorEl;
                     if (!detailsCell) return;
 
+                    detailsCell.classList.add('bm-topprice-price-cell');
                     const stableOriginalPrice = ensureTopPriceOriginalPriceElement(detailsCell, activeBest.basePrice);
 
                     let effectiveInfo = detailsCell.querySelector(':scope > .bm-topprice-effective-info, .bm-topprice-effective-info');
@@ -15292,7 +21390,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         effectiveInfo = document.createElement('span');
                         effectiveInfo.className = 'bm-effective-info bm-topprice-effective-info';
                     }
-                    const effectiveLabel = `(effektiv ${formatEuroValue(activeBest.price)} €)`;
+                    const effectiveLabel = `(effektiv\u00a0${formatEuroValue(activeBest.price)}\u00a0€)`;
                     if (effectiveInfo.textContent !== effectiveLabel) {
                         effectiveInfo.textContent = effectiveLabel;
                     }
@@ -15307,12 +21405,18 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         detailsCell.appendChild(effectiveInfo);
                     }
 
-                    const redBubble = Array.from(
+                    let redBubble = Array.from(
                         retailerTopPrice.querySelectorAll('.off, span[style*="position"], div[style*="position"], .bm-bestprice-bubble')
                     ).find(element => {
                         if (element.classList.contains('black-discount-bubble') || element.classList.contains('bm-bestprice-black-bubble')) return false;
                         return /%/.test(element.textContent || '');
                     });
+
+                    if (!redBubble && uvp !== null && uvp > activeBest.price) {
+                        redBubble = document.createElement('span');
+                        redBubble.className = 'bm-bestprice-bubble';
+                        retailerTopPrice.appendChild(redBubble);
+                    }
 
                     if (redBubble) {
                         if (!redBubble.dataset.bmOriginalDiscount) {
@@ -15323,12 +21427,45 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             const effectiveDiscount = Math.round((1 - (activeBest.price / uvp)) * 100);
                             redBubble.textContent = `${effectiveDiscount}%`;
                             redBubble.title = `${effectiveDiscount}% unter UVP (${formatEuroValue(uvp - activeBest.price)} € Ersparnis durch persönlichen Rabatt)`;
+                            updateDetailImageDiscountBubbles(effectiveDiscount);
                         }
                     }
                 }
+
+                // Also ensure all other retailer bars have clean non-wrapping price nodes and price-cell class
+                const currentRetailerBars = Array.from(productPrice.querySelectorAll('.topprice:not(.bm-overall-bestprice)'));
+                currentRetailerBars.slice(1).forEach(bar => {
+                    const barAnchor = bar.querySelector(':scope > a, a');
+                    const barDetailsCell = barAnchor?.querySelector(':scope > div:nth-child(2), .bm-topprice-price-cell') || barAnchor;
+                    if (barDetailsCell) {
+                        barDetailsCell.classList.add('bm-topprice-price-cell');
+                        ensureTopPriceOriginalPriceElement(barDetailsCell, null);
+                    }
+                });
+
+                // Deduplicate merchant bars under retailer best price
+                const seenMerchants = new Set();
+                const finalBars = Array.from(productPrice.querySelectorAll('.topprice:not(.bm-overall-bestprice)'));
+                finalBars.forEach((bar, idx) => {
+                    let ident = '';
+                    if (idx === 0) {
+                        ident = activeBest.mid ? `mid:${activeBest.mid}` : (activeBest.label ? `name:${normalizeMerchantName(activeBest.label)}` : getBarMerchantIdentifier(bar));
+                    } else {
+                        ident = getBarMerchantIdentifier(bar);
+                    }
+                    if (ident) {
+                        if (seenMerchants.has(ident)) {
+                            bar.remove();
+                        } else {
+                            seenMerchants.add(ident);
+                        }
+                    }
+                });
+
+                decorateNativeToppriceEbayLogo();
             }
 
-                // Suche nach dem "bisherigen Bestpreis"
+            // Suche nach dem "bisherigen Bestpreis"
             function findAllTimeBestPrice() {
                     const roots = [
                         document.querySelector('.content.setdetails .productprice'),
@@ -15406,7 +21543,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     if (!newEl) {
                         newEl = document.createElement('span');
                         newEl.id = 'all-time-bestpreis-discount';
-                        newEl.innerHTML = `<br />&nbsp;<span class="contentcolor" style="color: #b00;">|</span> <a class="bm-price-history-link" href="#bm-price-chart-overlay" aria-controls="bm-price-chart-overlay">Differenz zum <span class="bm-atb-abbr tooltipster" title="All-Time-Bestpreis" data-bm-tooltip-title="All-Time-Bestpreis" data-bm-tooltip="Historisch niedrigster je bei brickmerge erfasster Preis für dieses Set." aria-label="All-Time-Bestpreis (ATB)" style="text-decoration: underline dashed #888; text-underline-offset: 2px; cursor: help;">ATB</span>: <strong></strong></a>`;
+                        newEl.innerHTML = `<br />&nbsp;<span class="contentcolor" style="color: #B80000;">|</span> <a class="bm-price-history-link" href="#bm-price-chart-overlay" aria-controls="bm-price-chart-overlay">Differenz zum <span class="bm-atb-abbr tooltipster" title="All-Time-Bestpreis" data-bm-tooltip-title="All-Time-Bestpreis" data-bm-tooltip="Historisch niedrigster je bei brickmerge erfasster Preis für dieses Set." aria-label="All-Time-Bestpreis (ATB)" style="text-decoration: underline dashed #888; text-underline-offset: 2px; cursor: help;">ATB</span>: <strong></strong></a>`;
                     } else if (!newEl.querySelector('.bm-atb-abbr')) {
                         const link = newEl.querySelector('a.bm-price-history-link');
                         if (link) {
@@ -15444,18 +21581,31 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 ).forEach(priceRow => {
                     priceRow.style.removeProperty('background-image');
                     priceRow.style.removeProperty('background-size');
-                    priceRow.closest('.row.collapse')?.querySelectorAll('.lowest')
-                        .forEach(element => element.classList.remove('lowest'));
                 });
 
-                offerlist.querySelectorAll('.price > span[style]').forEach(span => {
-                    const isAbsoluteBadge = span.style.position === 'absolute';
-                    const isPercentage = /^\s*\d+(?:[.,]\d+)?\s*%\s*$/.test(span.textContent);
-                    if (isAbsoluteBadge && isPercentage) span.remove();
+                offerlist.querySelectorAll('*').forEach(el => {
+                    if (el.classList?.contains('pricerow') || el.classList?.contains('price') || el.classList?.contains('row')) {
+                        return;
+                    }
+                    const txt = el.textContent?.trim() || '';
+                    if (/^(?:>|&gt;)?\s*hier\s+klicken!?\s*$/i.test(txt)) {
+                        el.remove();
+                    }
                 });
+                const hierKlickenWalker = document.createTreeWalker(offerlist, NodeFilter.SHOW_TEXT);
+                let hkNode;
+                while ((hkNode = hierKlickenWalker.nextNode())) {
+                    if (/(?:>|&gt;)?\s*hier\s+klicken!?/i.test(hkNode.nodeValue)) {
+                        hkNode.nodeValue = hkNode.nodeValue.replace(/(?:>|&gt;)?\s*hier\s+klicken!?/gi, '').trim();
+                    }
+                }
             }
 
             function injectMarketplaceOffers(offers) {
+                if (BM_SETTINGS.marketplacesInOfferlist === false) {
+                    document.querySelectorAll('.bm-marketplace-offer').forEach(row => row.remove());
+                    return;
+                }
                 const offerlist = document.getElementById('offerlist');
                 const firstPriceRow = offerlist?.querySelector(
                     '.pricerow:not([data-bm-marketplace="true"])'
@@ -15475,6 +21625,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 parent.querySelectorAll('.bm-marketplace-offer').forEach(row => row.remove());
 
                 offers.forEach(offer => {
+                    if (offer.title && globalThis.BM_isExcludedOfferTitle?.(offer.title)) return;
+                    if (offer.priceSource && globalThis.BM_isExcludedOfferTitle?.(offer.priceSource)) return;
+                    if (offer.sellerName && globalThis.BM_isExcludedOfferSeller?.(offer.sellerName)) return;
                     const price = parseEuroValue(offer.priceText);
                     const hasUnknownPrice = price === null && offer.allowUnknownPrice === true;
                     if ((!hasUnknownPrice && price === null) || !offer.url) return;
@@ -15695,7 +21848,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 });
 
                 mergeSoldOutOffersIntoOfferList();
-                window.setTimeout(applyOfferPresentation, 0);
+                window.setTimeout(() => applyOfferPresentation(), 0);
             }
 
             // Fehlt bei Brickmerge eine Versandangabe, gilt das Angebot als versandkostenfrei.
@@ -15788,44 +21941,77 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     return { status: 'unknown', cost: null };
                 }
 
-                // Alza berechnet fuer diese Angebote pauschal 0,98 Euro Versand. Die
-                // Haendlerregel steht vor den von Brickmerge gelieferten Angaben, damit
-                // ein dort noch hinterlegter alter Versandwert sicher ersetzt wird.
                 const merchantName = getOfferMerchantName(priceSpan);
-                if (/\balza(?:\.de)?\b/i.test(merchantName)) {
-                    return { status: 'paid', cost: 0.98 };
+                const rule = globalThis.BM_findShopShippingRule?.(merchantName);
+                const offerPrice = getBaseOfferPrice(priceSpan);
+
+                // Alza oder Händler mit festem Versand ohne Freigrenze
+                if (rule && rule.freeFrom === null && Number.isFinite(rule.standardCost)) {
+                    return { status: 'paid', cost: rule.standardCost, rule };
+                }
+
+                // Wenn Angebotspreis >= Freigrenze: immer versandkostenfrei
+                if (rule && rule.freeFrom !== null && offerPrice !== null && offerPrice >= rule.freeFrom) {
+                    return {
+                        status: 'free',
+                        cost: 0,
+                        freeFrom: rule.freeFrom,
+                        pickupFree: rule.pickupFree,
+                        rule
+                    };
                 }
 
                 const title = getOriginalOfferTitle(priceSpan.closest('a'));
                 const titleCostMatch = title.match(
                     /\+\s*(?:Versand(?:skosten)?)\s*(\d+[\d\s.,]*)\s*€/i
                 );
+                let parsedCost = null;
                 if (titleCostMatch) {
-                    const cost = parseEuroValue(`${titleCostMatch[1]} €`);
-                    if (cost !== null) return { status: 'paid', cost };
+                    parsedCost = parseEuroValue(`${titleCostMatch[1]} €`);
                 }
-                if (/Versandkostenfrei|kostenloser Versand|VK frei/i.test(title)) {
-                    return { status: 'free', cost: 0 };
-                }
+                const isExplicitlyFree = /Versandkostenfrei|kostenloser Versand|VK frei/i.test(title);
 
                 const nativeShipping = getNativeShippingSpan(priceSpan);
+                let nativeCost = null;
+                let nativeFree = false;
                 if (nativeShipping) {
                     const nativeText = nativeShipping.textContent.trim();
                     if (/VK frei|Versandkostenfrei|kostenloser Versand/i.test(nativeText)) {
-                        return { status: 'free', cost: 0 };
+                        nativeFree = true;
+                    } else {
+                        nativeCost = parseEuroValue(nativeText);
                     }
-                    const nativeCost = parseEuroValue(nativeText);
-                    if (nativeCost !== null) return { status: 'paid', cost: nativeCost };
                 }
 
-                if (/\bsmyths\b/i.test(merchantName)) {
-                    const offerPrice = getBaseOfferPrice(priceSpan);
-                    if (offerPrice !== null) {
-                        return offerPrice >= 20
-                            ? { status: 'free', cost: 0 }
-                            : { status: 'paid', cost: 3.95 };
-                    }
-                    return { status: 'unknown', cost: null };
+                if (isExplicitlyFree || nativeFree) {
+                    return {
+                        status: 'free',
+                        cost: 0,
+                        freeFrom: rule?.freeFrom,
+                        pickupFree: rule?.pickupFree,
+                        rule
+                    };
+                }
+
+                // Wenn unter Freigrenze und Regel bekannt: Restbetrag berechnen
+                if (rule && rule.freeFrom !== null && offerPrice !== null && offerPrice < rule.freeFrom) {
+                    const cost = parsedCost ?? nativeCost ?? rule.standardCost;
+                    const remaining = Math.round((rule.freeFrom - offerPrice + Number.EPSILON) * 100) / 100;
+                    return {
+                        status: 'paid',
+                        cost,
+                        freeFrom: rule.freeFrom,
+                        remaining,
+                        pickupFree: rule.pickupFree,
+                        rule
+                    };
+                }
+
+                if (parsedCost !== null) {
+                    return { status: 'paid', cost: parsedCost };
+                }
+                if (nativeCost !== null) {
+                    return { status: 'paid', cost: nativeCost };
                 }
 
                 return { status: 'free', cost: 0 };
@@ -15862,14 +22048,55 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
 
                     if (shippingStatus === 'paid') {
                         small.dataset.shippingCost = String(shipping.cost);
-                        setShippingText(`VK ${formatEuroValue(shipping.cost)} €`);
-                        small.title = `Versandkosten: ${formatEuroValue(shipping.cost)} €; Gesamtpreis: ${formatEuroValue(basePrice + shipping.cost)} €`;
+                        if (shipping.freeFrom) {
+                            small.dataset.shippingFreeFrom = String(shipping.freeFrom);
+                        } else {
+                            delete small.dataset.shippingFreeFrom;
+                        }
+                        if (shipping.remaining) {
+                            small.dataset.shippingRemaining = String(shipping.remaining);
+                        } else {
+                            delete small.dataset.shippingRemaining;
+                        }
+
+                        const text = `VK ${formatEuroValue(shipping.cost)} €`;
+                        setShippingText(text);
+
+                        let titleText = `Versandkosten: ${formatEuroValue(shipping.cost)} €`;
+                        if (shipping.freeFrom) {
+                            if (shipping.remaining && shipping.remaining > 0) {
+                                titleText += ` (ab ${formatEuroValue(shipping.freeFrom)} € versandkostenfrei – noch ${formatEuroValue(shipping.remaining)} €)`;
+                            } else {
+                                titleText += ` (ab ${formatEuroValue(shipping.freeFrom)} € versandkostenfrei)`;
+                            }
+                        }
+                        if (shipping.pickupFree) {
+                            titleText += '; Filialabholung kostenlos';
+                        }
+                        titleText += `; Gesamtpreis: ${formatEuroValue(basePrice + shipping.cost)} €`;
+                        small.title = titleText;
                     } else if (shippingStatus === 'free') {
                         small.dataset.shippingCost = '0';
+                        delete small.dataset.shippingRemaining;
+                        if (shipping.freeFrom) {
+                            small.dataset.shippingFreeFrom = String(shipping.freeFrom);
+                        } else {
+                            delete small.dataset.shippingFreeFrom;
+                        }
                         setShippingText('VK frei');
-                        small.title = `Versandkostenfrei; Gesamtpreis: ${formatEuroValue(basePrice)} €`;
+                        let freeTitle = 'Versandkostenfrei';
+                        if (shipping.freeFrom) {
+                            freeTitle += ` (ab ${formatEuroValue(shipping.freeFrom)} €)`;
+                        }
+                        if (shipping.pickupFree) {
+                            freeTitle += '; Filialabholung kostenlos';
+                        }
+                        freeTitle += `; Gesamtpreis: ${formatEuroValue(basePrice)} €`;
+                        small.title = freeTitle;
                     } else {
                         delete small.dataset.shippingCost;
+                        delete small.dataset.shippingFreeFrom;
+                        delete small.dataset.shippingRemaining;
                         setShippingText('VK unbekannt');
                         small.title = 'Versandkosten und Gesamtpreis unbekannt';
                     }
@@ -15935,9 +22162,20 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     parts.push(`Angebotspreis: ${formatEuroValue(offerPrice)} €.`);
 
                     if (shippingStatus === 'paid') {
-                        parts.push(`Versandkosten: ${formatEuroValue(shippingCost)} €.`);
+                        let shipText = `Versandkosten: ${formatEuroValue(shippingCost)} €`;
+                        const freeFrom = Number(shippingSpan.dataset.shippingFreeFrom);
+                        const remaining = Number(shippingSpan.dataset.shippingRemaining);
+                        if (Number.isFinite(freeFrom) && freeFrom > 0 && Number.isFinite(remaining) && remaining > 0) {
+                            shipText += ` (ab ${formatEuroValue(freeFrom)} € versandkostenfrei – noch ${formatEuroValue(remaining)} €)`;
+                        }
+                        parts.push(`${shipText}.`);
                     } else if (shippingStatus === 'free') {
-                        parts.push('Versandkosten: frei.');
+                        const freeFrom = Number(shippingSpan.dataset.shippingFreeFrom);
+                        if (Number.isFinite(freeFrom) && freeFrom > 0) {
+                            parts.push(`Versandkosten: frei (ab ${formatEuroValue(freeFrom)} €).`);
+                        } else {
+                            parts.push('Versandkosten: frei.');
+                        }
                     } else {
                         parts.push('Versandkosten: unbekannt.');
                     }
@@ -16012,7 +22250,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         retailerRate <= 0 ||
                         priceRow.dataset.bmSoldOut === 'true' ||
                         priceRow.closest('.bm-sold-out-offer') ||
-                        priceRow.closest('#soldOut')
+                        priceRow.closest('#soldOut') ||
+                        priceRow.dataset.bmDepotInventory === 'true'
                     ) {
                         info?.remove();
                         if (originalPrice) {
@@ -16084,7 +22323,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     if (
                         priceRow?.dataset.bmSoldOut === 'true' ||
                         priceRow?.closest('.bm-sold-out-offer') ||
-                        priceRow?.closest('#soldOut')
+                        priceRow?.closest('#soldOut') ||
+                        priceRow?.dataset.bmDepotInventory === 'true'
                     ) {
                         priceSpan.querySelectorAll(
                             ':scope > .bm-offer-discount-bubble, :scope > .bm-total-discount-bubble'
@@ -16146,7 +22386,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         bubble.className = 'bm-offer-discount-bubble';
                         priceSpan.appendChild(bubble);
                     }
-                    if (discountPercent === null || discountPercent <= 0) {
+                    if (discountPercent === null || Math.round(discountPercent) <= 0) {
                         bubble.style.display = 'none';
                     } else {
                         bubble.style.removeProperty('display');
@@ -16175,23 +22415,40 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         totalBubble.className = 'bm-total-discount-bubble';
                         priceSpan.appendChild(totalBubble);
                     }
-                    if (totalDiscountPercent === null || totalDiscountPercent <= 0) {
+                    if (
+                        totalDiscountPercent === null ||
+                        discountPercent === null ||
+                        Math.round(discountPercent) <= 0
+                    ) {
                         totalBubble.style.display = 'none';
                         return;
                     }
                     totalBubble.style.removeProperty('display');
-                    const totalLabel = `${Math.round(totalDiscountPercent)}%`;
+                    const roundedTotalDiscount = Math.round(totalDiscountPercent);
+                    const displayTotalDiscount = Math.max(0, roundedTotalDiscount);
+                    const totalLabel = `${displayTotalDiscount}%`;
                     if (totalBubble.textContent !== totalLabel) {
                         totalBubble.textContent = totalLabel;
                     }
-                    totalBubble.title =
-                        `Rabatt ${priceReference?.relation || 'zum Referenzpreis'} inklusive Versand: ` +
-                        `${formatPercentValue(totalDiscountPercent)}%`;
-                    totalBubble.setAttribute(
-                        'aria-label',
-                        `Rabatt ${priceReference?.relation || 'zum Referenzpreis'} inklusive Versand ` +
-                        `${formatPercentValue(totalDiscountPercent)} Prozent`
-                    );
+                    const relationText = priceReference?.relation || 'zum Referenzpreis';
+                    if (displayTotalDiscount === 0) {
+                        const overReference = relationText === 'zur UVP' ? 'UVP' : 'Referenzpreis';
+                        totalBubble.title =
+                            `Rabatt ${relationText} inklusive Versand: 0% (Gesamtpreis über ${overReference})`;
+                        totalBubble.setAttribute(
+                            'aria-label',
+                            `Rabatt ${relationText} inklusive Versand 0 Prozent`
+                        );
+                    } else {
+                        totalBubble.title =
+                            `Rabatt ${relationText} inklusive Versand: ` +
+                            `${formatPercentValue(totalDiscountPercent)}%`;
+                        totalBubble.setAttribute(
+                            'aria-label',
+                            `Rabatt ${relationText} inklusive Versand ` +
+                            `${displayTotalDiscount} Prozent`
+                        );
+                    }
                 });
             }
 
@@ -16262,7 +22519,13 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             element.classList.add(stripeClass);
                         });
 
-                        offer.wrapper.querySelectorAll('.lowest').forEach(element => element.classList.remove('lowest'));
+                        const isLowest = index === 0;
+                        offer.wrapper.classList.toggle('lowest', isLowest);
+                        offer.priceRow.classList.toggle('lowest', isLowest);
+                        if (offer.priceSpan) offer.priceSpan.classList.toggle('lowest', isLowest);
+                        if (!isLowest) {
+                            offer.wrapper.querySelectorAll('.lowest').forEach(element => element.classList.remove('lowest'));
+                        }
                     });
 
                     const orderChanged = group.some(
@@ -16345,8 +22608,10 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
             let offerPresentationTimer;
             const scheduleOfferPresentation = () => {
                 clearTimeout(offerPresentationTimer);
-                offerPresentationTimer = setTimeout(applyOfferPresentation, 80);
+                offerPresentationTimer = setTimeout(() => applyOfferPresentation(), 80);
             };
+            globalThis.BM_scheduleOfferPresentation = scheduleOfferPresentation;
+            globalThis.applyOfferPresentation = applyOfferPresentation;
 
             const offerlistIsReady = ensureOfferPresentationObserver();
             if (!offerlistIsReady) {
@@ -16384,70 +22649,87 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 const style = document.createElement('style');
                 style.id = STYLE_ID;
                 style.textContent = `
-                    .bmd-open-button {
+                    .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) {
                         display:inline-flex!important;align-items:center!important;
                         justify-content:center!important;gap:.5rem;width:auto;
                         min-width:0;margin:0 0 .35rem!important;
                         font-family:inherit!important;line-height:1.2!important;
                         white-space:nowrap;box-sizing:border-box;cursor:pointer
                     }
-                    .bmd-open-button:hover,.bmd-open-button:focus {
+                    .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *):hover,.bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *):focus {
                         outline:none
                     }
-                    .bmd-open-button .bmd-button-content {
+                    .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) .bmd-button-content {
                         display:inline-flex!important;align-items:center;gap:.35rem
                     }
-                    .bmd-open-button .bmd-button-icon {
+                    .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) .bmd-button-icon {
                         display:inline-flex;align-items:center;justify-content:center;
                         width:1.2rem;height:1.2rem;flex:0 0 1.2rem;
                         line-height:1
                     }
-                    .bmd-open-button .bmd-button-icon svg {
+                    .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) .bmd-button-icon svg {
                         display:block;width:1.15rem;height:1.15rem;fill:none;
                         stroke:currentColor;stroke-width:1.8;stroke-linecap:round;
                         stroke-linejoin:round
                     }
                     .bmd-button-label-mobile { display:none }
-                    .bmd-parts-stock-button {
+                    .bmd-parts-stock-button:not(.bm-link):not(.bmd-in-link-panel *) {
                         width:100%!important;margin:.35rem 0 0!important;
-                        border:0!important;border-radius:0!important;
-                        background:#f2f2f2!important;color:#b00!important;
-                        font:inherit!important;font-size:.72rem!important;
+                        border:1px solid #E2E8F0!important;border-radius:8px!important;
+                        background:#F8FAFC!important;color:#B80000!important;
+                        font:inherit!important;font-size:.78rem!important;font-weight:600!important;
                         text-align:left!important;text-shadow:none!important;
                         box-shadow:none!important
                     }
-                    .bmd-parts-stock-button:hover,.bmd-parts-stock-button:focus {
-                        background:#b00!important;color:#fff!important;outline:none
+                    .bmd-parts-stock-button:not(.bm-link):not(.bmd-in-link-panel *):hover,.bmd-parts-stock-button:not(.bm-link):not(.bmd-in-link-panel *):focus {
+                        background:#B80000!important;color:#fff!important;border-color:#B80000!important;outline:none
                     }
                     .bm-mobile-parts-stock-wrap {
-                        display:block;margin:.85rem 0 1rem;clear:both
+                        display:flex!important;flex-direction:column!important;
+                        gap:8px!important;margin:.85rem 0 1rem;clear:both
                     }
                     .bm-mobile-parts-stock-wrap:empty {
                         display:none!important
+                    }
+                    .bm-mobile-parts-stock-wrap .bm-cta-subgroup {
+                        display:grid!important;grid-template-columns:1fr 1fr!important;
+                        gap:8px!important;width:100%!important
+                    }
+                    .bm-mobile-parts-stock-wrap .bm-cta-subgroup .bmd-parts-stock-button {
+                        min-height:38px!important;padding:.5rem .35rem!important;
+                        font-size:.8rem!important;border-radius:10px!important
+                    }
+                    .bm-mobile-parts-stock-wrap .bm-cta-subgroup .bmd-button-label-full {
+                        display:none!important
+                    }
+                    .bm-mobile-parts-stock-wrap .bm-cta-subgroup .bmd-button-label-mobile {
+                        display:inline!important
                     }
                     .bm-mobile-parts-stock-wrap .bmd-parts-stock-button {
                         display:inline-flex!important;align-items:center!important;
                         justify-content:center!important;width:100%!important;
                         min-height:42px;padding:.65rem 1rem!important;
-                        margin:0!important;border:1px solid #ddd!important;
-                        border-radius:4px!important;background:#f7f7f7!important;
-                        color:#b00!important;font-size:.85rem!important;
+                        margin:0!important;border:1px solid #E2E8F0!important;
+                        border-radius:10px!important;background:#FFFFFF!important;
+                        color:#1E293B!important;font-size:.85rem!important;
                         font-weight:600!important;line-height:1.25!important;
                         text-align:center!important;text-decoration:none!important;
-                        box-shadow:0 1px 2px rgba(0,0,0,.05)!important;
+                        box-shadow:0 1px 2px rgba(0,0,0,.04)!important;
                         box-sizing:border-box!important;cursor:pointer
                     }
                     .bm-mobile-parts-stock-wrap .bmd-parts-stock-button:hover,
                     .bm-mobile-parts-stock-wrap .bmd-parts-stock-button:focus {
-                        background:#b00!important;color:#fff!important;
-                        border-color:#b00!important;outline:none!important
+                        background:#F8FAFC!important;color:#0F172A!important;
+                        border-color:#CBD5E1!important;outline:none!important
                     }
                     .bm-mobile-parts-stock-wrap .bmd-parts-stock-button .bmd-button-icon {
                         width:1.25rem!important;height:1.25rem!important;
-                        flex:0 0 1.25rem!important;margin-right:.35rem
+                        flex:0 0 1.25rem!important;margin-right:.35rem;
+                        color:#B80000!important
                     }
                     .bm-mobile-parts-stock-wrap .bmd-parts-stock-button .bmd-button-icon svg {
-                        width:1.25rem!important;height:1.25rem!important
+                        width:1.25rem!important;height:1.25rem!important;
+                        stroke:#B80000!important
                     }
                     @media screen and (min-width:1025px) {
                         .bm-mobile-parts-stock-wrap { display:none!important }
@@ -16456,42 +22738,43 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     .bmd-overlay {
                         position:fixed;inset:0;z-index:2147483000;display:flex;
                         align-items:center;justify-content:center;padding:1rem;
-                        background:rgba(0,0,0,.64);box-sizing:border-box;
+                        background:rgba(15,23,42,.6);backdrop-filter:blur(4px);
+                        -webkit-backdrop-filter:blur(4px);box-sizing:border-box;
                         animation:bm-ean-fade-in .18s ease-out
                     }
                     .bmd-dialog {
                         display:flex;width:min(40rem,100%);
                         max-height:calc(100vh - 2rem);max-height:calc(100dvh - 2rem);
                         flex-direction:column;overflow:hidden;border:0;
-                        border-top:5px solid #b00;border-radius:4px;background:#fff;
-                        color:#333;text-align:left;box-shadow:0 18px 48px rgba(0,0,0,.32);
+                        border-radius:20px;background:#fff;
+                        color:#0F172A;text-align:left;box-shadow:0 16px 48px rgba(0,0,0,.35);
                         animation:bm-ean-zoom-in .18s ease-out
                     }
                     .bmd-dialog-header {
-                        display:flex;min-height:64px;flex:0 0 auto;align-items:center;
+                        display:flex;min-height:56px;flex:0 0 auto;align-items:center;
                         justify-content:space-between;gap:.6rem;
-                        padding:.8rem .8rem .8rem 1.25rem;border-bottom:1px solid #ddd;
+                        padding:.8rem 1rem .8rem 1.25rem;border-bottom:1px solid #F1F5F9;
                         background:#fff!important;box-shadow:none!important;
                         box-sizing:border-box
                     }
                     .bmd-dialog-header h3 {
                         min-width:0;margin:0!important;padding:0!important;
-                        overflow:visible;color:#333!important;
-                        -webkit-text-fill-color:#333!important;
-                        background:none!important;font-size:1.25rem!important;
+                        overflow:visible;color:#0F172A!important;
+                        -webkit-text-fill-color:#0F172A!important;
+                        background:none!important;font-size:1.2rem!important;
                         font-weight:700!important;line-height:1.2!important;
                         text-shadow:none!important;white-space:normal
                     }
                     .bmd-close {
-                        display:inline-flex!important;width:40px;min-width:40px;height:40px;
-                        flex:0 0 40px;align-items:center;justify-content:center;
+                        display:inline-flex!important;width:32px;min-width:32px;height:32px;
+                        flex:0 0 32px;align-items:center;justify-content:center;
                         margin:0!important;padding:0!important;border:0!important;
-                        border-radius:4px!important;background:#f7eaea!important;
-                        color:#800!important;font:bold 1.8rem/1 Arial,sans-serif!important;
+                        border-radius:16px!important;background:#F1F5F9!important;
+                        color:#64748B!important;font:bold 1.25rem/1 Arial,sans-serif!important;
                         text-shadow:none!important;cursor:pointer
                     }
                     .bmd-close:hover,.bmd-close:focus {
-                        background:#b00!important;color:#fff!important;outline:none
+                        background:#E2E8F0!important;color:#0F172A!important;outline:none
                     }
                     .bmd-dialog-body {
                         min-height:0;overflow:auto;padding:.85rem 1rem 1rem;
@@ -16507,109 +22790,466 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     .bmd-field { display:block;min-width:0;margin:0 }
                     .bmd-field-wide { grid-column:1/-1 }
                     .bmd-field>span {
-                        display:block;margin-bottom:.15rem;color:#777;font-size:.64rem;
-                        font-weight:400;line-height:1.25;text-transform:uppercase
+                        display:block;margin-bottom:.15rem;color:#64748B;font-size:.66rem;
+                        font-weight:600;line-height:1.25;text-transform:uppercase
                     }
                     .bmd-field input,.bmd-field select {
-                        display:block;width:100%;height:2.15rem;margin:0;
-                        padding:.3rem .45rem;border:1px solid #ccc;background:#fff;
-                        color:#333;font-size:.82rem;box-sizing:border-box
+                        display:block;width:100%;height:2.2rem;margin:0;
+                        padding:.3rem .5rem;border:1px solid #CBD5E1;border-radius:8px;background:#fff;
+                        color:#0F172A;font-size:.85rem;box-sizing:border-box
                     }
-                    .bmd-field input[readonly] { background:#eee;font-weight:700 }
+                    .bmd-field input[readonly] { background:#F8FAFC;font-weight:700 }
                     .bmd-new-storage { margin-top:.35rem!important }
-                    .bmd-submit { width:100%;margin:.75rem 0 0!important }
-                    .bmd-status { min-height:1.1rem;padding-top:.45rem;color:#666 }
-                    .bmd-status-ok { color:#476600;font-weight:700 }
-                    .bmd-status-error { color:#b00;font-weight:700 }
+                    .bmd-submit { width:100%;margin:.75rem 0 0!important;border-radius:10px!important;font-weight:600!important;background:#B80000!important;color:#fff!important }
+                    .bmd-status { min-height:1.1rem;padding-top:.45rem;color:#64748B }
+                    .bmd-status-ok { color:#16A34A;font-weight:700 }
+                    .bmd-status-error { color:#EF4444;font-weight:700 }
+                    /* ============================================================
+                       Depot / Bestandsseite im Style der Wunschliste (#dpWrap)
+                       ============================================================ */
+                    #dpWrap {
+                        color-scheme: light !important;
+                        background: #FFFFFF !important;
+                        padding-bottom: 2.5rem !important;
+                        width: 100% !important;
+                        box-sizing: border-box !important;
+                    }
+                    #dpWrap .dp-statsbar {
+                        display: grid !important;
+                        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+                        gap: 8px 12px !important;
+                        margin: 8px 0 16px !important;
+                        padding: 0 !important;
+                        background: transparent !important;
+                        border: none !important;
+                        width: 100% !important;
+                        box-sizing: border-box !important;
+                    }
+                    #dpWrap .dp-stat {
+                        display: flex !important;
+                        flex-direction: column !important;
+                        justify-content: center !important;
+                        padding: 10px 12px !important;
+                        background: #FFFFFF !important;
+                        border: 1px solid #E2E8F0 !important;
+                        border-radius: 12px !important;
+                        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+                        box-sizing: border-box !important;
+                        min-width: 0 !important;
+                    }
+                    #dpWrap .dp-statlabel {
+                        font-size: 0.68rem !important;
+                        font-weight: 700 !important;
+                        color: #64748B !important;
+                        text-transform: uppercase !important;
+                        letter-spacing: 0.03em !important;
+                        margin-bottom: 2px !important;
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                    }
+                    #dpWrap .dp-statval {
+                        font-size: 1.12rem !important;
+                        font-weight: 800 !important;
+                        color: #0F172A !important;
+                        line-height: 1.2 !important;
+                    }
+                    #dpWrap .dp-statsub {
+                        font-size: 0.7rem !important;
+                        color: #64748B !important;
+                        margin-top: 2px !important;
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                    }
+                    #dpWrap .dp-headtools {
+                        display: flex !important;
+                        align-items: center !important;
+                        gap: 8px 10px !important;
+                        flex-wrap: wrap !important;
+                        margin-bottom: 12px !important;
+                    }
+                    #dpWrap .dp-headtools input[type="text"],
+                    #dpWrap .dp-headtools select {
+                        height: 38px !important;
+                        border-radius: 10px !important;
+                        border: 1.5px solid #E2E8F0 !important;
+                        background: #FFFFFF !important;
+                        padding: 0 12px !important;
+                        font-size: 0.85rem !important;
+                        color: #1E293B !important;
+                        outline: none !important;
+                        box-sizing: border-box !important;
+                    }
+                    #dpWrap .dp-headtools input[type="text"]:focus,
+                    #dpWrap .dp-headtools select:focus {
+                        border-color: #B80000 !important;
+                        box-shadow: 0 0 0 3px rgba(184, 0, 0, 0.1) !important;
+                    }
+                    #dpWrap .dp-headtools .button,
+                    #dpWrap .dp-headtools button,
+                    #dpWrap .dp-headtools a.button {
+                        height: 38px !important;
+                        line-height: 38px !important;
+                        padding: 0 12px !important;
+                        border-radius: 10px !important;
+                        font-size: 0.8rem !important;
+                        font-weight: 600 !important;
+                        margin: 0 !important;
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        gap: 6px !important;
+                        box-sizing: border-box !important;
+                    }
+                    #dpWrap table,
+                    #dpWrap #dpTable {
+                        width: 100% !important;
+                        border-collapse: separate !important;
+                        border-spacing: 0 6px !important;
+                        border: none !important;
+                        background: transparent !important;
+                        margin: 0 !important;
+                        min-width: 0 !important;
+                    }
+                    #dpWrap thead th,
+                    #dpWrap .pa-head th,
+                    #dpWrap tr.pa-head td {
+                        color: #64748B !important;
+                        font-size: 0.7rem !important;
+                        font-weight: 700 !important;
+                        text-transform: uppercase !important;
+                        letter-spacing: 0.04em !important;
+                        padding: 6px 10px !important;
+                        border: none !important;
+                        background: transparent !important;
+                    }
+                    #dpWrap #dpTableBody .pa-row,
+                    #dpWrap .pa-row {
+                        background: #FFFFFF !important;
+                        border: 1px solid #E2E8F0 !important;
+                        border-radius: 12px !important;
+                        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+                        transition: all 0.15s ease !important;
+                    }
+                    #dpWrap #dpTableBody .pa-row:hover,
+                    #dpWrap .pa-row:hover {
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+                        border-color: #CBD5E1 !important;
+                    }
+                    #dpWrap .pa-row td,
+                    #dpWrap .pa-row .pa-cell {
+                        padding: 8px 10px !important;
+                        border: none !important;
+                        vertical-align: middle !important;
+                    }
+                    #dpWrap .pa-c-img img,
+                    #dpWrap .pa-row td.pa-c-img img {
+                        width: 50px !important;
+                        height: 50px !important;
+                        border-radius: 8px !important;
+                        background: #F8FAFC !important;
+                        border: 1px solid #F1F5F9 !important;
+                        object-fit: contain !important;
+                        padding: 2px !important;
+                        box-sizing: border-box !important;
+                        display: block !important;
+                    }
+                    #dpWrap .pa-setname,
+                    #dpWrap .pa-c-set a.detail {
+                        font-size: 0.88rem !important;
+                        font-weight: 600 !important;
+                        color: #0F172A !important;
+                        text-decoration: none !important;
+                        line-height: 1.3 !important;
+                    }
+                    #dpWrap .pa-setname:hover,
+                    #dpWrap .pa-c-set a.detail:hover {
+                        color: #B80000 !important;
+                        text-decoration: underline !important;
+                    }
+                    #dpWrap .dp-subline,
+                    #dpWrap .pa-setsub {
+                        font-size: 0.72rem !important;
+                        color: #64748B !important;
+                        margin-top: 2px !important;
+                    }
+                    #dpWrap .pa-c-best {
+                        color: #B80000 !important;
+                        font-weight: 700 !important;
+                    }
+                    #dpWrap .dp-lots {
+                        background: #F8FAFC !important;
+                        border: 1px solid #E2E8F0 !important;
+                        border-radius: 10px !important;
+                        margin: 6px 0 !important;
+                        padding: 6px 10px !important;
+                    }
+                    #dpWrap .dp-lot {
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: space-between !important;
+                        gap: 8px !important;
+                        padding: 4px 0 !important;
+                        border-bottom: 1px solid #EDF2F7 !important;
+                        font-size: 0.76rem !important;
+                        color: #334155 !important;
+                    }
+                    #dpWrap .dp-lot:last-child {
+                        border-bottom: none !important;
+                    }
                     #dpWrap .bmd-growth {
                         display:block;margin-top:.18rem;font-size:.68rem;font-weight:700;
                         line-height:1.25;white-space:nowrap
                     }
-                    #dpWrap .bmd-positive,.bmd-dashboard-dialog .bmd-positive { color:#2e7d32!important }
-                    #dpWrap .bmd-negative,.bmd-dashboard-dialog .bmd-negative { color:#b00020!important }
-                    #dpWrap .bmd-neutral,.bmd-dashboard-dialog .bmd-neutral { color:#666!important }
+                    #dpWrap .bmd-positive,.bmd-dashboard-dialog .bmd-positive { color:#16A34A!important }
+                    #dpWrap .bmd-negative,.bmd-dashboard-dialog .bmd-negative { color:#EF4444!important }
+                    #dpWrap .bmd-neutral,.bmd-dashboard-dialog .bmd-neutral { color:#64748B!important }
                     #dpWrap .bmd-performance-percent,
                     .bmd-dashboard-dialog .bmd-performance-percent { font-weight:800 }
                     #dpWrap .bmd-growth-total { font-size:1rem;font-weight:700 }
                     #dpWrap .bmd-parts-link {
                         display:inline-block;margin-left:.15rem;padding:0 .2rem;
-                        color:#555;font-size:.68rem;font-weight:600;line-height:1.25;
+                        color:#64748B;font-size:.68rem;font-weight:600;line-height:1.25;
                         text-decoration:underline;white-space:nowrap
                     }
                     #dpWrap .bmd-parts-link:hover,#dpWrap .bmd-parts-link:focus {
-                        background:#600;color:#fff;text-decoration:none;outline:none
+                        background:#B80000;color:#fff;text-decoration:none;outline:none
                     }
                     #dpWrap .bmd-sale-threshold {
                         display:block;width:100%;margin:.18rem 0 0;padding:0;border:0;
-                        background:none!important;color:#555!important;font:600 .66rem/1.25 inherit;
+                        background:none!important;color:#64748B!important;font:600 .66rem/1.25 inherit;
                         text-align:right;text-decoration:underline;cursor:pointer
                     }
                     #dpWrap .bmd-sale-threshold:hover,#dpWrap .bmd-sale-threshold:focus {
-                        color:#900!important;background:none!important;outline:none
+                        color:#B80000!important;background:none!important;outline:none
                     }
                     #dpWrap .bmd-dashboard-button { margin:0!important }
-                    .bmd-dashboard-dialog { width:min(74rem,100%) }
+                    @media only screen and (max-width: 900px) {
+                        #dpWrap {
+                            width: 100% !important;
+                            overflow-x: hidden !important;
+                            padding: 6px 6px 24px !important;
+                            box-sizing: border-box !important;
+                        }
+                        #dpWrap table,
+                        #dpWrap #dpTable,
+                        #dpWrap #dpTableBody {
+                            display: flex !important;
+                            flex-direction: column !important;
+                            gap: 8px !important;
+                            width: 100% !important;
+                            min-width: 0 !important;
+                        }
+                        #dpWrap thead,
+                        #dpWrap .pa-head,
+                        #dpWrap tr.pa-head {
+                            display: none !important;
+                        }
+                        #dpWrap #dpTableBody .pa-row,
+                        #dpWrap .pa-row {
+                            display: block !important;
+                            position: relative !important;
+                            padding: 10px 10px 10px 76px !important;
+                            background: #FFFFFF !important;
+                            border: 1px solid #E2E8F0 !important;
+                            border-radius: 12px !important;
+                            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+                            box-sizing: border-box !important;
+                            width: 100% !important;
+                        }
+                        #dpWrap .pa-c-img,
+                        #dpWrap .pa-row td.pa-c-img {
+                            position: absolute !important;
+                            left: 10px !important;
+                            top: 12px !important;
+                            width: 54px !important;
+                            height: 54px !important;
+                            padding: 0 !important;
+                            display: block !important;
+                        }
+                        #dpWrap .pa-c-img img,
+                        #dpWrap .pa-row td.pa-c-img img {
+                            width: 54px !important;
+                            height: 54px !important;
+                        }
+                        #dpWrap .pa-c-set,
+                        #dpWrap .pa-row td.pa-c-set {
+                            display: block !important;
+                            padding: 0 0 4px !important;
+                            margin-bottom: 4px !important;
+                            width: 100% !important;
+                        }
+                        #dpWrap .pa-c-num,
+                        #dpWrap .pa-c-best,
+                        #dpWrap .dp-c-qty,
+                        #dpWrap .dp-c-price,
+                        #dpWrap .pa-row td.pa-c-num,
+                        #dpWrap .pa-row td.pa-c-best {
+                            display: inline-block !important;
+                            text-align: left !important;
+                            margin: 2px 14px 2px 0 !important;
+                            vertical-align: top !important;
+                            padding: 0 !important;
+                        }
+                        #dpWrap .pa-c-num[data-label]::before,
+                        #dpWrap .pa-c-best[data-label]::before {
+                            content: attr(data-label) !important;
+                            display: block !important;
+                            font-size: 0.58rem !important;
+                            text-transform: uppercase !important;
+                            color: #94A3B8 !important;
+                            font-weight: 700 !important;
+                        }
+                        #dpWrap .pa-c-act,
+                        #dpWrap .pa-row td.pa-c-act {
+                            display: flex !important;
+                            justify-content: flex-end !important;
+                            align-items: center !important;
+                            border-top: 1px dashed #E2E8F0 !important;
+                            margin-top: 8px !important;
+                            padding: 8px 0 0 !important;
+                            gap: 8px !important;
+                            width: 100% !important;
+                        }
+                        #dpWrap .bmd-sale-threshold { text-align: left }
+                    }
+                    .bmd-dashboard-dialog { width:min(76rem,100%) }
                     .bmd-dashboard-summary {
-                        display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem;
+                        display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem;
                         margin:0 0 .9rem
                     }
                     .bmd-dashboard-kpi {
-                        min-width:0;padding:.75rem .85rem;border-left:3px solid #b00;
-                        background:#f4f4f4
+                        min-width:0;padding:.85rem 1rem;background:#FFFFFF;
+                        border:1px solid #E2E8F0;border-left:4px solid #B80000;
+                        border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)
                     }
-                    .bmd-dashboard-kpi span { display:block;color:#777;font-size:.68rem }
-                    .bmd-dashboard-kpi strong { display:block;margin-top:.15rem;color:#222;font-size:1.05rem }
+                    .bmd-dashboard-kpi span { display:block;color:#64748B;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.02em }
+                    .bmd-dashboard-kpi strong { display:block;margin-top:.2rem;color:#0F172A;font-size:1.15rem;font-weight:700 }
                     .bmd-dashboard-kpi small {
-                        display:block;margin-top:.18rem;color:#777;font-size:.65rem;line-height:1.25
+                        display:block;margin-top:.2rem;color:#64748B;font-size:.68rem;line-height:1.25
                     }
-                    .bmd-dashboard-kpi.bmd-kpi-positive { border-left-color:#2e7d32 }
-                    .bmd-dashboard-kpi.bmd-kpi-negative { border-left-color:#b00020 }
-                    .bmd-dashboard-kpi.bmd-kpi-neutral { border-left-color:#777 }
+                    .bmd-dashboard-kpi.bmd-kpi-positive { border-left-color:#16A34A }
+                    .bmd-dashboard-kpi.bmd-kpi-negative { border-left-color:#EF4444 }
+                    .bmd-dashboard-kpi.bmd-kpi-neutral { border-left-color:#94A3B8 }
                     .bmd-sale-settings {
                         margin:0 0 .9rem;padding:.75rem .85rem;background:#fff8ee;
                         border-left:3px solid #ff771a
                     }
-                    .bmd-sale-settings h4,.bmd-dashboard-section h4 {
-                        margin:0 0 .55rem!important;color:#333!important;font-size:.95rem!important
+                    .bmd-sale-settings h4,.bmd-dashboard-section h4,
+                    .bmd-dashboard-risk h4,.bmd-dashboard-exit-radar h4 {
+                        margin:0 0 .55rem!important;color:#0F172A!important;font-size:.95rem!important;font-weight:700!important
                     }
+                    .bmd-dashboard-risk {
+                        margin:0 0 .9rem;padding:.85rem 1rem;background:#FFFFFF;
+                        border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)
+                    }
+                    .bmd-risk-grid {
+                        display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem;
+                        margin-top:.45rem
+                    }
+                    .bmd-risk-card {
+                        display:flex;flex-direction:column;min-width:0;padding:.75rem .85rem;
+                        border-radius:10px;border:1px solid #E2E8F0;background:#FFFFFF;
+                        box-shadow:0 1px 2px rgba(0,0,0,0.03)
+                    }
+                    .bmd-risk-card.bmd-risk-high { border-left:4px solid #EF4444 }
+                    .bmd-risk-card.bmd-risk-medium { border-left:4px solid #F59E0B }
+                    .bmd-risk-card.bmd-risk-low { border-left:4px solid #16A34A }
+                    .bmd-risk-card-header {
+                        display:flex;justify-content:space-between;align-items:center;
+                        gap:.3rem;margin-bottom:.35rem
+                    }
+                    .bmd-risk-card-title { font-size:.7rem;font-weight:600;color:#64748B }
+                    .bmd-risk-badge {
+                        padding:.12rem .4rem;border-radius:4px;font-size:.63rem;font-weight:700;
+                        white-space:nowrap
+                    }
+                    .bmd-badge-low { background:#ECFDF5;color:#16A34A }
+                    .bmd-badge-medium { background:#FFFBEB;color:#D97706 }
+                    .bmd-badge-high { background:#FEF2F2;color:#EF4444 }
+                    .bmd-risk-main { display:block;color:#0F172A;font-size:1rem;font-weight:700;margin-bottom:.2rem }
+                    .bmd-risk-tip { margin:auto 0 0;padding-top:.3rem;color:#64748B;font-size:.67rem;line-height:1.3 }
+
+                    .bmd-dashboard-exit-radar { margin:0 0 .9rem }
+                    .bmd-exit-kpis {
+                        display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem;
+                        margin-bottom:.6rem
+                    }
+                    .bmd-exit-kpi {
+                        min-width:0;padding:.75rem .85rem;background:#FFFFFF;border:1px solid #E2E8F0;
+                        border-left:4px solid #94A3B8;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,0.03)
+                    }
+                    .bmd-exit-kpi.bmd-exit-kpi-positive { border-left-color:#16A34A }
+                    .bmd-exit-kpi span { display:block;color:#64748B;font-size:.68rem;font-weight:600 }
+                    .bmd-exit-kpi strong { display:block;margin-top:.15rem;color:#0F172A;font-size:1.05rem;font-weight:700 }
+                    .bmd-exit-kpi small { display:block;margin-top:.15rem;color:#64748B;font-size:.65rem }
+                    .bmd-exit-toolbar { display:flex;gap:.35rem;margin-bottom:.5rem }
+                    .bmd-exit-empty {
+                        padding:1.4rem;text-align:center;color:#64748B;font-size:.8rem;
+                        background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:10px
+                    }
+                    .bmd-maturity-badge {
+                        display:inline-block;margin-left:.35rem;padding:.08rem .35rem;
+                        font-size:.62rem;font-weight:700;border-radius:4px;vertical-align:middle
+                    }
+                    .bmd-stage-fresh { background:#EFF6FF;color:#1D4ED8 }
+                    .bmd-stage-maturing { background:#ECFDF5;color:#16A34A }
+                    .bmd-stage-mature { background:#FAF5FF;color:#7E22CE }
+                    .bmd-exit-badge {
+                        display:inline-block;padding:.12rem .4rem;font-size:.65rem;
+                        font-weight:700;border-radius:4px;white-space:nowrap
+                    }
+                    .bmd-status-ready { background:#ECFDF5;color:#16A34A }
+                    .bmd-status-maturing { background:#FFFBEB;color:#D97706 }
+                    .bmd-status-below { background:#FEF2F2;color:#EF4444 }
+                    .bmd-table-btn {
+                        background:none;border:none;padding:0;color:#B80000;
+                        font:inherit;text-decoration:underline;cursor:pointer
+                    }
+                    .bmd-table-btn:hover { color:#990000 }
+                    .bmd-exit-calc-btn {
+                        margin:0!important;padding:.2rem .45rem!important;font-size:.66rem!important;border-radius:6px!important
+                    }
+
                     .bmd-sale-settings-grid {
                         display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;
                         align-items:end;gap:.55rem
                     }
                     .bmd-sale-settings-grid .bmd-field input { background:#fff }
-                    .bmd-sale-formula { margin:.5rem 0 0;color:#666;font-size:.7rem;line-height:1.35 }
+                    .bmd-sale-formula { margin:.5rem 0 0;color:#64748B;font-size:.7rem;line-height:1.35 }
                     .bmd-dashboard-tabs { display:flex;flex-wrap:wrap;gap:.35rem;margin:0 0 .6rem }
                     .bmd-dashboard-tab {
-                        margin:0!important;padding:.48rem .7rem!important;border:1px solid #ccc!important;
-                        border-radius:2px!important;background:#eee!important;color:#444!important;
-                        font:.75rem/1.1 inherit!important;cursor:pointer
+                        margin:0!important;padding:.48rem .75rem!important;border:1px solid #CBD5E1!important;
+                        border-radius:8px!important;background:#F1F5F9!important;color:#334155!important;
+                        font:600 .75rem/1.1 inherit!important;cursor:pointer
                     }
                     .bmd-dashboard-tab[aria-selected="true"] {
-                        border-color:#900!important;background:#900!important;color:#fff!important
+                        border-color:#B80000!important;background:#B80000!important;color:#fff!important
                     }
-                    .bmd-dashboard-table-wrap { overflow:auto;border:1px solid #ddd }
+                    .bmd-dashboard-table-wrap { overflow:auto;border:1px solid #E2E8F0;border-radius:10px }
                     .bmd-dashboard-table { width:100%;margin:0;border-collapse:collapse;font-size:.76rem }
                     .bmd-dashboard-table th,.bmd-dashboard-table td {
-                        padding:.48rem .55rem;border-bottom:1px solid #e5e5e5;text-align:right;
+                        padding:.48rem .55rem;border-bottom:1px solid #F1F5F9;text-align:right;
                         white-space:nowrap
                     }
-                    .bmd-dashboard-table th { background:#eee;color:#555;font-size:.67rem;text-transform:uppercase }
+                    .bmd-dashboard-table th { background:#F8FAFC;color:#64748B;font-size:.67rem;text-transform:uppercase;font-weight:700 }
                     .bmd-dashboard-table th:first-child,.bmd-dashboard-table td:first-child {
                         min-width:10rem;text-align:left;white-space:normal
                     }
                     .bmd-dashboard-table tbody tr:last-child td { border-bottom:0 }
-                    .bmd-dashboard-table tbody tr:hover td { background:#faf5f5 }
-                    .bmd-dashboard-setlink { color:#900;font-weight:700;text-decoration:none }
+                    .bmd-dashboard-table tbody tr:hover td { background:#F8FAFC }
+                    .bmd-dashboard-setlink { color:#B80000;font-weight:700;text-decoration:none }
                     .bmd-dashboard-setlink:hover,.bmd-dashboard-setlink:focus {
                         text-decoration:underline;outline:none
                     }
                     .bmd-dashboard-bar {
                         display:inline-block;height:.45rem;margin-left:.35rem;border-radius:1rem;
-                        background:#b00;vertical-align:middle
+                        background:#B80000;vertical-align:middle
                     }
-                    .bmd-dashboard-note { margin:.55rem 0 0;color:#777;font-size:.68rem }
+                    .bmd-dashboard-note { margin:.55rem 0 0;color:#64748B;font-size:.68rem }
                     .bmd-dashboard-rankings {
-                        display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;
+                        display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;
                         margin-top:.9rem
                     }
                     .bmd-dashboard-ranking { min-width:0 }
@@ -16622,38 +23262,184 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.55rem;
                         margin-top:.9rem
                     }
-                    .bmd-dashboard-coverage-item { padding:.65rem .75rem;background:#f4f4f4 }
-                    .bmd-dashboard-coverage-item span { display:block;color:#777;font-size:.65rem }
-                    .bmd-dashboard-coverage-item strong { display:block;margin-top:.1rem;font-size:.9rem }
+                    .bmd-dashboard-coverage-item { padding:.75rem .85rem;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px }
+                    .bmd-dashboard-coverage-item span { display:block;color:#64748B;font-size:.65rem }
+                    .bmd-dashboard-coverage-item strong { display:block;margin-top:.1rem;font-size:.9rem;color:#0F172A }
                     .bmd-threshold-result {
-                        margin:.75rem 0 0;padding:.75rem;background:#f4f4f4;text-align:center
+                        margin:.75rem 0 0;padding:.85rem;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;text-align:center
                     }
-                    .bmd-threshold-result strong { display:block;color:#900;font-size:1.35rem }
+                    .bmd-threshold-result strong { display:block;color:#B80000;font-size:1.35rem }
+                    .bmd-result-profit { margin:.35rem 0 .2rem;font-size:.85rem;color:#334155 }
+                    .bmd-margin-shortcuts { display:flex;gap:.3rem;margin-top:.35rem }
+                    .bmd-margin-btn {
+                        flex:1;padding:.3rem .4rem!important;border:1px solid #CBD5E1!important;
+                        border-radius:6px!important;background:#F1F5F9!important;color:#334155!important;
+                        font:600 .72rem/1.2 inherit!important;cursor:pointer;text-align:center
+                    }
+                    .bmd-margin-btn:hover,.bmd-margin-btn:focus {
+                        background:#B80000!important;color:#fff!important;border-color:#B80000!important;outline:none
+                    }
                     .bmd-threshold-actions { display:flex;gap:.5rem;margin-top:.7rem }
-                    .bmd-threshold-actions .button { flex:1;margin:0!important }
+                    .bmd-threshold-actions .button { flex:1;margin:0!important;border-radius:10px!important;font-weight:600!important }
+                    @media screen and (max-width:72rem) {
+                        .bmd-dashboard-rankings { grid-template-columns:repeat(2,minmax(0,1fr)) }
+                        .bmd-risk-grid { grid-template-columns:1fr }
+                        .bmd-exit-kpis { grid-template-columns:repeat(2,minmax(0,1fr)) }
+                    }
                     @media screen and (max-width:640px) {
-                        .bmd-overlay { padding:0 }
+                        .bmd-overlay { padding:.75rem }
                         .bmd-dialog {
-                            width:100vw;height:100vh;height:100dvh;
-                            max-height:none;border-radius:0
+                            width:100%;max-height:90vh;max-height:90dvh;
+                            border-radius:20px
                         }
                         .bmd-dialog-header {
-                            min-height:64px;padding:max(11px,env(safe-area-inset-top))
+                            min-height:56px;padding:max(11px,env(safe-area-inset-top))
                                 max(10px,env(safe-area-inset-right)) 10px
                                 max(15px,env(safe-area-inset-left))
                         }
                         .bmd-dialog-header h3 { font-size:1.08rem!important }
-                        .bmd-open-button { min-width:0;font-size:.7rem!important }
-                        .bmd-button-label-full { display:none }
-                        .bmd-button-label-mobile { display:inline }
+                        .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) { min-width:0;font-size:.7rem!important }
+                        .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) .bmd-button-label-full { display:none }
+                        .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) .bmd-button-label-mobile { display:inline }
                         .bmd-fields { grid-template-columns:1fr }
                         .bmd-field-wide { grid-column:auto }
                         .bmd-dashboard-summary { grid-template-columns:repeat(2,minmax(0,1fr)) }
                         .bmd-dashboard-rankings,.bmd-dashboard-coverage { grid-template-columns:1fr }
-                        .bmd-sale-settings-grid { grid-template-columns:1fr }
-                        .bmd-dashboard-table th,.bmd-dashboard-table td { padding:.42rem }
-                        #dpWrap .bmd-sale-threshold { text-align:left }
+                        .bmd-risk-grid,.bmd-exit-kpis { grid-template-columns:1fr }
                     }
+                    .bm-depot-inventory-offer {
+                        background-color:#f0f7ff!important;
+                        border-left:3px solid #1976d2!important;
+                        transition:background-color .15s ease
+                    }
+                    .bm-depot-inventory-offer:hover {
+                        background-color:#e3f2fd!important
+                    }
+                    .bm-depot-inventory-logo-link {
+                        display:flex!important;flex-direction:column!important;
+                        align-items:center!important;justify-content:center!important;
+                        height:100%!important;min-height:48px!important;
+                        text-decoration:none!important;color:#1976d2!important;
+                        padding:2px 4px!important
+                    }
+                    .bm-depot-inventory-icon {
+                        font-size:1.25rem!important;line-height:1!important;display:block!important
+                    }
+                    .bm-depot-inventory-caption {
+                        font-size:.68rem!important;font-weight:700!important;
+                        letter-spacing:.02em!important;color:#1565c0!important;
+                        text-transform:uppercase!important;margin-top:2px!important;display:block!important
+                    }
+                    .bm-depot-inventory-price-row {
+                        display:flex!important;align-items:center!important;
+                        justify-content:space-between!important;position:relative!important
+                    }
+                    .bm-depot-inventory-link {
+                        display:inline-flex!important;align-items:center!important;
+                        flex:1 1 auto!important;min-width:0!important;
+                        text-decoration:none!important;color:inherit!important
+                    }
+                    .bm-depot-inventory-price-row .price {
+                        display:inline-flex!important;align-items:center!important;
+                        flex-wrap:wrap!important;width:auto!important
+                    }
+                    .bm-depot-inventory-meta {
+                        display:inline-flex!important;align-items:center!important;
+                        gap:4px!important;font-size:.76rem!important;font-weight:600!important;
+                        color:#1565c0!important;margin-right:8px!important
+                    }
+                    @media screen and (max-width:640px) {
+                        .bm-depot-inventory-meta { display:none!important }
+                    }
+                    .bm-depot-inventory-tag {
+                        display:inline-block!important;background:#1976d2!important;
+                        color:#fff!important;font-size:.65rem!important;font-weight:700!important;
+                        padding:1px 5px!important;border-radius:3px!important;
+                        line-height:1.2!important;text-transform:uppercase!important;
+                        letter-spacing:.03em!important
+                    }
+                    .bm-depot-inventory-price-val {
+                        font-weight:700!important;color:#0d47a1!important
+                    }
+                    .bmd-depot-roi-btn {
+                        display:inline-flex!important;align-items:center!important;
+                        gap:4px!important;margin:0 8px 0 auto!important;
+                        padding:3px 8px!important;background:#e3f2fd!important;
+                        color:#1565c0!important;border:1px solid #90caf9!important;
+                        border-radius:4px!important;font-size:.74rem!important;
+                        font-weight:700!important;line-height:1.2!important;
+                        cursor:pointer!important;white-space:nowrap!important;
+                        flex:0 0 auto!important;box-shadow:0 1px 2px rgba(0,0,0,.06)!important;
+                        transition:all .15s ease!important;z-index:2!important
+                    }
+                    .bmd-depot-roi-btn:hover,.bmd-depot-roi-btn:focus {
+                        background:#1976d2!important;color:#fff!important;
+                        border-color:#1565c0!important;box-shadow:0 2px 4px rgba(25,118,210,.25)!important;
+                        outline:none!important
+                    }
+                    @media screen and (max-width:640px) {
+                        .bmd-depot-roi-text { display:none!important }
+                        .bmd-depot-roi-btn {
+                            padding:2px 6px!important;margin:0 4px 0 auto!important;
+                            font-size:.78rem!important
+                        }
+                    }
+                    .bmd-sheets-sync-btn-group {
+                        display:inline-flex!important;align-items:center!important;
+                        vertical-align:middle!important;margin-right:6px!important
+                    }
+                    .bmd-sheets-sync-btn {
+                        border-top-right-radius:0!important;border-bottom-right-radius:0!important;
+                        border-right:0!important;font-weight:600!important;cursor:pointer!important
+                    }
+                    .bmd-sheets-settings-btn {
+                        border-top-left-radius:0!important;border-bottom-left-radius:0!important;
+                        padding-left:6px!important;padding-right:6px!important;cursor:pointer!important
+                    }
+                    .bmd-sheets-config-dialog {
+                        max-width:680px!important;width:95%!important
+                    }
+                    .bmd-sheets-config-container {
+                        display:flex;flex-direction:column;gap:12px;font-size:.88rem;line-height:1.4
+                    }
+                    .bmd-sheets-intro p { margin:0 0 8px;color:#333 }
+                    .bmd-sheets-steps { margin:0;padding-left:20px;color:#555;font-size:.82rem }
+                    .bmd-sheets-steps li { margin-bottom:4px }
+                    .bmd-sheets-code-wrap { position:relative;margin-top:4px }
+                    .bmd-sheets-copy-code {
+                        position:absolute;top:6px;right:6px;z-index:2;
+                        padding:3px 8px!important;font-size:.75rem!important
+                    }
+                    .bmd-sheets-code-area {
+                        width:100%;box-sizing:border-box;font-family:monospace;font-size:.75rem;
+                        background:#f8f9fa;border:1px solid #ddd;border-radius:4px;padding:8px;
+                        resize:vertical
+                    }
+                    .bmd-sheets-form { display:flex;flex-direction:column;gap:10px }
+                    .bmd-sheets-status-box {
+                        padding:8px 12px;border-radius:4px;background:#f0f4f8;color:#333;font-size:.82rem
+                    }
+                    .bmd-sheets-status-box.bmd-status-success {
+                        background:#e8f5e9;color:#2e7d32;font-weight:600
+                    }
+                    .bmd-sheets-status-box.bmd-status-error {
+                        background:#ffebee;color:#c62828;font-weight:600
+                    }
+                    .bmd-sheets-actions {
+                        display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap
+                    }
+                    .bmd-toast-container {
+                        position:fixed;bottom:20px;right:20px;z-index:99999;
+                        display:flex;flex-direction:column;gap:8px;pointer-events:none
+                    }
+                    .bmd-toast {
+                        padding:10px 16px;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.15);
+                        font-size:.88rem;font-weight:600;color:#fff;background:#333;
+                        pointer-events:auto;transition:opacity .3s ease
+                    }
+                    .bmd-toast-success { background:#2e7d32 }
+                    .bmd-toast-error { background:#c62828 }
+                    .bmd-toast-fade { opacity:0 }
                 `;
                 document.head.appendChild(style);
             }
@@ -16708,6 +23494,14 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     : '';
             }
 
+            const MARKETPLACE_PRESETS = {
+                custom: { id: 'custom', name: 'Individuell', feePercent: 0, fixedFee: 0, shipping: 6.99 },
+                ebay_comm: { id: 'ebay_comm', name: 'eBay (Gewerblich 12 % + 0,35 €)', feePercent: 12.0, fixedFee: 0.35, shipping: 6.99 },
+                amazon: { id: 'amazon', name: 'Amazon DE (FBM 15 % + 0,99 €)', feePercent: 15.0, fixedFee: 0.99, shipping: 6.99 },
+                stockx: { id: 'stockx', name: 'StockX (12 % + 5 € Label)', feePercent: 12.0, fixedFee: 0.0, shipping: 5.00 },
+                bricklink: { id: 'bricklink', name: 'BrickLink (+PayPal ~5,5 % + 0,35 €)', feePercent: 5.49, fixedFee: 0.35, shipping: 0.0 }
+            };
+
             function defaultSaleSettings() {
                 return {
                     defaults: { feePercent: 0, fixedFee: 0, shipping: 6.99 },
@@ -16758,18 +23552,37 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 return settings.sets[setNumber] || settings.defaults;
             }
 
-            function calculateSaleThreshold(purchasePrice, values) {
+            function calculateRequiredSalePrice(purchasePrice, roiPercent, values) {
                 const price = Number(purchasePrice);
+                const roi = Number(roiPercent || 0);
                 const feePercent = Number(values?.feePercent);
                 const fixedFee = Number(values?.fixedFee);
                 const shipping = Number(values?.shipping);
                 const retainedShare = 1 - feePercent / 100;
                 if (!Number.isFinite(price) || price < 0 ||
+                    !Number.isFinite(roi) || roi < -100 ||
                     !Number.isFinite(feePercent) || feePercent < 0 ||
                     !Number.isFinite(fixedFee) || fixedFee < 0 ||
                     !Number.isFinite(shipping) || shipping < 0 ||
                     retainedShare <= 0) return null;
-                return (price + fixedFee + shipping) / retainedShare;
+                const targetCostPlusProfit = price * (1 + roi / 100);
+                const targetPrice = (targetCostPlusProfit + fixedFee + shipping) / retainedShare;
+                const totalFee = targetPrice * (feePercent / 100) + fixedFee;
+                const netPayout = targetPrice - totalFee - shipping;
+                const rawProfit = netPayout - price;
+                const profit = Math.abs(rawProfit) < 1e-9 ? 0 : rawProfit;
+                return {
+                    targetPrice,
+                    profit,
+                    totalFee,
+                    shipping,
+                    retainedShare
+                };
+            }
+
+            function calculateSaleThreshold(purchasePrice, values) {
+                const result = calculateRequiredSalePrice(purchasePrice, 0, values);
+                return result?.targetPrice ?? null;
             }
 
             function formatCurrency(value) {
@@ -16869,6 +23682,39 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
             }
 
+            function extractLotMerchant(lot, edit) {
+                if (edit) {
+                    const fromDataset =
+                        edit.dataset.merchant ||
+                        edit.dataset.seller ||
+                        edit.dataset.dealer ||
+                        edit.dataset.shop ||
+                        edit.dataset.store ||
+                        edit.dataset.note ||
+                        edit.dataset.lotnote;
+                    if (fromDataset && String(fromDataset).trim()) {
+                        return String(fromDataset).trim();
+                    }
+                }
+                if (lot) {
+                    const el = lot.querySelector(
+                        '.dp-merchant, .dp-seller, .dp-dealer, .dp-shop, .dp-store, .dp-note, .dp-lotnote, .merchant, .seller'
+                    );
+                    if (el?.textContent?.trim()) {
+                        return el.textContent.trim();
+                    }
+                    const text = lot.textContent || '';
+                    const parenMatch = text.match(/\(([^)\d][^)]*)\)/);
+                    if (parenMatch && parenMatch[1]?.trim()) {
+                        const candidate = parenMatch[1].trim();
+                        if (!/^\d+(?:[.,]\d+)?\s*€?$/i.test(candidate) && !/neu|gebraucht/i.test(candidate)) {
+                            return candidate;
+                        }
+                    }
+                }
+                return '';
+            }
+
             async function loadDepotData(setNumber = '') {
                 const normalizedSetNumber = String(setNumber || '').trim();
                 if (normalizedSetNumber && depotDataPromises.has(normalizedSetNumber)) {
@@ -16901,9 +23747,94 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         result.querySelectorAll('.pa-row[data-nr][data-stock]')
                     ).find(row => String(row.dataset.nr || '') === normalizedSetNumber);
                     const parsedStock = Number.parseInt(exactRow?.dataset.stock || '', 10);
+                    const stock = Number.isFinite(parsedStock) ? Math.max(0, parsedStock) : 0;
+                    const parsedAvg = parseNumber(exactRow?.dataset.avg, true);
+                    const itemId = String(exactRow?.dataset.item || '').trim();
+
+                    const lots = [];
+                    let lotElements = [];
+                    if (itemId) {
+                        lotElements = Array.from(
+                            result.querySelectorAll(`.dp-lots[data-for="${itemId}"] .dp-lot[data-lot]`)
+                        );
+                    }
+                    if (lotElements.length === 0) {
+                        lotElements = Array.from(
+                            result.querySelectorAll('.dp-lots[data-for] .dp-lot[data-lot]')
+                        );
+                    }
+
+                    let totalLotQty = 0;
+                    let totalLotCapital = 0;
+                    const distinctPrices = new Set();
+                    const distinctMerchants = new Set();
+
+                    lotElements.forEach(lot => {
+                        const edit = lot.querySelector('.dp-editlot');
+                        const qty = Number.parseInt(edit?.dataset.qty || '', 10);
+                        if (!Number.isFinite(qty) || qty <= 0) return;
+                        const price = parseNumber(edit?.dataset.price, true);
+                        const merchant = extractLotMerchant(lot, edit);
+                        if (merchant) distinctMerchants.add(merchant);
+                        if (price !== null && price >= 0) {
+                            distinctPrices.add(price);
+                            totalLotQty += qty;
+                            totalLotCapital += price * qty;
+                        }
+                        lots.push({
+                            quantity: qty,
+                            price,
+                            date: String(edit?.dataset.date || ''),
+                            merchant,
+                            storage: String(edit?.dataset.storage || '').trim(),
+                            condition: String(edit?.dataset.condition || '') === '0' ? 'gebraucht' : 'neu'
+                        });
+                    });
+
+                    if (lots.length === 0 && stock > 0) {
+                        const rowMerchant =
+                            exactRow?.dataset.seller ||
+                            exactRow?.dataset.shop ||
+                            exactRow?.dataset.merchant ||
+                            exactRow?.dataset.note ||
+                            '';
+                        if (rowMerchant.trim()) distinctMerchants.add(rowMerchant.trim());
+                        if (parsedAvg !== null && parsedAvg >= 0) {
+                            distinctPrices.add(parsedAvg);
+                            totalLotQty = stock;
+                            totalLotCapital = parsedAvg * stock;
+                        }
+                    }
+
+                    let purchasePrice = null;
+                    let isMultiPrice = false;
+                    if (distinctPrices.size > 1) {
+                        isMultiPrice = true;
+                        purchasePrice = totalLotQty > 0
+                            ? Math.round((totalLotCapital / totalLotQty + Number.EPSILON) * 100) / 100
+                            : parsedAvg;
+                    } else if (distinctPrices.size === 1) {
+                        isMultiPrice = false;
+                        purchasePrice = Array.from(distinctPrices)[0];
+                    } else {
+                        purchasePrice = parsedAvg;
+                    }
+
+                    let merchantLabel = '';
+                    if (distinctMerchants.size > 1) {
+                        merchantLabel = 'Divers';
+                    } else if (distinctMerchants.size === 1) {
+                        merchantLabel = Array.from(distinctMerchants)[0];
+                    }
+
                     return {
                         ...base,
-                        stock: Number.isFinite(parsedStock) ? Math.max(0, parsedStock) : 0
+                        stock,
+                        avgPrice: parsedAvg,
+                        purchasePrice: Number.isFinite(purchasePrice) && purchasePrice > 0 ? purchasePrice : null,
+                        isMultiPrice,
+                        merchantLabel,
+                        lots
                     };
                 })();
                 if (normalizedSetNumber) depotDataPromises.set(normalizedSetNumber, request);
@@ -16915,6 +23846,177 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
             }
 
+            function injectDepotInventoryOfferRow(depotData, setNumber) {
+                const offerlist = document.getElementById('offerlist');
+                if (!offerlist) return;
+
+                const existingRow = offerlist.querySelector('.bm-depot-inventory-offer');
+                if (!depotData || !depotData.stock || depotData.stock <= 0 ||
+                    !Number.isFinite(depotData.purchasePrice) || depotData.purchasePrice <= 0) {
+                    if (existingRow) {
+                        existingRow.remove();
+                        if (globalThis.BM_scheduleOfferPresentation) {
+                            globalThis.BM_scheduleOfferPresentation();
+                        }
+                    }
+                    return;
+                }
+
+                const firstMainPriceRow = Array.from(offerlist.querySelectorAll(
+                    '.medium-4.small-9.columns.pricerow[data-mid]'
+                )).find(priceRow => !priceRow.closest('#soldOut') && !priceRow.closest('.bm-depot-inventory-offer'));
+                const parent = firstMainPriceRow?.closest('.row.collapse')?.parentElement ||
+                    offerlist.querySelector('.row.collapse')?.parentElement ||
+                    offerlist;
+
+                const mid = 'depot-inventory';
+                const depotUrl = depotData.listId
+                    ? `/?a=depot&l=${encodeURIComponent(depotData.listId)}&dpfilter=alle&q=${encodeURIComponent(setNumber)}`
+                    : `/?a=depot&dpfilter=alle&q=${encodeURIComponent(setNumber)}`;
+
+                const wrapper = existingRow || document.createElement('div');
+                wrapper.className = 'row collapse bm-depot-inventory-offer';
+                wrapper.dataset.bmDepotInventory = 'true';
+                wrapper.dataset.bmMid = mid;
+                wrapper.replaceChildren();
+
+                const iconColumn = document.createElement('div');
+                iconColumn.className = 'goto medium-1 small-3 columns bm-depot-inventory-logo-column';
+
+                const iconRow = document.createElement('div');
+                iconRow.id = `mid${mid}`;
+                iconRow.className = `pricerow ${mid} row-a text-center bm-depot-inventory-logo-cell`;
+                iconRow.dataset.mid = mid;
+                iconRow.dataset.bmDepotInventory = 'true';
+
+                const iconLink = document.createElement('a');
+                iconLink.href = depotUrl;
+                iconLink.className = 'bm-depot-inventory-logo-link';
+                iconLink.title = `Dein Kauf im Depot ansehen (${depotData.stock} Stk. im Bestand)`;
+                iconLink.setAttribute('aria-label', iconLink.title);
+
+                const logoSpan = document.createElement('span');
+                logoSpan.className = 'bm-depot-inventory-icon';
+                logoSpan.textContent = '📦';
+
+                const captionSpan = document.createElement('span');
+                captionSpan.className = 'bm-depot-inventory-caption';
+                captionSpan.textContent = 'Bestand';
+
+                iconLink.append(logoSpan, captionSpan);
+                iconRow.appendChild(iconLink);
+                iconColumn.appendChild(iconRow);
+
+                const priceRow = document.createElement('div');
+                priceRow.className = `medium-4 small-9 columns pricerow ${mid} row-a bm-depot-inventory-price-row`;
+                priceRow.dataset.mid = mid;
+                priceRow.dataset.bmDepotInventory = 'true';
+
+                const offerLink = document.createElement('a');
+                offerLink.href = depotUrl;
+                offerLink.className = 'tooltipster bm-depot-inventory-link';
+                offerLink.title = `Dein Kauf im Depot öffnen – Bestand: ${depotData.stock} Stk.` +
+                    (depotData.merchantLabel ? `, Händler: ${depotData.merchantLabel}` : '') +
+                    (depotData.isMultiPrice
+                        ? ` (Durchschnitts-EK: ${formatPrice(depotData.purchasePrice)} €)`
+                        : ` (EK: ${formatPrice(depotData.purchasePrice)} €)`);
+
+                const priceSpan = document.createElement('span');
+                priceSpan.className = 'price';
+                priceSpan.dataset.bmBasePrice = String(depotData.purchasePrice);
+
+                const metaSpan = document.createElement('span');
+                metaSpan.className = 'bm-depot-inventory-meta';
+
+                const tagSpan = document.createElement('span');
+                tagSpan.className = 'bm-depot-inventory-tag';
+                tagSpan.textContent = 'Dein Kauf';
+
+                metaSpan.appendChild(tagSpan);
+                const merchantText = depotData.merchantLabel ? ` · ${depotData.merchantLabel}` : '';
+                const qtyText = ` (${depotData.stock} Stk.)`;
+                metaSpan.append(`${merchantText}${qtyText}`);
+
+                const mobileMerchant = document.createElement('span');
+                mobileMerchant.className = 'show-for-small-only merchant bm-depot-inventory-mobile-merchant';
+                mobileMerchant.append(`Dein Kauf${merchantText}${qtyText}`);
+                mobileMerchant.appendChild(document.createElement('br'));
+
+                const priceFormatted = `${depotData.isMultiPrice ? 'Ø ' : ''}${formatPrice(depotData.purchasePrice)} €`;
+
+                priceSpan.append(mobileMerchant, metaSpan, priceFormatted);
+                offerLink.appendChild(priceSpan);
+                priceRow.appendChild(offerLink);
+
+                const roiButton = document.createElement('button');
+                roiButton.type = 'button';
+                roiButton.className = 'bmd-depot-roi-btn bmd-roi-calculator-button';
+                const bestNow = currentBestPrice();
+                let roiTooltip = `ROI- & Verkaufspreis-Rechner für deinen Einkauf (${formatPrice(depotData.purchasePrice)} €) öffnen`;
+                if (bestNow !== null && bestNow > 0 && depotData.purchasePrice > 0) {
+                    const diff = bestNow - depotData.purchasePrice;
+                    const diffPct = Math.round((diff / depotData.purchasePrice * 100) * 10) / 10;
+                    roiTooltip += ` · Akt. Bestpreis: ${formatPrice(bestNow)} € (${diff >= 0 ? '+' : ''}${formatPrice(diff)} € / ${diffPct >= 0 ? '+' : ''}${diffPct} %)`;
+                }
+                roiButton.title = roiTooltip;
+                roiButton.setAttribute('aria-label', roiButton.title);
+
+                const roiIcon = document.createElement('span');
+                roiIcon.className = 'bmd-depot-roi-icon';
+                roiIcon.textContent = '🧮';
+
+                const roiText = document.createElement('span');
+                roiText.className = 'bmd-depot-roi-text';
+                roiText.textContent = 'ROI-Rechner';
+
+                roiButton.append(roiIcon, roiText);
+                roiButton.addEventListener('click', event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openRoiCalculatorOverlay(setNumber, depotData.purchasePrice, roiButton);
+                });
+                priceRow.appendChild(roiButton);
+
+                wrapper.append(iconColumn, priceRow);
+                if (!existingRow) {
+                    parent.appendChild(wrapper);
+                }
+
+                if (globalThis.BM_scheduleOfferPresentation) {
+                    globalThis.BM_scheduleOfferPresentation();
+                }
+            }
+
+            async function syncDepotOfferRow(setNumber) {
+                const normalized = String(setNumber || '').trim();
+                if (!normalized) return;
+                try {
+                    const data = await loadDepotData(normalized);
+                    if (data && Number.isFinite(data.stock)) {
+                        const depotBtn = document.querySelector('.bm-detail-action-buttons-row .bmd-depot-button');
+                        if (depotBtn) setDetailStock(depotBtn, data.stock);
+                    }
+                    const tryInject = () => {
+                        const offerlist = document.getElementById('offerlist');
+                        if (offerlist) {
+                            injectDepotInventoryOfferRow(data, normalized);
+                            return true;
+                        }
+                        return false;
+                    };
+                    if (!tryInject()) {
+                        const observer = new MutationObserver(() => {
+                            if (tryInject()) observer.disconnect();
+                        });
+                        observer.observe(document.documentElement, {
+                            childList: true,
+                            subtree: true
+                        });
+                        window.setTimeout(() => observer.disconnect(), 5000);
+                    }
+                } catch (_) {}
+            }
+
             function setDetailStock(button, stock) {
                 if (!button || !Number.isFinite(Number(stock))) return;
                 const normalizedStock = Math.max(0, Math.trunc(Number(stock)));
@@ -16922,11 +24024,13 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 button.querySelectorAll(
                     '.bmd-button-label-full, .bmd-button-label-mobile'
                 ).forEach(label => {
-                    label.textContent = `Bestand: ${normalizedStock}`;
+                    label.textContent = normalizedStock > 0 ? `Bestand: ${normalizedStock}` : 'Depot';
                 });
                 button.title = normalizedStock === 1
                     ? '1 Stück im Bestand – weiteren Einkauf erfassen'
-                    : `${normalizedStock} Stück im Bestand – weiteren Einkauf erfassen`;
+                    : (normalizedStock > 1
+                        ? `${normalizedStock} Stück im Bestand – weiteren Einkauf erfassen`
+                        : 'Dieses Set zum Bestand/Depot hinzufügen');
                 button.setAttribute('aria-label', button.title);
             }
 
@@ -17053,7 +24157,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         form.elements.lotnote.value = '';
                         newStorage.value = '';
                         const detailButton = document.querySelector(
-                            `.bmd-open-button[data-bmd-set-number="${setNumber}"]`
+                            `.bmd-depot-button[data-bmd-set-number="${setNumber}"], .bm-detail-action-buttons-row .bmd-depot-button`
                         );
                         const previousStock = Number.parseInt(
                             detailButton?.dataset.bmdStock || '',
@@ -17072,6 +24176,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                                 setDetailStock(detailButton, data.stock);
                             }).catch(() => {});
                         }
+                        depotDataPromises.delete(setNumber);
+                        void syncDepotOfferRow(setNumber);
                         status.className = 'bmd-status bmd-status-ok';
                         status.textContent = `LEGO ${setNumber} wurde hinzugefügt.`;
                     } catch (error) {
@@ -17142,9 +24248,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 return { overlay, dialog, body, close };
             }
 
-            function openSaleThresholdOverlay(setNumber, purchasePrice, trigger) {
+            function openRoiCalculatorOverlay(setNumber, purchasePrice, trigger) {
                 const mounted = mountOverlay(
-                    `Verkaufsschwelle für LEGO ${setNumber}`,
+                    `ROI- & Verkaufspreis-Rechner für LEGO ${setNumber}`,
                     trigger
                 );
                 if (!mounted) return;
@@ -17152,9 +24258,25 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 const settings = readSaleSettings();
                 const hasOverride = Boolean(settings.sets[setNumber]);
                 const current = settings.sets[setNumber] || settings.defaults;
-                const fields = document.createElement('div');
-                fields.className = 'bmd-fields';
 
+                // Plattform-Auswahl
+                const presetSelect = document.createElement('select');
+                presetSelect.className = 'bmd-preset-select';
+                Object.values(MARKETPLACE_PRESETS).forEach(preset => {
+                    const opt = document.createElement('option');
+                    opt.value = preset.id;
+                    opt.textContent = preset.name;
+                    presetSelect.appendChild(opt);
+                });
+
+                // Felder
+                const priceInput = input('number', 'purchasePrice', {
+                    value: Number.isFinite(purchasePrice) ? String(purchasePrice) : '',
+                    min: '0', step: '0.01', inputmode: 'decimal', placeholder: '0.00'
+                });
+                const marginInput = input('number', 'targetMargin', {
+                    value: '0', min: '-90', max: '1000', step: '1', inputmode: 'decimal'
+                });
                 const fee = input('number', 'feePercent', {
                     value: String(current.feePercent), min: '0', max: '99.99',
                     step: '0.01', inputmode: 'decimal'
@@ -17167,10 +24289,62 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     value: String(current.shipping), min: '0', step: '0.01',
                     inputmode: 'decimal'
                 });
+
+                // Passendes Preset vorselektieren, falls Werte übereinstimmen
+                const matchPreset = Object.values(MARKETPLACE_PRESETS).find(p =>
+                    p.id !== 'custom' &&
+                    Math.abs(p.feePercent - current.feePercent) < 0.001 &&
+                    Math.abs(p.fixedFee - current.fixedFee) < 0.001 &&
+                    Math.abs(p.shipping - current.shipping) < 0.001
+                );
+                presetSelect.value = matchPreset ? matchPreset.id : 'custom';
+
+                presetSelect.addEventListener('change', () => {
+                    const selected = MARKETPLACE_PRESETS[presetSelect.value];
+                    if (selected && selected.id !== 'custom') {
+                        fee.value = String(selected.feePercent);
+                        fixed.value = String(selected.fixedFee);
+                        shipping.value = String(selected.shipping);
+                        refreshResult();
+                    }
+                });
+
+                const checkCustomPreset = () => {
+                    const match = Object.values(MARKETPLACE_PRESETS).find(p =>
+                        p.id !== 'custom' &&
+                        Math.abs(p.feePercent - Number(fee.value || 0)) < 0.001 &&
+                        Math.abs(p.fixedFee - Number(fixed.value || 0)) < 0.001 &&
+                        Math.abs(p.shipping - Number(shipping.value || 0)) < 0.001
+                    );
+                    presetSelect.value = match ? match.id : 'custom';
+                };
+
+                const presetWrap = field('Marktplatz / Preset', presetSelect, true);
+
+                // Marge Buttons (Schnellauswahl)
+                const marginShortcuts = document.createElement('div');
+                marginShortcuts.className = 'bmd-margin-shortcuts';
+                [0, 15, 25, 35, 50].forEach(m => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'bmd-margin-btn';
+                    btn.textContent = `${m} %`;
+                    btn.addEventListener('click', () => {
+                        marginInput.value = String(m);
+                        refreshResult();
+                    });
+                    marginShortcuts.appendChild(btn);
+                });
+
+                const marginField = field('Wunschmarge / ROI in % (auf EK)', marginInput);
+                marginField.appendChild(marginShortcuts);
+
+                const fields = document.createElement('div');
+                fields.className = 'bmd-fields';
                 fields.append(
-                    field('Ø Einkaufspreis', input('text', 'purchasePrice', {
-                        value: formatPrice(purchasePrice), readonly: 'readonly'
-                    })),
+                    presetWrap,
+                    field('Einkaufspreis (EK) in €', priceInput),
+                    marginField,
                     field('Verkaufsgebühr in %', fee),
                     field('Fixgebühr in €', fixed),
                     field('Versand in €', shipping)
@@ -17179,27 +24353,48 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 const result = document.createElement('div');
                 result.className = 'bmd-threshold-result';
                 const resultLabel = document.createElement('span');
-                resultLabel.textContent = 'Mindestens erforderlicher Verkaufspreis';
+                resultLabel.textContent = 'Erforderlicher Verkaufspreis (VK)';
                 const resultValue = document.createElement('strong');
+                const resultProfit = document.createElement('div');
+                resultProfit.className = 'bmd-result-profit';
                 const resultDetail = document.createElement('small');
-                result.append(resultLabel, resultValue, resultDetail);
+                result.append(resultLabel, resultValue, resultProfit, resultDetail);
 
                 const refreshResult = () => {
+                    const rawP = String(priceInput.value || '').trim();
+                    const currentPrice = (rawP.includes(',') && !rawP.includes('.'))
+                        ? (parseFloat(rawP.replace(',', '.')) || purchasePrice || 0)
+                        : (parseFloat(rawP) || purchasePrice || 0);
+                    const currentMargin = Number(marginInput.value) || 0;
                     const values = normalizeSaleValues({
                         feePercent: fee.value,
                         fixedFee: fixed.value,
                         shipping: shipping.value
                     }, current);
-                    const threshold = calculateSaleThreshold(purchasePrice, values);
-                    resultValue.textContent = formatCurrency(threshold);
-                    resultDetail.textContent =
-                        `${formatCurrency(purchasePrice)} EK + ` +
-                        `${formatCurrency(values.shipping)} Versand + ` +
-                        `${formatCurrency(values.fixedFee)} Fixgebühr; ` +
-                        `${formatPrice(values.feePercent)} % Verkaufsgebühr`;
+
+                    const calc = calculateRequiredSalePrice(currentPrice, currentMargin, values);
+                    if (calc) {
+                        resultValue.textContent = formatCurrency(calc.targetPrice);
+                        const profitClass = calc.profit > 0 ? 'bmd-positive' : (calc.profit < 0 ? 'bmd-negative' : 'bmd-neutral');
+                        resultProfit.innerHTML = `Gewinn: <b class="${profitClass}">${signed(calc.profit, 2, ' €')}</b> (${signed(currentMargin, 1, ' %')} ROI)`;
+                        resultDetail.textContent =
+                            `Abzüge: ${formatCurrency(calc.totalFee)} Gebühren (${formatPrice(values.feePercent)} % + ${formatCurrency(values.fixedFee)}) + ` +
+                            `${formatCurrency(calc.shipping)} Versand · Auszahlung Netto: ${formatCurrency(calc.targetPrice - calc.totalFee - calc.shipping)}`;
+                    } else {
+                        resultValue.textContent = '–';
+                        resultProfit.textContent = '';
+                        resultDetail.textContent = 'Bitte gültige Werte eingeben (Gebühr < 100 %).';
+                    }
                 };
-                [fee, fixed, shipping].forEach(control => {
+
+                [priceInput, marginInput].forEach(control => {
                     control.addEventListener('input', refreshResult);
+                });
+                [fee, fixed, shipping].forEach(control => {
+                    control.addEventListener('input', () => {
+                        checkCustomPreset();
+                        refreshResult();
+                    });
                 });
                 refreshResult();
 
@@ -17208,7 +24403,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 const save = document.createElement('button');
                 save.type = 'button';
                 save.className = 'button small smallRedButton';
-                save.textContent = 'Für dieses Set speichern';
+                save.textContent = 'Gebühren für Set im Depot speichern';
+                save.title = 'Speichert Verkaufsgebühr, Fixgebühr und Versand für dieses Set im Depot';
                 save.addEventListener('click', () => {
                     const latest = readSaleSettings();
                     latest.sets[setNumber] = normalizeSaleValues({
@@ -17217,13 +24413,17 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         shipping: shipping.value
                     }, latest.defaults);
                     writeSaleSettings(latest);
-                    closeOverlay();
-                    scheduleDepotUpdate();
+                    save.textContent = 'Gespeichert ✓';
+                    setTimeout(() => {
+                        closeOverlay();
+                        scheduleDepotUpdate();
+                    }, 500);
                 });
+
                 const reset = document.createElement('button');
                 reset.type = 'button';
                 reset.className = 'button small smallGreyButton';
-                reset.textContent = hasOverride ? 'Standard verwenden' : 'Abbrechen';
+                reset.textContent = hasOverride ? 'Standard verwenden' : 'Schließen';
                 reset.addEventListener('click', () => {
                     if (hasOverride) {
                         const latest = readSaleSettings();
@@ -17233,14 +24433,31 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     }
                     closeOverlay();
                 });
-                actions.append(save, reset);
+
+                const addDepotBtn = document.createElement('button');
+                addDepotBtn.type = 'button';
+                addDepotBtn.className = 'button small';
+                addDepotBtn.style.background = '#0284C7';
+                addDepotBtn.style.color = '#FFFFFF';
+                addDepotBtn.style.fontWeight = '600';
+                addDepotBtn.textContent = '📦 Zum Bestand hinzufügen';
+                addDepotBtn.title = 'Öffnet den Bestands-Dialog für dieses Set';
+                addDepotBtn.addEventListener('click', () => {
+                    closeOverlay();
+                    openNativeDepotAdd(setNumber);
+                });
+                actions.append(save, addDepotBtn, reset);
 
                 const note = document.createElement('p');
                 note.className = 'bmd-dashboard-note';
                 note.textContent =
-                    'Die Schwelle ist der kalkulatorische Break-even ohne Gewinnaufschlag. ' +
-                    'Gebühren werden prozentual vom Verkaufspreis gerechnet.';
+                    'Formel: VK = [EK × (1 + Marge %) + Fixgebühr + Versand] ÷ (1 − Gebühr %). ' +
+                    'Marge bezieht sich auf den Einkaufspreis (ROI).';
                 body.append(fields, result, actions, note);
+            }
+
+            function openSaleThresholdOverlay(setNumber, purchasePrice, trigger) {
+                openRoiCalculatorOverlay(setNumber, purchasePrice, trigger);
             }
 
             function openOverlay(setNumber, trigger) {
@@ -17363,67 +24580,413 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 }
             }
 
-            function setupDetailButton() {
-                const setNumber = getSetNumber();
-                const isDesktop = window.matchMedia('(min-width: 1025px)').matches;
-                const desktopPartsList = isDesktop
-                    ? document.querySelector('.bm-sidebar-parts-list')
-                    : null;
-                const sourcePartsHeading = Array.from(document.querySelectorAll(
-                    '#ol1st h3, .content.setdetails h3'
-                )).find(heading => /Einzelteilelisten/i.test(heading.textContent || ''));
-                const sourceSection = sourcePartsHeading?.closest('section');
-
-                let mobileHost = null;
-                if (!isDesktop && sourceSection) {
-                    mobileHost = document.querySelector('.bm-mobile-parts-stock-wrap');
-                    if (!mobileHost) {
-                        mobileHost = document.createElement('div');
-                        mobileHost.className = 'bm-mobile-parts-stock-wrap';
-                        sourceSection.insertAdjacentElement('afterend', mobileHost);
+            function openNativePriceAlarm(setNumber) {
+                const itemNumber = `${setNumber}-1`;
+                const matchesItem = link => {
+                    try {
+                        const url = new URL(link.href, window.location.href);
+                        return (url.searchParams.get('a') === 'pricealarm' || url.searchParams.get('a') === 'alarm') &&
+                            (url.searchParams.get('i') === itemNumber || url.searchParams.get('i') === setNumber);
+                    } catch (error) {
+                        return false;
                     }
-                    const detailWarning = document.querySelector('.bm-detail-warning');
-                    if (detailWarning && detailWarning.previousElementSibling !== mobileHost) {
-                        mobileHost.insertAdjacentElement('afterend', detailWarning);
-                    }
+                };
+                let nativeLink = Array.from(document.querySelectorAll(
+                    'a[href*="a=pricealarm"], a[id^="a"]'
+                )).find(matchesItem);
+                let temporaryLink = false;
+                if (!nativeLink) {
+                    nativeLink = document.createElement('a');
+                    nativeLink.href = `/?a=pricealarm&i=${encodeURIComponent(itemNumber)}`;
+                    nativeLink.dataset.revealId = 'myModal';
+                    nativeLink.dataset.revealAjax = 'true';
+                    nativeLink.hidden = true;
+                    document.body.appendChild(nativeLink);
+                    temporaryLink = true;
                 }
-
-                const host = desktopPartsList || mobileHost || sourceSection;
-                if (!setNumber || !host) return;
-                const existingButton = document.querySelector('.bmd-open-button');
-                if (existingButton) {
-                    if (existingButton.parentElement !== host) host.appendChild(existingButton);
-                    return;
+                if (window.$ && typeof $(nativeLink).foundation === 'function') {
+                    $(nativeLink).trigger('click');
+                } else {
+                    nativeLink.click();
                 }
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className =
-                    'bm-sidebar-parts-link bmd-open-button bmd-parts-stock-button';
-                button.dataset.bmdSetNumber = setNumber;
-                const content = document.createElement('span');
-                content.className = 'bmd-button-content';
-                const icon = document.createElement('span');
-                icon.className = 'bmd-button-icon';
-                icon.setAttribute('aria-hidden', 'true');
-                icon.innerHTML =
-                    '<svg viewBox="0 0 24 24" focusable="false">' +
-                    '<path d="M4 7h16v13H4z"/>' +
-                    '<path d="M3 3h18v4H3z"/>' +
-                    '<path d="M9 11h6"/>' +
-                    '</svg>';
-                const fullLabel = document.createElement('span');
-                fullLabel.className = 'bmd-button-label-full';
-                fullLabel.textContent = 'Zum Bestand hinzufügen';
-                const mobileLabel = document.createElement('span');
-                mobileLabel.className = 'bmd-button-label-mobile';
-                mobileLabel.textContent = 'Zum Bestand hinzufügen';
-                content.append(icon, fullLabel, mobileLabel);
-                button.appendChild(content);
-                button.title = 'Dieses Set zum Bestand hinzufügen';
-                button.setAttribute('aria-label', button.title);
-                button.addEventListener('click', () => openNativeDepotAdd(setNumber));
-                host.appendChild(button);
+                if (temporaryLink) {
+                    window.setTimeout(() => nativeLink.remove(), 0);
+                }
             }
+
+            function openNativeWishlistAdd(setNumber) {
+                const itemNumber = `${setNumber}-1`;
+                const matchesItem = link => {
+                    try {
+                        const url = new URL(link.href, window.location.href);
+                        return (url.searchParams.get('a') === 'wishlistadd' || url.searchParams.get('a') === 'merk') &&
+                            (url.searchParams.get('i') === itemNumber || url.searchParams.get('i') === setNumber);
+                    } catch (error) {
+                        return false;
+                    }
+                };
+                let nativeLink = Array.from(document.querySelectorAll(
+                    'a[href*="a=wishlistadd"], a[id^="merk"]'
+                )).find(matchesItem);
+                let temporaryLink = false;
+                if (!nativeLink) {
+                    nativeLink = document.createElement('a');
+                    nativeLink.href = `/?a=wishlistadd&i=${encodeURIComponent(itemNumber)}`;
+                    nativeLink.dataset.revealId = 'myModal';
+                    nativeLink.dataset.revealAjax = 'true';
+                    nativeLink.hidden = true;
+                    document.body.appendChild(nativeLink);
+                    temporaryLink = true;
+                }
+                if (window.$ && typeof $(nativeLink).foundation === 'function') {
+                    $(nativeLink).trigger('click');
+                } else {
+                    nativeLink.click();
+                }
+                if (temporaryLink) {
+                    window.setTimeout(() => nativeLink.remove(), 0);
+                }
+            }
+
+            /**
+             * Hängt die Aktionszeile (Preisalarm, Wunschliste, ROI-Rechner, Depot) als
+             * eigene Zeile "Tools" in die Linkleiste ein – dort, wo Marktplätze,
+             * Ressourcen und Verkaufshistorie stehen. Die Buttons behalten ihre Hülle
+             * und damit alle bestehenden Handler; per CSS (display: contents) stehen
+             * sie direkt in der Link-Zeile. Die Funktion ist idempotent: Sie kann nach
+             * jedem Neuaufbau der Linkleiste erneut aufgerufen werden.
+             */
+            function mountDetailActionRowIntoLinkPanel(actionRow) {
+                if (!actionRow) return false;
+                const panel = document.getElementById('bm-link-panel') || document.querySelector('.bm-link-panel');
+                if (!panel) return false;
+
+                let section = panel.querySelector('.bm-info-group.bmd-tools-group');
+                if (!section) {
+                    // Die Tools-Zeile folgt der Einstellung (Linkleiste → Tools) und
+                    // hält sich an dieselbe Ein-/Aus-Logik wie die anderen Zeilen.
+                    if (BM_SETTINGS?.linkRows?.tools === false) return false;
+                    section = document.createElement('section');
+                    section.className = 'bm-info-group bmd-tools-group';
+                    const title = document.createElement('div');
+                    title.className = 'bm-info-title';
+                    title.textContent = 'Tools';
+                    const slider = document.createElement('div');
+                    slider.className = 'bm-link-slider';
+                    const viewport = document.createElement('div');
+                    viewport.className = 'bm-link-viewport';
+                    const row = document.createElement('div');
+                    row.className = 'bm-info-links bmd-tools-row';
+
+                    const previous = document.createElement('button');
+                    previous.type = 'button';
+                    previous.className = 'bm-link-scroll bm-link-scroll-prev';
+                    previous.title = 'Nach links';
+                    previous.setAttribute('aria-label', 'Tools: nach links');
+                    previous.appendChild(document.createElement('span'));
+
+                    const next = document.createElement('button');
+                    next.type = 'button';
+                    next.className = 'bm-link-scroll bm-link-scroll-next';
+                    next.title = 'Nach rechts';
+                    next.setAttribute('aria-label', 'Tools: nach rechts');
+                    next.appendChild(document.createElement('span'));
+
+                    [previous, next].forEach(control => {
+                        const fixedStyles = {
+                            display: 'none',
+                            position: 'absolute',
+                            top: '50%',
+                            zIndex: '20',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '1.65rem',
+                            height: '1.65rem',
+                            minWidth: '1.65rem',
+                            minHeight: '1.65rem',
+                            margin: '0',
+                            padding: '0',
+                            transform: 'translateY(-50%)',
+                            background: '#fff',
+                            border: '1px solid #aaa',
+                            borderRadius: '50%',
+                            boxShadow: '0 1px 4px rgba(0, 0, 0, 0.22)',
+                            color: '#a80000',
+                            lineHeight: '1',
+                            boxSizing: 'border-box',
+                            cursor: 'pointer'
+                        };
+                        Object.entries(fixedStyles).forEach(([property, value]) => {
+                            control.style.setProperty(
+                                property.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`),
+                                value,
+                                'important'
+                            );
+                        });
+                        control.style.setProperty('-webkit-appearance', 'none', 'important');
+                    });
+                    previous.style.setProperty('left', '0.15rem', 'important');
+                    next.style.setProperty('right', '0.15rem', 'important');
+
+                    viewport.appendChild(row);
+                    slider.appendChild(previous);
+                    slider.appendChild(viewport);
+                    slider.appendChild(next);
+                    section.appendChild(title);
+                    section.appendChild(slider);
+                    // Als letzte Zeile der Linkleiste, direkt über der Angebotsliste.
+                    panel.appendChild(section);
+
+                    if (typeof window.bmSetupLinkSliders === 'function') {
+                        window.bmSetupLinkSliders(panel);
+                    }
+                }
+
+                const row = section.querySelector('.bmd-tools-row');
+                if (!row) return false;
+                if (actionRow.parentElement !== row) {
+                    const staleButtons = row.querySelectorAll('.bmd-open-button');
+                    if (staleButtons.length && actionRow.querySelector('.bmd-open-button')) {
+                        staleButtons.forEach(button => {
+                            if (button.parentElement === row) button.remove();
+                        });
+                    }
+                    row.appendChild(actionRow);
+                }
+                actionRow.classList.add('bmd-in-link-panel');
+                actionRow.querySelectorAll('.bmd-open-button').forEach(btn => {
+                    btn.classList.add('bm-link');
+                });
+                if (typeof window.bmSetupLinkSliders === 'function') {
+                    window.bmSetupLinkSliders(panel);
+                }
+                return true;
+            }
+
+            function setupDetailButton() {
+                globalThis.bmSetupDetailButton = setupDetailButton;
+                window.setupDetailButton = setupDetailButton;
+                const setNumber = getSetNumber();
+                if (!setNumber) return;
+
+                // Einzelteileliste in der Sidebar und mobile Bestands-Container von stray Buttons bereinigen:
+                document.querySelectorAll(
+                    '.bm-sidebar-parts button, .bm-sidebar-parts-list button, .bm-mobile-parts-stock-wrap'
+                ).forEach(el => el.remove());
+
+                // Leere oder angebotslose SoldOut-Container bereinigen, damit kein Leerraum entsteht:
+                document.querySelectorAll('#SoldOutContainer, #soldOut').forEach(el => {
+                    if (!el.querySelector('.pricerow')) {
+                        el.remove();
+                    }
+                });
+
+                // Hülle für die 4 Aktionsbuttons. Sie stehen seit 1.3.32 nicht mehr
+                // unter der Angebotsliste, sondern als eigene Zeile "Tools" in der
+                // Linkleiste (Marktplätze, Ressourcen, Verkaufshistorie). Fehlt die
+                // Linkleiste (Einstellung aus), bleibt der alte Platz unter der Liste.
+                let actionRow = document.querySelector('.bm-detail-action-buttons-row');
+                if (!actionRow) {
+                    actionRow = document.createElement('div');
+                    actionRow.className = 'bm-detail-action-buttons-row';
+                }
+
+                const mountedInLinkPanel = mountDetailActionRowIntoLinkPanel(actionRow);
+
+                if (!mountedInLinkPanel) {
+                    actionRow.classList.remove('bmd-in-link-panel');
+                    const offerList = document.getElementById('offerlist') || document.querySelector('.content.setdetails #offerlist');
+                    const soldOutActive = document.querySelector('#SoldOutContainer:has(.pricerow), #soldOut:has(.pricerow)');
+                    const offersSection = soldOutActive || document.querySelector('#ol1st > section:first-of-type') || offerList?.closest('section') || offerList;
+
+                    if (offersSection) {
+                        if (actionRow.previousElementSibling !== offersSection) {
+                            offersSection.after(actionRow);
+                        }
+                    } else {
+                        const instructionsHeading = Array.from(document.querySelectorAll(
+                            '#ol1st h3, .content.setdetails h3, .content.setdetails h2'
+                        )).find(heading => /Bauanleitungen|Bauanleitung/i.test(heading.textContent || ''));
+                        const instructionsSection = instructionsHeading?.closest('section') || instructionsHeading;
+                        if (instructionsSection) {
+                            if (actionRow.nextElementSibling !== instructionsSection) {
+                                instructionsSection.before(actionRow);
+                            }
+                        } else {
+                            const mainContent = document.querySelector('.content.setdetails') || document.body;
+                            if (!actionRow.parentElement) {
+                                mainContent.appendChild(actionRow);
+                            }
+                        }
+                    }
+                }
+
+                // Falls mehr als eine actionRow existiert, Überzählige entfernen
+                const allActionRows = document.querySelectorAll('.bm-detail-action-buttons-row');
+                if (allActionRows.length > 1) {
+                    allActionRows.forEach((row, idx) => {
+                        if (idx > 0) row.remove();
+                    });
+                }
+
+                // Alle stray Buttons außerhalb der zentralen actionRow entfernen
+                document.querySelectorAll('.bmd-open-button, .bmd-parts-stock-button, .bmd-depot-button').forEach(btn => {
+                    if (!btn.closest('.bm-detail-action-buttons-row')) {
+                        btn.remove();
+                    }
+                });
+
+                // Duplikate innerhalb der actionRow entfernen
+                actionRow.querySelectorAll('.bmd-alarm-button').forEach((btn, idx) => { if (idx > 0) btn.remove(); });
+                actionRow.querySelectorAll('.bmd-wishlist-button').forEach((btn, idx) => { if (idx > 0) btn.remove(); });
+                actionRow.querySelectorAll('.bmd-roi-calculator-button').forEach((btn, idx) => { if (idx > 0) btn.remove(); });
+                actionRow.querySelectorAll('.bmd-depot-button').forEach((btn, idx) => { if (idx > 0) btn.remove(); });
+                actionRow.querySelectorAll('.bmd-open-button:not(.bmd-alarm-button):not(.bmd-wishlist-button):not(.bmd-roi-calculator-button):not(.bmd-depot-button)').forEach(btn => btn.remove());
+
+                const makeBtnIcon = svgInner => {
+                    const icon = document.createElement('span');
+                    icon.className = 'bmd-button-icon';
+                    icon.setAttribute('aria-hidden', 'true');
+                    icon.innerHTML = `<svg viewBox="0 0 24 24" focusable="false">${svgInner}</svg>`;
+                    return icon;
+                };
+
+                const ensureButtonIcon = (btn, svgInner) => {
+                    let icon = btn.querySelector('.bmd-button-icon');
+                    if (!icon) {
+                        icon = makeBtnIcon(svgInner);
+                        const content = btn.querySelector('.bmd-button-content') || btn;
+                        content.prepend(icon);
+                    } else {
+                        icon.innerHTML = `<svg viewBox="0 0 24 24" focusable="false">${svgInner}</svg>`;
+                    }
+                };
+
+                const bellSvg = '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>';
+                const heartSvg = '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>';
+                const calcSvg = '<rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="18"></line><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"></path>';
+                const boxSvg = '<path d="M4 7h16v13H4z"></path><path d="M3 3h18v4H3z"></path><path d="M9 11h6"></path>';
+
+                let alarmButton = actionRow.querySelector('.bmd-alarm-button');
+                let wishlistButton = actionRow.querySelector('.bmd-wishlist-button');
+                let roiButton = actionRow.querySelector('.bmd-roi-calculator-button');
+                let depotButton = actionRow.querySelector('.bmd-depot-button');
+
+                // 1. Preisalarm Button
+                if (!alarmButton) {
+                    alarmButton = document.createElement('button');
+                    alarmButton.type = 'button';
+                    alarmButton.className = 'bmd-open-button bmd-parts-stock-button bmd-alarm-button bm-link';
+                    alarmButton.dataset.bmdSetNumber = setNumber;
+                    const content = document.createElement('span');
+                    content.className = 'bmd-button-content';
+                    const fullLabel = document.createElement('span');
+                    fullLabel.className = 'bmd-button-label-full';
+                    fullLabel.textContent = 'Preisalarm';
+                    const mobileLabel = document.createElement('span');
+                    mobileLabel.className = 'bmd-button-label-mobile';
+                    mobileLabel.textContent = 'Preisalarm';
+                    content.append(fullLabel, mobileLabel);
+                    alarmButton.appendChild(content);
+                    alarmButton.title = 'Preisalarm für dieses Set einrichten';
+                    alarmButton.setAttribute('aria-label', alarmButton.title);
+                    alarmButton.addEventListener('click', () => openNativePriceAlarm(setNumber));
+                    actionRow.appendChild(alarmButton);
+                }
+                ensureButtonIcon(alarmButton, bellSvg);
+
+                // 2. Wunschliste Button
+                if (!wishlistButton) {
+                    wishlistButton = document.createElement('button');
+                    wishlistButton.type = 'button';
+                    wishlistButton.className = 'bmd-open-button bmd-parts-stock-button bmd-wishlist-button bm-link';
+                    wishlistButton.dataset.bmdSetNumber = setNumber;
+                    const content = document.createElement('span');
+                    content.className = 'bmd-button-content';
+                    const fullLabel = document.createElement('span');
+                    fullLabel.className = 'bmd-button-label-full';
+                    fullLabel.textContent = 'Wunschliste';
+                    const mobileLabel = document.createElement('span');
+                    mobileLabel.className = 'bmd-button-label-mobile';
+                    mobileLabel.textContent = 'Wunschliste';
+                    content.append(fullLabel, mobileLabel);
+                    wishlistButton.appendChild(content);
+                    wishlistButton.title = 'Dieses Set auf der Wunschliste speichern';
+                    wishlistButton.setAttribute('aria-label', wishlistButton.title);
+                    wishlistButton.addEventListener('click', () => openNativeWishlistAdd(setNumber));
+                    actionRow.appendChild(wishlistButton);
+                }
+                ensureButtonIcon(wishlistButton, heartSvg);
+
+                // 3. ROI-Rechner Button
+                if (!roiButton) {
+                    roiButton = document.createElement('button');
+                    roiButton.type = 'button';
+                    roiButton.className = 'bmd-open-button bmd-parts-stock-button bmd-roi-calculator-button bm-link';
+                    roiButton.dataset.bmdSetNumber = setNumber;
+                    const roiContent = document.createElement('span');
+                    roiContent.className = 'bmd-button-content';
+                    const roiLabel = document.createElement('span');
+                    roiLabel.className = 'bmd-button-label-full';
+                    roiLabel.textContent = 'ROI-Rechner';
+                    const roiMobileLabel = document.createElement('span');
+                    roiMobileLabel.className = 'bmd-button-label-mobile';
+                    roiMobileLabel.textContent = 'ROI-Rechner';
+                    roiContent.append(roiLabel, roiMobileLabel);
+                    roiButton.appendChild(roiContent);
+                    roiButton.title = 'Erforderlichen Verkaufspreis und Marge für dieses Set berechnen';
+                    roiButton.setAttribute('aria-label', roiButton.title);
+                    roiButton.addEventListener('click', async () => {
+                        let purchasePrice = null;
+                        const cachedDepot = depotDataPromises.get(setNumber);
+                        if (cachedDepot) {
+                            try {
+                                const data = await cachedDepot;
+                                if (data && Number.isFinite(data.purchasePrice) && data.purchasePrice > 0) {
+                                    purchasePrice = data.purchasePrice;
+                                }
+                            } catch (_) {}
+                        }
+                        if (!purchasePrice) {
+                            purchasePrice = currentBestPrice();
+                        }
+                        openRoiCalculatorOverlay(setNumber, purchasePrice, roiButton);
+                    });
+                    actionRow.appendChild(roiButton);
+                }
+                ensureButtonIcon(roiButton, calcSvg);
+
+                // 4. Depot Button
+                if (!depotButton) {
+                    depotButton = document.createElement('button');
+                    depotButton.type = 'button';
+                    depotButton.className = 'bmd-open-button bmd-parts-stock-button bmd-depot-button bm-link';
+                    depotButton.dataset.bmdSetNumber = setNumber;
+                    const content = document.createElement('span');
+                    content.className = 'bmd-button-content';
+                    const fullLabel = document.createElement('span');
+                    fullLabel.className = 'bmd-button-label-full';
+                    fullLabel.textContent = 'Depot';
+                    const mobileLabel = document.createElement('span');
+                    mobileLabel.className = 'bmd-button-label-mobile';
+                    mobileLabel.textContent = 'Depot';
+                    content.append(fullLabel, mobileLabel);
+                    depotButton.appendChild(content);
+                    depotButton.title = 'Dieses Set zum Bestand/Depot hinzufügen';
+                    depotButton.setAttribute('aria-label', depotButton.title);
+                    depotButton.addEventListener('click', () => openNativeDepotAdd(setNumber));
+                    actionRow.appendChild(depotButton);
+                }
+                ensureButtonIcon(depotButton, boxSvg);
+
+                // Feste Reihenfolge in der Aktionszeile garantieren
+                if (alarmButton && alarmButton.parentElement === actionRow) actionRow.appendChild(alarmButton);
+                if (wishlistButton && wishlistButton.parentElement === actionRow) actionRow.appendChild(wishlistButton);
+                if (roiButton && roiButton.parentElement === actionRow) actionRow.appendChild(roiButton);
+                if (depotButton && depotButton.parentElement === actionRow) actionRow.appendChild(depotButton);
+            }
+            globalThis.bmSetupDetailButton = setupDetailButton;
+            window.setupDetailButton = setupDetailButton;
 
             function parseNumber(value, german = false) {
                 const text = String(value ?? '').trim();
@@ -17513,14 +25076,30 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 return Number.isFinite(rate) ? rate * 100 : null;
             }
 
-            function eolGroup(value) {
+            function calculateCagr(currentValue, initialCapital, years) {
+                if (!Number.isFinite(currentValue) || !Number.isFinite(initialCapital) ||
+                    initialCapital <= 0 || !Number.isFinite(years) || years < 30 / 365.2425) {
+                    return null;
+                }
+                if (currentValue <= 0) return -100;
+                return (Math.pow(currentValue / initialCapital, 1 / years) - 1) * 100;
+            }
+
+            function parseEolDate(value) {
                 const match = String(value || '').match(/^(\d{4})(\d{2})(\d{2})$/);
-                if (!match) return 'Kein EOL';
-                const target = Date.UTC(
-                    Number(match[1]),
-                    Number(match[2]) - 1,
-                    Number(match[3])
-                );
+                if (match) {
+                    const target = Date.UTC(
+                        Number(match[1]),
+                        Number(match[2]) - 1,
+                        Number(match[3])
+                    );
+                    return Number.isFinite(target) ? target : null;
+                }
+                return dateAtUtcMidnight(value);
+            }
+
+            function eolGroup(value) {
+                const target = parseEolDate(value);
                 const current = dateAtUtcMidnight(today());
                 if (!Number.isFinite(target) || !Number.isFinite(current)) return 'Kein EOL';
                 if (target < current) return 'Ausgelaufen';
@@ -17585,6 +25164,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         const price = parseNumber(edit?.dataset.price, true);
                         const conditionValue = String(edit?.dataset.condition || '');
                         const storageValue = String(edit?.dataset.storage || '').trim();
+                        const merchant = extractLotMerchant(lot, edit);
                         records.push(enrichRecord({
                             item,
                             setNumber,
@@ -17595,7 +25175,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             condition: conditionValue === '0' ? 'gebraucht' : 'neu',
                             quantity,
                             capital: price !== null && price >= 0 ? price * quantity : null,
-                            purchaseDate: String(edit?.dataset.date || '')
+                            purchaseDate: String(edit?.dataset.date || ''),
+                            merchant
                         }));
                         addedLot = true;
                     });
@@ -17604,6 +25185,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         const quantity = Number.parseInt(row.dataset.stock || '', 10);
                         if (!Number.isFinite(quantity) || quantity <= 0) return;
                         const average = parseNumber(row.dataset.avg);
+                        const merchant = extractLotMerchant(row, null);
                         records.push(enrichRecord({
                             item,
                             setNumber,
@@ -17618,7 +25200,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             capital: average !== null && average >= 0
                                 ? average * quantity
                                 : null,
-                            purchaseDate: ''
+                            purchaseDate: '',
+                            merchant
                         }));
                     }
                 });
@@ -17761,6 +25344,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
 
             function aggregateDepotSets(records) {
                 const sets = new Map();
+                const valuationDate = dateAtUtcMidnight(today());
                 records.forEach(record => {
                     if (!sets.has(record.item)) {
                         sets.set(record.item, {
@@ -17770,6 +25354,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             detailUrl: record.detailUrl,
                             theme: record.theme,
                             eol: record.eol,
+                            eolRaw: record.eolRaw || '',
+                            best: record.best,
                             pieces: 0,
                             capital: 0,
                             currentValue: 0,
@@ -17777,11 +25363,15 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             comparableCapital: 0,
                             comparableValue: 0,
                             comparableNetValue: 0,
+                            weightedAgeDays: 0,
+                            agedPieces: 0,
                             missingCapital: false,
                             missingOffer: false
                         });
                     }
                     const set = sets.get(record.item);
+                    if (!set.eolRaw && record.eolRaw) set.eolRaw = record.eolRaw;
+                    if (set.best === null && record.best !== null) set.best = record.best;
                     set.pieces += record.quantity;
                     if (record.capital === null) set.missingCapital = true;
                     else set.capital += record.capital;
@@ -17795,20 +25385,441 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         set.comparableValue += record.currentValue;
                         set.comparableNetValue += record.netValue || 0;
                     }
+                    if (record.ageDays !== null) {
+                        set.weightedAgeDays += record.ageDays * record.quantity;
+                        set.agedPieces += record.quantity;
+                    }
                 });
-                return Array.from(sets.values()).map(set => ({
-                    ...set,
-                    grossProfit: set.comparableValue - set.comparableCapital,
-                    grossReturn: set.comparableCapital > 0
+                return Array.from(sets.values()).map(set => {
+                    const grossProfit = set.comparableValue - set.comparableCapital;
+                    const grossReturn = set.comparableCapital > 0
                         ? (set.comparableValue - set.comparableCapital) /
                             set.comparableCapital * 100
-                        : null,
-                    netProfit: set.comparableNetValue - set.comparableCapital,
-                    netReturn: set.comparableCapital > 0
+                        : null;
+                    const netProfit = set.comparableNetValue - set.comparableCapital;
+                    const netReturn = set.comparableCapital > 0
                         ? (set.comparableNetValue - set.comparableCapital) /
                             set.comparableCapital * 100
-                        : null
-                }));
+                        : null;
+                    const averageAgeDays = set.agedPieces > 0
+                        ? set.weightedAgeDays / set.agedPieces
+                        : null;
+                    const years = averageAgeDays !== null ? averageAgeDays / 365.2425 : null;
+                    const cagr = calculateCagr(set.comparableValue, set.comparableCapital, years);
+
+                    const eolTimestamp = parseEolDate(set.eolRaw);
+                    const isEol = set.eol === 'Ausgelaufen' ||
+                        (eolTimestamp !== null && valuationDate !== null && eolTimestamp < valuationDate);
+                    const monthsSinceEol = (isEol && eolTimestamp !== null && valuationDate !== null)
+                        ? Math.max(0, (valuationDate - eolTimestamp) / (365.2425 / 12 * 24 * 60 * 60 * 1000))
+                        : null;
+                    let maturityStage = null;
+                    if (monthsSinceEol !== null) {
+                        if (monthsSinceEol < 6) {
+                            maturityStage = { key: 'fresh', label: 'Frisch (< 6 M.)', badgeClass: 'bmd-stage-fresh' };
+                        } else if (monthsSinceEol <= 18) {
+                            maturityStage = { key: 'maturing', label: 'Reifephase (6–18 M.)', badgeClass: 'bmd-stage-maturing' };
+                        } else {
+                            maturityStage = { key: 'mature', label: 'Langläufer (> 18 M.)', badgeClass: 'bmd-stage-mature' };
+                        }
+                    }
+
+                    const saleValues = saleValuesForSet(set.setNumber);
+                    const avgPurchasePrice = (set.pieces > 0 && set.capital !== null && !set.missingCapital)
+                        ? set.capital / set.pieces
+                        : (set.comparableCapital > 0 ? set.comparableCapital / (set.pieces || 1) : null);
+                    const saleThreshold = avgPurchasePrice !== null
+                        ? calculateSaleThreshold(avgPurchasePrice, saleValues)
+                        : null;
+                    const bestOffer = set.best !== null && set.best > 0
+                        ? set.best
+                        : (set.pieces > 0 && set.currentValue > 0 ? set.currentValue / set.pieces : null);
+
+                    let exitStatus = null;
+                    if (bestOffer !== null && saleThreshold !== null) {
+                        if (bestOffer >= saleThreshold) {
+                            exitStatus = { key: 'ready', label: 'Verkaufsbereit', icon: '🟢', badgeClass: 'bmd-status-ready' };
+                        } else if (avgPurchasePrice !== null && bestOffer >= avgPurchasePrice) {
+                            exitStatus = { key: 'maturing', label: 'In Reifephase', icon: '🟡', badgeClass: 'bmd-status-maturing' };
+                        } else {
+                            exitStatus = { key: 'below_cost', label: 'Unter EK', icon: '🔴', badgeClass: 'bmd-status-below' };
+                        }
+                    } else if (bestOffer !== null && avgPurchasePrice !== null) {
+                        if (bestOffer >= avgPurchasePrice) {
+                            exitStatus = { key: 'maturing', label: 'Über EK', icon: '🟡', badgeClass: 'bmd-status-maturing' };
+                        } else {
+                            exitStatus = { key: 'below_cost', label: 'Unter EK', icon: '🔴', badgeClass: 'bmd-status-below' };
+                        }
+                    }
+
+                    return {
+                        ...set,
+                        grossProfit,
+                        grossReturn,
+                        netProfit,
+                        netReturn,
+                        averageAgeDays,
+                        years,
+                        cagr,
+                        eolTimestamp,
+                        isEol,
+                        monthsSinceEol,
+                        maturityStage,
+                        avgPurchasePrice,
+                        saleThreshold,
+                        saleValues,
+                        bestOffer,
+                        exitStatus,
+                        isExitReady: exitStatus?.key === 'ready'
+                    };
+                });
+            }
+
+            function renderRiskCheck(records, setSummaries, totalCapital, expiredCapital) {
+                const section = document.createElement('section');
+                section.className = 'bmd-dashboard-risk';
+                const title = document.createElement('h4');
+                title.textContent = 'Portfolio- & Klumpenrisiko-Check';
+
+                const themeGroups = aggregateDepot(records, 'theme');
+                const topTheme = themeGroups[0] || null;
+                const topThemeShare = (topTheme && totalCapital > 0)
+                    ? (topTheme.capital / totalCapital * 100)
+                    : 0;
+
+                const sortedSetsByCapital = [...setSummaries]
+                    .filter(s => s.capital > 0)
+                    .sort((a, b) => b.capital - a.capital);
+                const top3Sets = sortedSetsByCapital.slice(0, 3);
+                const top3Capital = top3Sets.reduce((sum, s) => sum + s.capital, 0);
+                const top3Share = totalCapital > 0 ? (top3Capital / totalCapital * 100) : 0;
+
+                const eolShare = totalCapital > 0 ? (expiredCapital / totalCapital * 100) : 0;
+                const activeShare = Math.max(0, 100 - eolShare);
+
+                let themeLevel = 'low';
+                let themeBadge = '🟢 Ausgewogen';
+                let themeTip = 'Gute Streuung über verschiedene LEGO-Themenwelten.';
+                if (topThemeShare > 50) {
+                    themeLevel = 'high';
+                    themeBadge = '🔴 Hohes Klumpenrisiko';
+                    themeTip = 'Sehr starke Abhängigkeit von einem einzigen Thema. Zukäufe diversifizieren!';
+                } else if (topThemeShare >= 35) {
+                    themeLevel = 'medium';
+                    themeBadge = '🟡 Erhöhte Konzentration';
+                    themeTip = 'Themenschwerpunkt im Auge behalten und Streuung erweitern.';
+                }
+
+                let setsLevel = 'low';
+                let setsBadge = '🟢 Gut verteilt';
+                let setsTip = 'Geringes Einzeltitelrisiko durch breite Aufteilung.';
+                if (top3Share > 45) {
+                    setsLevel = 'high';
+                    setsBadge = '🔴 Klumpenrisiko';
+                    setsTip = 'Starke Abhängigkeit von wenigen Großpositionen. Risiko durch breitere Allokation senken.';
+                } else if (top3Share >= 30) {
+                    setsLevel = 'medium';
+                    setsBadge = '🟡 Mittlere Konzentration';
+                    setsTip = 'Fokus auf Kernpositionen. Bei Neuinvestments auf Streuung achten.';
+                }
+
+                let eolLevel = 'low';
+                let eolBadge = '🟢 Starker Exit-Fokus';
+                let eolTip = 'Großteil des Portfolios befindet sich in der Wertsteigerungs- bzw. Exit-Phase.';
+                if (activeShare > 60) {
+                    eolLevel = 'medium';
+                    eolBadge = '🟡 Hoher Aktiv-Anteil';
+                    eolTip = 'Viele aktive Sets im Depot. Risiko von Marktrabatten und langen Haltefristen beachten.';
+                } else if (eolShare < 20) {
+                    eolLevel = 'medium';
+                    eolBadge = '🟡 Wenig EOL-Reife';
+                    eolTip = 'Geringer EOL-Anteil – Portfolio benötigt noch Zeit bis zur vollen Reifung.';
+                }
+
+                const grid = document.createElement('div');
+                grid.className = 'bmd-risk-grid';
+
+                const cards = [
+                    {
+                        title: 'Themen-Konzentration',
+                        badge: themeBadge,
+                        level: themeLevel,
+                        main: topTheme
+                            ? `${topTheme.label} (${topThemeShare.toLocaleString('de-DE', {
+                                minimumFractionDigits: 1,
+                                maximumFractionDigits: 1
+                            })} %)`
+                            : '–',
+                        tip: themeTip
+                    },
+                    {
+                        title: 'Top-3-Sets Gewichtung',
+                        badge: setsBadge,
+                        level: setsLevel,
+                        main: `${top3Share.toLocaleString('de-DE', {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 1
+                        })} % des Kapitals`,
+                        tip: setsTip
+                    },
+                    {
+                        title: 'EOL- & Reifegrad-Allokation',
+                        badge: eolBadge,
+                        level: eolLevel,
+                        main: `${eolShare.toLocaleString('de-DE', {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 1
+                        })} % EOL · ${activeShare.toLocaleString('de-DE', {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 1
+                        })} % Aktiv`,
+                        tip: eolTip
+                    }
+                ];
+
+                cards.forEach(card => {
+                    const cardEl = document.createElement('div');
+                    cardEl.className = `bmd-risk-card bmd-risk-${card.level}`;
+                    const header = document.createElement('div');
+                    header.className = 'bmd-risk-card-header';
+                    const titleEl = document.createElement('span');
+                    titleEl.className = 'bmd-risk-card-title';
+                    titleEl.textContent = card.title;
+                    const badgeEl = document.createElement('span');
+                    badgeEl.className = `bmd-risk-badge bmd-badge-${card.level}`;
+                    badgeEl.textContent = card.badge;
+                    header.append(titleEl, badgeEl);
+
+                    const mainEl = document.createElement('strong');
+                    mainEl.className = 'bmd-risk-main';
+                    mainEl.textContent = card.main;
+
+                    const tipEl = document.createElement('p');
+                    tipEl.className = 'bmd-risk-tip';
+                    tipEl.textContent = card.tip;
+
+                    cardEl.append(header, mainEl, tipEl);
+                    grid.appendChild(cardEl);
+                });
+
+                section.append(title, grid);
+                return section;
+            }
+
+            function renderExitRadar(setSummaries) {
+                const section = document.createElement('section');
+                section.className = 'bmd-dashboard-exit-radar';
+                const title = document.createElement('h4');
+                title.textContent = 'EOL-Exit-Planer & Liquidations-Radar';
+
+                const eolSets = setSummaries.filter(set => set.isEol)
+                    .sort((a, b) => (b.monthsSinceEol || 0) - (a.monthsSinceEol || 0) ||
+                        b.capital - a.capital);
+
+                const readySets = eolSets.filter(set => set.isExitReady);
+                const readyPieces = readySets.reduce((sum, s) => sum + s.pieces, 0);
+                const readyCapital = readySets.reduce((sum, s) => sum + (s.capital || 0), 0);
+                const readyNetProfit = readySets.reduce((sum, s) => sum + (s.netProfit || 0), 0);
+
+                const kpiBar = document.createElement('div');
+                kpiBar.className = 'bmd-exit-kpis';
+                [
+                    {
+                        label: 'Verkaufsbereit (Ziel erreicht)',
+                        value: `${readySets.length} Sets · ${readyPieces.toLocaleString('de-DE')} Stk.`,
+                        detail: readySets.length > 0
+                            ? 'Mindest-Verkaufsschwelle erreicht'
+                            : 'keine Sets mit erreichtem Ziel-VK',
+                        highlight: readySets.length > 0 ? 'positive' : 'neutral'
+                    },
+                    {
+                        label: 'Realisierbarer Netto-Gewinn',
+                        value: formatCurrency(readyNetProfit),
+                        detail: readyCapital > 0
+                            ? `${formatPercent(readyNetProfit / readyCapital * 100)} Netto-Rendite`
+                            : '–',
+                        highlight: readyNetProfit > 0 ? 'positive' : 'neutral'
+                    },
+                    {
+                        label: 'Kapital in verkaufsbereiten Sets',
+                        value: formatCurrency(readyCapital),
+                        detail: 'freisetzbare Liquidität bei Verkauf',
+                        highlight: 'neutral'
+                    }
+                ].forEach(kpi => {
+                    const card = document.createElement('div');
+                    card.className = `bmd-exit-kpi bmd-exit-kpi-${kpi.highlight}`;
+                    const lbl = document.createElement('span');
+                    lbl.textContent = kpi.label;
+                    const val = document.createElement('strong');
+                    val.textContent = kpi.value;
+                    const dtl = document.createElement('small');
+                    dtl.textContent = kpi.detail;
+                    card.append(lbl, val, dtl);
+                    kpiBar.appendChild(card);
+                });
+
+                const toolbar = document.createElement('div');
+                toolbar.className = 'bmd-exit-toolbar';
+                let showOnlyReady = readySets.length > 0;
+
+                const btnReady = document.createElement('button');
+                btnReady.type = 'button';
+                btnReady.className = 'bmd-dashboard-tab';
+                btnReady.textContent = `Verkaufsbereit (${readySets.length})`;
+                btnReady.setAttribute('aria-selected', String(showOnlyReady));
+
+                const btnAll = document.createElement('button');
+                btnAll.type = 'button';
+                btnAll.className = 'bmd-dashboard-tab';
+                btnAll.textContent = `Alle EOL-Sets (${eolSets.length})`;
+                btnAll.setAttribute('aria-selected', String(!showOnlyReady));
+
+                toolbar.append(btnReady, btnAll);
+
+                const tableWrap = document.createElement('div');
+                tableWrap.className = 'bmd-dashboard-table-wrap';
+
+                const updateTable = () => {
+                    btnReady.setAttribute('aria-selected', String(showOnlyReady));
+                    btnAll.setAttribute('aria-selected', String(!showOnlyReady));
+
+                    const displayedSets = showOnlyReady ? readySets : eolSets;
+
+                    if (displayedSets.length === 0) {
+                        const empty = document.createElement('div');
+                        empty.className = 'bmd-exit-empty';
+                        empty.textContent = showOnlyReady
+                            ? 'Aktuell hat noch kein EOL-Set deine Ziel-Verkaufsschwelle erreicht. Die Bestände reifen noch!'
+                            : 'Keine EOL-Sets im Depot gefunden.';
+                        tableWrap.replaceChildren(empty);
+                        return;
+                    }
+
+                    const table = document.createElement('table');
+                    table.className = 'bmd-dashboard-table bmd-exit-table';
+                    const head = document.createElement('thead');
+                    const headRow = document.createElement('tr');
+                    [
+                        'Set', 'EOL seit / Reifegrad', 'Bestand', 'Ø-EK', 'Akt. Bestpreis',
+                        'Ziel-VK (Schwelle)', 'Gewinn (Brutto)', 'Jahresrendite (p.a.)', 'Status', 'Aktion'
+                    ].forEach(text => {
+                        const th = document.createElement('th');
+                        th.textContent = text;
+                        headRow.appendChild(th);
+                    });
+                    head.appendChild(headRow);
+
+                    const tbody = document.createElement('tbody');
+                    displayedSets.forEach(set => {
+                        const row = document.createElement('tr');
+
+                        const setCell = document.createElement('td');
+                        const link = document.createElement('a');
+                        link.className = 'bmd-dashboard-setlink';
+                        link.href = set.detailUrl || `/?find=${encodeURIComponent(set.setNumber)}`;
+                        link.textContent = `${set.setNumber} · ${set.name}`;
+                        link.title = `${set.theme}`;
+                        setCell.appendChild(link);
+
+                        const eolCell = document.createElement('td');
+                        const monthsText = set.monthsSinceEol !== null
+                            ? `${Math.round(set.monthsSinceEol)} Mo.`
+                            : '–';
+                        const eolSpan = document.createElement('span');
+                        eolSpan.textContent = monthsText;
+                        eolCell.appendChild(eolSpan);
+                        if (set.maturityStage) {
+                            const badge = document.createElement('span');
+                            badge.className = `bmd-maturity-badge ${set.maturityStage.badgeClass}`;
+                            badge.textContent = set.maturityStage.label;
+                            eolCell.appendChild(badge);
+                        }
+
+                        const piecesCell = document.createElement('td');
+                        piecesCell.textContent = `${set.pieces.toLocaleString('de-DE')} Stk.`;
+
+                        const ekCell = document.createElement('td');
+                        ekCell.textContent = set.avgPurchasePrice !== null
+                            ? formatCurrency(set.avgPurchasePrice)
+                            : '–';
+
+                        const bestCell = document.createElement('td');
+                        bestCell.textContent = set.bestOffer !== null
+                            ? formatCurrency(set.bestOffer)
+                            : '–';
+
+                        const thresholdCell = document.createElement('td');
+                        if (set.saleThreshold !== null) {
+                            const thBtn = document.createElement('button');
+                            thBtn.type = 'button';
+                            thBtn.className = 'bmd-table-btn';
+                            thBtn.textContent = formatCurrency(set.saleThreshold);
+                            thBtn.title = 'ROI- & Verkaufspreis-Rechner für dieses Set öffnen';
+                            thBtn.addEventListener('click', () => {
+                                openRoiCalculatorOverlay(set.setNumber, set.avgPurchasePrice, thBtn);
+                            });
+                            thresholdCell.appendChild(thBtn);
+                        } else {
+                            thresholdCell.textContent = '–';
+                        }
+
+                        const profitCell = document.createElement('td');
+                        profitCell.textContent = `${formatCurrency(set.grossProfit)} (${formatPercent(set.grossReturn)})`;
+                        profitCell.classList.add(performanceClass(set.grossProfit));
+
+                        const cagrCell = document.createElement('td');
+                        cagrCell.textContent = set.cagr !== null ? signed(set.cagr, 1, ' %') : '–';
+                        if (set.cagr !== null) {
+                            cagrCell.classList.add('bmd-performance-percent', performanceClass(set.cagr));
+                            cagrCell.title = `${signed(set.cagr, 1, ' % p.a.')} ` +
+                                `(${formatPercent(set.grossReturn)} absolut über ${(set.years || 0).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Jahre)`;
+                        }
+
+                        const statusCell = document.createElement('td');
+                        if (set.exitStatus) {
+                            const statusBadge = document.createElement('span');
+                            statusBadge.className = `bmd-exit-badge ${set.exitStatus.badgeClass}`;
+                            statusBadge.textContent = `${set.exitStatus.icon} ${set.exitStatus.label}`;
+                            statusCell.appendChild(statusBadge);
+                        } else {
+                            statusCell.textContent = '–';
+                        }
+
+                        const actionCell = document.createElement('td');
+                        const calcBtn = document.createElement('button');
+                        calcBtn.type = 'button';
+                        calcBtn.className = 'button small smallRedButton bmd-exit-calc-btn';
+                        calcBtn.textContent = 'Rechner';
+                        calcBtn.title = 'ROI- und Verkaufspreis-Rechner öffnen';
+                        calcBtn.addEventListener('click', () => {
+                            openRoiCalculatorOverlay(set.setNumber, set.avgPurchasePrice, calcBtn);
+                        });
+                        actionCell.appendChild(calcBtn);
+
+                        row.append(
+                            setCell, eolCell, piecesCell, ekCell, bestCell,
+                            thresholdCell, profitCell, cagrCell, statusCell, actionCell
+                        );
+                        tbody.appendChild(row);
+                    });
+
+                    table.append(head, tbody);
+                    tableWrap.replaceChildren(table);
+                };
+
+                btnReady.addEventListener('click', () => {
+                    showOnlyReady = true;
+                    updateTable();
+                });
+                btnAll.addEventListener('click', () => {
+                    showOnlyReady = false;
+                    updateTable();
+                });
+
+                updateTable();
+                section.append(title, kpiBar, toolbar, tableWrap);
+                return section;
             }
 
             function renderDepotDashboard(body, data) {
@@ -17878,6 +25889,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         0
                     ) / agedPieces
                     : null;
+                const portfolioYears = averageAgeDays !== null ? averageAgeDays / 365.2425 : null;
+                const portfolioCagr = calculateCagr(comparableValue, comparableCapital, portfolioYears);
                 const expiredCapital = records.filter(record => record.eol === 'Ausgelaufen')
                     .reduce((sum, record) => sum + (record.capital || 0), 0);
                 const expiredShare = capital > 0 ? expiredCapital / capital * 100 : null;
@@ -17902,6 +25915,11 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             : 'alle Stücke mit Angebot'
                     },
                     {
+                        label: 'Netto-Verkaufswert',
+                        value: formatCurrency(netValue),
+                        detail: 'nach Gebühren, Fixkosten und Versand'
+                    },
+                    {
                         label: 'Gewinn/Verlust zum EK',
                         value: formatCurrency(grossProfit),
                         detail: formatPercent(grossReturn),
@@ -17912,6 +25930,16 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         value: formatCurrency(netProfit),
                         detail: `${formatPercent(netReturn)} zum EK`,
                         performance: netReturn
+                    },
+                    {
+                        label: 'Ø Jahresrendite (CAGR)',
+                        value: portfolioCagr !== null
+                            ? signed(portfolioCagr, 1, ' % p.a.')
+                            : '–',
+                        detail: portfolioCagr !== null
+                            ? 'annualisierte Wachstumsrate'
+                            : 'min. 30 Tage Haltedauer',
+                        performance: portfolioCagr
                     },
                     {
                         label: 'Ø Haltedauer',
@@ -17929,11 +25957,6 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         label: 'Kapital in EOL-Sets',
                         value: formatCurrency(expiredCapital),
                         detail: `${formatPercent(expiredShare)} des Kapitals`
-                    },
-                    {
-                        label: 'Netto-Verkaufswert',
-                        value: formatCurrency(netValue),
-                        detail: 'nach Gebühren, Fixkosten und Versand'
                     },
                     {
                         label: 'Datenabdeckung',
@@ -17968,6 +25991,9 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     card.append(label, value, detail);
                     summary.appendChild(card);
                 });
+
+                const riskBox = renderRiskCheck(records, setSummaries, capital, expiredCapital);
+                const exitRadarBox = renderExitRadar(setSummaries);
 
                 const saleSettings = readSaleSettings();
                 const settingsBox = document.createElement('section');
@@ -18124,7 +26150,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
 
                 const rankings = document.createElement('div');
                 rankings.className = 'bmd-dashboard-rankings';
-                const buildRanking = (heading, entries) => {
+                const buildRanking = (heading, entries, metric = 'return') => {
                     const panel = document.createElement('section');
                     panel.className = 'bmd-dashboard-ranking';
                     const panelTitle = document.createElement('h4');
@@ -18135,7 +26161,8 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     table.className = 'bmd-dashboard-table';
                     const head = document.createElement('thead');
                     const headerRow = document.createElement('tr');
-                    ['Set', 'Kapital', 'Rendite'].forEach(label => {
+                    const valueHeader = metric === 'cagr' ? 'CAGR p.a.' : 'Rendite';
+                    ['Set', 'Kapital', valueHeader].forEach(label => {
                         const th = document.createElement('th');
                         th.textContent = label;
                         headerRow.appendChild(th);
@@ -18164,11 +26191,29 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                             const capitalCell = document.createElement('td');
                             capitalCell.textContent = formatCurrency(entry.capital);
                             const returnCell = document.createElement('td');
-                            returnCell.textContent = formatPercent(entry.grossReturn);
-                            returnCell.classList.add(
-                                'bmd-performance-percent',
-                                performanceClass(entry.grossReturn)
-                            );
+                            if (metric === 'cagr') {
+                                returnCell.textContent = entry.cagr !== null
+                                    ? signed(entry.cagr, 1, ' %')
+                                    : '–';
+                                if (entry.cagr !== null) {
+                                    returnCell.classList.add(
+                                        'bmd-performance-percent',
+                                        performanceClass(entry.cagr)
+                                    );
+                                    returnCell.title = `${signed(entry.cagr, 1, ' % p.a.')} ` +
+                                        `(${formatPercent(entry.grossReturn)} absolut, ` +
+                                        `${(entry.years || 0).toLocaleString('de-DE', {
+                                            minimumFractionDigits: 1,
+                                            maximumFractionDigits: 1
+                                        })} Jahre)`;
+                                }
+                            } else {
+                                returnCell.textContent = formatPercent(entry.grossReturn);
+                                returnCell.classList.add(
+                                    'bmd-performance-percent',
+                                    performanceClass(entry.grossReturn)
+                                );
+                            }
                             row.append(setCell, capitalCell, returnCell);
                             tbody.appendChild(row);
                         });
@@ -18183,6 +26228,12 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                         'Größte Kapitalpositionen',
                         [...setSummaries].filter(set => set.capital > 0)
                             .sort((a, b) => b.capital - a.capital)
+                    ),
+                    buildRanking(
+                        'Stärkste Jahresrendite (p.a.)',
+                        [...setSummaries].filter(set => set.cagr !== null && set.grossProfit > 0)
+                            .sort((a, b) => (b.cagr || 0) - (a.cagr || 0)),
+                        'cagr'
                     ),
                     buildRanking(
                         'Stärkste Gewinner',
@@ -18233,7 +26284,32 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     ? `${missingPieces.toLocaleString('de-DE')} Stück ohne Einkaufspreis ` +
                         'sind im gebundenen Kapital nicht enthalten.'
                     : `Alle ${data.pages.toLocaleString('de-DE')} Depot-Seiten wurden berücksichtigt.`;
-                body.append(summary, settingsBox, section, rankings, coverage, note);
+                const sheetsSettings = readSheetsSyncSettings();
+                const sheetsBox = document.createElement('section');
+                sheetsBox.className = 'bmd-sale-settings';
+                const sheetsTitle = document.createElement('h4');
+                sheetsTitle.textContent = 'Google Sheet Synchronisation';
+                const sheetsDesc = document.createElement('p');
+                sheetsDesc.className = 'bmd-sale-formula';
+                sheetsDesc.textContent = sheetsSettings.lastSyncedAt
+                    ? `Letzter Sync: ${new Date(sheetsSettings.lastSyncedAt).toLocaleString('de-DE')} (${sheetsSettings.lastSyncedCount} Zeilen in "${sheetsSettings.sheetName}").`
+                    : 'Synchronisiere den gesamten Depotbestand mit tagesaktuellen Bestpreisen und Wertsteigerung direkt in dein Google Sheet.';
+                const sheetsGrid = document.createElement('div');
+                sheetsGrid.className = 'bmd-sale-settings-grid';
+                const syncNowBtn = document.createElement('button');
+                syncNowBtn.type = 'button';
+                syncNowBtn.className = 'button small smallRedButton';
+                syncNowBtn.textContent = '📑 Jetzt synchronisieren';
+                syncNowBtn.addEventListener('click', () => executeGoogleSheetsSync(syncNowBtn));
+                const configBtn = document.createElement('button');
+                configBtn.type = 'button';
+                configBtn.className = 'button small smallGreyButton';
+                configBtn.textContent = '⚙️ Webhook & Einstellungen';
+                configBtn.addEventListener('click', () => openGoogleSheetsConfigOverlay(configBtn));
+                sheetsGrid.append(syncNowBtn, configBtn);
+                sheetsBox.append(sheetsTitle, sheetsDesc, sheetsGrid);
+
+                body.append(summary, riskBox, exitRadarBox, settingsBox, sheetsBox, section, rankings, coverage, note);
             }
 
             function openDepotDashboard(trigger, force = false) {
@@ -18266,11 +26342,703 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'button small smallGreyButton bmd-dashboard-button';
-                button.textContent = '📊 Dashboard';
+                button.textContent = 'Dashboard';
                 button.title = 'Depot nach Thema, Lager, Zustand und EOL auswerten';
                 button.addEventListener('click', () => openDepotDashboard(button));
                 tools.prepend(button);
             }
+
+            const SHEETS_SYNC_SETTINGS_KEY = 'brickmerge-depot-sheets-sync-v1';
+
+            const GOOGLE_APPS_SCRIPT_TEMPLATE = `/**
+         * Brickmerge Depot Sync - Google Apps Script Webhook
+         *
+         * Einrichtung:
+         * 1. In Google Sheets: "Erweiterungen" > "Apps Script"
+         * 2. Diesen Code einfügen & speichern (Strg+S / Cmd+S)
+         * 3. Oben rechts: "Bereitstellen" > "Neue Bereitstellung"
+         * 4. Typ: "Web-App" wählen
+         * 5. Ausführen als: "Ich" (dein Google-Konto)
+         * 6. Zugriff: "Jeder" (Anyone)
+         * 7. Web-App-URL kopieren und in Brickmerge eintragen
+         */
+
+        function doPost(e) {
+          try {
+            if (!e || !e.postData || !e.postData.contents) {
+              return ContentService.createTextOutput(JSON.stringify({
+                status: 'error',
+                message: 'Keine Daten empfangen.'
+              })).setMimeType(ContentService.MimeType.JSON);
+            }
+
+            var data = JSON.parse(e.postData.contents);
+            var ss = SpreadsheetApp.getActiveSpreadsheet();
+            var sheetName = data.sheetName || 'Brickmerge Depot';
+            var sheet = ss.getSheetByName(sheetName);
+
+            if (!sheet) {
+              sheet = ss.insertSheet(sheetName);
+            }
+
+            sheet.clear();
+
+            var headers = data.headers || [];
+            var rows = data.rows || [];
+
+            if (headers.length > 0) {
+              var allData = [headers].concat(rows);
+              var numRows = allData.length;
+              var numCols = headers.length;
+
+              var range = sheet.getRange(1, 1, numRows, numCols);
+              range.setValues(allData);
+
+              // Kopfzeile stylen
+              var headerRange = sheet.getRange(1, 1, 1, numCols);
+              headerRange.setFontWeight('bold');
+              headerRange.setBackground('#1976d2');
+              headerRange.setFontColor('#ffffff');
+              sheet.setFrozenRows(1);
+
+              // Spaltenformate
+              if (rows.length > 0) {
+                for (var col = 0; col < headers.length; col++) {
+                  var h = String(headers[col] || '').toLowerCase();
+                  var colRange = sheet.getRange(2, col + 1, rows.length, 1);
+                  if (h.indexOf('(€)') !== -1) {
+                    colRange.setNumberFormat('#,##0.00 "€"');
+                  } else if (h.indexOf('(%)') !== -1) {
+                    colRange.setNumberFormat('0.0 "%"');
+                  } else if (h.indexOf('datum') !== -1) {
+                    colRange.setNumberFormat('yyyy-mm-dd');
+                  } else if (h.indexOf('menge') !== -1 || h.indexOf('tage') !== -1) {
+                    colRange.setNumberFormat('#,##0');
+                  }
+                }
+              }
+
+              for (var c = 1; c <= numCols; c++) {
+                sheet.autoResizeColumn(c);
+              }
+            }
+
+            return ContentService.createTextOutput(JSON.stringify({
+              status: 'success',
+              syncedRows: rows.length,
+              sheetName: sheetName,
+              timestamp: new Date().toISOString()
+            })).setMimeType(ContentService.MimeType.JSON);
+          } catch (err) {
+            return ContentService.createTextOutput(JSON.stringify({
+              status: 'error',
+              message: err.toString()
+            })).setMimeType(ContentService.MimeType.JSON);
+          }
+        }
+
+        function doGet(e) {
+          return ContentService.createTextOutput(JSON.stringify({
+            status: 'ok',
+            message: 'Brickmerge Depot Sync Webhook ist bereit.'
+          })).setMimeType(ContentService.MimeType.JSON);
+        }`;
+
+            function readSheetsSyncSettings() {
+                const defaults = {
+                    webhookUrl: '',
+                    sheetName: 'Brickmerge Depot',
+                    mode: 'lots',
+                    lastSyncedAt: null,
+                    lastSyncedCount: 0
+                };
+                try {
+                    const raw = window.localStorage.getItem(SHEETS_SYNC_SETTINGS_KEY);
+                    if (!raw) return defaults;
+                    const parsed = JSON.parse(raw);
+                    return {
+                        webhookUrl: typeof parsed.webhookUrl === 'string' ? parsed.webhookUrl.trim() : '',
+                        sheetName: typeof parsed.sheetName === 'string' && parsed.sheetName.trim() ? parsed.sheetName.trim() : 'Brickmerge Depot',
+                        mode: parsed.mode === 'sets' ? 'sets' : 'lots',
+                        lastSyncedAt: typeof parsed.lastSyncedAt === 'number' ? parsed.lastSyncedAt : null,
+                        lastSyncedCount: typeof parsed.lastSyncedCount === 'number' ? parsed.lastSyncedCount : 0
+                    };
+                } catch (_) {
+                    return defaults;
+                }
+            }
+
+            function saveSheetsSyncSettings(settings) {
+                try {
+                    window.localStorage.setItem(SHEETS_SYNC_SETTINGS_KEY, JSON.stringify(settings));
+                } catch (_) {}
+            }
+
+            function copyToClipboard(text) {
+                if (typeof GM_setClipboard === 'function') {
+                    GM_setClipboard(text);
+                    return Promise.resolve();
+                }
+                if (typeof globalThis.GM?.setClipboard === 'function') {
+                    return globalThis.GM.setClipboard(text);
+                }
+                if (navigator?.clipboard?.writeText) {
+                    return navigator.clipboard.writeText(text);
+                }
+                try {
+                    const area = document.createElement('textarea');
+                    area.value = text;
+                    area.style.position = 'fixed';
+                    area.style.opacity = '0';
+                    document.body.appendChild(area);
+                    area.select();
+                    document.execCommand('copy');
+                    area.remove();
+                    return Promise.resolve();
+                } catch (err) {
+                    return Promise.reject(err);
+                }
+            }
+
+            function buildSheetsPayload(records = [], settings = {}) {
+                const sheetName = settings.sheetName || 'Brickmerge Depot';
+                const mode = settings.mode === 'sets' ? 'sets' : 'lots';
+                const syncedAt = new Date().toISOString();
+
+                let headers = [];
+                let rows = [];
+
+                const totalCapital = records.reduce((sum, r) => sum + (r.capital !== null ? r.capital : 0), 0);
+                const totalCurrentValue = records.reduce((sum, r) => sum + (r.currentValue !== null ? r.currentValue : 0), 0);
+                const totalProfit = totalCurrentValue - totalCapital;
+                const totalReturnPercent = totalCapital > 0 ? (totalProfit / totalCapital * 100) : null;
+
+                const summary = {
+                    totalSets: new Set(records.map(r => r.setNumber)).size,
+                    totalPieces: records.reduce((sum, r) => sum + (r.quantity || 0), 0),
+                    totalCapital: Math.round(totalCapital * 100) / 100,
+                    totalCurrentValue: Math.round(totalCurrentValue * 100) / 100,
+                    totalProfit: Math.round(totalProfit * 100) / 100,
+                    totalReturnPercent: totalReturnPercent !== null ? Math.round(totalReturnPercent * 10) / 10 : null
+                };
+
+                if (mode === 'sets') {
+                    headers = [
+                        'Setnummer',
+                        'Setname',
+                        'Thema',
+                        'Menge Gesamt',
+                        'Ø-EK Einzel (€)',
+                        'EK Gesamt (€)',
+                        'Akt. Bestpreis (€)',
+                        'Akt. Wert (€)',
+                        'Gewinn (€)',
+                        'Rendite (%)',
+                        'Händler',
+                        'Lagerorte',
+                        'EOL-Status',
+                        'Brickmerge-Link'
+                    ];
+
+                    const setMap = new Map();
+                    for (const record of records) {
+                        const num = record.setNumber;
+                        if (!setMap.has(num)) {
+                            setMap.set(num, {
+                                setNumber: num,
+                                name: record.name,
+                                theme: record.theme,
+                                pieces: 0,
+                                capital: 0,
+                                best: record.best,
+                                currentValue: 0,
+                                merchants: new Set(),
+                                storages: new Set(),
+                                eol: record.eol || ''
+                            });
+                        }
+                        const agg = setMap.get(num);
+                        agg.pieces += record.quantity || 0;
+                        if (record.capital !== null) {
+                            agg.capital += record.capital;
+                        }
+                        if (record.currentValue !== null) {
+                            agg.currentValue += record.currentValue;
+                        }
+                        if (record.merchant) {
+                            agg.merchants.add(record.merchant);
+                        }
+                        if (record.storage && record.storage !== 'Ohne Lagerort') {
+                            agg.storages.add(record.storage);
+                        }
+                        if (!agg.best && record.best) {
+                            agg.best = record.best;
+                        }
+                    }
+
+                    for (const agg of setMap.values()) {
+                        const avgEk = agg.capital > 0 && agg.pieces > 0
+                            ? Math.round((agg.capital / agg.pieces) * 100) / 100
+                            : null;
+                        const profit = agg.currentValue > 0 && agg.capital > 0
+                            ? Math.round((agg.currentValue - agg.capital) * 100) / 100
+                            : null;
+                        const returnPct = agg.capital > 0 && profit !== null
+                            ? Math.round((profit / agg.capital * 100) * 10) / 10
+                            : null;
+                        const merchantStr = agg.merchants.size > 0
+                            ? Array.from(agg.merchants).join(', ')
+                            : '';
+                        const storageStr = agg.storages.size > 0
+                            ? Array.from(agg.storages).join(', ')
+                            : '';
+                        const link = `https://www.brickmerge.de/?find=${encodeURIComponent(agg.setNumber)}`;
+
+                        rows.push([
+                            agg.setNumber,
+                            agg.name,
+                            agg.theme,
+                            agg.pieces,
+                            avgEk !== null ? avgEk : '',
+                            agg.capital > 0 ? Math.round(agg.capital * 100) / 100 : '',
+                            agg.best !== null ? Math.round(agg.best * 100) / 100 : '',
+                            agg.currentValue > 0 ? Math.round(agg.currentValue * 100) / 100 : '',
+                            profit !== null ? profit : '',
+                            returnPct !== null ? returnPct : '',
+                            merchantStr,
+                            storageStr,
+                            agg.eol,
+                            link
+                        ]);
+                    }
+                } else {
+                    headers = [
+                        'Setnummer',
+                        'Setname',
+                        'Thema',
+                        'Menge',
+                        'Zustand',
+                        'EK Einzel (€)',
+                        'EK Gesamt (€)',
+                        'Akt. Bestpreis (€)',
+                        'Akt. Wert (€)',
+                        'Gewinn (€)',
+                        'Rendite (%)',
+                        'Kaufdatum',
+                        'Händler',
+                        'Lagerort',
+                        'EOL-Status',
+                        'Haltedauer (Tage)',
+                        'Brickmerge-Link'
+                    ];
+
+                    for (const record of records) {
+                        const qty = record.quantity || 1;
+                        const ekTotal = record.capital !== null ? Math.round(record.capital * 100) / 100 : null;
+                        const ekSingle = ekTotal !== null && qty > 0 ? Math.round((ekTotal / qty) * 100) / 100 : null;
+                        const best = record.best !== null ? Math.round(record.best * 100) / 100 : null;
+                        const currentVal = record.currentValue !== null ? Math.round(record.currentValue * 100) / 100 : null;
+                        const profit = currentVal !== null && ekTotal !== null
+                            ? Math.round((currentVal - ekTotal) * 100) / 100
+                            : null;
+                        const returnPct = ekTotal !== null && ekTotal > 0 && profit !== null
+                            ? Math.round((profit / ekTotal * 100) * 10) / 10
+                            : null;
+                        const ageDays = typeof record.ageDays === 'number' ? Math.round(record.ageDays) : '';
+                        const link = `https://www.brickmerge.de/?find=${encodeURIComponent(record.setNumber)}`;
+
+                        rows.push([
+                            record.setNumber,
+                            record.name,
+                            record.theme,
+                            qty,
+                            record.condition || 'neu',
+                            ekSingle !== null ? ekSingle : '',
+                            ekTotal !== null ? ekTotal : '',
+                            best !== null ? best : '',
+                            currentVal !== null ? currentVal : '',
+                            profit !== null ? profit : '',
+                            returnPct !== null ? returnPct : '',
+                            record.purchaseDate || '',
+                            record.merchant || '',
+                            record.storage || '',
+                            record.eol || '',
+                            ageDays,
+                            link
+                        ]);
+                    }
+                }
+
+                return {
+                    sheetName,
+                    mode,
+                    syncedAt,
+                    summary,
+                    headers,
+                    rows
+                };
+            }
+
+            async function postToGoogleSheets(webhookUrl, payload) {
+                if (!webhookUrl || !/^https?:\/\//i.test(webhookUrl)) {
+                    throw new Error('Ungültige oder fehlende Webhook-URL.');
+                }
+                const bodyText = JSON.stringify(payload);
+
+                const gmRequest = typeof GM_xmlhttpRequest === 'function'
+                    ? GM_xmlhttpRequest
+                    : (typeof globalThis.GM?.xmlHttpRequest === 'function' ? globalThis.GM.xmlHttpRequest : null);
+
+                if (typeof gmRequest === 'function') {
+                    return new Promise((resolve, reject) => {
+                        gmRequest({
+                            method: 'POST',
+                            url: webhookUrl,
+                            data: bodyText,
+                            headers: {
+                                'Content-Type': 'text/plain;charset=utf-8'
+                            },
+                            timeout: 30000,
+                            onload: response => {
+                                if (response.status >= 200 && response.status < 400) {
+                                    try {
+                                        const resJson = JSON.parse(response.responseText);
+                                        if (resJson && resJson.status === 'error') {
+                                            reject(new Error(resJson.message || 'Fehler im Google Apps Script.'));
+                                            return;
+                                        }
+                                    } catch (_) {}
+                                    resolve(response.responseText);
+                                } else {
+                                    reject(new Error(`HTTP ${response.status}: Google Apps Script Fehler.`));
+                                }
+                            },
+                            onerror: () => reject(new Error('Netzwerkfehler beim Senden an Google Sheets.')),
+                            ontimeout: () => reject(new Error('Zeitüberschreitung beim Senden an Google Sheets.'))
+                        });
+                    });
+                }
+
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8'
+                    },
+                    body: bodyText
+                });
+                if (!response.ok && response.type !== 'opaque') {
+                    throw new Error(`HTTP ${response.status}: Google Apps Script Fehler.`);
+                }
+                return true;
+            }
+
+            async function testGoogleSheetsConnection(webhookUrl) {
+                if (!webhookUrl || !/^https?:\/\//i.test(webhookUrl)) {
+                    throw new Error('Bitte gib eine gültige Webhook-URL ein.');
+                }
+                const gmRequest = typeof GM_xmlhttpRequest === 'function'
+                    ? GM_xmlhttpRequest
+                    : (typeof globalThis.GM?.xmlHttpRequest === 'function' ? globalThis.GM.xmlHttpRequest : null);
+
+                if (typeof gmRequest === 'function') {
+                    return new Promise((resolve, reject) => {
+                        gmRequest({
+                            method: 'GET',
+                            url: webhookUrl,
+                            timeout: 15000,
+                            onload: res => {
+                                if (res.status >= 200 && res.status < 400) {
+                                    resolve(true);
+                                } else {
+                                    reject(new Error(`HTTP ${res.status}: Webhook nicht erreichbar.`));
+                                }
+                            },
+                            onerror: () => reject(new Error('Netzwerkfehler: Webhook konnte nicht kontaktiert werden.')),
+                            ontimeout: () => reject(new Error('Zeitüberschreitung beim Testen des Webhooks.'))
+                        });
+                    });
+                }
+
+                await fetch(webhookUrl, {
+                    method: 'GET',
+                    mode: 'no-cors'
+                });
+                return true;
+            }
+
+            function showSheetsToast(message, type = 'info') {
+                let container = document.getElementById('bmd-toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'bmd-toast-container';
+                    container.className = 'bmd-toast-container';
+                    document.body.appendChild(container);
+                }
+                const toast = document.createElement('div');
+                toast.className = `bmd-toast bmd-toast-${type}`;
+                toast.textContent = message;
+                container.appendChild(toast);
+                window.setTimeout(() => {
+                    toast.classList.add('bmd-toast-fade');
+                    window.setTimeout(() => toast.remove(), 400);
+                }, 4000);
+            }
+
+            async function executeGoogleSheetsSync(buttonElement) {
+                const settings = readSheetsSyncSettings();
+                if (!settings.webhookUrl) {
+                    openGoogleSheetsConfigOverlay(buttonElement);
+                    return;
+                }
+
+                const originalText = buttonElement ? buttonElement.textContent : '';
+                const updateButtonText = text => {
+                    if (buttonElement) buttonElement.textContent = text;
+                };
+
+                if (buttonElement) {
+                    buttonElement.disabled = true;
+                }
+
+                try {
+                    updateButtonText('⏳ Depot laden …');
+                    const depotData = await loadDepotDashboardData((completed, pages) => {
+                        updateButtonText(`⏳ Seite ${completed}/${pages} …`);
+                    }, true);
+
+                    if (!depotData || !depotData.records || depotData.records.length === 0) {
+                        throw new Error('Keine Depot-Einträge gefunden.');
+                    }
+
+                    updateButtonText('📤 An Sheets senden …');
+                    const payload = buildSheetsPayload(depotData.records, settings);
+                    await postToGoogleSheets(settings.webhookUrl, payload);
+
+                    settings.lastSyncedAt = Date.now();
+                    settings.lastSyncedCount = payload.rows.length;
+                    saveSheetsSyncSettings(settings);
+
+                    updateButtonText(`✓ ${payload.rows.length} Zeilen synchronisiert!`);
+                    showSheetsToast(`✓ Erfolgreich ${payload.rows.length} Zeilen in "${settings.sheetName}" synchronisiert!`, 'success');
+
+                    window.setTimeout(() => {
+                        if (buttonElement) {
+                            buttonElement.textContent = '📑 Google Sheet';
+                            buttonElement.disabled = false;
+                            const d = new Date(settings.lastSyncedAt);
+                            buttonElement.title = `Bestand mit Google Sheet synchronisieren (Zuletzt: ${d.toLocaleDateString('de-DE')} ${d.toLocaleTimeString('de-DE')}, ${settings.lastSyncedCount} Zeilen)`;
+                        }
+                    }, 3000);
+                } catch (error) {
+                    updateButtonText('❌ Fehler');
+                    showSheetsToast(error?.message || 'Fehler beim Synchronisieren mit Google Sheets.', 'error');
+                    window.setTimeout(() => {
+                        if (buttonElement) {
+                            buttonElement.textContent = originalText || '📑 Google Sheet';
+                            buttonElement.disabled = false;
+                        }
+                    }, 3500);
+                }
+            }
+
+            function openGoogleSheetsConfigOverlay(trigger) {
+                const mounted = mountOverlay('Google Sheet Synchronisation', trigger, 'bmd-sheets-config-dialog');
+                if (!mounted) return;
+                const { body } = mounted;
+                const settings = readSheetsSyncSettings();
+
+                const container = document.createElement('div');
+                container.className = 'bmd-sheets-config-container';
+
+                const intro = document.createElement('div');
+                intro.className = 'bmd-sheets-intro';
+                intro.innerHTML = `
+                    <p>Synchronisiere dein Brickmerge-Depot per 1-Klick direkt in dein Google Spreadsheet – ohne manuelle CSV-Dateien.</p>
+                    <ol class="bmd-sheets-steps">
+                        <li>Öffne dein Google Sheet und gehe im Menü auf <strong>Erweiterungen &gt; Apps Script</strong>.</li>
+                        <li>Füge den folgenden Code ein und speichere ihn.</li>
+                        <li>Klicke oben rechts auf <strong>Bereitstellen &gt; Neue Bereitstellung</strong> &rarr; Typ: <em>Web-App</em> &rarr; Zugriff: <em>Jeder</em>.</li>
+                        <li>Füge die erhaltene Web-App-URL unten ein.</li>
+                    </ol>
+                `;
+
+                const codeWrap = document.createElement('div');
+                codeWrap.className = 'bmd-sheets-code-wrap';
+                const copyBtn = document.createElement('button');
+                copyBtn.type = 'button';
+                copyBtn.className = 'button small smallGreyButton bmd-sheets-copy-code';
+                copyBtn.textContent = '📋 Code kopieren';
+                copyBtn.addEventListener('click', async () => {
+                    try {
+                        await copyToClipboard(GOOGLE_APPS_SCRIPT_TEMPLATE);
+                        copyBtn.textContent = 'Kopiert ✓';
+                        setTimeout(() => { copyBtn.textContent = '📋 Code kopieren'; }, 1500);
+                    } catch (_) {
+                        copyBtn.textContent = 'Fehler beim Kopieren';
+                    }
+                });
+                const codeArea = document.createElement('textarea');
+                codeArea.className = 'bmd-sheets-code-area';
+                codeArea.readOnly = true;
+                codeArea.rows = 8;
+                codeArea.value = GOOGLE_APPS_SCRIPT_TEMPLATE;
+                codeWrap.append(copyBtn, codeArea);
+
+                const form = document.createElement('div');
+                form.className = 'bmd-sheets-form';
+
+                const urlInput = document.createElement('input');
+                urlInput.type = 'url';
+                urlInput.placeholder = 'https://script.google.com/macros/s/.../exec';
+                urlInput.value = settings.webhookUrl || '';
+
+                const sheetNameInput = document.createElement('input');
+                sheetNameInput.type = 'text';
+                sheetNameInput.placeholder = 'Brickmerge Depot';
+                sheetNameInput.value = settings.sheetName || 'Brickmerge Depot';
+
+                const modeSelect = document.createElement('select');
+                const optLots = document.createElement('option');
+                optLots.value = 'lots';
+                optLots.textContent = 'Jede Einkaufscharge einzeln (Lots / Chargen)';
+                const optSets = document.createElement('option');
+                optSets.value = 'sets';
+                optSets.textContent = 'Sets zusammengefasst (Set-Ebene)';
+                modeSelect.append(optLots, optSets);
+                modeSelect.value = settings.mode || 'lots';
+
+                form.append(
+                    field('Google Apps Script Web-App URL', urlInput, true),
+                    field('Name des Tabellenblatts im Google Sheet', sheetNameInput),
+                    field('Detaillierungsgrad (Modus)', modeSelect)
+                );
+
+                const statusBox = document.createElement('div');
+                statusBox.className = 'bmd-sheets-status-box';
+                if (settings.lastSyncedAt) {
+                    const d = new Date(settings.lastSyncedAt);
+                    statusBox.textContent = `Zuletzt synchronisiert: ${d.toLocaleDateString('de-DE')} um ${d.toLocaleTimeString('de-DE')} (${settings.lastSyncedCount} Zeilen)`;
+                } else {
+                    statusBox.textContent = 'Noch keine Synchronisation durchgeführt.';
+                }
+
+                const actions = document.createElement('div');
+                actions.className = 'bmd-sheets-actions';
+
+                const testBtn = document.createElement('button');
+                testBtn.type = 'button';
+                testBtn.className = 'button small smallGreyButton';
+                testBtn.textContent = '🔍 Verbindung testen';
+                testBtn.addEventListener('click', async () => {
+                    const url = urlInput.value.trim();
+                    if (!url) {
+                        statusBox.textContent = '⚠️ Bitte gib zuerst eine Web-App URL ein.';
+                        statusBox.className = 'bmd-sheets-status-box bmd-status-error';
+                        return;
+                    }
+                    testBtn.disabled = true;
+                    testBtn.textContent = 'Teste Verbindung …';
+                    statusBox.textContent = 'Verbindung wird getestet …';
+                    statusBox.className = 'bmd-sheets-status-box';
+                    try {
+                        await testGoogleSheetsConnection(url);
+                        statusBox.textContent = '✓ Verbindung erfolgreich hergestellt!';
+                        statusBox.className = 'bmd-sheets-status-box bmd-status-success';
+                    } catch (err) {
+                        statusBox.textContent = `❌ Verbindung fehlgeschlagen: ${err.message}`;
+                        statusBox.className = 'bmd-sheets-status-box bmd-status-error';
+                    } finally {
+                        testBtn.disabled = false;
+                        testBtn.textContent = '🔍 Verbindung testen';
+                    }
+                });
+
+                const saveAndSyncBtn = document.createElement('button');
+                saveAndSyncBtn.type = 'button';
+                saveAndSyncBtn.className = 'button small smallRedButton';
+                saveAndSyncBtn.textContent = '💾 Speichern & Synchronisieren';
+                saveAndSyncBtn.addEventListener('click', async () => {
+                    const newUrl = urlInput.value.trim();
+                    const newSheetName = sheetNameInput.value.trim() || 'Brickmerge Depot';
+                    const newMode = modeSelect.value;
+
+                    settings.webhookUrl = newUrl;
+                    settings.sheetName = newSheetName;
+                    settings.mode = newMode;
+                    saveSheetsSyncSettings(settings);
+
+                    if (!newUrl) {
+                        closeOverlay();
+                        return;
+                    }
+
+                    saveAndSyncBtn.disabled = true;
+                    saveAndSyncBtn.textContent = 'Synchronisiere …';
+                    statusBox.textContent = 'Synchronisation läuft …';
+                    statusBox.className = 'bmd-sheets-status-box';
+
+                    try {
+                        const depotData = await loadDepotDashboardData(() => {}, true);
+                        const payload = buildSheetsPayload(depotData.records, settings);
+                        await postToGoogleSheets(newUrl, payload);
+                        settings.lastSyncedAt = Date.now();
+                        settings.lastSyncedCount = payload.rows.length;
+                        saveSheetsSyncSettings(settings);
+                        closeOverlay();
+                        showSheetsToast(`✓ Erfolgreich ${payload.rows.length} Einträge mit Google Sheets synchronisiert!`, 'success');
+                    } catch (err) {
+                        saveAndSyncBtn.disabled = false;
+                        saveAndSyncBtn.textContent = '💾 Speichern & Synchronisieren';
+                        statusBox.textContent = `❌ Synchronisationsfehler: ${err.message}`;
+                        statusBox.className = 'bmd-sheets-status-box bmd-status-error';
+                    }
+                });
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.type = 'button';
+                cancelBtn.className = 'button small smallGreyButton';
+                cancelBtn.textContent = 'Schließen';
+                cancelBtn.addEventListener('click', closeOverlay);
+
+                actions.append(testBtn, saveAndSyncBtn, cancelBtn);
+                container.append(intro, codeWrap, form, statusBox, actions);
+                body.appendChild(container);
+            }
+
+            function setupGoogleSheetsDepotSync() {
+                const wrap = document.getElementById('dpWrap');
+                if (!wrap) return;
+                const tools = wrap.querySelector('.dp-headtools');
+                if (!tools || tools.querySelector('.bmd-sheets-sync-btn-group')) return;
+
+                const group = document.createElement('div');
+                group.className = 'bmd-sheets-sync-btn-group';
+
+                const syncBtn = document.createElement('button');
+                syncBtn.type = 'button';
+                syncBtn.className = 'button small smallGreyButton bmd-sheets-sync-btn';
+                syncBtn.textContent = 'Google Sheet';
+                const settings = readSheetsSyncSettings();
+                syncBtn.title = settings.lastSyncedAt
+                    ? `Bestand mit Google Sheet synchronisieren (Zuletzt: ${new Date(settings.lastSyncedAt).toLocaleString('de-DE')})`
+                    : 'Bestand mit Google Sheet synchronisieren';
+                syncBtn.addEventListener('click', () => executeGoogleSheetsSync(syncBtn));
+
+                const settingsBtn = document.createElement('button');
+                settingsBtn.type = 'button';
+                settingsBtn.className = 'button small smallGreyButton bmd-sheets-settings-btn';
+                settingsBtn.textContent = '⚙️';
+                settingsBtn.title = 'Google Sheet Synchronisation konfigurieren';
+                settingsBtn.addEventListener('click', () => openGoogleSheetsConfigOverlay(settingsBtn));
+
+                group.append(syncBtn, settingsBtn);
+                tools.prepend(group);
+            }
+
+            globalThis.BM_buildSheetsPayload = buildSheetsPayload;
+            globalThis.BM_readSheetsSyncSettings = readSheetsSyncSettings;
+            globalThis.BM_saveSheetsSyncSettings = saveSheetsSyncSettings;
+            globalThis.BM_GOOGLE_APPS_SCRIPT_TEMPLATE = GOOGLE_APPS_SCRIPT_TEMPLATE;
 
             function updateDepotSaleThresholds() {
                 const wrap = document.getElementById('dpWrap');
@@ -18459,6 +27227,7 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                     updateDepotSaleThresholds();
                     updateDepotPartsLinks();
                     setupDepotDashboardButton();
+                    setupGoogleSheetsDepotSync();
                     observeDepot();
                 }, 0);
             }
@@ -18473,16 +27242,64 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
                 return action === 'depot' || Boolean(document.getElementById('dpWrap'));
             };
 
-            // Brickmerge pflegt die Depot-/Bestandsseite wieder selbst. Dort darf
-            // dieses Modul weder Layout noch Werte oder Bedienelemente verändern.
-            if (isDepotInventoryPage()) return;
+            function enhanceDepotView() {
+                const wrap = document.getElementById('dpWrap');
+                if (!wrap) return;
+                wrap.querySelectorAll('#dpTableBody .pa-row, .pa-row').forEach(row => {
+                    if (row.dataset.bmDepotEnhanced) return;
+                    row.dataset.bmDepotEnhanced = 'true';
+
+                    const cells = Array.from(row.children);
+                    cells.forEach(cell => {
+                        if (cell.classList.contains('pa-c-img') || cell.querySelector('img')) {
+                            cell.classList.add('pa-c-img');
+                        } else if (cell.classList.contains('pa-c-set') || cell.querySelector('.pa-setname, a[href*="/"]')) {
+                            cell.classList.add('pa-c-set');
+                        } else if (cell.classList.contains('pa-c-best') || cell.dataset.best || (row.dataset.best && cell.textContent.includes('€'))) {
+                            if (!cell.getAttribute('data-label')) cell.setAttribute('data-label', 'Bestpreis');
+                        } else if (cell.dataset.avg || (row.dataset.avg && cell.textContent.includes('€'))) {
+                            if (!cell.getAttribute('data-label')) cell.setAttribute('data-label', 'EK Ø');
+                        } else if (cell.classList.contains('pa-c-num') || /^\s*\d+\s*$/.test(cell.textContent.trim())) {
+                            if (!cell.getAttribute('data-label')) cell.setAttribute('data-label', 'Bestand');
+                        }
+                    });
+                });
+            }
 
             installStyles();
+            setupGoogleSheetsDepotSync();
+            if (document.getElementById('dpWrap')) {
+                enhanceDepotView();
+                try {
+                    const depotSheetObserver = new MutationObserver(() => {
+                        setupGoogleSheetsDepotSync();
+                        enhanceDepotView();
+                    });
+                    depotSheetObserver.observe(document.getElementById('dpWrap'), { childList: true, subtree: true });
+                } catch (_) {}
+            }
+            const registerMenu = typeof GM_registerMenuCommand === 'function'
+                ? GM_registerMenuCommand
+                : (typeof globalThis.GM?.registerMenuCommand === 'function' ? globalThis.GM.registerMenuCommand : null);
+            if (typeof registerMenu === 'function') {
+                registerMenu('📑 Google Sheet Depot-Sync', () => executeGoogleSheetsSync());
+                registerMenu('⚙️ Google Sheet Sync Einstellungen', () => openGoogleSheetsConfigOverlay());
+            }
+
+            if (isDepotInventoryPage()) return;
+
             setupDetailButton();
-            window.setTimeout(setupDetailButton, 0);
-            window.setTimeout(setupDetailButton, 1000);
+            const currentDetailSet = getSetNumber();
+            if (currentDetailSet) {
+                void syncDepotOfferRow(currentDetailSet);
+            }
+            window.setTimeout(() => setupDetailButton(), 0);
+            window.setTimeout(() => setupDetailButton(), 1000);
             window.addEventListener('load', () => {
                 setupDetailButton();
+                if (currentDetailSet) {
+                    void syncDepotOfferRow(currentDetailSet);
+                }
             }, { once: true });
             try {
                 const desktopPartsQuery = window.matchMedia('(min-width: 1025px)');

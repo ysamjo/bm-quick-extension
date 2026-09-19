@@ -35,9 +35,13 @@ const gmCompatSource = fs.readFileSync(
     new URL('../gm-compat.js', import.meta.url),
     'utf8'
 );
+const precleanSource = fs.readFileSync(
+    new URL('../src/preclean.js', import.meta.url),
+    'utf8'
+);
 
 test('mobile userscript metadata keeps automatic GitHub updates', () => {
-    assert.match(loaderSource, /@version\s+5\.6\.60/);
+    assert.match(loaderSource, /@version\s+\d+\.\d+\.\d+/);
     assert.match(loaderSource, /@run-at\s+document-start/);
     assert.match(
         loaderSource,
@@ -110,7 +114,7 @@ test('Meta-GPT bridge is a separate GitHub-backed userscript', () => {
         metaGptLoaderSource,
         /@name\s+Brickmerge Meta-GPT Bridge/
     );
-    assert.match(metaGptLoaderSource, /@version\s+5\.6\.60/);
+    assert.match(metaGptLoaderSource, /@version\s+\d+\.\d+\.\d+/);
     assert.match(
         metaGptLoaderSource,
         /@match\s+https:\/\/chatgpt\.com\/g\/g-LZvgtoTB9-meta-preisvergleich-gpt\*/
@@ -378,27 +382,27 @@ test('search fallback uses Google Lucky when no Brickmerge target is resolved', 
     assert.match(tweakerSource, /window\.location\.replace\(target \|\| googleLuckyUrl\.href\)/);
 });
 
-test('stock action lives in the parts block and opens the native depot form', () => {
-    const setupDetailButton = source.match(
+test('stock action is integrated into the 4-button action row and opens the native depot form', () => {
+    const setupDetailButton = tweakerSource.match(
         /function setupDetailButton\(\) \{[\s\S]*?\n\s*function parseNumber/
     )?.[0] || '';
 
-    assert.match(source, /function openNativeDepotAdd\(setNumber\)/);
-    assert.match(source, /searchParams\.get\('a'\) === 'depotadd'/);
-    assert.match(source, /#myModal #modalform, #modalform/);
+    assert.match(tweakerSource, /function openNativeDepotAdd\(setNumber\)/);
+    assert.match(tweakerSource, /searchParams\.get\('a'\) === 'depotadd'/);
+    assert.match(tweakerSource, /#myModal #modalform, #modalform/);
     assert.match(
         setupDetailButton,
-        /button\.addEventListener\('click', \(\) => openNativeDepotAdd\(setNumber\)\)/
+        /depotButton\.addEventListener\('click', \(\) => openNativeDepotAdd\(setNumber\)\)/
     );
-    assert.match(setupDetailButton, /document\.querySelector\('\.bm-sidebar-parts-list'\)/);
-    assert.match(setupDetailButton, /host\.appendChild\(button\)/);
-    assert.match(setupDetailButton, /host\.appendChild\(existingButton\)/);
-    assert.match(tweakerSource, /if \(stockButton\) list\.appendChild\(stockButton\)/);
-    assert.match(setupDetailButton, /Zum Bestand hinzufügen/);
-    assert.match(setupDetailButton, /\.bm-mobile-parts-stock-wrap/);
-    assert.match(setupDetailButton, /sourceSection\.insertAdjacentElement\('afterend', mobileHost\)/);
+    assert.match(setupDetailButton, /\.bm-detail-action-buttons-row/);
+    assert.match(setupDetailButton, /\.bmd-alarm-button/);
+    assert.match(setupDetailButton, /\.bmd-wishlist-button/);
+    assert.match(setupDetailButton, /\.bmd-roi-calculator-button/);
+    assert.match(setupDetailButton, /\.bmd-depot-button/);
+    assert.doesNotMatch(tweakerSource, /list\.appendChild\(stockButton\)/);
+    assert.doesNotMatch(tweakerSource, /list\.appendChild\(btn\)/);
+    assert.match(tweakerSource, /list\.querySelectorAll\('button, \.bmd-open-button/);
     assert.doesNotMatch(setupDetailButton, /chartTrigger/);
-    assert.doesNotMatch(setupDetailButton, /loadDepotData\(/);
 });
 
 test('depot page stays native while detail pages keep the stock action', () => {
@@ -665,6 +669,186 @@ test('eBay offers below half the Brickmerge price are rejected', () => {
     assert.match(source, /&best=\$\{encodeURIComponent\(ebayReferenceCachePart\)\}/);
 });
 
+test('lighting sets, light kits and accessories are excluded by title', () => {
+    const sharedSource = fs.readFileSync(
+        new URL('../src/shared.js', import.meta.url),
+        'utf8'
+    );
+    const context = vm.createContext({ URL });
+    vm.runInContext(sharedSource, context);
+
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Licht-Set für LEGO 75384'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('LED Licht Set passend für LEGO 10333'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('LED-Lichtset für LEGO 42154'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Briksmax Licht-Set für LEGO 42154'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Light Kit for LEGO 10333'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Kit LED Télécommandé pour LEGO Harry Potter ¤ Tour du Grand Escalier ¤76454¤NEUF'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Kit LED pour LEGO 76454'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Kit d éclairage LED pour LEGO Harry Potter 76454'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Kit de lumière pour LEGO 76454'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Vitrine pour LEGO 76454'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Boite acrylique pour LEGO 76454'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Sans figurines LEGO 76454'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('LEGO Star Wars 75384 Crimson Firehawk Neu OVP'),
+        false
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('LEGO Harry Potter 76454 Tour du Grand Escalier Neuf Scellé'),
+        false
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Mould King 13056 Sternenzerstörer'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Cobi 2540 Panzer Bausteine-Set wie LEGO'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Lepin 05007 Star Plan Falcon Block Set'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Custom Set kompatibel mit LEGO 10333'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('BlueBrixx Burg Blaustein'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('CaDA C61042 Bausatz'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Space Wars Millennium Falcon Block Set'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Klemmbausteine wie LEGO'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Technic 42154 kein LEGO original'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Building Block Set 75192'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('LEGO X FILES IDEAS lot de 8 minifigs originales du set 21369 NEUVES'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('LEGO Star Wars 75192 lot of 4 minifigures'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('LEGO 76454 nur Figuren aus Set'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('LEGO® Speed Champions Minifiguren Doc Brown und  Marty McFly aus dem Set 77256'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('LEGO Ideas 21369 Akte X Mulder & Scully Neu OVP'),
+        false
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('LED Ferngesteuertes Set für Lego Herr der Ringe ¤ Die Grafschaft ¤ 10354 ¤ NEU'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Kit LED télécommandé pour LEGO Seigneur des anneaux ¤ La Comté ¤ 10354 ¤ NEUF'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('Another Brick Shop LED Kit pour LEGO 10354'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferTitle('LEGO 10354 Der Herr der Ringe: Das Auenland Neu & OVP'),
+        false
+    );
+    assert.equal(
+        context.BM_isExcludedOfferSeller('another_brick'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferSeller('Another Brick Shop'),
+        true
+    );
+    assert.equal(
+        context.BM_isExcludedOfferSeller('luckyrosa'),
+        false
+    );
+
+    const filtered = context.BM_getPlausibleMarketplaceOffers(
+        'ebay',
+        {
+            cheapest: { title: 'Licht-Set für LEGO 75384', total: 29.99, url: 'https://www.ebay.de/itm/light' },
+            offers: [
+                {
+                    title: 'LED Ferngesteuertes Set für Lego Herr der Ringe ¤ Die Grafschaft ¤ 10354 ¤ NEU',
+                    seller: 'another_brick',
+                    total: 133.19,
+                    url: 'https://www.ebay.de/itm/397363041523'
+                },
+                {
+                    title: 'LEGO® Icons 10354 Der Herr der Ringe: Das Auenland OVP! Neu!',
+                    seller: 'luckyrosa',
+                    total: 225.49,
+                    url: 'https://www.ebay.de/itm/178450629602'
+                },
+                { title: 'LEGO 75384 Crimson Firehawk Neu', total: 49.99, url: 'https://www.ebay.de/itm/set' }
+            ]
+        },
+        50
+    );
+    assert.equal(filtered.length, 2);
+    assert.equal(filtered[0].title, 'LEGO 75384 Crimson Firehawk Neu');
+    assert.equal(filtered[1].title, 'LEGO® Icons 10354 Der Herr der Ringe: Das Auenland OVP! Neu!');
+});
+
 test('offer rows can be dismissed and marketplace alternatives move up', () => {
     assert.match(tweakerSource, /DISMISSED_OFFERS_KEY/);
     assert.match(tweakerSource, /VISITED_OFFERS_KEY/);
@@ -678,7 +862,7 @@ test('offer rows can be dismissed and marketplace alternatives move up', () => {
     assert.match(tweakerSource, /showOfferDismissToast/);
     assert.match(tweakerSource, /Verworfene wieder anzeigen/);
     assert.match(tweakerSource, /scheduleOfferPresentation\(\)/);
-    assert.match(tweakerSource, /right:\s*-1\.55rem/);
+    assert.match(tweakerSource, /right:\s*(?:-1\.55rem|4px)/);
     assert.match(tweakerSource, /\/offers\/dismissals/);
     assert.match(tweakerSource, /bm-offer-dismissals-synced/);
     assert.match(backgroundSource, /isDismissalWrite/);
@@ -802,7 +986,7 @@ test('eBay Offerlist uses black logos with distinct source markers', () => {
     assert.match(tweakerSource, /bm-ebay-wordmark/);
     assert.match(tweakerSource, /viewBox', '0 0 1000 400\.75098'/);
     assert.match(tweakerSource, /createElementNS/);
-    assert.match(tweakerSource, /grid-template-columns:\s*50px 14px/);
+    assert.match(tweakerSource, /grid-template-columns:\s*50px 18px/);
     assert.match(tweakerSource, /function decorateEbaySellerTypeIcon\(/);
     assert.match(tweakerSource, /bm-ebay-commercial-icon/);
     assert.match(tweakerSource, /bm-ebay-private-icon/);
@@ -814,8 +998,7 @@ test('eBay Offerlist uses black logos with distinct source markers', () => {
     assert.match(tweakerSource, /logoCountryFlag:\s*isFrance \? '🇫🇷' : ''/);
     assert.match(tweakerSource, /bm-marketplace-country-flag-fr/);
     assert.match(tweakerSource, /flag\.textContent = offer\.logoCountryFlag/);
-    assert.match(tweakerSource, /font-family:\s*"Apple Color Emoji"/);
-    assert.match(tweakerSource, /font-size:\s*0/);
+    assert.match(tweakerSource, /viewBox="0 0 3 2"/);
     assert.match(tweakerSource, /PRIVATE_SELLER/);
     assert.match(tweakerSource, /isBusinessSeller/);
     assert.match(
@@ -894,20 +1077,19 @@ test('overall best price box is inserted above Brickmerge best price with matchi
     assert.match(tweakerSource, /retailerLabel\.textContent\s*=\s*'Bestpreis:';/);
     assert.match(tweakerSource, /bm-topprice-logo-cell/);
     assert.match(tweakerSource, /bm-offer-row-highlight/);
-    assert.match(tweakerSource, /padding:\s*0\.5rem\s+5\.5rem\s+0\.5rem\s+0\.6rem;/);
+    assert.match(tweakerSource, /padding:\s*0\.5rem\s+4\.5rem\s+0\.5rem\s+0\.6rem;/);
     assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-bestprice-bubble/);
     assert.match(tweakerSource, /bestPriceBox\.style\.display\s*=\s*['"]block['"]/);
     assert.match(tweakerSource, /existingBlackBubble/);
 });
 
-test('calculation price basis defaults to overall best price and supports toggle', () => {
+test('calculation price basis and marketplaces in offerlist are controlled by settings', () => {
     assert.match(tweakerSource, /function getPriceBasisMode\(/);
-    assert.match(tweakerSource, /function setPriceBasisMode\(/);
-    assert.match(tweakerSource, /function getCalculationBestPrice\(/);
+    assert.match(tweakerSource, /BM_SETTINGS\.marketplacesInOfferlist === false/);
+    assert.match(tweakerSource, /return 'retailer';/);
     assert.match(tweakerSource, /return 'overall';/);
-    assert.match(tweakerSource, /bm-price-basis-toggle/);
     assert.match(tweakerSource, /syncGlobalPriceBasisToggle/);
-    assert.match(tweakerSource, /bm-global-price-basis-toggle/);
+    assert.doesNotMatch(tweakerSource, /function createPriceBasisToggle/);
     assert.match(tweakerSource, /isMarketplaceCheaper/);
     assert.match(tweakerSource, /syncPriceBasisCalculations/);
     assert.match(tweakerSource, /function syncMarketplaceDealBadge/);
@@ -916,8 +1098,28 @@ test('calculation price basis defaults to overall best price and supports toggle
     assert.match(tweakerSource, /function ensureDetailsNameCopyButton\(/);
     assert.match(tweakerSource, /function createNameCopyButton\(/);
     assert.match(tweakerSource, /copyBtn\.classList\.add\('bm-name-copy-btn'\);/);
-    assert.match(tweakerSource, /anchor\.after\(toggle\)/);
     assert.match(tweakerSource, /productPrice\.querySelector\('\.bm-price-basis-switch-row'\)\?\.remove\(\)/);
+
+    const overviewSource = fs.readFileSync(
+        new URL('../src/overview-price-badges.js', import.meta.url),
+        'utf8'
+    );
+    const context = vm.createContext({ URL });
+    vm.runInContext(sharedSource, context);
+    vm.runInContext(overviewSource, context);
+
+    const defaultSettings = context.BM_mergeSettings();
+    assert.strictEqual(defaultSettings.marketplacesInOfferlist, true);
+
+    const disabledSettings = context.BM_mergeSettings({ marketplacesInOfferlist: false });
+    assert.deepStrictEqual(
+        Array.from(context.BM_OVERVIEW_PRICE_CORE.enabledSources(disabledSettings)),
+        []
+    );
+    assert.deepStrictEqual(
+        Array.from(context.BM_OVERVIEW_PRICE_CORE.buttonSources(disabledSettings)),
+        []
+    );
 });
 
 test('all-time best difference calculation uses calculation price basis and removes green styling', () => {
@@ -994,6 +1196,14 @@ test('collectible minifigures detection and set number parsing support -x suffix
     );
     assert.equal(
         context.BM_getBrickmergeSetNumber('https://www.brickmerge.de/75192-1_lego-star-wars-millennium-falcon'),
+        '75192'
+    );
+    assert.equal(
+        context.BM_getBrickmergeSetNumber('https://www.brickmerge.de/75192'),
+        '75192'
+    );
+    assert.equal(
+        context.BM_getBrickmergeSetNumber('https://www.brickmerge.de/75192-1'),
         '75192'
     );
 
@@ -1075,6 +1285,27 @@ test('tap hand overlay on product images is hidden via CSS and removed from DOM'
     assert.match(tweakerSource, /document\.querySelectorAll\('span\.tap, \.tap'\)\.forEach/);
 });
 
+test('theme and search page top SEO clutter and Telegram promo are hidden via cleaner styles and removed from DOM', () => {
+    const precleanSource = fs.readFileSync(
+        new URL('../src/preclean.js', import.meta.url),
+        'utf8'
+    );
+    assert.match(precleanSource, /\.content\.noPadBottom > \.row:first-child \.small-12\.column > \.small-12:not\(\.setdetails\)/);
+    assert.match(precleanSource, /\.small-12\.medium-4\.large-3\.right/);
+    assert.match(tweakerSource, /\.content\.noPadBottom > \.row:first-child \.small-12\.column > \.small-12:not\(\.setdetails\)/);
+    assert.match(tweakerSource, /document\.querySelectorAll\('\.content\.noPadBottom > \.row:first-child \.small-12\.column > \.small-12:not\(\.setdetails\)'\)\.forEach/);
+});
+
+test('account subnavigation bar (bm-usernav) is hidden via CSS and removed from DOM', () => {
+    const precleanSource = fs.readFileSync(
+        new URL('../src/preclean.js', import.meta.url),
+        'utf8'
+    );
+    assert.match(precleanSource, /\.bm-usernav/);
+    assert.match(tweakerSource, /\.bm-usernav/);
+    assert.match(tweakerSource, /document\.querySelectorAll\('\.bm-usernav'\)\.forEach/);
+});
+
 test('effective prices from personal retailer discounts are visible in topprice green bar', () => {
     assert.match(tweakerSource, /function syncTopPriceEffectiveValues\(/);
     assert.match(tweakerSource, /function ensureTopPriceOriginalPriceElement\(/);
@@ -1082,12 +1313,23 @@ test('effective prices from personal retailer discounts are visible in topprice 
     assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-effective-info\s*\{/);
     assert.match(tweakerSource, /color:\s*#ffffff\s*!important;/);
     assert.match(tweakerSource, /font-weight:\s*400;/);
-    assert.match(tweakerSource, /padding-right:\s*5\.5rem\s*!important;/);
+    assert.match(tweakerSource, /white-space:\s*nowrap\s*!important;/);
+    assert.match(tweakerSource, /padding:\s*0\.5rem\s*2\.[45]rem\s*0\.5rem\s*0\.3rem\s*!important;/);
     assert.match(tweakerSource, /retailerBestOffer/);
     assert.match(tweakerSource, /bm-topprice-effective-info/);
     assert.match(tweakerSource, /bm-effective-info bm-topprice-effective-info/);
     assert.match(tweakerSource, /bmReplacedRetailer/);
     assert.match(tweakerSource, /bmOriginalHtml/);
+});
+
+test('retailer topprice bars deduplicate merchants and ensure no line wrap in price cell', () => {
+    assert.match(tweakerSource, /function normalizeMerchantName\(/);
+    assert.match(tweakerSource, /function getBarMerchantIdentifier\(/);
+    assert.match(tweakerSource, /function matchesActiveBest\(/);
+    assert.match(tweakerSource, /seenMerchants\.has\(ident\)/);
+    assert.match(tweakerSource, /bar\.remove\(\)/);
+    assert.match(tweakerSource, /allRetailerTopPrices\[0\]\.before\(existingBar\)/);
+    assert.match(tweakerSource, /\\u00a0€/);
 });
 
 test('ATB abbreviation is placed outside anchor tag and not linked to price comparison chart', () => {
@@ -1128,11 +1370,13 @@ test('brickmerge LEGO Deal-Score is shortened to Deal-Score', () => {
     assert.ok(shortenDealScoreLabelMatch);
 });
 
-test('mobile safety warning is placed after instructions or after Zum Bestand hinzufügen and not inside instructions', () => {
+test('safety warning is placed under product description or fallback targets', () => {
     assert.match(tweakerSource, /#ol1st \.bm-instruction-source \.bm-safety-warning-block/);
     assert.match(tweakerSource, /bm-mobile-parts-stock-wrap/);
+    assert.match(tweakerSource, /const mobileTarget = descSection \|\| mobileStockWrap \|\| partsSection/);
     assert.match(tweakerSource, /detailWarning\.previousElementSibling !== mobileTarget/);
     assert.match(tweakerSource, /mobileTarget\.insertAdjacentElement\('afterend', detailWarning\)/);
+    assert.match(tweakerSource, /\.bm-detail-layout > \.bm-detail-warning/);
 });
 
 test('minifigure overlay integrates BrickLink set-minifigs API fallback and graceful empty state', () => {
@@ -1141,6 +1385,1095 @@ test('minifigure overlay integrates BrickLink set-minifigs API fallback and grac
     assert.match(tweakerSource, /entry\?\.set_num \|\| entry\?\.itemNo/);
     assert.match(tweakerSource, /Keine Minifiguren in diesem Set enthalten\./);
 });
+
+test('eBay minifigure price in minifigure overlay is removed when marketplacesInOfferlist is false', () => {
+    assert.match(tweakerSource, /const isEbayMinifigEnabled = \(\) =>/);
+    assert.match(tweakerSource, /BM_SETTINGS\.marketplacesInOfferlist !== false/);
+    assert.match(tweakerSource, /BM_isOfferShopEnabled\('ebay-minifig'\)/);
+    assert.match(tweakerSource, /if \(!ebayEnabled\) \{\s*ebayLink\?\.remove\(\);/);
+});
+
+test('minifigure overlay includes set title in header subtitle', () => {
+    assert.match(tweakerSource, /const getDetailSetTitle = setNumber =>/);
+    assert.match(tweakerSource, /const setTitle = getDetailSetTitle\((?:activeSetNum|setNum)\);/);
+    assert.match(tweakerSource, /const setLabel = setTitle \|\| \((?:activeSetNum|setNum)/);
+});
+
+test('chart, EAN, and minifigure overlays have robust, bulletproof close buttons', () => {
+    // Chart close button is a flex item in header and reset properly
+    assert.match(tweakerSource, /\.bm-chart-dialog-close\s*\{[\s\S]*?display:\s*inline-flex\s*!important/);
+    assert.match(tweakerSource, /\.bm-chart-dialog-close\s*\{[\s\S]*?margin:\s*0 0 0 auto\s*!important/);
+    assert.match(tweakerSource, /\.bm-chart-dialog-header\s*\{[\s\S]*?justify-content:\s*space-between/);
+
+    // EAN close button is styled with !important resets against Foundation button rules
+    assert.match(tweakerSource, /\.bm-ean-close\s*\{[\s\S]*?display:\s*inline-flex\s*!important/);
+    assert.match(tweakerSource, /\.bm-ean-close\s*\{[\s\S]*?padding:\s*0\s*!important/);
+    assert.match(tweakerSource, /\.bm-ean-close\s*\{[\s\S]*?background:\s*#F1F5F9\s*!important/);
+
+    // Minifigure linking is included in set detail initializers
+    assert.match(tweakerSource, /linkMinifigureDetails/);
+    assert.match(tweakerSource, /runSetDetailInitializers\(\)\s*\{[\s\S]*?linkMinifigureDetails/);
+});
+
+test('static shop shipping rules detect merchants and free shipping thresholds', () => {
+    const context = vm.createContext({ globalThis: {} });
+    const currentShared = fs.readFileSync(
+        new URL('../src/shared.js', import.meta.url),
+        'utf8'
+    );
+    vm.runInContext(currentShared, context);
+
+    const findRule = context.globalThis.BM_findShopShippingRule;
+    assert.equal(typeof findRule, 'function');
+
+    // LEGO Online Shop
+    const legoRule = findRule('LEGO Online Shop');
+    assert.ok(legoRule);
+    assert.equal(legoRule.freeFrom, 55.0);
+    assert.equal(legoRule.standardCost, 3.95);
+
+    // Smyths
+    const smythsRule = findRule('Smyths Toys');
+    assert.ok(smythsRule);
+    assert.equal(smythsRule.freeFrom, 29.0);
+
+    // Müller
+    const muellerRule = findRule('Müller Drogerie');
+    assert.ok(muellerRule);
+    assert.equal(muellerRule.freeFrom, 49.0);
+    assert.equal(muellerRule.pickupFree, true);
+
+    // Galaxus
+    const galaxusRule = findRule('Galaxus.de');
+    assert.ok(galaxusRule);
+    assert.equal(galaxusRule.freeFrom, 30.0);
+
+    // Amazon
+    const amazonRule = findRule('Amazon.de');
+    assert.ok(amazonRule);
+    assert.equal(amazonRule.freeFrom, 39.0);
+
+    // Alza
+    const alzaRule = findRule('Alza');
+    assert.ok(alzaRule);
+    assert.equal(alzaRule.freeFrom, null);
+    assert.equal(alzaRule.standardCost, 0.98);
+
+    // Unknown
+    assert.equal(findRule('Unbekannter Shop'), null);
+});
+
+test('tweaker incorporates shop shipping rules and threshold hints', () => {
+    assert.match(tweakerSource, /globalThis\.BM_findShopShippingRule\?\.\(merchantName\)/);
+    assert.match(tweakerSource, /offerPrice >= rule\.freeFrom/);
+    assert.match(tweakerSource, /rule\.freeFrom - offerPrice/);
+    assert.match(tweakerSource, /small\.dataset\.shippingFreeFrom/);
+    assert.match(tweakerSource, /small\.dataset\.shippingRemaining/);
+    assert.match(tweakerSource, /ab \$\{formatEuroValue\(shipping\.freeFrom\)\} € versandkostenfrei/);
+    assert.doesNotMatch(tweakerSource, /ab \$\{Math\.round\(shipping\.freeFrom\)\} € frei/);
+});
+
+test('ROI and target sale price calculator provides presets and correct margin math', () => {
+    assert.match(tweakerSource, /MARKETPLACE_PRESETS\s*=/);
+    assert.match(tweakerSource, /ebay_comm/);
+    assert.match(tweakerSource, /amazon/);
+    assert.match(tweakerSource, /stockx/);
+    assert.match(tweakerSource, /bricklink/);
+    assert.match(tweakerSource, /bmd-roi-calculator-button/);
+    assert.match(tweakerSource, /openRoiCalculatorOverlay/);
+
+    // Context for formula verification
+    const context = {
+        calculateRequiredSalePrice: null
+    };
+    const code = tweakerSource.slice(
+        tweakerSource.indexOf('function calculateRequiredSalePrice'),
+        tweakerSource.indexOf('function calculateSaleThreshold')
+    );
+    vm.runInNewContext(`${code}; calculateRequiredSalePrice = calculateRequiredSalePrice;`, context);
+    const { calculateRequiredSalePrice } = context;
+
+    // Test 0% ROI (Break-Even): EK 100, 10% fee, 0 fix, 5 shipping => (100 + 5) / 0.9 = 116.67
+    const breakEven = calculateRequiredSalePrice(100, 0, { feePercent: 10, fixedFee: 0, shipping: 5 });
+    assert.ok(breakEven);
+    assert.equal(Math.round(breakEven.targetPrice * 100) / 100, 116.67);
+    assert.equal(Math.round(breakEven.profit * 100) / 100, 0);
+
+    // Test 20% ROI: EK 100, 20% ROI => EK+Gewinn = 120. With 10% fee, 0 fix, 5 shipping => (120 + 5) / 0.9 = 138.89
+    const roi20 = calculateRequiredSalePrice(100, 20, { feePercent: 10, fixedFee: 0, shipping: 5 });
+    assert.ok(roi20);
+    assert.equal(Math.round(roi20.targetPrice * 100) / 100, 138.89);
+    assert.equal(Math.round(roi20.profit * 100) / 100, 20.00);
+
+    // Amazon preset math: 15% fee, 0.99 fix, 6.99 shipping on 100 € EK with 25% margin
+    // target = (100 * 1.25 + 0.99 + 6.99) / 0.85 = 132.98 / 0.85 = 156.45
+    const amazonRoi = calculateRequiredSalePrice(100, 25, { feePercent: 15, fixedFee: 0.99, shipping: 6.99 });
+    assert.ok(amazonRoi);
+    assert.equal(Math.round(amazonRoi.targetPrice * 100) / 100, 156.45);
+    assert.equal(Math.round(amazonRoi.profit * 100) / 100, 25.00);
+});
+
+test('calculateCagr accurately computes annualized return with holding threshold', () => {
+    assert.match(tweakerSource, /function calculateCagr/);
+    const context = { calculateCagr: null };
+    const code = tweakerSource.slice(
+        tweakerSource.indexOf('function calculateCagr'),
+        tweakerSource.indexOf('function parseEolDate')
+    );
+    vm.runInNewContext(`${code}; calculateCagr = calculateCagr;`, context);
+    const { calculateCagr } = context;
+
+    // Under 30 days => null
+    assert.strictEqual(calculateCagr(120, 100, 20 / 365.2425), null);
+    // Exactly 1 year, +20%
+    const cagr1y = calculateCagr(120, 100, 1.0);
+    assert.ok(cagr1y !== null);
+    assert.equal(Math.round(cagr1y * 10) / 10, 20.0);
+    // 2 years, +44% (1.44^0.5 - 1 = +20%)
+    const cagr2y = calculateCagr(144, 100, 2.0);
+    assert.ok(cagr2y !== null);
+    assert.equal(Math.round(cagr2y * 10) / 10, 20.0);
+    // Loss: 1 year, -10%
+    const cagrLoss = calculateCagr(90, 100, 1.0);
+    assert.ok(cagrLoss !== null);
+    assert.equal(Math.round(cagrLoss * 10) / 10, -10.0);
+    // Invalid capital or value
+    assert.strictEqual(calculateCagr(100, 0, 1.0), null);
+    assert.strictEqual(calculateCagr(0, 100, 1.0), -100);
+});
+
+test('parseEolDate parses YYYYMMDD and standard dates', () => {
+    assert.match(tweakerSource, /function parseEolDate/);
+    const context = {
+        parseEolDate: null,
+        dateAtUtcMidnight: (val) => {
+            const m = String(val || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+        }
+    };
+    const code = tweakerSource.slice(
+        tweakerSource.indexOf('function parseEolDate'),
+        tweakerSource.indexOf('function eolGroup')
+    );
+    vm.runInNewContext(`${code}; parseEolDate = parseEolDate;`, context);
+    const { parseEolDate } = context;
+
+    const ts1 = parseEolDate('20241231');
+    assert.strictEqual(ts1, Date.UTC(2024, 11, 31));
+    const ts2 = parseEolDate('2023-06-15');
+    assert.strictEqual(ts2, Date.UTC(2023, 5, 15));
+    assert.strictEqual(parseEolDate(''), null);
+    assert.strictEqual(parseEolDate(null), null);
+});
+
+test('depot dashboard integrates risk check, exit radar and CAGR ranking', () => {
+    assert.match(tweakerSource, /function renderRiskCheck/);
+    assert.match(tweakerSource, /function renderExitRadar/);
+    assert.match(tweakerSource, /Portfolio- & Klumpenrisiko-Check/);
+    assert.match(tweakerSource, /EOL-Exit-Planer & Liquidations-Radar/);
+    assert.match(tweakerSource, /Stärkste Jahresrendite \(p\.a\.\)/);
+    assert.match(tweakerSource, /Ø Jahresrendite \(CAGR\)/);
+    assert.match(tweakerSource, /bmd-stage-fresh/);
+    assert.match(tweakerSource, /bmd-stage-maturing/);
+    assert.match(tweakerSource, /bmd-stage-mature/);
+    assert.match(tweakerSource, /bmd-status-ready/);
+});
+
+test('depot inventory offer row integration parses merchants, calculates average EKs, and protects calculations', () => {
+    // Assert required functions and selectors exist in tweaker source
+    assert.match(tweakerSource, /function extractLotMerchant/);
+    assert.match(tweakerSource, /function injectDepotInventoryOfferRow/);
+    assert.match(tweakerSource, /function syncDepotOfferRow/);
+    assert.match(tweakerSource, /bm-depot-inventory-offer/);
+    assert.match(tweakerSource, /bm-depot-inventory-tag/);
+    assert.match(tweakerSource, /Dein Kauf/);
+    assert.match(tweakerSource, /data-bm-depot-inventory/);
+    assert.match(tweakerSource, /'depot-inventory'/);
+    assert.match(tweakerSource, /dpfilter=alle/);
+
+    // Verify exclusions in first IIFE
+    assert.match(tweakerSource, /\.pricerow:not\(\[data-bm-marketplace="true"\]\):not\(\[data-bm-depot-inventory="true"\]\)/);
+    assert.match(tweakerSource, /\.pricerow\[data-bm-marketplace="true"\]:not\(\[data-bm-depot-inventory="true"\]\)/);
+    assert.match(tweakerSource, /discountRow\?\.dataset\.bmDepotInventory === 'true'/);
+    assert.match(tweakerSource, /priceRow\?\.dataset\.bmDepotInventory === 'true'/);
+
+    // Extract extractLotMerchant for isolated verification
+    const merchantContext = { extractLotMerchant: null };
+    const extractCode = tweakerSource.slice(
+        tweakerSource.indexOf('function extractLotMerchant'),
+        tweakerSource.indexOf('async function loadDepotData')
+    );
+    vm.runInNewContext(`${extractCode}; extractLotMerchant = extractLotMerchant;`, merchantContext);
+    const { extractLotMerchant } = merchantContext;
+
+    // Test 1: Merchant from edit.dataset.note or merchant
+    assert.equal(extractLotMerchant(null, { dataset: { note: 'Amazon' } }), 'Amazon');
+    assert.equal(extractLotMerchant(null, { dataset: { merchant: 'Smyths Toys' } }), 'Smyths Toys');
+    assert.equal(extractLotMerchant(null, { dataset: { shop: 'LEGO' } }), 'LEGO');
+    assert.equal(extractLotMerchant(null, { dataset: { seller: 'Alternate' } }), 'Alternate');
+
+    // Test 2: Fallback from lot element
+    const fakeLot = {
+        querySelector(selector) {
+            if (selector.includes('dp-note')) return { textContent: '  Müller  ' };
+            return null;
+        },
+        textContent: 'Lot 1 (Amazon)'
+    };
+    assert.equal(extractLotMerchant(fakeLot, null), 'Müller');
+
+    const fakeLotTextOnly = {
+        querySelector() { return null; },
+        textContent: 'Lot 1 (Alternate)'
+    };
+    assert.equal(extractLotMerchant(fakeLotTextOnly, null), 'Alternate');
+});
+
+test('depot inventory offer row correctly displays single vs multiple merchants and prices', () => {
+    // Single merchant with multi-price
+    const testLots1 = [
+        { qty: 1, price: 100, merchant: 'Amazon' },
+        { qty: 2, price: 130, merchant: 'Amazon' }
+    ];
+    let totalQty1 = 0;
+    let totalCap1 = 0;
+    const prices1 = new Set();
+    const merchants1 = new Set();
+    testLots1.forEach(l => {
+        totalQty1 += l.qty;
+        totalCap1 += l.price * l.qty;
+        prices1.add(l.price);
+        if (l.merchant) merchants1.add(l.merchant);
+    });
+    const avg1 = Math.round((totalCap1 / totalQty1 + Number.EPSILON) * 100) / 100;
+    const isMultiPrice1 = prices1.size > 1;
+    const merchantLabel1 = merchants1.size > 1 ? 'Divers' : (Array.from(merchants1)[0] || '');
+    assert.equal(avg1, 120);
+    assert.equal(isMultiPrice1, true);
+    assert.equal(merchantLabel1, 'Amazon');
+
+    // Multiple merchants with same price
+    const testLots2 = [
+        { qty: 1, price: 150, merchant: 'Amazon' },
+        { qty: 1, price: 150, merchant: 'LEGO Shop' }
+    ];
+    const prices2 = new Set();
+    const merchants2 = new Set();
+    testLots2.forEach(l => {
+        prices2.add(l.price);
+        if (l.merchant) merchants2.add(l.merchant);
+    });
+    const isMultiPrice2 = prices2.size > 1;
+    const merchantLabel2 = merchants2.size > 1 ? 'Divers' : (Array.from(merchants2)[0] || '');
+    assert.equal(isMultiPrice2, false);
+    assert.equal(merchantLabel2, 'Divers');
+});
+
+test('Google Sheets Sync settings storage and retrieval', () => {
+    assert.match(tweakerSource, /SHEETS_SYNC_SETTINGS_KEY = 'brickmerge-depot-sheets-sync-v1'/);
+    assert.match(tweakerSource, /function readSheetsSyncSettings/);
+    assert.match(tweakerSource, /function saveSheetsSyncSettings/);
+
+    const context = {
+        window: {
+            localStorage: {
+                _store: {},
+                getItem(k) { return this._store[k] || null; },
+                setItem(k, v) { this._store[k] = String(v); }
+            }
+        },
+        SHEETS_SYNC_SETTINGS_KEY: 'brickmerge-depot-sheets-sync-v1'
+    };
+    const code = tweakerSource.slice(
+        tweakerSource.indexOf('function readSheetsSyncSettings'),
+        tweakerSource.indexOf('function copyToClipboard')
+    );
+    vm.runInNewContext(`${code}; readSheetsSyncSettings = readSheetsSyncSettings; saveSheetsSyncSettings = saveSheetsSyncSettings;`, context);
+    const { readSheetsSyncSettings, saveSheetsSyncSettings } = context;
+
+    // Default settings
+    const defaults = readSheetsSyncSettings();
+    assert.equal(defaults.webhookUrl, '');
+    assert.equal(defaults.sheetName, 'Brickmerge Depot');
+    assert.equal(defaults.mode, 'lots');
+    assert.equal(defaults.lastSyncedAt, null);
+
+    // Save settings
+    saveSheetsSyncSettings({
+        webhookUrl: 'https://script.google.com/macros/s/xyz/exec',
+        sheetName: 'Mein Lego Depot',
+        mode: 'sets',
+        lastSyncedAt: 1700000000000,
+        lastSyncedCount: 50
+    });
+
+    const updated = readSheetsSyncSettings();
+    assert.equal(updated.webhookUrl, 'https://script.google.com/macros/s/xyz/exec');
+    assert.equal(updated.sheetName, 'Mein Lego Depot');
+    assert.equal(updated.mode, 'sets');
+    assert.equal(updated.lastSyncedAt, 1700000000000);
+    assert.equal(updated.lastSyncedCount, 50);
+});
+
+test('Google Sheets Sync buildSheetsPayload in lots and sets mode', () => {
+    assert.match(tweakerSource, /function buildSheetsPayload/);
+
+    const context = {};
+    const code = tweakerSource.slice(
+        tweakerSource.indexOf('function buildSheetsPayload'),
+        tweakerSource.indexOf('async function postToGoogleSheets')
+    );
+    vm.runInNewContext(`${code}; buildSheetsPayload = buildSheetsPayload;`, context);
+    const { buildSheetsPayload } = context;
+
+    const sampleRecords = [
+        {
+            item: '101',
+            setNumber: '75192',
+            name: 'Millennium Falcon',
+            theme: 'Star Wars',
+            quantity: 1,
+            condition: 'neu',
+            capital: 600.0,
+            best: 750.0,
+            currentValue: 750.0,
+            purchaseDate: '2023-01-15',
+            merchant: 'Amazon',
+            storage: 'Keller',
+            eol: 'Aktiv',
+            ageDays: 300
+        },
+        {
+            item: '101',
+            setNumber: '75192',
+            name: 'Millennium Falcon',
+            theme: 'Star Wars',
+            quantity: 2,
+            condition: 'neu',
+            capital: 1400.0,
+            best: 750.0,
+            currentValue: 1500.0,
+            purchaseDate: '2023-06-01',
+            merchant: 'LEGO Store',
+            storage: 'Dachboden',
+            eol: 'Aktiv',
+            ageDays: 160
+        },
+        {
+            item: '102',
+            setNumber: '10300',
+            name: 'Zurück in die Zukunft Zeitmaschine',
+            theme: 'Creator Expert',
+            quantity: 1,
+            condition: 'neu',
+            capital: 150.0,
+            best: 180.0,
+            currentValue: 180.0,
+            purchaseDate: '2023-05-10',
+            merchant: 'Smyths Toys',
+            storage: 'Regal 1',
+            eol: 'EOL',
+            ageDays: 180
+        }
+    ];
+
+    // 1. Lots mode
+    const lotsPayload = buildSheetsPayload(sampleRecords, { sheetName: 'Test Depot', mode: 'lots' });
+    assert.equal(lotsPayload.sheetName, 'Test Depot');
+    assert.equal(lotsPayload.mode, 'lots');
+    assert.equal(lotsPayload.headers.length, 17);
+    assert.ok(lotsPayload.headers.includes('Setnummer'));
+    assert.ok(lotsPayload.headers.includes('EK Einzel (€)'));
+    assert.ok(lotsPayload.headers.includes('Händler'));
+    assert.ok(lotsPayload.headers.includes('Brickmerge-Link'));
+    assert.equal(lotsPayload.rows.length, 3);
+
+    // Check first lot row (Falcon Lot 1)
+    const lot1 = lotsPayload.rows[0];
+    assert.equal(lot1[0], '75192');
+    assert.equal(lot1[1], 'Millennium Falcon');
+    assert.equal(lot1[3], 1);
+    assert.equal(lot1[5], 600.0);
+    assert.equal(lot1[6], 600.0);
+    assert.equal(lot1[7], 750.0);
+    assert.equal(lot1[8], 750.0);
+    assert.equal(lot1[9], 150.0);
+    assert.equal(lot1[10], 25.0);
+    assert.equal(lot1[12], 'Amazon');
+    assert.equal(lot1[13], 'Keller');
+    assert.equal(lot1[15], 300);
+    assert.ok(lot1[16].includes('75192'));
+
+    // Summary check
+    assert.equal(lotsPayload.summary.totalSets, 2);
+    assert.equal(lotsPayload.summary.totalPieces, 4);
+    assert.equal(lotsPayload.summary.totalCapital, 2150.0);
+    assert.equal(lotsPayload.summary.totalCurrentValue, 2430.0);
+    assert.equal(lotsPayload.summary.totalProfit, 280.0);
+
+    // 2. Sets mode (aggregation)
+    const setsPayload = buildSheetsPayload(sampleRecords, { sheetName: 'Aggregiert', mode: 'sets' });
+    assert.equal(setsPayload.sheetName, 'Aggregiert');
+    assert.equal(setsPayload.mode, 'sets');
+    assert.equal(setsPayload.rows.length, 2);
+    assert.ok(setsPayload.headers.includes('Ø-EK Einzel (€)'));
+
+    // Aggregated 75192
+    const aggFalcon = setsPayload.rows.find(r => r[0] === '75192');
+    assert.ok(aggFalcon);
+    assert.equal(aggFalcon[3], 3);
+    assert.equal(aggFalcon[4], 666.67);
+    assert.equal(aggFalcon[5], 2000.0);
+    assert.equal(aggFalcon[7], 2250.0);
+    assert.equal(aggFalcon[8], 250.0);
+    assert.equal(aggFalcon[9], 12.5);
+    assert.ok(aggFalcon[10].includes('Amazon'));
+    assert.ok(aggFalcon[10].includes('LEGO Store'));
+});
+
+test('Google Sheets Apps Script webhook template contains robust handling and number formats', () => {
+    assert.match(tweakerSource, /const GOOGLE_APPS_SCRIPT_TEMPLATE = `/);
+    assert.match(tweakerSource, /function doPost\(e\)/);
+    assert.match(tweakerSource, /function doGet\(e\)/);
+    assert.match(tweakerSource, /SpreadsheetApp\.getActiveSpreadsheet\(\)/);
+    assert.match(tweakerSource, /sheet\.setFrozenRows\(1\)/);
+    assert.match(tweakerSource, /autoResizeColumn/);
+    assert.match(tweakerSource, /setNumberFormat\('#,##0\.00 "€"'\)/);
+    assert.match(tweakerSource, /setNumberFormat\('0\.0 "%"'\)/);
+    assert.match(tweakerSource, /setNumberFormat\('yyyy-mm-dd'\)/);
+});
+
+test('Google Sheets UI elements and menu commands are wired', () => {
+    assert.match(tweakerSource, /function setupGoogleSheetsDepotSync\(\)/);
+    assert.match(tweakerSource, /bmd-sheets-sync-btn-group/);
+    assert.match(tweakerSource, /bmd-sheets-sync-btn/);
+    assert.match(tweakerSource, /bmd-sheets-settings-btn/);
+    assert.match(tweakerSource, /openGoogleSheetsConfigOverlay/);
+    assert.match(tweakerSource, /executeGoogleSheetsSync/);
+    assert.match(tweakerSource, /📑 Google Sheet Depot-Sync/);
+    assert.match(tweakerSource, /⚙️ Google Sheet Sync Einstellungen/);
+});
+
+test('depot inventory offer row integrates ROI calculator button with actual purchase price', () => {
+    assert.match(tweakerSource, /bmd-depot-roi-btn/);
+    assert.match(tweakerSource, /bmd-depot-roi-icon/);
+    assert.match(tweakerSource, /bmd-depot-roi-text/);
+    assert.match(tweakerSource, /openRoiCalculatorOverlay\(setNumber, depotData\.purchasePrice, roiButton\)/);
+    assert.match(tweakerSource, /event\.stopPropagation\(\)/);
+});
+
+test('list view integrates compact 2-row layout, inline EOL badge, and merchant resolver', () => {
+    assert.match(tweakerSource, /bmEnhanceListViewCards/);
+    assert.match(tweakerSource, /bmResolveCardMerchant/);
+    assert.match(tweakerSource, /bmExtractCheapestMerchantFromHtml/);
+    assert.match(tweakerSource, /bmExtractEolFromHtml/);
+    assert.match(tweakerSource, /bmListEolCache/);
+    assert.match(tweakerSource, /\.bm-list-eol/);
+    assert.match(tweakerSource, /\.bm-list-merchant/);
+    assert.match(tweakerSource, /grid-template-areas:\s*["']thumb header["']\s*["']thumb price["']/);
+});
+
+test('list view EOL extraction accurately parses specification rows, product tags, and textual EOL without external requests', () => {
+    const htmlSpec = '<br /> | Release: <strong>11/2022</strong>, EOL: <strong>&asymp;07/2027</strong>, <span class="tooltipster">PLC:</span>';
+    const htmlRetired = '<br /> | Release: <strong>10/2019</strong>, EOL: <strong>12/2022</strong>,';
+
+    const specMatch = htmlSpec.match(/EOL:\s*<strong>\s*([^<]+)<\/strong>/i);
+    assert.ok(specMatch);
+    assert.equal(specMatch[1].replace(/&asymp;|≈/g, '').trim(), '07/2027');
+
+    const retiredMatch = htmlRetired.match(/EOL:\s*<strong>\s*([^<]+)<\/strong>/i);
+    assert.ok(retiredMatch);
+    assert.equal(retiredMatch[1].replace(/&asymp;|≈/g, '').trim(), '12/2022');
+
+    assert.match(tweakerSource, /fetch\(task\.url,\s*\{\s*credentials:\s*['"]same-origin['"]\s*\}\)/);
+});
+
+test('mobile filter bar integrates 3x2 grid layout, SVG category icons, and clean zero-scrolling display', () => {
+    assert.match(tweakerSource, /#contenttoprow\s+\.small-12\.columns\s*\{[^}]*display:\s*grid\s*!important/);
+    assert.match(tweakerSource, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)\s*!important/);
+    assert.match(tweakerSource, /\.bm-filter-icon/);
+    assert.match(tweakerSource, /\.bm-filter-svg/);
+    assert.match(tweakerSource, /\.bm-filter-label/);
+    assert.match(tweakerSource, /openFilterBottomSheet/);
+    assert.match(tweakerSource, /filterConfigs/);
+});
+
+test('reveal modal dialogs (Rabattalarm, Deal-Alarm, Login) are centered and styled modernly', () => {
+    assert.match(tweakerSource, /\.reveal-modal,\s*#myModal/);
+    assert.match(tweakerSource, /margin:\s*auto\s*!important/);
+    assert.match(tweakerSource, /width:\s*calc\(100vw\s*-\s*32px\)\s*!important/);
+    assert.match(tweakerSource, /max-width:\s*440px\s*!important/);
+    assert.match(tweakerSource, /#myModal\s+\.modalheader/);
+    assert.match(tweakerSource, /#myModal\s+\.close-reveal-modal/);
+});
+
+test('view switcher is restricted to pages with set offers and protects merchants and themes grids', () => {
+    assert.match(tweakerSource, /body:has\(\.wrapper\.merchants\)\s+\.bm-view-switcher/);
+    assert.match(tweakerSource, /body:has\(\.wrapper\.themen\)\s+\.bm-view-switcher/);
+    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)/);
+    assert.match(tweakerSource, /isNonOfferListingPage/);
+    assert.match(tweakerSource, /hasSetOffers/);
+});
+
+test('filter dropdown arrows are completely removed from pseudo-elements', () => {
+    assert.match(tweakerSource, /#contenttoprow\s+a\.button\.dropdown::before/);
+    assert.match(tweakerSource, /#contenttoprow\s+a\.button\.dropdown::after/);
+    assert.match(tweakerSource, /\.viewDropDown::before/);
+    assert.match(tweakerSource, /\.viewDropDown::after/);
+    const precleanSource = fs.readFileSync(
+        new URL('../src/preclean.js', import.meta.url),
+        'utf8'
+    );
+    assert.match(precleanSource, /#contenttoprow\s+\.dropdown\.button::before/);
+    assert.match(precleanSource, /#contenttoprow\s+\.dropdown\.button::after/);
+});
+
+test('eBay logo in best price box matches offerlist styling with SVG wordmark and seller badge', () => {
+    assert.match(tweakerSource, /function createEbayLogoHtml/);
+    assert.match(tweakerSource, /function decorateNativeToppriceEbayLogo/);
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell\.bm-ebay-logo-link\.bm-has-meta/);
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell\s+\.bm-ebay-wordmark/);
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell\s+\.bm-ebay-seller-type-icon/);
+
+    // Verify that "gewerblich" caption and layout breaks are prevented in the best price box
+    assert.doesNotMatch(tweakerSource, /captionText:\s*'gewerblich'/);
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell\s+\.bm-marketplace-logo-meta/);
+});
+
+test('merchant page list view synchronously resolves merchant and prevents EOL fetch overwrites', () => {
+    assert.match(tweakerSource, /function bmGetPageMerchantName/);
+    assert.match(tweakerSource, /const pageMerchant = bmGetPageMerchantName\(\);/);
+    assert.match(tweakerSource, /curNeedsMerchant\s*\?\s*merchant =>/);
+    assert.match(tweakerSource, /\(curNeedsEol && tEol\)\s*\?\s*eol =>/);
+    assert.match(tweakerSource, /card\.dataset\.bmNeedsMerchant\s*=\s*needsMerchant/);
+    assert.match(tweakerSource, /card\.dataset\.bmNeedsEol\s*=\s*needsEol/);
+    assert.match(tweakerSource, /\.bm-list-merchant:empty/);
+
+    // Regex-Prüfungen der Händler-Erkennung
+    const sampleSwitchHtml = '<a href="/?theme=Top-Angebote&fm=419&sc=1">Nur Baby-Walz Bestpreisangebote zeigen</a>';
+    const matchSwitch = sampleSwitchHtml.match(/(?:Nur|Keine)\s+(.*?)\s+Bestpreis/i);
+    assert.ok(matchSwitch);
+    assert.equal(matchSwitch[1], 'Baby-Walz');
+
+    const sampleTitle = 'LEGO® bei Baby-Walz im Preisvergleich | Brickmerge';
+    const matchTitle = sampleTitle.match(/LEGO[®]?\s+bei\s+([^|]+?)(?:\s+im\s+Preisvergleich|\s*\|)/i);
+    assert.ok(matchTitle);
+    assert.equal(matchTitle[1], 'Baby-Walz');
+});
+
+test('best price switch on merchant pages spans full grid width and is styled as modern toggle card', () => {
+    assert.match(tweakerSource, /#contenttoprow\s+\.small-12\.columns\s*>\s*\.button:has\(form\[name="sctoggle"\]\)/);
+    assert.match(tweakerSource, /#contenttoprow\s+\.bm-bestprice-toggle\s*\{[^}]*grid-column:\s*1\s*\/\s*-1\s*!important/);
+    assert.match(tweakerSource, /#contenttoprow\s+\.bm-bestprice-toggle\s*\{[^}]*display:\s*flex\s*!important/);
+    assert.match(tweakerSource, /\.bm-bestprice-toggle-label/);
+    assert.match(tweakerSource, /sctoggleWrapper\s*\.querySelectorAll\('\.bm-bestprice-star-icon,\s*\[class\*="star" i\]'\)\s*\.forEach\(el\s*=>\s*el\.remove\(\)\)/);
+    assert.match(tweakerSource, /link\.firstChild\.nodeValue\s*=\s*link\.firstChild\.nodeValue\s*\.replace\(\/\^\[\\s\\u2605\\u2606\\u2b50\\u2729\\u272a\\u272f\]\+\//);
+    assert.match(tweakerSource, /#contenttoprow\s+form\[name="sctoggle"\]\s+\.slider\.round/);
+    assert.match(tweakerSource, /\.bm-bestprice-toggle\.bm-bestprice-active/);
+    assert.match(tweakerSource, /#contenttoprow\s+\.bm-bestprice-toggle\.bm-bestprice-active\s+form\[name="sctoggle"\]\s+\.slider\.round/);
+    assert.match(tweakerSource, /sctoggleWrapper\.classList\.toggle\(['"]bm-bestprice-active['"]/);
+    assert.match(tweakerSource, /sctoggleWrapper\.addEventListener\(['"]click['"],\s*executeToggle,\s*true\)/);
+});
+
+test('preclean.js scopes sctoggle to detail pages and does not block merchant filter bar', () => {
+    assert.match(precleanSource, /#offerlist\s+form\[name="sctoggle"\]/);
+    assert.match(precleanSource, /\.content\.setdetails\s+form\[name="sctoggle"\]/);
+    assert.doesNotMatch(precleanSource, /html\.bm-extension-cleaner-enabled\s+form\[name="sctoggle"\],/);
+});
+
+test('bmExtractEolFromHtml handles flexible EOL markup with entities and producttags', () => {
+    // 1. EOL with &asymp; outside or inside strong
+    const htmlAsympOutside = '<div>EOL: &asymp;<strong>08/2026</strong>, Release: <strong>01/2024</strong></div>';
+    const htmlNoTag = '<div>EOL: 12/2025, Release: 03/2023</div>';
+    const htmlTagSpan = '<span class="producttag">Auslaufartikel 12/24</span>';
+    const htmlRetired = '<div>Status: Auslaufartikel</div>';
+
+    const specMatchOutside = htmlAsympOutside.match(/EOL\s*[:]\s*(?:<[^>]+>\s*)*(?:&asymp;|≈)?\s*(?:<[^>]+>\s*)*([^<,;\n\r]+)/i);
+    assert.ok(specMatchOutside);
+    assert.match(specMatchOutside[1], /08\/2026/);
+
+    const specMatchNoTag = htmlNoTag.match(/EOL\s*[:]\s*(?:<[^>]+>\s*)*(?:&asymp;|≈)?\s*(?:<[^>]+>\s*)*([^<,;\n\r]+)/i);
+    assert.ok(specMatchNoTag);
+    assert.match(specMatchNoTag[1], /12\/2025/);
+
+    const tagMatchSpan = htmlTagSpan.match(/class=["'][^"']*producttag[^"']*["'][^>]*>([^<]*(?:auslauf|eol|end of life)[^<]*)<\/[a-z0-9]+>/i);
+    assert.ok(tagMatchSpan);
+    assert.match(tagMatchSpan[1], /12\/24/);
+
+    assert.ok(/Auslaufartikel/i.test(htmlRetired));
+
+    assert.match(tweakerSource, /function bmApplyEolToAllCards/);
+    assert.match(tweakerSource, /bmApplyEolToAllCards\(task\.setKey,\s*eol\)/);
+});
+
+test('list view swaps placement of percentage discount and EOL badge, and classic grid cards integrate merchant and EOL', () => {
+    // 1. List view: EOL badge at top-left, discount badge inline in offerbox
+    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.bm-list-eol[^}]*top:\s*4px\s*!important/);
+    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.bm-list-eol[^}]*left:\s*4px\s*!important/);
+    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.off[^}]*position:\s*static\s*!important/);
+    assert.match(tweakerSource, /offBadge\.classList\.add\(['"]bm-list-off['"]\)/);
+
+    // 2. Classic grid cards: bookmark/alarm icons hidden, top-badge top-right, EOL in offerbox, split CTA
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+a\[id\^="merk"\]/);
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.bm-card-top-badge[^}]*top:\s*4px\s*!important/);
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.bm-card-top-badge[^}]*right:\s*4px\s*!important/);
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.productprice\s+\.bm-list-eol/);
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.bm-split-cta/);
+    assert.match(tweakerSource, /function bmApplyMerchantToCard/);
+});
+
+test('set detail page adds native modal CTAs for Preisalarm and Wunschliste near depot button and removes icons from listview', () => {
+    assert.match(tweakerSource, /function openNativePriceAlarm/);
+    assert.match(tweakerSource, /function openNativeWishlistAdd/);
+    assert.match(tweakerSource, /a=pricealarm&i=/);
+    assert.match(tweakerSource, /a=wishlistadd&i=/);
+    assert.match(tweakerSource, /bmd-alarm-button/);
+    assert.match(tweakerSource, /bmd-wishlist-button/);
+
+    // Listview removes icons and resets padding
+    assert.match(tweakerSource, /card\.querySelectorAll\('a\[id\^="merk"\], a\[id\^="a"\], a\[id\^="dp"\], \.bm-slidebadge'\)\.forEach\(el => el\.remove\(\)\)/);
+    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.producttitle[^}]*padding-right:\s*0\s*!important/);
+});
+
+test('marketplace best price box logo cell stretches 100% height and red discount bubble is strictly for UVP discounts without negative signs', () => {
+    // 1. Logo cell stretch & height
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-overall-bestprice-link\s+\.bm-topprice-logo-cell[^}]*align-self:\s*stretch\s*!important/);
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-overall-bestprice-link\s+\.bm-topprice-logo-cell[^}]*min-height:\s*100%\s*!important/);
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell[^}]*height:\s*100%\s*!important/);
+    assert.doesNotMatch(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell[^}]*height:\s*35px\s*!important/);
+
+    // 2. No negative percentage bubbles or rogue red bubble vs retailer
+    assert.doesNotMatch(tweakerSource, /bubbleText\s*=\s*`-\$\{discountPercent\}%`/);
+    assert.doesNotMatch(tweakerSource, /günstiger als Brickmerge-Bestpreis\s*\(\$\{formatEuroValue\(retailerBest - marketplaceBest\.price\)\}\s*€ Ersparnis\)/);
+});
+
+test('mobile view narrows merchant logo column by 10% in offerlist (22.5%) and bestprice bar (22.5%)', () => {
+    // 1. Offerlist columns narrowed from 25% to 22.5% on mobile
+    assert.match(tweakerSource, /#offerlist\s+\.row\.collapse\s*>\s*\.goto\.small-3\.columns[^}]*width:\s*22\.5%\s*!important/);
+    assert.match(tweakerSource, /#offerlist\s+\.row\.collapse\s*>\s*\.medium-4\.small-9\.columns\.pricerow[^}]*width:\s*77\.5%\s*!important/);
+    assert.match(tweakerSource, /#offerlist\s+\.row\.collapse\.bm-effective-row\s*>\s*\.goto\.small-3\.columns[^}]*width:\s*22\.5%\s*!important/);
+    assert.match(tweakerSource, /#offerlist\s+\.row\.collapse\.bm-effective-row\s*>\s*\.medium-4\.small-9\.columns\.pricerow[^}]*width:\s*77\.5%\s*!important/);
+
+    // 2. Topprice logo column matches offerlist 22.5% on mobile
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell[^}]*width:\s*22\.5%\s*!important/);
+});
+test('theme line is inserted under article number with leading pipe and breadcrumbs are hidden on mobile', () => {
+    assert.match(tweakerSource, /function insertThemeUnderArticleNumber/);
+    assert.match(tweakerSource, /\.bm-theme-row/);
+    assert.match(tweakerSource, /&nbsp;\|\s*Theme:\s*<a\s+class="bm-theme-link"/);
+    assert.match(tweakerSource, /@media\s*\(max-width:\s*64em\)\s*\{[\s\S]*?\[itemscope\]\[itemtype\*="BreadcrumbList"\][\s\S]*?display:\s*none\s*!important;/);
+});
+
+test('startseite centers Deal-Alarm and hides SEO intro paragraphs without hiding jump targets', () => {
+    assert.match(tweakerSource, /function removeThemePromoBlock/);
+    assert.match(tweakerSource, /\.content\.isIntro\s+\.showmore/);
+    assert.match(tweakerSource, /\.bmh,\s*\.bmh-actionsRow[\s\S]*?text-align:\s*center\s*!important/);
+    assert.doesNotMatch(tweakerSource, /\.content\.isIntro\s*>\s*\.row:first-child/);
+    assert.match(tweakerSource, /#highlights,\s*#produktbilder,\s*#bauanleitungen,\s*#brickmerge_telegram/);
+    assert.match(tweakerSource, /function setupJumpLinks/);
+});
+
+test('go to top button removes white border', () => {
+    assert.match(tweakerSource, /#toTop\s*\{[^}]*border:\s*none\s*!important/);
+});
+
+test('modal dialogs hide desktop scrollbars while preserving scrolling', () => {
+    assert.match(tweakerSource, /\.reveal-modal,\s*#myModal,\s*\.bm-modal,[\s\S]*?scrollbar-width:\s*none\s*!important/);
+    assert.match(tweakerSource, /\.reveal-modal::-webkit-scrollbar,[\s\S]*?display:\s*none\s*!important/);
+});
+
+test('desktop filters remain original and setupMobileFilterBar scopes strictly to mobile', () => {
+    assert.match(tweakerSource, /function setupMobileFilterBar\(\)\s*\{[\s\S]*?window\.innerWidth\s*>\s*768/);
+});
+
+test('direct shop links decode HTML entities &amp; and &#38; in URL parameters', () => {
+    assert.match(tweakerSource, /rawUrl\s*=\s*rawUrl\.replace\(\/&amp;\/g,\s*'&'\)\.replace\(\/&#0\*38;\/g,\s*'&'\)/);
+    assert.match(tweakerSource, /const cleanUrl\s*=\s*String\(shopUrl\)\.replace\(\/&amp;\/g,\s*'&'\)/);
+});
+
+test('desktop header with search bar remains original while tiles background is white', () => {
+    assert.match(tweakerSource, /#productrowcontainer,\s*#productrow,\s*\.productrow,\s*#productrowcontainer\s*>\s*\.bm-view-switcher,\s*\.bm-view-switcher\s*\{[^}]*background:\s*#FFFFFF\s*!important/);
+    assert.doesNotMatch(tweakerSource, /#wrap[^{]*\{[^}]*background:\s*#FFFFFF/);
+    assert.doesNotMatch(tweakerSource, /#filterrow\s*\{[^}]*background:\s*#b00/);
+    const precleanSource = fs.readFileSync(
+        new URL('../src/preclean.js', import.meta.url),
+        'utf8'
+    );
+    assert.match(precleanSource, /#productrowcontainer,\s*#productrow/);
+    assert.doesNotMatch(precleanSource, /#wrap[^{]*\{[^}]*background:\s*#FFFFFF/);
+    assert.doesNotMatch(precleanSource, /#filterrow\s*\{[^}]*background:\s*#b00/);
+});
+
+test('classic tile cards enlarge product image without grey area protrusion and remove useless line above CTAs', () => {
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.productimg\s*\{[^}]*width:\s*100%\s*!important/);
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.productimg\s*\{[^}]*height:\s*155px\s*!important/);
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.productimg\s+img\s*\{[^}]*max-height:\s*145px\s*!important/);
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.productprice\s*\{[^}]*height:\s*auto\s*!important/);
+});
+
+test('detail action row contains strictly 4 buttons without duplicates and sidebar parts list has zero action buttons', () => {
+    // 1. Sidebar parts list strips any buttons
+    assert.match(tweakerSource, /list\.querySelectorAll\('button, \.bmd-open-button, \.bmd-parts-stock-button, \.bmd-depot-button'\)\.forEach/);
+    // 2. Stray buttons outside .bm-detail-action-buttons-row are removed
+    assert.match(tweakerSource, /document\.querySelectorAll\('\.bmd-open-button, \.bmd-parts-stock-button, \.bmd-depot-button'\)\.forEach\(btn => \{/);
+    assert.match(tweakerSource, /if \(!btn\.closest\('\.bm-detail-action-buttons-row'\)\) \{\s*btn\.remove\(\);/);
+    // 3. Multiple action rows are removed
+    assert.match(tweakerSource, /const allActionRows = document\.querySelectorAll\('\.bm-detail-action-buttons-row'\);/);
+    // 4. In-row duplicates are purged
+    assert.match(tweakerSource, /actionRow\.querySelectorAll\('\.bmd-alarm-button'\)\.forEach\(\(btn, idx\) => \{ if \(idx > 0\) btn\.remove\(\); \}\);/);
+    assert.match(tweakerSource, /actionRow\.querySelectorAll\('\.bmd-wishlist-button'\)\.forEach\(\(btn, idx\) => \{ if \(idx > 0\) btn\.remove\(\); \}\);/);
+    assert.match(tweakerSource, /actionRow\.querySelectorAll\('\.bmd-roi-calculator-button'\)\.forEach\(\(btn, idx\) => \{ if \(idx > 0\) btn\.remove\(\); \}\);/);
+    assert.match(tweakerSource, /actionRow\.querySelectorAll\('\.bmd-depot-button'\)\.forEach\(\(btn, idx\) => \{ if \(idx > 0\) btn\.remove\(\); \}\);/);
+    // 5. Order is guaranteed
+    assert.match(tweakerSource, /actionRow\.appendChild\(alarmButton\);/);
+    assert.match(tweakerSource, /actionRow\.appendChild\(wishlistButton\);/);
+    assert.match(tweakerSource, /actionRow\.appendChild\(roiButton\);/);
+    assert.match(tweakerSource, /actionRow\.appendChild\(depotButton\);/);
+});
+
+test('list view is removed on desktop and scoped strictly to mobile', () => {
+    // 1. CSS scopes list view strictly to mobile max-width: 768px
+    assert.match(tweakerSource, /@media screen and \(max-width:\s*768px\)\s*\{\s*html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)/);
+    // 2. CSS hides view switcher on desktop min-width: 769px
+    assert.match(tweakerSource, /@media screen and \(min-width:\s*769px\)\s*\{\s*\.bm-view-switcher\s*\{\s*display:\s*none\s*!important;/);
+    assert.match(precleanSource, /@media screen and \(min-width:\s*769px\)\s*\{\s*\.bm-view-switcher\s*\{\s*display:\s*none\s*!important;/);
+    // 3. JS setupListingView checks desktop and removes list view + switcher
+    assert.match(tweakerSource, /if\s*\(window\.innerWidth\s*>\s*768\)\s*\{\s*document\.querySelector\('\.bm-view-switcher'\)\?\.remove\(\);\s*document\.documentElement\.classList\.remove\('bm-view-list',\s*'bm-grid-2col'\);/);
+    // 4. JS applyViewMode aborts and cleans up if triggered on desktop
+    assert.match(tweakerSource, /const applyViewMode = \(mode,\s*persist\s*=\s*false\)\s*=>\s*\{\s*if\s*\(window\.innerWidth\s*>\s*768\)\s*\{\s*document\.documentElement\.classList\.remove\('bm-view-list',\s*'bm-grid-2col'\);/);
+});
+
+test('app mode hides breadcrumbs, headlinerow, and set title without white gap', () => {
+    assert.match(tweakerSource, /html\.bm-android-app\s+#headlinerow,\s*html\.bm-android-app\s+#headlinerow\s+h1/);
+    assert.match(tweakerSource, /html\.bm-android-app\s+\.content\.setdetails\s+h1/);
+    assert.match(precleanSource, /html\.bm-android-app\s+#headlinerow/);
+    assert.match(precleanSource, /html\.bm-android-app\s+\.content\.setdetails\s+h1/);
+});
+
+test('android bootstrap hides breadcrumbs even without the bm-android-app class', () => {
+    const bootstrapUrl = new URL(
+        '../../Android/app/src/main/assets/webview-bootstrap.js',
+        import.meta.url
+    );
+    if (!fs.existsSync(bootstrapUrl)) return;
+    const bootstrapSource = fs.readFileSync(bootstrapUrl, 'utf8');
+
+    // Fallback ohne Klassen-Präfix: greift auch, wenn html.bm-android-app
+    // (noch) nicht am Dokument hängt – sonst bleibt die Breadcrumb-Leiste stehen.
+    assert.match(
+        bootstrapSource,
+        /\[itemscope\]\[itemtype\*="BreadcrumbList"\],\s*\.breadcrumb,\s*\.breadcrumbs,\s*nav\[aria-label="breadcrumb"\],\s*nav\.breadcrumbs,\s*#headlinerow,\s*#headlinerow h1,\s*\.content\.setdetails h1,\s*\.setdetails h1\s*\{\s*display:\s*none\s*!important;/
+    );
+    // Nur ausblenden, niemals aus dem DOM entfernen: die Theme-Erkennung
+    // (bm-theme-row) liest Links und Text aus den Breadcrumb-Knoten.
+    assert.doesNotMatch(bootstrapSource, /BreadcrumbList[^\n]*\.remove\(\)/);
+});
+
+test('asset cache version is derived from asset content, never hand-maintained', () => {
+    const activityUrl = new URL(
+        '../../Android/app/src/main/java/de/brickmerge/MainActivity.java',
+        import.meta.url
+    );
+    const gradleUrl = new URL('../../Android/app/build.gradle.kts', import.meta.url);
+    if (!fs.existsSync(activityUrl) || !fs.existsSync(gradleUrl)) return;
+
+    const activity = fs.readFileSync(activityUrl, 'utf8');
+    const gradle = fs.readFileSync(gradleUrl, 'utf8');
+
+    // Die Version kommt aus dem BuildConfig ...
+    assert.match(activity, /ASSET_CACHE_VERSION\s*=\s*BuildConfig\.ASSET_CACHE_VERSION/);
+    // ... und ist keine handgepflegte Zahl mehr. Von 1.3.11 bis 1.3.28 stand hier
+    // unveraendert ?v=4, obwohl sich die Datei jedes Mal geaendert hat – der
+    // WebView hat deshalb 18 Releases lang die alte Fassung ausgeliefert.
+    assert.doesNotMatch(activity, /ASSET_CACHE_VERSION\s*=\s*\d+\s*;/);
+    // Beide injizierten Assets nutzen denselben Wert, damit sie nicht auseinanderdriften.
+    assert.match(activity, /webview-bootstrap\.js\?v="\s*\+\s*ASSET_CACHE_VERSION/);
+    assert.match(activity, /brickmerge-runtime\.js\?v="\s*\+\s*ASSET_CACHE_VERSION/);
+    // Abgeleitet aus dem Inhalt beider Assets.
+    assert.match(gradle, /buildConfigField\(\s*"String"\s*,\s*"ASSET_CACHE_VERSION"/);
+    assert.match(gradle, /webview-bootstrap\.js/);
+    assert.match(gradle, /brickmerge-tweaks\.runtime\.js/);
+});
+
+test('android toolbar background is translucent so content scrolls behind it', () => {
+    const bgUrl = new URL(
+        '../../Android/app/src/main/res/drawable/toolbar_background.xml',
+        import.meta.url
+    );
+    if (!fs.existsSync(bgUrl)) return;
+    const bg = fs.readFileSync(bgUrl, 'utf8');
+    // Nicht mehr undurchsichtig (#9E0000 / #B80000): die Leiste liegt als
+    // Overlay über dem WebView, der Inhalt muss dahinter durchscheinen.
+    assert.doesNotMatch(bg, /solid\s+android:color="#(9E0000|B80000)"\s*\/?>/);
+    // Mindestens eine der Farben traegt einen Alpha-Kanal (8-stelliger Hex).
+    assert.match(bg, /solid\s+android:color="#[0-9A-Fa-f]{8}"/);
+});
+
+test('list view layout hides direct child .off and redundant small text', () => {
+    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s*>\s*\.off[^{]*\{[^}]*display:\s*none\s*!important;/);
+    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.productprice\s+\.small:not\(\.stroke\)[^{]*\{[^}]*display:\s*none\s*!important;/);
+    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.bm-list-off/);
+});
+
+test('eBay logos use SVG France flag and topprice logo cell matches offerlist width on mobile', () => {
+    assert.match(tweakerSource, /<svg\s+viewBox="0\s+0\s+3\s+2"\s+width="16"\s+height="11"/);
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell[^{]*\{[^}]*width:\s*22\.5%\s*!important/);
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell\s+\.bm-marketplace-logo-meta/);
+});
+
+test('linkPackageDimensionsCalculator decouples ruler toggle and volume from Setgewicht', () => {
+    assert.match(tweakerSource, /const\s+details\s*=\s*Array\.from\(\s*document\.querySelectorAll\('\.content\.setdetails\s+p'\)\s*\)\.find\(paragraph\s*=>\s*\/\(\?:Box-\)\?Maße\\s\*:\/i\.test\(paragraph\.textContent\s*\|\|\s*''\)\s*\|\|\s*\/Abmessungen/);
+    assert.match(tweakerSource, /if\s*\(!width\s*\|\|\s*!length\s*\|\|\s*!height/);
+});
+
+test('detail action buttons row integrates SVG icons, harmonized styles, and sits directly below offers', () => {
+    // 1. Spacing and placement directly after offersSection
+    assert.match(tweakerSource, /const offersSection = soldOutActive \|\| document\.querySelector\('#ol1st > section:first-of-type'\)/);
+    assert.match(tweakerSource, /offersSection\.after\(actionRow\);/);
+    assert.match(tweakerSource, /document\.querySelectorAll\('#SoldOutContainer, #soldOut'\)\.forEach\(el => \{\s*if \(!el\.querySelector\('\.pricerow'\)\) \{\s*el\.remove\(\);/);
+
+    // 2. Harmonized button design
+    assert.match(tweakerSource, /\.bm-detail-action-buttons-row \.bmd-open-button\s*\{[^}]*background:\s*#F8FAFC\s*!important/);
+    assert.match(tweakerSource, /\.bm-detail-action-buttons-row \.bmd-open-button\s*\{[^}]*color:\s*#B80000\s*!important/);
+    assert.match(tweakerSource, /\.bm-detail-action-buttons-row \.bmd-open-button\s*\{[^}]*border:\s*1px solid #E2E8F0\s*!important/);
+    assert.match(tweakerSource, /\.bm-detail-action-buttons-row \.bmd-open-button:hover[^{]*\{[^}]*background:\s*#B80000\s*!important/);
+
+    // 3. SVG icons for all 4 buttons
+    assert.match(tweakerSource, /ensureButtonIcon\(alarmButton, bellSvg\);/);
+    assert.match(tweakerSource, /ensureButtonIcon\(wishlistButton, heartSvg\);/);
+    assert.match(tweakerSource, /ensureButtonIcon\(roiButton, calcSvg\);/);
+    assert.match(tweakerSource, /ensureButtonIcon\(depotButton, boxSvg\);/);
+});
+
+test('eBay France does not render text subtitle and mobile green bar aligns pixel-perfect', () => {
+    // 1. No "eBay FR" subtitle caption
+    assert.match(tweakerSource, /captionText && captionText !== 'gewerblich' && captionText !== 'eBay FR'/);
+    assert.doesNotMatch(tweakerSource, /captionText:\s*isFrance\s*\?\s*'eBay FR'/);
+
+    // 2. Mobile flex layout and matching widths for logo cell (22.5%) and price cell (77.5%)
+    assert.match(tweakerSource, /@media\s*\(max-width:\s*768px\)\s*\{\s*\.content\.setdetails\s+\.topprice\s+a\s*\{[^}]*display:\s*flex\s*!important;\s*width:\s*100%\s*!important;/);
+    assert.match(tweakerSource, /@media\s*\(max-width:\s*768px\)\s*\{[\s\S]*?\.content\.setdetails\s+\.topprice\s+\.bm-topprice-price-cell\s*\{[^}]*flex:\s*1 1 77\.5%\s*!important;\s*width:\s*77\.5%\s*!important;/);
+});
+
+test('BM_isExcludedOfferTitle accurately filters standalone minifigures without excluding complete sets', () => {
+    const sandbox = { globalThis: {} };
+    sandbox.globalThis = sandbox;
+    vm.createContext(sandbox);
+    vm.runInContext(sharedSource, sandbox);
+
+    // Excludes standalone minifig listings
+    assert.equal(sandbox.BM_isExcludedOfferTitle('Lego Ani018 Figurine Sasha Animal Crossing 77055 Able Sisters Clothing Shop new'), true);
+    assert.equal(sandbox.BM_isExcludedOfferTitle('LEGO sw0001 Figurine Han Solo'), true);
+    assert.equal(sandbox.BM_isExcludedOfferTitle('LEGO Minifigur sw0123 Darth Vader'), true);
+    assert.equal(sandbox.BM_isExcludedOfferTitle('LEGO Minifigures only'), true);
+    assert.equal(sandbox.BM_isExcludedOfferTitle('LEGO Figurine Sasha du set 77055'), true);
+
+    // Does not exclude complete sets that mention included minifigures
+    assert.equal(sandbox.BM_isExcludedOfferTitle('LEGO 10333 Barad-dûr mit 11 Minifiguren Neu OVP'), false);
+    assert.equal(sandbox.BM_isExcludedOfferTitle('LEGO 75302 Imperial Shuttle mit 3 Minifiguren'), false);
+    assert.equal(sandbox.BM_isExcludedOfferTitle('LEGO 77055 Able Sisters Clothing Shop neu'), false);
+});
+
+test('merchants grid has 2 columns up to 768px and card images have white background', () => {
+    assert.match(precleanSource, /@media screen and \(max-width:\s*768px\)\s*\{\s*\.wrapper\.merchants#wrappernormal,\s*\.wrapper\.merchants,\s*\.wrapper\.themen#wrappernormal,\s*\.wrapper\.themen\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
+    assert.match(precleanSource, /#productrow\s+\.wrapper\s+div\.slide\s+\.productimg[\s\S]*?\{[^}]*background:\s*#FFFFFF\s*!important;\s*border:\s*none\s*!important;\s*\}/);
+});
+
+test('personal discounts default to disabled and top price logo cell aligns flush without green bleed', () => {
+    // 1. Personal discounts are disabled by default
+    assert.match(tweakerSource, /function getDefaultPersonalDiscountSettings\(\)\s*\{[\s\S]*?enabled:\s*false,[\s\S]*?return\s*\{\s*enabled:\s*false,\s*retailers\s*\};/);
+    assert.match(tweakerSource, /const personalEnabled = Boolean\(personalSettings && personalSettings\.enabled === true\);/);
+
+    // 2. eBay logo does not output "privat" caption
+    assert.doesNotMatch(tweakerSource, /captionText:\s*(?:isPrivate\s*\?\s*)?'privat'/);
+    assert.match(tweakerSource, /captionText !== 'privat'/);
+
+    // 3. Robust mid extraction for /go2/?m=... links
+    assert.match(tweakerSource, /function extractMidFromElementOrUrl/);
+    assert.match(tweakerSource, /go2m\|fm\|mid\|m/);
+
+    // 4. Mobile logo cell in topprice stretches and has pure white background
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell[\s\S]*?align-self:\s*stretch\s*!important;/);
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell[\s\S]*?background-color:\s*#ffffff\s*!important;/);
+});
+
+test('personal discounts and options save changes automatically without a save button', () => {
+    // 1. Personal discount dialog has no save button and auto-saves on changes
+    assert.doesNotMatch(tweakerSource, /class="button bm-settings-save"/);
+    assert.match(tweakerSource, /const saveAndApplyCurrentSettings = \(\) =>/);
+    assert.match(tweakerSource, /rateInput\.addEventListener\('input',\s*\(\)\s*=>\s*\{\s*saveAndApplyCurrentSettings\(\);/);
+    assert.match(tweakerSource, /enabledInput\.addEventListener\('change',\s*\(\)\s*=>\s*\{[\s\S]*?saveAndApplyCurrentSettings\(\);/);
+    assert.match(tweakerSource, /overlay\.querySelector\('\.bm-settings-reset'\)\.addEventListener\('click',\s*\(\)\s*=>\s*\{[\s\S]*?saveAndApplyCurrentSettings\(\);/);
+
+    // 2. Options page has no save button and auto-saves on reset
+    const optionsHtml = fs.readFileSync(new URL('../options/options.html', import.meta.url), 'utf8');
+    const optionsJs = fs.readFileSync(new URL('../options/options.js', import.meta.url), 'utf8');
+    assert.doesNotMatch(optionsHtml, /<button[^>]*type="submit"[^>]*>Speichern<\/button>/);
+    assert.match(optionsJs, /document\.getElementById\('reset'\)\.addEventListener\('click',\s*async\s*\(\)\s*=>\s*\{[\s\S]*?await saveSettings\(\);/);
+});
+
+test('merchants and themen have centered 2-column grid and are excluded from wrapper flex override', () => {
+    // 1. #productrow / .productrow .wrapper excludes merchants, themen, and brickstores from display: flex
+    assert.match(tweakerSource, /(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\),\s*(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper#wrappernormal:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s*\{[^}]*display:\s*flex\s*!important;/);
+
+    // 2. Both merchants and themen have centered grid styling
+    assert.match(precleanSource, /@media screen and \(max-width:\s*768px\)\s*\{\s*\.wrapper\.merchants#wrappernormal,\s*\.wrapper\.merchants,\s*\.wrapper\.themen#wrappernormal,\s*\.wrapper\.themen\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;[^}]*justify-content:\s*center\s*!important;/);
+});
+
+test('detail page extracts red UVP discount and black comparison bubble, and cards animate percentage changes', () => {
+    // 1. Check extraction functions exist in source
+    assert.match(tweakerSource, /function bmExtractRedDiscountFromHtml\(html\)/);
+    assert.match(tweakerSource, /function bmExtractBlackDiscountFromHtml\(html\)/);
+
+    // 2. Check animation function exists and is exposed globally
+    assert.match(tweakerSource, /function bmAnimateNumber\(element,\s*startVal,\s*endVal/);
+    assert.match(tweakerSource, /globalThis\.BM_animateNumber\s*=\s*bmAnimateNumber/);
+
+    // 3. Check discount apply function exists and applies red & black bubbles
+    assert.match(tweakerSource, /function bmApplyDiscountsToCard\(card,\s*redDiscount,\s*blackDiscount\)/);
+    assert.match(tweakerSource, /function bmApplyDiscountsToAllCards\(setKey,\s*redDiscount,\s*blackDiscount\)/);
+
+    // 4. Test extraction logic on sample HTML
+    const sampleHtml = `
+        <div class="offerbox">
+            <p><span class="theprice nowrap">8,79 &euro;</span>
+            <span class="small">Ersparnis:</span> 11,20 &euro; (<strong>56%</strong>)
+            <span class="nowrap small stroke" title="unverbindliche Preisempfehlung">UVP 19,99 &euro;</span></p>
+        </div>
+        <div id="offerlist">
+            <div class="pricerow"><span class="price"><span class="show-for-small-only merchant">amazon<br /></span> 10,99 &euro;</span></div>
+            <div class="pricerow"><span class="price"><span class="show-for-small-only merchant">MediaMarkt<br /></span> 10,99 &euro;</span></div>
+            <div class="pricerow"><span class="price"><span class="show-for-small-only merchant">Steinehelden<br /></span> 13,45 &euro;</span></div>
+        </div>
+    `;
+
+    const redMatch = sampleHtml.match(/Ersparnis:[\s\S]*?\(<strong>(\d+)%<\/strong>\)/i);
+    assert.ok(redMatch);
+    assert.equal(parseInt(redMatch[1], 10), 56);
+
+    // Black bubble CSS rules
+    assert.match(tweakerSource, /\.bm-card-black-bubble/);
+    assert.match(tweakerSource, /\.bm-list-black-bubble/);
+    assert.match(tweakerSource, /\.bm-bubble-updating/);
+
+    // Unified selector across card containers
+    assert.match(tweakerSource, /:is\(#productrow,\s*\.productrow\)/);
+});
+
+test('list view cards and price are fully clickable to detail page with pointer cursor, excluding merchant link', () => {
+    // 1. Entire card attaches detailLink click handler
+    assert.match(tweakerSource, /card\.dataset\.bmCardClickAttached\s*=\s*'true'/);
+    assert.match(tweakerSource, /window\.location\.href\s*=\s*detailLink/);
+
+    // 2. Merchant links and detail anchors are preserved and not overridden
+    assert.match(tweakerSource, /\.bm-list-merchant,\s*\.bm-btn-shop,\s*\.bm-overview-effective-source/);
+    assert.match(tweakerSource, /const\s+detailAnchor\s*=\s*e\.target\.closest\('\.producttitle a,\s*\.productimg a,\s*a\.detail'\)/);
+
+    // 3. Price has no click blocking and no cursor: default
+    assert.doesNotMatch(tweakerSource, /priceSpan\.style\.cursor\s*=\s*['"]default['"]/);
+    assert.doesNotMatch(tweakerSource, /priceSpan\.addEventListener\(['"]click['"]/);
+
+    // 4. CSS ensures pointer cursor on slide and theprice in list view
+    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide[^{]*\{[^}]*cursor:\s*pointer\s*!important/);
+    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.productprice\s+\.theprice[^{]*\{[^}]*cursor:\s*pointer\s*!important/);
+});
+
+test('depot view is styled like wishlist with card layout, KPI statsbar, and responsive mobile cards', () => {
+    // 1. #dpWrap has KPI statsbar with CSS grid
+    assert.match(tweakerSource, /#dpWrap\s+\.dp-statsbar\s*\{[^}]*display:\s*grid\s*!important/);
+    assert.match(tweakerSource, /#dpWrap\s+\.dp-stat\s*\{[^}]*border-radius:\s*12px\s*!important/);
+
+    // 2. #dpWrap table has clean card rows and no forced 580px min-width
+    assert.doesNotMatch(tweakerSource, /#dpWrap\s+table\s*\{[^}]*min-width:\s*580px/);
+    assert.match(tweakerSource, /#dpWrap\s+#dpTableBody\s+\.pa-row,\s*#dpWrap\s+\.pa-row\s*\{[^}]*border-radius:\s*12px\s*!important/);
+
+    // 3. Mobile responsive styles turn table rows into standalone cards
+    assert.match(tweakerSource, /@media\s+only\s+screen\s+and\s*\(max-width:\s*900px\)\s*\{[\s\S]*?#dpWrap\s+#dpTableBody\s+\.pa-row,\s*#dpWrap\s+\.pa-row\s*\{[^}]*display:\s*block\s*!important;[^}]*position:\s*relative\s*!important;/);
+    assert.match(tweakerSource, /#dpWrap\s+\.pa-c-img[^{]*\{[^}]*position:\s*absolute\s*!important;[^}]*left:\s*10px\s*!important;/);
+
+    // 4. enhanceDepotView adds data-label and class enhancements
+    assert.match(tweakerSource, /function\s+enhanceDepotView\(\)/);
+    assert.match(tweakerSource, /cell\.setAttribute\('data-label',\s*'Bestpreis'\)/);
+    assert.match(tweakerSource, /cell\.setAttribute\('data-label',\s*'EK Ø'\)/);
+    assert.match(tweakerSource, /cell\.setAttribute\('data-label',\s*'Bestand'\)/);
+});
+
+test('tools row is in a horizontal slider carousel with scroll arrows and offerlist is flex', () => {
+    // 1. Tools row has nowrap and max-content width
+    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row\s*\{[^}]*flex-wrap:\s*nowrap\s*!important/);
+    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row\s*\{[^}]*width:\s*max-content\s*!important/);
+
+    // 2. mountDetailActionRowIntoLinkPanel creates bm-link-slider, viewport, and scroll arrows
+    assert.match(tweakerSource, /slider\.className\s*=\s*['"]bm-link-slider['"]/);
+    assert.match(tweakerSource, /viewport\.className\s*=\s*['"]bm-link-viewport['"]/);
+    assert.match(tweakerSource, /bm-link-scroll\s+bm-link-scroll-prev/);
+    assert.match(tweakerSource, /bm-link-scroll\s+bm-link-scroll-next/);
+
+    // 3. Offerlist .row.collapse is a flex container on mobile screens
+    assert.match(tweakerSource, /@media\s+screen\s+and\s*\(max-width:\s*640px\)\s*\{[\s\S]*?#offerlist\s+\.row\.collapse\s*\{[^}]*display:\s*flex\s*!important;[^}]*flex-wrap:\s*nowrap\s*!important;/);
+
+    // 4. Link sliders have zIndex 20 and cursor pointer on scroll buttons
+    assert.match(tweakerSource, /\.bm-link-scroll\s*\{[\s\S]*?z-index:\s*20;/);
+    assert.match(tweakerSource, /\.bm-link-scroll\s*\{[\s\S]*?cursor:\s*pointer;/);
+    assert.match(tweakerSource, /window\.bmSetupLinkSliders\s*=\s*setupLinkSliders;/);
+    assert.match(tweakerSource, /window\.bmSetupLinkSliders\(panel\);/);
+});
+
+test('overview-price-badges uses resilient getRequestHandler instead of bare GM_xmlhttpRequest', () => {
+    const overviewSource = fs.readFileSync(
+        new URL('../src/overview-price-badges.js', import.meta.url),
+        'utf8'
+    );
+    assert.match(overviewSource, /const getRequestHandler = \(\) =>/);
+    assert.match(overviewSource, /typeof globalThis\.BrickmergeNative\?\.request === 'function'/);
+    // Ensure no bare unqualified GM_xmlhttpRequest(...) call remains in overview-price-badges.js
+    assert.doesNotMatch(overviewSource, /(?<![.\w])GM_xmlhttpRequest\s*\(/);
+});
+
+test('tools buttons in link panel match .bm-link pills in dimensions, padding, height and icon size', () => {
+    // 1. Height, padding, font-size, border-radius match bm-link
+    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?height:\s*26px\s*!important/);
+    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?padding:\s*2px 7px 2px 5px\s*!important/);
+    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?font-size:\s*0\.78rem\s*!important/);
+    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?border-radius:\s*5px\s*!important/);
+    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?margin:\s*0\s*!important/);
+
+    // 2. Icon size matches bm-link's 15x15px
+    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button \.bmd-button-icon[\s\S]*?width:\s*15px\s*!important/);
+    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button \.bmd-button-icon[\s\S]*?height:\s*15px\s*!important/);
+    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button \.bmd-button-icon[\s\S]*?margin:\s*0 4px 0 0\s*!important/);
+
+    // 3. Mobile media query preserves 0.78rem and 26px height
+    assert.match(tweakerSource, /@media\s*\(max-width:\s*480px\)\s*\{[\s\S]*?\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?font-size:\s*0\.78rem\s*!important/);
+});
+
+test('setupDetailButton and applyOfferPresentation are safely dispatched without ReferenceError', () => {
+    assert.doesNotMatch(tweakerSource, /setTimeout\s*\(\s*setupDetailButton\s*,/);
+    assert.doesNotMatch(tweakerSource, /setTimeout\s*\(\s*applyOfferPresentation\s*,/);
+    assert.match(tweakerSource, /globalThis\.bmSetupDetailButton\s*=\s*setupDetailButton/);
+    assert.match(tweakerSource, /globalThis\.applyOfferPresentation\s*=\s*applyOfferPresentation/);
+});
+
+test('offerlist total discount bubble displays 0% when total price with shipping exceeds UVP or reference price', () => {
+    assert.match(tweakerSource, /const roundedTotalDiscount = Math\.round\(totalDiscountPercent\);/);
+    assert.match(tweakerSource, /const displayTotalDiscount = Math\.max\(0, roundedTotalDiscount\);/);
+    assert.match(tweakerSource, /displayTotalDiscount === 0/);
+    assert.match(tweakerSource, /totalBubble\.title =\s*`Rabatt \$\{relationText\} inklusive Versand: 0% \(Gesamtpreis über \$\{overReference\}\)`;/);
+});
+
+test('topprice green line is removed, commercial eBay logo renders tie icon, and preisfehler is hidden', () => {
+    // 1. .topprice and .topprice a have transparent background and border-none to prevent green line under logo cell
+    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice,\s*\.content\.setdetails\s+\.topprice\s+a\s*\{[^}]*background:\s*transparent\s*!important;[^}]*border-bottom:\s*none\s*!important;/);
+
+    // 2. createEbayLogoHtml renders seller type icon for both commercial and private sellers
+    assert.match(tweakerSource, /const sellerBadgeHtml = \(!isFrance && \(kind === 'commercial' \|\| kind === 'private'\)\)/);
+
+    // 3. Preisfehler melden is removed from DOM and hidden via CSS
+    assert.match(tweakerSource, /a\[href\*="preisfehler"\],\s*button\[onclick\*="preisfehler"\],\s*a\[data-reveal-id\*="preisfehler"\],\s*\.preisfehler\s*\{[^}]*display:\s*none\s*!important;/);
+    assert.match(tweakerSource, /txt === 'preisfehler melden' \|\| txt\.includes\('preisfehler'\)/);
+});
+
+
 
 
 

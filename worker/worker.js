@@ -1,4 +1,4 @@
-import { isCompleteEbaySetTitle } from "./lib/ebay-title-filter.js";
+import { isCompleteEbaySetTitle, hasFrenchAccessorySignal } from "./lib/ebay-title-filter.js";
 import { handleEbayDrafts } from "./ebay-drafts.js";
 import { handleEbayOAuth } from "./ebay-oauth.js";
 
@@ -254,17 +254,18 @@ function getKleinanzeigenCondition(ad) {
   );
   return isExactlyNew ? "new" : "not-new-or-unknown";
 }
-__name(getKleinanzeigenCondition, "getKleinanzeigenCondition");
+const INCOMPLETE_SET_HARD_EXCLUSION_PATTERN = /\b(?:ersatzteile?|einzelteile?|kleinteile?|anleitungen?|bauanleitungen?|manuals?|instructions?|stickers?|aufkleber|leerkarton|ovp\s*leer|leere\s+(?:ovp|box|verpackung)|box\s*only|empty\s*box|unvollst[aä]ndig|incomplete|incomplet(?:e|es|s)?|ohne\s+(?:figuren|minifiguren|steine|teile|anleitung|ovp)|sans\s+(?:figurines?|minifigurines?|pi[eè]ces?|briques?|bo[iî]te|notice)|moc|custom|kompatibel|compatible|konvolut|parts?\s*only|minifig(?:ur(?:e|en)?|ure?s?)\s*only|figurines?\s+seules?|minifigurines?\s+seules?|pi[eè]ces?\s+d[eé]tach[eé]es?|lot\s+de\s+pi[eè]ces?|pi[eè]ces?\s+seules?|autocollants?|vitrinen?|schauk[aä]sten?|schutzhauben?|staubschutz|display\s*(?:case|box|stand)|showcase|acryl(?:glas)?(?:box|haube|vitrine)?|acrylic\s*(?:case|box|display)|pr[eé]sentoir(?:s)?|support(?:s)?\s+(?:mural|d['’]?exposition)|socle(?:s)?\s+d['’]?exposition|bo[iî]te(?:s)?\s+(?:acrylique|de\s+protection|vide|seule)|housse(?:s)?\s+anti[- ]?poussi[eè]re|protection(?:s)?\s+anti[- ]?poussi[eè]re|light(?:ing)?[- ]?(?:kits?|sets?)|(?:led[- ]?)?licht[- ]?(?:sets?|kits?)|(?:led[- ]?)?beleuchtungs?[- ]?(?:sets?|kits?)|led[- ]?(?:beleuchtung|leuchten|lampen|strip|streifen|kits?|sets?)|(?:led[- ]?)?kit[- ]?led|kit(?:[- ]*(?:d['’\s]*|de\s*)?|s\s+)?(?:led|lumi[eè]res?|[eé]clairages?|light(?:ing)?)|(?:led[- ]?)?[eé]clairage(?:s)?(?:\s+led)?|(?:led[- ]?)?lumi[eè]re(?:s)?(?:\s+led)?|t[eé]l[eé]command[eé](?:s)?|nur\s+(?:das\s+)?(?:licht|led|beleuchtung)|(?:ohne|kein|sans|without)\s+(?:lego|modell|briques?|mod[eè]le)|(?:lego|modell|briques?|mod[eè]le)\s+(?:nicht\s+(?:enthalten|inklusive)|non\s+inclus(?:es?)?|not\s+included)|briksmax|lightailing|light\s*my\s*bricks|game\s*of\s*bricks|brickbling|yeabricks|kyglaring|vonado|lelightgo|brickshine|wandhalterung|wall\s*mount|(?:bausteine?|klemmbausteine?)[- ]?(?:set|bausatz)?\s*(?:wie|ähnlich|ahnlich)|(?:wie|ähnlich|ahnlich)\s+lego|(?:nicht\s+von\s+lego|kein\s+lego|keine\s+lego|not\s+lego|no\s+lego|nicht\s+original\s+lego)|(?:building[- ]?)?block[- ]?sets?|china[- ]?(?:klon|clone)s?|(?:lego[- ]?)?plagiat(?:e)?|(?:fake|kopie)[- ]?lego|knock[- ]?offs?|bootlegs?|mould[- ]?king|mold[- ]?king|cobi|lepin|bluebrixx|blue[- ]?brixx|cada|ca[- ]?da|xingbao|sembo(?:\s*blocks?)?|sluban|qman|keeppley|panlos(?:\s*brick)?|reobrix|pantasy|funwhole|decool|forange|leji|sy\s*blocks?|wange\s*(?:blocks?|bricks?|set|bausteine?)|kazi\s*(?:blocks?|bricks?|set|bausteine?)|star\s*plan|space\s*wars)\b/i;
+const INCOMPLETE_SET_ONLY_ACCESSORY_PATTERN = /\b(?:nur|lediglich|ausschlie(?:ß|ss)lich|only)\s+(?:die\s+|das\s+|den\s+)?(?:figuren?|minifig(?:ur(?:e|en)?|ure?s?)|steine|teile|parts?|karton|box|ovp|verpackung|anleitung)\b/i;
+const INCOMPLETE_SET_ACCESSORY_TITLE_PATTERN = /\b(?:minifig(?:ur(?:e|en)?|ure?s?)|figuren?|steine|teile|parts?|karton|box|ovp|verpackung|anleitung)\b/i;
+const INCOMPLETE_SET_COMPLETE_SIGNAL_PATTERN = /\b(?:set|komplett|vollst[aä]ndig|complete|sealed|ovp|neu|new|ungeöffnet|unopened)\b/i;
+
 function hasIncompleteSetSignal(title, description) {
   const titleText = String(title || "");
   const searchableText = `${titleText} ${String(description || "")}`;
-  const hardExclusionPattern = /\b(?:ersatzteile?|einzelteile?|kleinteile?|anleitungen?|bauanleitungen?|manuals?|instructions?|stickers?|aufkleber|leerkarton|ovp\s*leer|leere\s+(?:ovp|box|verpackung)|box\s*only|empty\s*box|unvollst[aä]ndig|incomplete|moc|custom|kompatibel|compatible|konvolut|parts?\s*only|minifig(?:ur(?:e|en)?|ure?s?)\s*only)\b/i;
-  if (hardExclusionPattern.test(searchableText)) return true;
-  const onlyAccessoryPattern = /\b(?:nur|lediglich|ausschlie(?:ß|ss)lich|only)\s+(?:die\s+|das\s+|den\s+)?(?:figuren?|minifig(?:ur(?:e|en)?|ure?s?)|steine|teile|parts?|karton|box|ovp|verpackung|anleitung)\b/i;
-  if (onlyAccessoryPattern.test(searchableText)) return true;
-  const accessoryTitlePattern = /\b(?:minifig(?:ur(?:e|en)?|ure?s?)|figuren?|steine|teile|parts?|karton|box|ovp|verpackung|anleitung)\b/i;
-  const completeSetSignal = /\b(?:set|komplett|vollst[aä]ndig|complete|sealed|ovp|neu|new|ungeöffnet|unopened)\b/i;
-  return accessoryTitlePattern.test(titleText) && !completeSetSignal.test(titleText);
+  if (INCOMPLETE_SET_HARD_EXCLUSION_PATTERN.test(searchableText)) return true;
+  if (hasFrenchAccessorySignal(searchableText)) return true;
+  if (INCOMPLETE_SET_ONLY_ACCESSORY_PATTERN.test(searchableText)) return true;
+  return INCOMPLETE_SET_ACCESSORY_TITLE_PATTERN.test(titleText) && !INCOMPLETE_SET_COMPLETE_SIGNAL_PATTERN.test(titleText);
 }
 __name(hasIncompleteSetSignal, "hasIncompleteSetSignal");
 function excludeSuspiciousLowPrices(offers, referencePrice = null) {
@@ -504,6 +505,9 @@ function normalizeLeboncoinItems(rawItems, setNumber, officialSetTitle = null) {
   }).filter(Boolean);
 }
 __name(normalizeLeboncoinItems, "normalizeLeboncoinItems");
+const KLAZ_IRRELEVANT_ITEM_PATTERN = /\b(?:beleuchtungs?[- ]?(?:sets?|kits?)|(?:led[- ]?)?licht[- ]?(?:sets?|kits?)|light(?:ing)?[- ]?(?:kits?|sets?)|led[- ]?(?:beleuchtung|leuchten|lampen|strip|streifen|kits?|sets?)|briksmax|lightailing|light\s*my\s*bricks|game\s*of\s*bricks|brickbling|yeabricks|kyglaring|vonado|lelightgo|brickshine|ersatzteile?|vitrine|nur\s+teile|anleitung|karton|leere?\s+box|(?:fehlen|fehlende?)\s+(?:ein\s+paar\s+|einige\s+|mehrere\s+)?(?:teile|steine)|nicht\s+\d+\s*prozentig\s+alles\s+drin)\b/i;
+const KLAZ_PICKUP_ONLY_PATTERN = /\b(?:nur\s+abholung|abholung\s+only|only\s+pickup|pickup\s+only|selbstabholung)\b/i;
+
 function normalizeKleinanzeigenApifyItems(rawItems, setNumber, officialSetTitle = null) {
   if (!Array.isArray(rawItems)) return [];
   return rawItems.map((item) => {
@@ -517,9 +521,9 @@ function normalizeKleinanzeigenApifyItems(rawItems, setNumber, officialSetTitle 
     // liefert aber teils trotzdem gebrauchte Anzeigen zurück. Nur ein explizit
     // als "Neu" gekennzeichneter Zustand darf in die Offerlist gelangen.
     if (!/^(?:neu|new)\b/i.test(condition)) return null;
-    if (/\b(?:beleuchtungsset|ersatzteile?|vitrine|nur\s+teile|anleitung|karton|leere?\s+box|(?:fehlen|fehlende?)\s+(?:ein\s+paar\s+|einige\s+|mehrere\s+)?(?:teile|steine)|nicht\s+\d+\s*prozentig\s+alles\s+drin)\b/i.test(`${title} ${description}`)) return null;
+    if (KLAZ_IRRELEVANT_ITEM_PATTERN.test(`${title} ${description}`)) return null;
     const shippingText = `${title} ${description} ${normalizedText(item.shipping ?? item.delivery ?? item.shippingType ?? item.fulfillment ?? "")}`;
-    if (/\b(?:nur\s+abholung|abholung\s+only|only\s+pickup|pickup\s+only|selbstabholung)\b/i.test(shippingText)) return null;
+    if (KLAZ_PICKUP_ONLY_PATTERN.test(shippingText)) return null;
     const price = parseListingPrice(item.price ?? item.priceAmount ?? item.amount ?? item.cost ?? item.pricing?.price);
     if (price === null) return null;
     const shippingCost = parseListingPrice(item.shippingCost ?? item.shipping_price ?? item.deliveryCost ?? item.delivery_price ?? item.versandkosten ?? item.shipping);
@@ -1280,6 +1284,8 @@ var TTL = Object.freeze({
   klarnaEmpty: 20 * 60,
   idealo: 2 * 60 * 60,
   idealoEmpty: 20 * 60,
+  brickmerge: 2 * 60 * 60,
+  brickmergeEmpty: 20 * 60,
   brickbank: 2 * 60 * 60,
   bricklinkCatalog: 24 * 60 * 60,
   bricklinkOffers: 2 * 60 * 60,
@@ -1419,6 +1425,7 @@ var index_default = {
             "/google-shopping",
             "/klarna",
             "/idealo",
+            "/brickmerge",
             "/bricklink",
             "/offers/dismissals",
             "/offers/cache",
@@ -1479,6 +1486,9 @@ var index_default = {
       }
       if (url.pathname === "/bricklink") {
         return handleBricklinkSetOffer(request, url, env, ctx);
+      }
+      if (url.pathname === "/brickmerge") {
+        return handleBrickmergePrice(request, url, env, ctx);
       }
       if (url.pathname === "/offers/dismissals") {
         return handleOfferDismissals(request, url, env);
@@ -1544,6 +1554,107 @@ async function handleLegacyCached(request, url, env, ctx, source) {
     rateLimitRoute: source,
     titleLocale: "de"
   });
+}
+async function handleBrickmergePrice(request, url, env, ctx) {
+  const setNumber = cleanSetNumber(url.searchParams.get("set"));
+  if (!setNumber) {
+    return json2({ error: "LEGO-Setnummer muss aus 3 bis 7 Ziffern bestehen." }, 400);
+  }
+
+  const cache = caches.default;
+  const cacheUrl = new URL(url.origin);
+  cacheUrl.pathname = "/__cache/brickmerge-price-v1";
+  cacheUrl.search = new URLSearchParams({ set: setNumber }).toString();
+  const cacheKey = new Request(cacheUrl.href, { method: "GET" });
+  const cachedResponse = await cache.match(cacheKey);
+  if (cachedResponse) {
+    return addHeaders(cachedResponse, {
+      "cache-control": "no-store",
+      "x-worker-cache": "HIT"
+    });
+  }
+
+  const rateLimitResponse = await enforceUpstreamRateLimit(request, env, "brickmerge");
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const sourceUrl = `https://www.brickmerge.de/${encodeURIComponent(setNumber)}`;
+  const upstreamResponse = await fetch(sourceUrl, {
+    headers: {
+      accept: "text/html,application/xhtml+xml",
+      "accept-language": "de-DE,de;q=0.9",
+      "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/138.0.0.0 Safari/537.36"
+    }
+  });
+  const html = await upstreamResponse.text();
+  if (!upstreamResponse.ok) {
+    return json2({
+      error: "Brickmerge-Detailseite konnte nicht geladen werden.",
+      upstreamStatus: upstreamResponse.status,
+      setNumber
+    }, 502);
+  }
+
+  const body = parseBrickmergePricePage(html, setNumber, sourceUrl);
+  const ttlSeconds = body.found ? TTL.brickmerge : TTL.brickmergeEmpty;
+  const cacheResponse = json2(body, body.found ? 200 : 404, {
+    "cache-control": `public, max-age=${ttlSeconds}`
+  });
+  const storeInCache = cache.put(cacheKey, cacheResponse);
+  if (ctx?.waitUntil) ctx.waitUntil(storeInCache);
+  else await storeInCache;
+  return json2(body, body.found ? 200 : 404, {
+    "cache-control": "no-store",
+    "x-worker-cache": "MISS"
+  });
+}
+function parseBrickmergePricePage(html, setNumber, sourceUrl) {
+  const offerlist = String(html || "").match(
+    /<div\s+id=["']offerlist["'][^>]*>([\s\S]*?)(?:<div\s+id=["']SoldOutContainer["']|<\/body>|$)/i
+  )?.[1] || "";
+  const visibleText = offerlist
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&euro;/gi, " € ")
+    .replace(/&#8364;/gi, " € ")
+    .replace(/&amp;/gi, "&");
+  const prices = [];
+  const pricePattern = /(?:^|\s)(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})\s*€/g;
+  let match;
+  while ((match = pricePattern.exec(visibleText))) {
+    const euros = Number(match[1].replace(/\./g, ""));
+    const cents = Number(match[2]);
+    const value = euros + cents / 100;
+    if (Number.isFinite(value) && value > 0 && value <= 10000) prices.push(roundMoney(value));
+  }
+  const uniquePrices = [...new Set(prices)].sort((a, b) => a - b);
+  const offers = uniquePrices.slice(0, 10).map((price, index) => ({
+    id: `${setNumber}-${index + 1}`,
+    price,
+    total: price,
+    shipping: null,
+    sellerType: "commercial",
+    source: "Brickmerge",
+    shippingIncluded: false
+  }));
+  const title = String(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+  return {
+    setNumber,
+    found: offers.length > 0,
+    cheapest: offers[0] || null,
+    comparedOffers: offers.length,
+    offers,
+    title: title || null,
+    sourceUrl,
+    shippingIncluded: false,
+    updatedAt: new Date().toISOString()
+  };
 }
 async function handleEbayFrance(request, url, env, ctx) {
   return handleEbayCached(request, url, env, ctx, {
@@ -2984,6 +3095,7 @@ var __test = Object.freeze({
   computeTotalCost,
   dedupeByListingIdOrUrl,
   isRelevantLegoListing,
+  hasIncompleteSetSignal,
   normalizeVintedItems,
   normalizeLeboncoinItems,
   normalizeKleinanzeigenApifyItems,
@@ -2994,6 +3106,7 @@ var __test = Object.freeze({
   normalizeIdealoItems,
   extractBricklinkMinifigItemNos,
   extractBricklinkMinifigItems,
+  parseBrickmergePricePage,
   APIFY_CONFIG,
   roundMoney
 });

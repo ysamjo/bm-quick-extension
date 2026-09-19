@@ -326,6 +326,16 @@ await Promise.all([
     )
 ]);
 
+// Keep manifest.json version synced with package.json
+const manifestPath = path.join(projectDir, 'manifest.json');
+try {
+    const manifestJson = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+    if (manifestJson.version !== version) {
+        manifestJson.version = version;
+        await fs.writeFile(manifestPath, JSON.stringify(manifestJson, null, 2) + '\n');
+    }
+} catch (e) {}
+
 // Sync source files to root files within projectDir
 for (const [extensionName, localName] of sourceFiles) {
     await copyFileWithRetry(
@@ -360,6 +370,12 @@ if (hasExternalExtension) {
         'platform-config.js',
         'gm-compat.js',
         'selection-popup.js',
+        'options/options.html',
+        'options/options.css',
+        'options/options.js',
+        'popup/popup.html',
+        'popup/popup.css',
+        'popup/popup.js',
         'manifest.json',
         'package.json'
     ];
@@ -387,6 +403,18 @@ if (hasQuickExtension) {
     await copyFileWithRetry(
         path.join(projectDir, 'brickmerge-tweaks.js'),
         path.join(quickExtensionDir, 'brickmerge-tweaks.js')
+    );
+}
+
+// Sync to Android assets directory if present
+const androidAssetsDir = path.resolve(projectDir, '../Android/app/src/main/assets');
+const hasAndroidAssets = await fs.stat(androidAssetsDir)
+    .then(s => s.isDirectory())
+    .catch(() => false);
+if (hasAndroidAssets) {
+    await copyFileWithRetry(
+        path.join(projectDir, mainRuntimeFile),
+        path.join(androidAssetsDir, 'brickmerge-runtime.js')
     );
 }
 

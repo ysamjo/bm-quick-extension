@@ -51,6 +51,29 @@ h2 { margin: 0 0 12px; font-size: 18px; }
 .setting small { margin-top: 2px; color: #6a6a6a; }
 .setting.main { border-bottom: 1px solid #eee; margin-bottom: 4px; padding-bottom: 12px; }
 .shop-grid, .menu-list { display: grid; grid-template-columns: 1fr; gap: 2px; }
+.sub-group-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #666;
+  margin: 12px 0 6px 4px;
+}
+.bm-shops-details {
+  margin-top: 10px;
+  border-top: 1px solid #eee;
+  padding-top: 10px;
+}
+.bm-shops-details summary {
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 4px;
+  user-select: none;
+  color: #a90000;
+}
+.bm-shops-details summary:hover {
+  text-decoration: underline;
+}
 .actions { display: flex; align-items: center; gap: 10px; }
 .credential { margin: 14px 0 0; }
 .credential:first-of-type { margin-top: 4px; }

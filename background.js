@@ -204,8 +204,13 @@ async function fetchBrickmergeBestPrice(setNumber) {
     if (!key) return null;
 
     const cached = priceCache.get(key);
-    if (cached && (Date.now() - cached.timestamp < PRICE_CACHE_TTL_MS)) {
-        return cached.price;
+    if (cached) {
+        if (Date.now() - cached.timestamp < PRICE_CACHE_TTL_MS) {
+            priceCache.delete(key);
+            priceCache.set(key, cached);
+            return cached.price;
+        }
+        priceCache.delete(key);
     }
 
     try {
@@ -243,6 +248,12 @@ async function fetchBrickmergeBestPrice(setNumber) {
         }
 
         if (price !== null) {
+            if (priceCache.has(key)) {
+                priceCache.delete(key);
+            } else if (priceCache.size >= 500) {
+                const oldest = priceCache.keys().next().value;
+                if (oldest !== undefined) priceCache.delete(oldest);
+            }
             priceCache.set(key, { price, timestamp: Date.now() });
         }
         return price;
@@ -305,7 +316,7 @@ async function updateActionState(tabId) {
 
 async function updateDetectedProduct(tabId, product) {
     if (!Number.isInteger(tabId)) return;
-    if (product?.setNumber || product?.ean) detectedProducts.set(tabId, product);
+    if (product?.setNumber || product?.ean || product?.query || product?.name) detectedProducts.set(tabId, product);
     else detectedProducts.delete(tabId);
     await updateActionState(tabId);
 }
@@ -319,7 +330,7 @@ async function updateSelectedTerm(tabId, value) {
 }
 
 async function openProductPanel(tabId, product, rememberProduct = true) {
-    if (!Number.isInteger(tabId) || (!product?.setNumber && !product?.ean)) {
+    if (!Number.isInteger(tabId) || (!product?.setNumber && !product?.ean && !product?.query && !product?.name)) {
         throw new Error('Kein LEGO-Set erkannt.');
     }
     if (rememberProduct) await updateDetectedProduct(tabId, product);
@@ -419,7 +430,8 @@ chrome.action.onClicked.addListener(tab => {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === 'bm-page-product-detected') {
-        void updateDetectedProduct(_sender.tab?.id, message.product);
+        const tabId = message.tabId || _sender.tab?.id;
+        void updateDetectedProduct(tabId, message.product);
         return false;
     }
     if (message?.type === 'bm-page-selection-changed') {
@@ -437,10 +449,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         message?.type === 'bm-open-overlay' ||
         message?.type === 'bm-open-sidepanel'
     ) {
-        const tabId = _sender.tab?.id;
+        const tabId = message.tabId || _sender.tab?.id;
         const product = message.product;
         if (!Number.isInteger(tabId) ||
-            (!product?.setNumber && !product?.ean)) {
+            (!product?.setNumber && !product?.ean && !product?.query && !product?.name)) {
             sendResponse({ ok: false, error: 'Kein LEGO-Set erkannt.' });
             return false;
         }

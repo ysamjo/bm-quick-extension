@@ -1,7 +1,13 @@
 (() => {
     'use strict';
 
-    const originalRequest = globalThis.GM_xmlhttpRequest;
+    const originalRequest = typeof GM_xmlhttpRequest === 'function'
+        ? GM_xmlhttpRequest
+        : (typeof globalThis.GM_xmlhttpRequest === 'function'
+            ? globalThis.GM_xmlhttpRequest
+            : (typeof globalThis.GM?.xmlHttpRequest === 'function'
+                ? globalThis.GM.xmlHttpRequest
+                : null));
     if (typeof originalRequest !== 'function') return;
 
     const storageKeys = globalThis.BM_EXTENSION_STORAGE_KEYS;
@@ -210,6 +216,9 @@
     }
 
     globalThis.GM_xmlhttpRequest = bridgedRequest;
+    if (typeof window !== 'undefined') {
+        window.GM_xmlhttpRequest = bridgedRequest;
+    }
     if (globalThis.GM) {
         globalThis.GM.xmlHttpRequest = bridgedRequest;
         globalThis.GM.xmlhttpRequest = bridgedRequest;

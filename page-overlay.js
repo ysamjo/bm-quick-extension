@@ -9,7 +9,7 @@
     let outsideHandler = null;
 
     function normalizedQuery(product) {
-        return String(product?.setNumber || product?.ean || '')
+        return String(product?.query || product?.setNumber || product?.ean || product?.name || '')
             .replace(/\s+/g, ' ')
             .trim()
             .slice(0, 100);

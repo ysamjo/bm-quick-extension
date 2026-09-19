@@ -7,10 +7,14 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
     priceCalculations: true,
     shippingAndSorting: true,
     selectionPopup: true,
+    searchInSidebar: true,
     networkBlocking: true,
     luckyFallback: true,
     autoContinueRedirect: true,
     metaGptBridge: true,
+    marketplacesInOfferlist: true,
+    listView: true,
+    twoColumnGrid: false,
     offerShops: {
         ebay: true,
         ebayFr: true,
@@ -27,6 +31,7 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
         brickowl: true
     },
     linkRows: {
+        tools: true,
         marketplaces: true,
         france: globalThis.BM_PLATFORM?.franceDefault !== false,
         resources: true,
@@ -94,6 +99,20 @@ globalThis.BM_isMarketplacePricePlausible = (
     if (minimum === null) return true;
     return candidate + Number.EPSILON >= minimum;
 };
+globalThis.BM_EXCLUDED_OFFER_TITLE_PATTERN =
+    /\b(?:ersatzteile?|einzelteile?|kleinteile?|anleitungen?|bauanleitungen?|manual|instructions?|stickers?|aufkleber|leerkarton|ovp\s*leer|box\s*only|empty\s*box|unvollst[aä]ndig|incomplete|incomplet(?:e|es|s)?|ohne\s+(?:figuren|minifiguren|steine|teile|anleitung|ovp)|sans\s+(?:figurines?|minifigurines?|pi[eè]ces?|briques?|bo[iî]te|notice)|moc|custom|kompatibel|compatible|konvolut|bundle|parts?\s*only|(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)\s*only|figurines?\s+seules?|minifigurines?\s+seules?|lot\s+(?:de\s+|of\s+|von\s+)?(?:\d+\s+)?(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)|pack\s+(?:de\s+|of\s+)?(?:\d+\s+)?(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)|set\s+(?:de\s+|of\s+|aus\s+)(?:\d+\s+)?(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)|toutes\s+les\s+(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)|nur\s+(?:die\s+)?(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)|(?:only|just)\s+(?:\d+\s+)?(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)|(?:minifigs?|minifigure?s?|minifiguren?|minifigurines?|figure?n?|figurines?)(?:[^\n,;]{0,60}?)\s+(?:du|from|aus|vom)\s+(?:dem\s+|der\s+|the\s+)?set|(?:[a-z]{2,5}\d{3,5}[a-z]?\s+(?:figurines?|minifigs?|minifigure?s?|minifiguren?|figure?n?)|(?:figurines?|minifigs?|minifigure?s?|minifiguren?|figure?n?)\s+[a-z]{2,5}\d{3,5}[a-z]?)|pi[eè]ces?\s+d[eé]tach[eé]es?|lot\s+de\s+pi[eè]ces?|pi[eè]ces?\s+seules?|autocollants?|vitrinen?|schauk[aä]sten?|schutzhauben?|staubschutz|display\s*(?:case|box|stand)|showcase|acryl(?:glas)?(?:box|haube|vitrine)?|acrylic\s*(?:case|box|display)|pr[eé]sentoir(?:s)?|support(?:s)?\s+(?:mural|d['’]?exposition)|socle(?:s)?\s+d['’]?exposition|bo[iî]te(?:s)?\s+(?:acrylique|de\s+protection|vide|seule)|housse(?:s)?\s+anti[- ]?poussi[eè]re|protection(?:s)?\s+anti[- ]?poussi[eè]re|light(?:ing)?[- ]?(?:kits?|sets?)|(?:led[- ]?)?licht[- ]?(?:sets?|kits?)|(?:led[- ]?)?beleuchtungs?[- ]?(?:sets?|kits?)|led[- ]?(?:ferngesteuerte[s|r|n]?|mit\s+fernbedienung|fernbedienung|remote[- ]?control(?:led)?|wireless|kabellose[s|r|n]?|funk[- ]?)?\s*(?:licht[- ]?|beleuchtungs?[- ]?)?(?:beleuchtung|leuchten|lampen|strip|streifen|kits?|sets?)|(?:ferngesteuerte[s|r|n]?|kabellose[s|r|n]?|remote[- ]?control(?:led)?)\s+(?:led[- ]?|licht[- ]?|beleuchtungs?[- ]?)(?:kits?|sets?)|(?:led[- ]?)?kit[- ]?led|kit(?:[- ]*(?:d['’\s]*|de\s*)?|s\s+)?(?:led|lumi[eè]res?|[eé]clairages?|light(?:ing)?)(?:\s+(?:t[eé]l[eé]command[eé](?:e|es|s)?|avec\s+t[eé]l[eé]commande))?|(?:led[- ]?)?[eé]clairage(?:s)?(?:\s+led)?|(?:led[- ]?)?lumi[eè]re(?:s)?(?:\s+led)?|t[eé]l[eé]command[eé](?:e|es|s)?|nur\s+(?:das\s+)?(?:licht|led|beleuchtung)|(?:ohne|kein|sans|without)\s+(?:lego|modell|briques?|mod[eè]le)|(?:lego|modell|briques?|mod[eè]le)\s+(?:nicht\s+(?:enthalten|inklusive)|non\s+inclus(?:es?)?|not\s+included)|briksmax|lightailing|light\s*my\s*bricks|game\s*of\s*bricks|brickbling|yeabricks|kyglaring|vonado|lelightgo|brickshine|another[- ]?brick(?:[- ]?shop)?|wandhalterung|wall\s*mount|(?:bausteine?|klemmbausteine?)[- ]?(?:set|bausatz)?\s*(?:wie|ähnlich|ahnlich)|(?:wie|ähnlich|ahnlich)\s+lego|(?:nicht\s+von\s+lego|kein\s+lego|keine\s+lego|not\s+lego|no\s+lego|nicht\s+original\s+lego)|(?:building[- ]?)?block[- ]?sets?|china[- ]?(?:klon|clone)s?|(?:lego[- ]?)?plagiat(?:e)?|(?:fake|kopie)[- ]?lego|knock[- ]?offs?|bootlegs?|mould[- ]?king|mold[- ]?king|cobi|lepin|bluebrixx|blue[- ]?brixx|cada|ca[- ]?da|xingbao|sembo(?:\s*blocks?)?|sluban|qman|keeppley|panlos(?:\s*brick)?|reobrix|pantasy|funwhole|decool|forange|leji|sy\s*blocks?|wange\s*(?:blocks?|bricks?|set|bausteine?)|kazi\s*(?:blocks?|bricks?|set|bausteine?)|star\s*plan|space\s*wars)\b/i;
+
+globalThis.BM_isExcludedOfferTitle = title => {
+    return Boolean(title) && globalThis.BM_EXCLUDED_OFFER_TITLE_PATTERN.test(String(title));
+};
+
+globalThis.BM_EXCLUDED_OFFER_SELLER_PATTERN =
+    /\b(?:another[-_ ]?brick(?:[-_ ]?shop)?|briksmax|lightailing|gameofbricks|game[-_ ]of[-_ ]bricks|brickbling|yeabricks|kyglaring|vonado|lelightgo|brickshine)\b/i;
+
+globalThis.BM_isExcludedOfferSeller = seller => {
+    return Boolean(seller) && globalThis.BM_EXCLUDED_OFFER_SELLER_PATTERN.test(String(seller));
+};
+
 globalThis.BM_getPlausibleMarketplaceOffers = (
     source,
     result,
@@ -107,6 +126,18 @@ globalThis.BM_getPlausibleMarketplaceOffers = (
     const seen = new Set();
     return candidates
         .filter(candidate => {
+            const title = candidate?.title || candidate?.name || candidate?.model || '';
+            if (title && globalThis.BM_isExcludedOfferTitle(title)) return false;
+            const seller = typeof candidate?.seller === 'string'
+                ? candidate.seller
+                : String(
+                    candidate?.seller?.username ||
+                    candidate?.seller?.name ||
+                    candidate?.sellerName ||
+                    candidate?.merchantName ||
+                    ''
+                );
+            if (seller && globalThis.BM_isExcludedOfferSeller(seller)) return false;
             const price = getPrice(candidate);
             const identity = `${candidate?.url || ''}:${price}`;
             if (seen.has(identity)) return false;
@@ -259,7 +290,7 @@ globalThis.BM_resolveWorkerUrl = (value, baseUrl) => {
 globalThis.BM_getBrickmergeSetNumber = value => {
     try {
         const url = new URL(value, 'https://www.brickmerge.de/');
-        const match = url.pathname.match(/^\/(\d{4,7})-[\da-z]+_[^/]+\/?$/i);
+        const match = url.pathname.match(/^\/(\d{4,7})(?:-[\da-z]+)?(?:_[^/]+)?\/?$/i);
         return match ? match[1] : null;
     } catch {
         return null;
@@ -476,6 +507,9 @@ globalThis.BM_parseBrickmergeDetailLines = values => {
 globalThis.BM_mergeSettings = value => ({
     ...globalThis.BM_EXTENSION_DEFAULTS,
     ...(value || {}),
+    listView: value?.listView !== undefined ? value.listView === true : (value?.twoColumnGrid !== false),
+    twoColumnGrid: value?.twoColumnGrid === true,
+    marketplacesInOfferlist: value?.marketplacesInOfferlist !== false,
     offerShops: {
         ...globalThis.BM_EXTENSION_DEFAULTS.offerShops,
         ...(value?.offerShops || {})
@@ -542,3 +576,67 @@ globalThis.BM_normalizeEbaySellerAccountType = value => {
     }
     return '';
 };
+
+globalThis.BM_SHOP_SHIPPING_RULES = Object.freeze([
+    {
+        name: 'LEGO Online Shop',
+        pattern: /\b(?:lego|lego\.com|lego\s*shop|lego\s*store)\b/i,
+        freeFrom: 55.00,
+        standardCost: 3.95
+    },
+    {
+        name: 'Smyths Toys',
+        pattern: /\bsmyths(?:\s*toys)?\b/i,
+        freeFrom: 29.00,
+        standardCost: 3.95
+    },
+    {
+        name: 'Müller',
+        pattern: /\bm[üu]ller(?:\.de)?\b/i,
+        freeFrom: 49.00,
+        standardCost: 4.95,
+        pickupFree: true
+    },
+    {
+        name: 'Galaxus',
+        pattern: /\bgalaxus(?:\.de)?\b/i,
+        freeFrom: 30.00,
+        standardCost: 3.90
+    },
+    {
+        name: 'Amazon',
+        pattern: /\bamazon(?:\.de)?\b/i,
+        freeFrom: 39.00,
+        standardCost: 3.99
+    },
+    {
+        name: 'Proshop',
+        pattern: /\bproshop(?:\.de)?\b/i,
+        freeFrom: 100.00,
+        standardCost: 4.99
+    },
+    {
+        name: 'Steinehelden',
+        pattern: /\bsteinehelden(?:\.de)?\b/i,
+        freeFrom: 60.00,
+        standardCost: 4.50
+    },
+    {
+        name: 'JB Spielwaren',
+        pattern: /\bjb[- ]?spielwaren\b/i,
+        freeFrom: 150.00,
+        standardCost: 4.99
+    },
+    {
+        name: 'Alza',
+        pattern: /\balza(?:\.de)?\b/i,
+        freeFrom: null,
+        standardCost: 0.98
+    }
+]);
+
+globalThis.BM_findShopShippingRule = merchantName => {
+    if (!merchantName) return null;
+    return globalThis.BM_SHOP_SHIPPING_RULES.find(rule => rule.pattern.test(merchantName)) || null;
+};
+

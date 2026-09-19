@@ -22,16 +22,23 @@ function populate(settingsValue) {
     document.querySelectorAll('[data-link-row]').forEach(input => {
         input.checked = settings.linkRows[input.dataset.linkRow] !== false;
     });
-    updateFranceControls();
+    updateShopControls();
 }
 
-function updateFranceControls() {
+function updateShopControls() {
+    const marketplacesEnabled = document.querySelector('[data-setting="marketplacesInOfferlist"]')?.checked !== false;
     const franceEnabled = document.querySelector('[data-link-row="france"]')?.checked === true;
     ['ebayFr', 'leboncoin', 'idealo'].forEach(shop => {
         const input = document.querySelector(`[data-shop="${shop}"]`);
         if (!input) return;
-        input.disabled = !franceEnabled;
-        input.closest('.setting')?.classList.toggle('is-disabled', !franceEnabled);
+        const disabled = !marketplacesEnabled || !franceEnabled;
+        input.disabled = disabled;
+        input.closest('.setting')?.classList.toggle('is-disabled', disabled);
+    });
+    document.querySelectorAll('[data-shop]').forEach(input => {
+        if (['ebayFr', 'leboncoin', 'idealo'].includes(input.dataset.shop)) return;
+        input.disabled = !marketplacesEnabled;
+        input.closest('.setting')?.classList.toggle('is-disabled', !marketplacesEnabled);
     });
 }
 
@@ -66,18 +73,32 @@ chrome.storage.local.get('settings').then(({ settings }) => populate(settings));
 
 document.querySelector('[data-link-row="france"]')?.addEventListener(
     'change',
-    updateFranceControls
+    updateShopControls
+);
+document.querySelector('[data-setting="marketplacesInOfferlist"]')?.addEventListener(
+    'change',
+    updateShopControls
 );
 
-form.addEventListener('submit', async event => {
-    event.preventDefault();
+async function saveSettings() {
     await chrome.storage.local.set({ settings: readForm() });
     await reloadBrickmergeTabs();
     status.textContent = 'Gespeichert';
     window.setTimeout(() => { status.textContent = ''; }, 1800);
+}
+
+form.addEventListener('submit', async event => {
+    event.preventDefault();
+    await saveSettings();
 });
 
-document.getElementById('reset').addEventListener('click', () => {
+form.addEventListener('change', async () => {
+    await saveSettings();
+});
+
+document.getElementById('reset').addEventListener('click', async () => {
     populate(BM_EXTENSION_DEFAULTS);
-    status.textContent = 'Standardwerte geladen – noch nicht gespeichert';
+    await saveSettings();
+    status.textContent = 'Standardwerte wiederhergestellt';
+    window.setTimeout(() => { status.textContent = ''; }, 1800);
 });

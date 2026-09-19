@@ -1,7 +1,7 @@
 (() => {
     'use strict';
 
-    const CARD_SELECTOR = '#productrow .wrapper div.slide[id^="set"]';
+    const CARD_SELECTOR = ':is(#productrow, .productrow) .wrapper div.slide[id^="set"]';
     const CONCURRENCY = 4;
     const SOURCE_ORDER = Object.freeze([
         'ebay',
@@ -31,9 +31,12 @@
 
     const cleanDigits = (value, min, max) => {
         const normalized = String(value || '').trim();
-        return new RegExp(`^\\d{${min},${max}}$`).test(normalized)
-            ? normalized
-            : '';
+        if (normalized.length < min || normalized.length > max) return '';
+        for (let i = 0; i < normalized.length; i++) {
+            const code = normalized.charCodeAt(i);
+            if (code < 48 || code > 57) return '';
+        }
+        return normalized;
     };
 
     const parsePrice = value => (typeof globalThis.BM_parsePrice === 'function')
@@ -171,6 +174,8 @@
             }))
             .filter(candidate => {
                 if (!candidate) return false;
+                const title = candidate.title || candidate.name || '';
+                if (title && (typeof globalThis.BM_isExcludedOfferTitle === 'function') && globalThis.BM_isExcludedOfferTitle(title)) return false;
                 const identity = `${candidate.url}:${candidate.total}`;
                 if (seen.has(identity)) return false;
                 seen.add(identity);
@@ -268,10 +273,29 @@
                 element.textContent?.trim() || ''
             ));
         if (percentage) percentage.textContent = `${discount.percentage}%`;
-        const bubble = card.querySelector(':scope > .off');
+        let bubble = card.querySelector(':scope > .off, .off');
+        if (!bubble && discount.percentage > 0) {
+            bubble = document.createElement('div');
+            bubble.className = 'off';
+            const productImg = card.querySelector('.productimg') || card;
+            if (document.documentElement.classList.contains('bm-view-list')) {
+                bubble.classList.add('bm-list-off');
+                offerBox.appendChild(bubble);
+            } else {
+                productImg.prepend(bubble);
+            }
+        }
         if (bubble) {
-            bubble.textContent = `${discount.percentage}%`;
-            bubble.hidden = discount.percentage === 0;
+            const oldVal = parseInt(bubble.textContent || '', 10);
+            const newVal = discount.percentage;
+            if (typeof globalThis.BM_animateNumber === 'function' && Number.isFinite(oldVal) && oldVal > 0 && oldVal !== newVal) {
+                globalThis.BM_animateNumber(bubble, oldVal, newVal, '%');
+            } else {
+                bubble.textContent = `${newVal}%`;
+            }
+            bubble.hidden = newVal === 0;
+            if (newVal === 0) bubble.style.display = 'none';
+            else if (!document.documentElement.classList.contains('bm-view-list')) bubble.style.display = 'inline-flex';
         }
     };
 
@@ -296,6 +320,7 @@
     };
 
     const enabledSources = settings => {
+        if (settings?.marketplacesInOfferlist === false) return [];
         const franceEnabled = settings?.linkRows?.france === true;
         const franceSources = new Set(['ebay-fr', 'leboncoin', 'idealo']);
         return SOURCE_ORDER.filter(source => {
@@ -516,30 +541,89 @@
         return clientId;
     };
 
+    const getRequestHandler = () => {
+        if (typeof GM_xmlhttpRequest === 'function') return GM_xmlhttpRequest;
+        if (typeof globalThis.GM_xmlhttpRequest === 'function') return globalThis.GM_xmlhttpRequest;
+        if (typeof window !== 'undefined' && typeof window.GM_xmlhttpRequest === 'function') return window.GM_xmlhttpRequest;
+        if (typeof globalThis.GM?.xmlHttpRequest === 'function') return globalThis.GM.xmlHttpRequest;
+        if (typeof window !== 'undefined' && typeof window.GM?.xmlHttpRequest === 'function') return window.GM.xmlHttpRequest;
+        if (typeof globalThis.GM?.xmlhttpRequest === 'function') return globalThis.GM.xmlhttpRequest;
+        if (typeof window !== 'undefined' && typeof window.GM?.xmlhttpRequest === 'function') return window.GM.xmlhttpRequest;
+        return null;
+    };
+
     const requestJson = async (url, acceptedStatuses = [200]) => {
         const clientId = await getClientId();
-        return new Promise((resolve, reject) => {
-            GM_xmlhttpRequest({
-                method: 'GET',
-                url,
-                headers: {
-                    Accept: 'application/json',
-                    'X-BM-Client-ID': clientId
-                },
-                timeout: 30000,
-                onload: response => {
-                    let payload = null;
-                    try { payload = JSON.parse(response.responseText); } catch {}
-                    if (acceptedStatuses.includes(response.status) && payload) {
-                        resolve({ status: response.status, payload });
-                    } else {
-                        reject(new Error(`Preisabruf fehlgeschlagen (${response.status})`));
-                    }
-                },
-                onerror: reject,
-                ontimeout: () => reject(new Error('Preisabruf Timeout'))
+        const handler = getRequestHandler();
+        if (handler) {
+            return new Promise((resolve, reject) => {
+                handler({
+                    method: 'GET',
+                    url,
+                    headers: {
+                        Accept: 'application/json',
+                        'X-BM-Client-ID': clientId
+                    },
+                    timeout: 30000,
+                    onload: response => {
+                        let payload = null;
+                        try { payload = JSON.parse(response.responseText); } catch {}
+                        if (acceptedStatuses.includes(response.status) && payload) {
+                            resolve({ status: response.status, payload });
+                        } else {
+                            reject(new Error(`Preisabruf fehlgeschlagen (${response.status})`));
+                        }
+                    },
+                    onerror: reject,
+                    ontimeout: () => reject(new Error('Preisabruf Timeout'))
+                });
             });
+        }
+        if (typeof globalThis.BrickmergeNative?.request === 'function') {
+            return new Promise((resolve, reject) => {
+                const reqId = `bm-req-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+                const timer = setTimeout(() => {
+                    delete globalThis.__bmNativeCallbacks?.[reqId];
+                    reject(new Error('Preisabruf Timeout'));
+                }, 30000);
+                globalThis.__bmNativeCallbacks = globalThis.__bmNativeCallbacks || {};
+                globalThis.__bmNativeCallbacks[reqId] = result => {
+                    clearTimeout(timer);
+                    delete globalThis.__bmNativeCallbacks[reqId];
+                    if (!result?.ok) {
+                        reject(new Error(result?.error || 'Preisabruf fehlgeschlagen'));
+                        return;
+                    }
+                    let payload = null;
+                    try { payload = JSON.parse(result.responseText); } catch {}
+                    const status = Number(result.status) || 0;
+                    if (acceptedStatuses.includes(status) && payload) {
+                        resolve({ status, payload });
+                    } else {
+                        reject(new Error(`Preisabruf fehlgeschlagen (${status})`));
+                    }
+                };
+                globalThis.BrickmergeNative.request(
+                    reqId,
+                    url,
+                    'GET',
+                    JSON.stringify({ Accept: 'application/json', 'X-BM-Client-ID': clientId }),
+                    '',
+                    30000
+                );
+            });
+        }
+        const response = await fetch(url, {
+            headers: {
+                Accept: 'application/json',
+                'X-BM-Client-ID': clientId
+            }
         });
+        const payload = await response.json().catch(() => null);
+        if (acceptedStatuses.includes(response.status) && payload) {
+            return { status: response.status, payload };
+        }
+        throw new Error(`Preisabruf fehlgeschlagen (${response.status})`);
     };
 
     const delay = milliseconds => new Promise(resolve => {
@@ -835,6 +919,10 @@
     };
 
     const mountDetailRefresh = (settings, workerBaseUrl) => {
+        if (settings?.marketplacesInOfferlist === false) {
+            document.querySelectorAll('.bm-detail-all-prices-refresh').forEach(el => el.remove());
+            return false;
+        }
         const offerlist = document.getElementById('offerlist');
         const toolbar = offerlist?.querySelector('.bm-offer-toolbar');
         if (!offerlist || !toolbar) return false;
@@ -914,23 +1002,39 @@
     };
 
     const start = settings => {
+        if (settings?.marketplacesInOfferlist === false) {
+            document.querySelectorAll('.bm-detail-all-prices-refresh').forEach(el => el.remove());
+            return;
+        }
         const workerBaseUrl = globalThis.BM_WORKER_DEFAULT_BASE_URL;
         const detailSet = globalThis.BM_getBrickmergeSetNumber?.(location.href);
         if (!detailSet) return;
         ensureStyles();
         let observer = null;
         const tryMount = () => {
-            if (mountDetailRefresh(settings, workerBaseUrl)) return true;
+            if (mountDetailRefresh(settings, workerBaseUrl)) {
+                if (observer) {
+                    observer.disconnect();
+                    observer = null;
+                }
+                return true;
+            }
             return false;
         };
-        tryMount();
-        observer = new MutationObserver(() => tryMount());
-        observer.observe(document.documentElement, {
-            childList: true,
-            subtree: true
-        });
-        [250, 750, 1800].forEach(delay => window.setTimeout(tryMount, delay));
-        window.setTimeout(() => observer?.disconnect(), 15000);
+        if (!tryMount()) {
+            observer = new MutationObserver(() => tryMount());
+            observer.observe(document.documentElement, {
+                childList: true,
+                subtree: true
+            });
+            [250, 750, 1800].forEach(delay => window.setTimeout(tryMount, delay));
+            window.setTimeout(() => {
+                if (observer) {
+                    observer.disconnect();
+                    observer = null;
+                }
+            }, 10000);
+        }
     };
 
     chrome.storage.local.get('settings').then(({ settings }) => {
