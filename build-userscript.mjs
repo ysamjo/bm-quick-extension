@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 const projectDir = path.dirname(fileURLToPath(import.meta.url));
 const extensionDir = projectDir;
 const externalExtensionDir = path.resolve(projectDir, '../Extension');
-const quickExtensionDir = path.resolve(projectDir, '../Quick-Extension');
 const sourceDir = path.join(projectDir, 'src');
 const packageJson = JSON.parse(
     await fs.readFile(path.join(projectDir, 'package.json'), 'utf8')
@@ -393,17 +392,6 @@ if (hasExternalExtension) {
     for (const orphan of orphanedFiles) {
         await fs.unlink(orphan).catch(() => {});
     }
-}
-
-// Sync to Quick-Extension directory if present
-const hasQuickExtension = await fs.stat(quickExtensionDir)
-    .then(s => s.isDirectory())
-    .catch(() => false);
-if (hasQuickExtension) {
-    await copyFileWithRetry(
-        path.join(projectDir, 'brickmerge-tweaks.js'),
-        path.join(quickExtensionDir, 'brickmerge-tweaks.js')
-    );
 }
 
 // Sync to Android assets directory if present

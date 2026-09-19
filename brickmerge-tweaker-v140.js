@@ -45,6 +45,25 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     const cacheRequestsInFlight = new Map();
     const gmApi = typeof GM !== 'undefined' ? GM : null;
 
+    // Wartet darauf, dass predicate() true liefert, und raeumt Observer und
+    // Timeout danach selbst weg. Ersetzt vier Stellen, die jeweils einen
+    // eigenen MutationObserver auf document.documentElement haengten - bei
+    // subtree:true laeuft jeder Callback bei jeder DOM-Aenderung, also viermal.
+    function observeUntil(predicate, timeoutMs = 10000) {
+        if (predicate()) return;
+        let timer = null;
+        const observer = new MutationObserver(() => {
+            if (!predicate()) return;
+            observer.disconnect();
+            if (timer !== null) window.clearTimeout(timer);
+        });
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true
+        });
+        timer = window.setTimeout(() => observer.disconnect(), timeoutMs);
+    }
+
     function scheduleIdleTask(callback, timeout = 2000) {
         if (typeof window.requestIdleCallback === 'function') {
             return window.requestIdleCallback(callback, { timeout });
@@ -386,16 +405,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
         if (continueRedirect()) return true;
 
-        const observer = new MutationObserver(() => {
-            if (!continueRedirect()) return;
-            observer.disconnect();
-            window.clearTimeout(timeout);
-        });
-        observer.observe(document.documentElement, {
-            childList: true,
-            subtree: true
-        });
-        const timeout = window.setTimeout(() => observer.disconnect(), 10000);
+        observeUntil(continueRedirect, 10000);
         return true;
     }
 
@@ -2080,11 +2090,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             display: inline-block !important;
         }
         @media (max-width: 768px) {
-            .content.setdetails .topprice a {
-                display: flex !important;
-                width: 100% !important;
-                align-items: stretch !important;
-            }
+            .content.setdetails .topprice a,
             .content.setdetails .topprice .bm-overall-bestprice-link {
                 display: flex !important;
                 width: 100% !important;
@@ -8326,14 +8332,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
         if (apply()) return;
 
-        const observer = new MutationObserver(() => {
-            if (apply()) observer.disconnect();
-        });
-        observer.observe(document.documentElement, {
-            childList: true,
-            subtree: true
-        });
-        window.setTimeout(() => observer.disconnect(), 10000);
+        observeUntil(apply, 10000);
     }
 
     if (BM_SETTINGS.luckyFallback) {
@@ -21496,14 +21495,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 return false;
             };
             if (!tryInject()) {
-                const observer = new MutationObserver(() => {
-                    if (tryInject()) observer.disconnect();
-                });
-                observer.observe(document.documentElement, {
-                    childList: true,
-                    subtree: true
-                });
-                window.setTimeout(() => observer.disconnect(), 5000);
+                observeUntil(tryInject, 5000);
             }
         } catch (_) {}
     }
@@ -22055,14 +22047,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             return true;
         };
         if (!fillCurrentPrice()) {
-            const observer = new MutationObserver(() => {
-                if (fillCurrentPrice()) observer.disconnect();
-            });
-            observer.observe(document.documentElement, {
-                childList: true,
-                subtree: true
-            });
-            window.setTimeout(() => observer.disconnect(), 5000);
+            observeUntil(fillCurrentPrice, 5000);
         }
 
         nativeLink.click();

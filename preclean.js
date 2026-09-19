@@ -143,17 +143,7 @@
             .wrapper.merchants#wrappernormal,
             .wrapper.merchants,
             .wrapper.themen#wrappernormal,
-            .wrapper.themen {
-                display: grid !important;
-                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                gap: 10px !important;
-                padding: 0.5rem 0.75rem 2rem !important;
-                box-sizing: border-box !important;
-                width: 100% !important;
-                margin-left: auto !important;
-                margin-right: auto !important;
-                justify-content: center !important;
-            }
+            .wrapper.themen,
             .wrapper.brickstores#wrappernormal,
             .wrapper.brickstores {
                 display: grid !important;

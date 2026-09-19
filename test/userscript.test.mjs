@@ -2251,7 +2251,7 @@ test('eBay France does not render text subtitle and mobile green bar aligns pixe
     assert.doesNotMatch(tweakerSource, /captionText:\s*isFrance\s*\?\s*'eBay FR'/);
 
     // 2. Mobile flex layout and matching widths for logo cell (22.5%) and price cell (77.5%)
-    assert.match(tweakerSource, /@media\s*\(max-width:\s*768px\)\s*\{\s*\.content\.setdetails\s+\.topprice\s+a\s*\{[^}]*display:\s*flex\s*!important;\s*width:\s*100%\s*!important;/);
+    assert.match(tweakerSource, /@media\s*\(max-width:\s*768px\)\s*\{\s*\.content\.setdetails\s+\.topprice\s+a\s*(?:,\s*\.content\.setdetails\s+\.topprice\s+\.bm-overall-bestprice-link\s*)?\{[^}]*display:\s*flex\s*!important;\s*width:\s*100%\s*!important;/);
     assert.match(tweakerSource, /@media\s*\(max-width:\s*768px\)\s*\{[\s\S]*?\.content\.setdetails\s+\.topprice\s+\.bm-topprice-price-cell\s*\{[^}]*flex:\s*1 1 77\.5%\s*!important;\s*width:\s*77\.5%\s*!important;/);
 });
 
@@ -2275,7 +2275,7 @@ test('BM_isExcludedOfferTitle accurately filters standalone minifigures without 
 });
 
 test('merchants grid has 2 columns up to 768px and card images have white background', () => {
-    assert.match(precleanSource, /@media screen and \(max-width:\s*768px\)\s*\{\s*\.wrapper\.merchants#wrappernormal,\s*\.wrapper\.merchants,\s*\.wrapper\.themen#wrappernormal,\s*\.wrapper\.themen\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
+    assert.match(precleanSource, /@media screen and \(max-width:\s*768px\)\s*\{\s*\.wrapper\.merchants#wrappernormal,\s*\.wrapper\.merchants,\s*\.wrapper\.themen#wrappernormal,\s*\.wrapper\.themen\s*(?:,\s*\.wrapper\.brickstores#wrappernormal\s*,\s*\.wrapper\.brickstores\s*)?\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
     assert.match(precleanSource, /#productrow\s+\.wrapper\s+div\.slide\s+\.productimg[\s\S]*?\{[^}]*background:\s*#FFFFFF\s*!important;\s*border:\s*none\s*!important;\s*\}/);
 });
 
@@ -2317,7 +2317,7 @@ test('merchants and themen have centered 2-column grid and are excluded from wra
     assert.match(tweakerSource, /(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\),\s*(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper#wrappernormal:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s*\{[^}]*display:\s*flex\s*!important;/);
 
     // 2. Both merchants and themen have centered grid styling
-    assert.match(precleanSource, /@media screen and \(max-width:\s*768px\)\s*\{\s*\.wrapper\.merchants#wrappernormal,\s*\.wrapper\.merchants,\s*\.wrapper\.themen#wrappernormal,\s*\.wrapper\.themen\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;[^}]*justify-content:\s*center\s*!important;/);
+    assert.match(precleanSource, /@media screen and \(max-width:\s*768px\)\s*\{\s*\.wrapper\.merchants#wrappernormal,\s*\.wrapper\.merchants,\s*\.wrapper\.themen#wrappernormal,\s*\.wrapper\.themen\s*(?:,\s*\.wrapper\.brickstores#wrappernormal\s*,\s*\.wrapper\.brickstores\s*)?\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;[^}]*justify-content:\s*center\s*!important;/);
 });
 
 test('detail page extracts red UVP discount and black comparison bubble, and cards animate percentage changes', () => {
