@@ -1215,8 +1215,6 @@ var TTL = Object.freeze({
   klarnaEmpty: 20 * 60,
   idealo: 2 * 60 * 60,
   idealoEmpty: 20 * 60,
-  brickmerge: 2 * 60 * 60,
-  brickmergeEmpty: 20 * 60,
   brickbank: 2 * 60 * 60,
   bricklinkCatalog: 24 * 60 * 60,
   bricklinkOffers: 2 * 60 * 60,
@@ -1356,7 +1354,6 @@ var index_default = {
             "/google-shopping",
             "/klarna",
             "/idealo",
-            "/brickmerge",
             "/bricklink",
             "/offers/dismissals",
             "/offers/cache",
@@ -1417,9 +1414,6 @@ var index_default = {
       }
       if (url.pathname === "/bricklink") {
         return handleBricklinkSetOffer(request, url, env, ctx);
-      }
-      if (url.pathname === "/brickmerge") {
-        return handleBrickmergePrice(request, url, env, ctx);
       }
       if (url.pathname === "/offers/dismissals") {
         return handleOfferDismissals(request, url, env);
@@ -1485,95 +1479,6 @@ async function handleLegacyCached(request, url, env, ctx, source) {
     rateLimitRoute: source,
     titleLocale: "de"
   });
-}
-async function handleBrickmergePrice(request, url, env, ctx) {
-  const setNumber = cleanSetNumber(url.searchParams.get("set"));
-  if (!setNumber) {
-    return json2({ error: "LEGO-Setnummer muss aus 3 bis 7 Ziffern bestehen." }, 400);
-  }
-
-  const cache = caches.default;
-  const cacheUrl = new URL(url.origin);
-  cacheUrl.pathname = "/__cache/brickmerge-price-v1";
-  cacheUrl.search = new URLSearchParams({ set: setNumber }).toString();
-  const cacheKey = new Request(cacheUrl.href, { method: "GET" });
-  const cacheHit = await readCachedResponse(cache, cacheKey);
-  if (cacheHit) return cacheHit;
-
-  const rateLimitResponse = await enforceUpstreamRateLimit(request, env, "brickmerge");
-  if (rateLimitResponse) return rateLimitResponse;
-
-  const sourceUrl = `https://www.brickmerge.de/${encodeURIComponent(setNumber)}`;
-  const upstreamResponse = await fetch(sourceUrl, {
-    headers: {
-      accept: "text/html,application/xhtml+xml",
-      "accept-language": "de-DE,de;q=0.9",
-      "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/138.0.0.0 Safari/537.36"
-    }
-  });
-  const html = await upstreamResponse.text();
-  if (!upstreamResponse.ok) {
-    return json2({
-      error: "Brickmerge-Detailseite konnte nicht geladen werden.",
-      upstreamStatus: upstreamResponse.status,
-      setNumber
-    }, 502);
-  }
-
-  const body = parseBrickmergePricePage(html, setNumber, sourceUrl);
-  const ttlSeconds = body.found ? TTL.brickmerge : TTL.brickmergeEmpty;
-  return storeCachedResponse(
-    cache, cacheKey, ctx, body, body.found ? 200 : 404, ttlSeconds, json2
-  );
-}
-function parseBrickmergePricePage(html, setNumber, sourceUrl) {
-  const offerlist = String(html || "").match(
-    /<div\s+id=["']offerlist["'][^>]*>([\s\S]*?)(?:<div\s+id=["']SoldOutContainer["']|<\/body>|$)/i
-  )?.[1] || "";
-  const visibleText = offerlist
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&euro;/gi, " € ")
-    .replace(/&#8364;/gi, " € ")
-    .replace(/&amp;/gi, "&");
-  const prices = [];
-  const pricePattern = /(?:^|\s)(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})\s*€/g;
-  let match;
-  while ((match = pricePattern.exec(visibleText))) {
-    const euros = Number(match[1].replace(/\./g, ""));
-    const cents = Number(match[2]);
-    const value = euros + cents / 100;
-    if (Number.isFinite(value) && value > 0 && value <= 10000) prices.push(roundMoney(value));
-  }
-  const uniquePrices = [...new Set(prices)].sort((a, b) => a - b);
-  const offers = uniquePrices.slice(0, 10).map((price, index) => ({
-    id: `${setNumber}-${index + 1}`,
-    price,
-    total: price,
-    shipping: null,
-    sellerType: "commercial",
-    source: "Brickmerge",
-    shippingIncluded: false
-  }));
-  const title = String(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-  return {
-    setNumber,
-    found: offers.length > 0,
-    cheapest: offers[0] || null,
-    comparedOffers: offers.length,
-    offers,
-    title: title || null,
-    sourceUrl,
-    shippingIncluded: false,
-    updatedAt: new Date().toISOString()
-  };
 }
 async function handleEbayFrance(request, url, env, ctx) {
   return handleEbayCached(request, url, env, ctx, {
@@ -3047,7 +2952,6 @@ var __test = Object.freeze({
   normalizeIdealoItems,
   extractBricklinkMinifigItemNos,
   extractBricklinkMinifigItems,
-  parseBrickmergePricePage,
   APIFY_CONFIG,
   roundMoney
 });
