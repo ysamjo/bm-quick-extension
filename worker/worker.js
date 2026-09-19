@@ -107,13 +107,8 @@ async function handleKleinanzeigen(request, url, env, ctx) {
     best: referencePrice === null ? "none" : referencePrice.toFixed(2)
   }).toString();
   const cacheKey = new Request(cacheUrl.href, { method: "GET" });
-  const cachedResponse = await cache.match(cacheKey);
-  if (cachedResponse) {
-    return addResponseHeaders(cachedResponse, {
-      "cache-control": "no-store",
-      "x-worker-cache": "HIT"
-    });
-  }
+  const cacheHit = await readCachedResponse(cache, cacheKey);
+  if (cacheHit) return cacheHit;
   const rateLimitResponse = await enforceUpstreamRateLimit(
     request,
     env,
@@ -169,16 +164,7 @@ async function handleKleinanzeigen(request, url, env, ctx) {
     updatedAt: updatedAt.toISOString(),
     expiresAt: expiresAt.toISOString()
   };
-  const cacheResponse = json(body, 200, {
-    "cache-control": `public, max-age=${ttlSeconds}`
-  });
-  const storeInCache = cache.put(cacheKey, cacheResponse);
-  if (ctx?.waitUntil) ctx.waitUntil(storeInCache);
-  else await storeInCache;
-  return json(body, 200, {
-    "cache-control": "no-store",
-    "x-worker-cache": "MISS"
-  });
+  return storeCachedResponse(cache, cacheKey, ctx, body, 200, ttlSeconds, json);
 }
 __name(handleKleinanzeigen, "handleKleinanzeigen");
 function normalizeKleinanzeigenOffers(payload, setNumber) {
@@ -846,13 +832,8 @@ async function handlePrice(request, url, env, ctx) {
     set: setNumber || ""
   }).toString();
   const cacheKey = new Request(cacheUrl.href, { method: "GET" });
-  const cachedResponse = await cache.match(cacheKey);
-  if (cachedResponse) {
-    return addResponseHeaders(cachedResponse, {
-      "cache-control": "no-store",
-      "x-worker-cache": "HIT"
-    });
-  }
+  const cacheHit = await readCachedResponse(cache, cacheKey);
+  if (cacheHit) return cacheHit;
   const rateLimitResponse = await enforceUpstreamRateLimit(
     request,
     env,
@@ -904,16 +885,9 @@ async function handlePrice(request, url, env, ctx) {
       found: false,
       message: `Kein vollständiges neues Set mit bekannten Versandkosten nach ${isFrance ? "Frankreich" : "Deutschland"} gefunden`
     };
-    const cacheResponse2 = json(body2, 404, {
-      "cache-control": `public, max-age=${EBAY_EMPTY_CACHE_TTL_SECONDS}`
-    });
-    const storeInCache2 = cache.put(cacheKey, cacheResponse2);
-    if (ctx?.waitUntil) ctx.waitUntil(storeInCache2);
-    else await storeInCache2;
-    return json(body2, 404, {
-      "cache-control": "no-store",
-      "x-worker-cache": "MISS"
-    });
+    return storeCachedResponse(
+      cache, cacheKey, ctx, body2, 404, EBAY_EMPTY_CACHE_TTL_SECONDS, json
+    );
   }
   const body = {
     ean,
@@ -926,16 +900,7 @@ async function handlePrice(request, url, env, ctx) {
     excludedSuspiciousOffers: excludedCount,
     offers: offers.slice(0, 10)
   };
-  const cacheResponse = json(body, 200, {
-    "cache-control": `public, max-age=${EBAY_CACHE_TTL_SECONDS}`
-  });
-  const storeInCache = cache.put(cacheKey, cacheResponse);
-  if (ctx?.waitUntil) ctx.waitUntil(storeInCache);
-  else await storeInCache;
-  return json(body, 200, {
-    "cache-control": "no-store",
-    "x-worker-cache": "MISS"
-  });
+  return storeCachedResponse(cache, cacheKey, ctx, body, 200, EBAY_CACHE_TTL_SECONDS, json);
 }
 __name(handlePrice, "handlePrice");
 async function handleEbayMinifigPrice(request, url, env, ctx) {
@@ -951,13 +916,8 @@ async function handleEbayMinifigPrice(request, url, env, ctx) {
   cacheUrl.pathname = `/__cache/ebay-minifig-${EBAY_MINIFIG_CACHE_VERSION}`;
   cacheUrl.search = new URLSearchParams({ itemNo }).toString();
   const cacheKey = new Request(cacheUrl.href, { method: "GET" });
-  const cachedResponse = await cache.match(cacheKey);
-  if (cachedResponse) {
-    return addResponseHeaders(cachedResponse, {
-      "cache-control": "no-store",
-      "x-worker-cache": "HIT"
-    });
-  }
+  const cacheHit = await readCachedResponse(cache, cacheKey);
+  if (cacheHit) return cacheHit;
   const rateLimitResponse = await enforceUpstreamRateLimit(request, env, "ebay-minifig");
   if (rateLimitResponse) return rateLimitResponse;
   const accessToken = await getApplicationToken(env);
@@ -984,16 +944,9 @@ async function handleEbayMinifigPrice(request, url, env, ctx) {
       found: false,
       message: "Keine passende neue Minifigur mit Sofort-Kaufen gefunden"
     };
-    const cacheResponse2 = json(body2, 404, {
-      "cache-control": `public, max-age=${EBAY_EMPTY_CACHE_TTL_SECONDS}`
-    });
-    const storeInCache2 = cache.put(cacheKey, cacheResponse2);
-    if (ctx?.waitUntil) ctx.waitUntil(storeInCache2);
-    else await storeInCache2;
-    return json(body2, 404, {
-      "cache-control": "no-store",
-      "x-worker-cache": "MISS"
-    });
+    return storeCachedResponse(
+      cache, cacheKey, ctx, body2, 404, EBAY_EMPTY_CACHE_TTL_SECONDS, json
+    );
   }
   const body = {
     itemNo,
@@ -1005,16 +958,7 @@ async function handleEbayMinifigPrice(request, url, env, ctx) {
     excludedSuspiciousOffers,
     offers: offers.slice(0, 10)
   };
-  const cacheResponse = json(body, 200, {
-    "cache-control": `public, max-age=${EBAY_CACHE_TTL_SECONDS}`
-  });
-  const storeInCache = cache.put(cacheKey, cacheResponse);
-  if (ctx?.waitUntil) ctx.waitUntil(storeInCache);
-  else await storeInCache;
-  return json(body, 200, {
-    "cache-control": "no-store",
-    "x-worker-cache": "MISS"
-  });
+  return storeCachedResponse(cache, cacheKey, ctx, body, 200, EBAY_CACHE_TTL_SECONDS, json);
 }
 __name(handleEbayMinifigPrice, "handleEbayMinifigPrice");
 function normalizeEbayMinifigOffer(item, itemNo) {
@@ -1232,18 +1176,6 @@ function roundMoney(value) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 __name(roundMoney, "roundMoney");
-function addResponseHeaders(response, extraHeaders) {
-  const headers = new Headers(response.headers);
-  Object.entries(extraHeaders).forEach(([name, value]) => {
-    headers.set(name, value);
-  });
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers
-  });
-}
-__name(addResponseHeaders, "addResponseHeaders");
 function json(body, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
     status,
@@ -1566,13 +1498,8 @@ async function handleBrickmergePrice(request, url, env, ctx) {
   cacheUrl.pathname = "/__cache/brickmerge-price-v1";
   cacheUrl.search = new URLSearchParams({ set: setNumber }).toString();
   const cacheKey = new Request(cacheUrl.href, { method: "GET" });
-  const cachedResponse = await cache.match(cacheKey);
-  if (cachedResponse) {
-    return addHeaders(cachedResponse, {
-      "cache-control": "no-store",
-      "x-worker-cache": "HIT"
-    });
-  }
+  const cacheHit = await readCachedResponse(cache, cacheKey);
+  if (cacheHit) return cacheHit;
 
   const rateLimitResponse = await enforceUpstreamRateLimit(request, env, "brickmerge");
   if (rateLimitResponse) return rateLimitResponse;
@@ -1596,16 +1523,9 @@ async function handleBrickmergePrice(request, url, env, ctx) {
 
   const body = parseBrickmergePricePage(html, setNumber, sourceUrl);
   const ttlSeconds = body.found ? TTL.brickmerge : TTL.brickmergeEmpty;
-  const cacheResponse = json2(body, body.found ? 200 : 404, {
-    "cache-control": `public, max-age=${ttlSeconds}`
-  });
-  const storeInCache = cache.put(cacheKey, cacheResponse);
-  if (ctx?.waitUntil) ctx.waitUntil(storeInCache);
-  else await storeInCache;
-  return json2(body, body.found ? 200 : 404, {
-    "cache-control": "no-store",
-    "x-worker-cache": "MISS"
-  });
+  return storeCachedResponse(
+    cache, cacheKey, ctx, body, body.found ? 200 : 404, ttlSeconds, json2
+  );
 }
 function parseBrickmergePricePage(html, setNumber, sourceUrl) {
   const offerlist = String(html || "").match(
@@ -2798,6 +2718,28 @@ function addHeaders(response, values) {
     headers
   });
 }
+async function readCachedResponse(cache, cacheKey) {
+  const cachedResponse = await cache.match(cacheKey);
+  if (!cachedResponse) return null;
+  return addHeaders(cachedResponse, {
+    "cache-control": "no-store",
+    "x-worker-cache": "HIT"
+  });
+}
+__name(readCachedResponse, "readCachedResponse");
+async function storeCachedResponse(cache, cacheKey, ctx, body, status, ttlSeconds, serialize) {
+  const cacheResponse = serialize(body, status, {
+    "cache-control": `public, max-age=${ttlSeconds}`
+  });
+  const storeInCache = cache.put(cacheKey, cacheResponse);
+  if (ctx?.waitUntil) ctx.waitUntil(storeInCache);
+  else await storeInCache;
+  return serialize(body, status, {
+    "cache-control": "no-store",
+    "x-worker-cache": "MISS"
+  });
+}
+__name(storeCachedResponse, "storeCachedResponse");
 function json2(body, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
     status,
