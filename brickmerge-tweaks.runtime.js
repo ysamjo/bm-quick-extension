@@ -3317,6 +3317,35 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         opacity: 0.75;
                     }
                 }
+                /* Zusätzliche Angebote tragen links den gelben Markenstreifen. Auf einer
+                   bereits aufgerufenen Zeile sitzt das Verwerfen-X DARIN statt rechts
+                   über der Rabattblase: der Streifen wächst von 9px auf 30px, und der
+                   Zeileninhalt rückt um die Differenz ein, damit das Anbieterlogo frei
+                   bleibt. Ohne die Einrückung liegt das X auf dem Logo (gemessen bei
+                   412px: Logo-Wortmarke ab 9px, X bis 26px).
+                   Der Wert ist bewusst größer als die Streifendifferenz (30 - 9 = 21),
+                   weil das Logo sonst exakt an der Streifenkante klebt. */
+                #offerlist .row.collapse.bm-marketplace-offer.bm-offer-dismissible {
+                    box-shadow:
+                        inset 29px 0 0 #f8dc62,
+                        inset 30px 0 0 #d3b437 !important;
+                    padding-left: 26px !important;
+                }
+                #offerlist .row.collapse.bm-marketplace-offer.bm-offer-dismissible::before {
+                    width: 30px;
+                    background: linear-gradient(
+                        to right,
+                        #f8dc62 0,
+                        #f8dc62 29px,
+                        #d3b437 29px,
+                        #d3b437 30px
+                    );
+                }
+                #offerlist .row.collapse.bm-marketplace-offer.bm-offer-dismissible
+                    > .bm-offer-dismiss {
+                    left: 4px;
+                    right: auto;
+                }
                 #offerlist .row.collapse.bm-sold-out-offer {
                     position: relative;
                 }

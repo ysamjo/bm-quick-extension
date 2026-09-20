@@ -442,6 +442,43 @@ test('action-row buttons keep a gap between icon and text', () => {
     assert.match(gridIconRule, /margin:\s*0\s+4px\s+0\s+0\s*!important/);
 });
 
+test('the dismiss X of an additional offer sits in the yellow stripe, not over the discount bubble', () => {
+    // Zusätzliche Angebote (.bm-marketplace-offer) tragen links einen gelben
+    // Markenstreifen. Das Verwerfen-X lag rechts auf der Rabattblase (gemessen
+    // bei 412px: X 341-363, Blase 331-363) und gehört in den verbreiterten
+    // Streifen links.
+    const stripeRule = tweakerSource.match(
+        /#offerlist \.row\.collapse\.bm-marketplace-offer\.bm-offer-dismissible \{[\s\S]*?\}/
+    )?.[0] || '';
+    assert.notEqual(stripeRule, '', 'Streifen-Regel für aufgerufene Zusatzangebote fehlt');
+    assert.match(stripeRule, /inset 29px 0 0 #f8dc62/);
+    assert.match(stripeRule, /inset 30px 0 0 #d3b437/);
+    // Ohne diese Einrückung liegt das X auf dem Anbieterlogo.
+    assert.match(stripeRule, /padding-left:\s*26px\s*!important/);
+
+    const stripeBefore = tweakerSource.match(
+        /#offerlist \.row\.collapse\.bm-marketplace-offer\.bm-offer-dismissible::before \{[\s\S]*?\}/
+    )?.[0] || '';
+    assert.notEqual(stripeBefore, '', 'Streifen-Pseudoelement fehlt');
+    assert.match(stripeBefore, /width:\s*30px/);
+    // Streifen und Box-Shadow müssen dieselbe Geometrie beschreiben.
+    assert.match(stripeBefore, /#f8dc62 29px/);
+    assert.match(stripeBefore, /#d3b437 29px/);
+    assert.match(stripeBefore, /#d3b437 30px/);
+
+    const xRule = tweakerSource.match(
+        /#offerlist \.row\.collapse\.bm-marketplace-offer\.bm-offer-dismissible\s*> \.bm-offer-dismiss \{[\s\S]*?\}/
+    )?.[0] || '';
+    assert.notEqual(xRule, '', 'X-Regel für Zusatzangebote fehlt');
+    assert.match(xRule, /left:\s*4px/);
+    assert.match(xRule, /right:\s*auto/);
+
+    // Die Grundregel bleibt rechts: nur die Zusatzangebote wandern nach links.
+    const baseRule = tweakerSource.match(/#offerlist \.bm-offer-dismiss \{[\s\S]*?\}/)?.[0] || '';
+    assert.match(baseRule, /right:\s*4px/);
+    assert.doesNotMatch(baseRule, /left:\s*4px/);
+});
+
 test('the depot IIFE reaches observeUntil and BM_SETTINGS across the IIFE boundary', () => {
     // Die Haupt-Runtime (IIFE #1) definiert observeUntil und BM_SETTINGS; der
     // Depot-Baustein (IIFE #2) ist ein EIGENER Scope und kann sie nicht per
