@@ -2317,6 +2317,10 @@ globalThis.BM_findShopShippingRule = merchantName => {
 
         BM_MOBILE_CHROME.storage.local.get('settings').then(({ settings }) => {
             const BM_SETTINGS = BM_mergeSettings(settings);
+            // Der Depot-Baustein läuft weiter unten als EIGENE IIFE (eigener Scope).
+            // Er liest die Settings mit, kann sie aber nicht per Closure sehen —
+            // deshalb hier einmal explizit global bereitstellen.
+            globalThis.BM_SETTINGS = BM_SETTINGS;
             const BM_OFFER_SHOP_KEY_MAP = {
                 ebay: 'ebay',
                 'ebay-minifig': 'ebay',
@@ -2380,6 +2384,10 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 });
                 timer = window.setTimeout(() => observer.disconnect(), timeoutMs);
             }
+            // Die Depot-IIFE weiter unten hat einen EIGENEN Scope und kann observeUntil
+            // nicht per Closure sehen. Ohne diese Zeile wirft jeder Aufruf dort
+            // "ReferenceError: observeUntil is not defined" (u. a. der Depot-Button).
+            globalThis.observeUntil = observeUntil;
 
             function scheduleIdleTask(callback, timeout = 2000) {
                 if (typeof window.requestIdleCallback === 'function') {
@@ -7102,7 +7110,11 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     width: 14px !important;
                     height: 14px !important;
                     flex: 0 0 14px !important;
-                    margin: 0 !important;
+                    /* Das Icon sitzt per ensureButtonIcon() INNERHALB von
+                       .bmd-button-content, nicht als Geschwister des Buttons. Der
+                       gap:4px des Buttons erreicht es deshalb nicht — der Abstand zum
+                       Text muss hier als Rand stehen (wie in der Tools-Zeile). */
+                    margin: 0 4px 0 0 !important;
                 }
                 .bm-detail-action-buttons-row .bmd-open-button .bmd-button-icon svg {
                     display: block !important;
@@ -24367,7 +24379,14 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     observeUntil(fillCurrentPrice, 5000);
                 }
 
-                nativeLink.click();
+                // Wie bei Preisalarm/Wunschliste: brickmerge.de öffnet die Modale über
+                // Foundation (Reveal). Ein reiner DOM-click auf den dynamisch erzeugten
+                // <a data-reveal-id> löst das nicht aus — der jQuery-Trigger muss her.
+                if (window.$ && typeof $(nativeLink).foundation === 'function') {
+                    $(nativeLink).trigger('click');
+                } else {
+                    nativeLink.click();
+                }
                 if (temporaryLink) {
                     window.setTimeout(() => nativeLink.remove(), 0);
                 }

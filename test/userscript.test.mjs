@@ -405,6 +405,59 @@ test('stock action is integrated into the 4-button action row and opens the nati
     assert.doesNotMatch(setupDetailButton, /chartTrigger/);
 });
 
+test('depot action opens the native modal via the same Foundation trigger as alarm and wishlist', () => {
+    const depotFn = tweakerSource.slice(
+        tweakerSource.indexOf('function openNativeDepotAdd'),
+        tweakerSource.indexOf('function openNativePriceAlarm')
+    );
+    const alarmFn = tweakerSource.slice(
+        tweakerSource.indexOf('function openNativePriceAlarm'),
+        tweakerSource.indexOf('function openNativeWishlistAdd')
+    );
+    const wishlistFn = tweakerSource.slice(
+        tweakerSource.indexOf('function openNativeWishlistAdd'),
+        tweakerSource.indexOf('function mountDetailActionRowIntoLinkPanel')
+    );
+
+    // brickmerge.de öffnet die Modale über Foundation (Reveal). Ein reiner
+    // DOM-click auf den dynamisch erzeugten <a data-reveal-id> reicht nicht —
+    // sonst passiert beim Klick auf "Depot" schlicht nichts.
+    [depotFn, alarmFn, wishlistFn].forEach(fn => {
+        assert.match(fn, /window\.\$ && typeof \$\(nativeLink\)\.foundation === 'function'/);
+        assert.match(fn, /\$\(nativeLink\)\.trigger\('click'\)/);
+        assert.match(fn, /else \{\s*nativeLink\.click\(\);\s*\}/);
+    });
+});
+
+test('action-row buttons keep a gap between icon and text', () => {
+    // ensureButtonIcon() hängt das Icon IN .bmd-button-content ein, nicht als
+    // Geschwister des Buttons. Der gap des Buttons erreicht es deshalb nicht —
+    // der Abstand muss am Icon stehen (Grid-Fall wie Tools-Zeile).
+    assert.match(tweakerSource, /content\.prepend\(icon\)/);
+
+    const gridIconRule = tweakerSource.match(
+        /\.bm-detail-action-buttons-row \.bmd-open-button \.bmd-button-icon \{[\s\S]*?\}/
+    )?.[0] || '';
+    assert.notEqual(gridIconRule, '', 'Grid-Regel für .bmd-button-icon nicht gefunden');
+    assert.match(gridIconRule, /margin:\s*0\s+4px\s+0\s+0\s*!important/);
+});
+
+test('the depot IIFE reaches observeUntil and BM_SETTINGS across the IIFE boundary', () => {
+    // Die Haupt-Runtime (IIFE #1) definiert observeUntil und BM_SETTINGS; der
+    // Depot-Baustein (IIFE #2) ist ein EIGENER Scope und kann sie nicht per
+    // Closure sehen. Ohne die globalThis-Exporte wirft der Depot-Klick
+    // "ReferenceError: observeUntil is not defined" und tut schlicht nichts.
+    assert.match(tweakerSource, /globalThis\.observeUntil = observeUntil;/);
+    assert.match(tweakerSource, /globalThis\.BM_SETTINGS = BM_SETTINGS;/);
+
+    const depotIife = tweakerSource.slice(
+        tweakerSource.indexOf("const STYLE_ID = 'bm-depot-quick-add-style'")
+    );
+    assert.ok(depotIife.length > 1000, 'Depot-IIFE nicht gefunden');
+    assert.match(depotIife, /observeUntil\(fillCurrentPrice, 5000\)/);
+    assert.match(depotIife, /BM_SETTINGS\?\.linkRows\?\.tools/);
+});
+
 test('depot page stays native while detail pages keep the stock action', () => {
     const startup = tweakerSource.slice(
         tweakerSource.lastIndexOf('const isDepotInventoryPage')
