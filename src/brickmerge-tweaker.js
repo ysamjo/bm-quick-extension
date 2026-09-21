@@ -38,6 +38,32 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     const META_GPT_PATH = '/g/g-LZvgtoTB9-meta-preisvergleich-gpt';
     const META_GPT_URL = `https://chatgpt.com${META_GPT_PATH}`;
     const OFFER_CACHE_TTL = 2 * 60 * 60 * 1000;
+    // Brickbank löst je Setnummer den echten Produktlink eines Händlers auf:
+    // brickbank.app/angebote/link/<händler>/<set> enthält ihn als .cc-btn pro
+    // Land. Für Sets ohne Brickbank-Daten steht dort nur "Link nicht
+    // gefunden" – dort bleibt die Händlersuche als Ersatz.
+    const brickbankLinkPageUrl = (vendor, setNumber) =>
+        `https://brickbank.app/angebote/link/${vendor}/${String(setNumber || '').trim()}/`;
+    const parseBrickbankProductUrl = (html, domainPattern) => {
+        const byCountry = {};
+        for (const [, href, country] of String(html || '').matchAll(
+            /<a\b[^>]*href="([^"]+)"[^>]*data-location="([a-z]{2})"/gi
+        )) {
+            if (!byCountry[country] && domainPattern.test(href)) {
+                byCountry[country] = href;
+            }
+        }
+        return byCountry.de || byCountry.at || '';
+    };
+    const MUELLER_BRICKBANK_TITLE = 'Müller-Angebot laut Brickbank';
+    let muellerProductUrl = '';
+    const publishMuellerProductUrl = url => {
+        muellerProductUrl = url;
+        document.querySelectorAll('a[data-bmid="btn-mueller-search"]').forEach(pill => {
+            pill.href = url;
+            pill.title = MUELLER_BRICKBANK_TITLE;
+        });
+    };
     const KLAZ_CLIENT_CACHE_TTL = 45 * 60 * 1000;
     const MINIFIG_INVENTORY_CACHE_TTL = 6 * 60 * 60 * 1000;
     const MINIFIG_PRICE_CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -12095,18 +12121,22 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     { id: "btn-stockx", name: "StockX", url: `https://stockx.com/search?s=lego%20${setNum}`, icon: icon("stockx.com") },
                     { id: "btn-bo", name: "BrickOwl", url: brickOwlSearchUrl(setNum), icon: icon("brickowl.com") },
                     { id: "btn-bl", name: "Bricklink", url: `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setNum}-1#T=S&O={%22ss%22:%22DE%22,%22cond%22:%22N%22,%22ii%22:0,%22loc%22:%22DE%22,%22iconly%22:0}`, icon: icon("bricklink.com") },
-                    /* Müller-Ersatz: Brickbank beziffert Müller nur für einen kleinen
-                       Teil der Sets (gemessen 21.09.2026: 92 lagernde Sets, alle
-                       mueller.at). Für jedes andere Set liefert pvg einen leeren
-                       Stub – preis null, kein Produktlink – und es entsteht keine
-                       Angebotszeile. Diese Pille führt stattdessen zur Müller-Suche.
-                       Sie verschwindet, sobald irgendwo eine Müller-Zeile steht,
+                    /* Müller: der Link folgt der Brickbank-Auflösung. Brickbank
+                       kennt aber nicht für jedes Set einen Müller-Produktlink
+                       (gemessen 21.09.2026: 3 von 12 geprüften Sets, preis-
+                       geführte Müller-Angebote sind noch seltener). Für diese
+                       Sets bleibt die Müller-Suche als Ersatz stehen; der
+                       Brickbank-Treffer trifft sie später über
+                       publishMuellerProductUrl(). Die Pille verschwindet,
+                       sobald irgendwo eine Müller-Zeile steht,
                        siehe syncMarketplaceShortcutLinks(). */
                     ...(BM_isOfferShopEnabled('mueller-search') ? [{
                         id: "btn-mueller-search",
                         name: "Müller",
-                        title: "Kein Müller-Preis bei Brickbank – direkt bei Müller suchen",
-                        url: `https://duckduckgo.com/?q=${encodeURIComponent(`!ducky site:mueller.de LEGO ${setNum}`)}`,
+                        title: muellerProductUrl
+                            ? MUELLER_BRICKBANK_TITLE
+                            : "Kein Müller-Preis bei Brickbank – direkt bei Müller suchen",
+                        url: muellerProductUrl || `https://duckduckgo.com/?q=${encodeURIComponent(`!ducky site:mueller.de LEGO ${setNum}`)}`,
                         icon: icon("mueller.de")
                     }] : [])
                 ]
@@ -14263,6 +14293,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                                 )
                             )
                             : (
+                                // Müller-Link nach Brickbank-Logik: das vom
+                                // Preisdatensatz gelieferte Klickout löst über
+                                // Brickbank auf das echte Produkt auf.
+                                brickbankOffer.url ||
                                 `https://duckduckgo.com/?q=` +
                                 encodeURIComponent(
                                     `!ducky site:${vendor.searchDomain} LEGO ${setNumber}`
@@ -14289,6 +14323,35 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     // Worker-Cache gelesen; der Actor-Lauf startet erst über den
                     // Refresh-Button.
                     globalThis.BM_fetchMuellerFromApifyCache?.();
+                    // Ohne Müller-Zeile wird Brickbank direkt nach dem Produktlink
+                    // gefragt: Die Antwort sitzt als .cc-btn auf der
+                    // Weiterleitungsseite. Kein Treffer, keine Pillen-Änderung.
+                    if (BM_isOfferShopEnabled('mueller-search') &&
+                        !offers.some(offer => offer.key === 'mueller-search')) {
+                        cachedShopRequest(
+                            'brickbank',
+                            makeApiCacheKey('brickbank-link', setNumber),
+                            OFFER_CACHE_TTL,
+                            {
+                                method: 'GET',
+                                url: brickbankLinkPageUrl('mueller', setNumber),
+                                headers: {
+                                    'Accept': 'text/html,application/xhtml+xml,*/*',
+                                    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+                                    'User-Agent': 'Mozilla/5.0'
+                                },
+                                timeout: 15000,
+                                onload: linkResponse => {
+                                    if (linkResponse.status !== 200) return;
+                                    const productUrl = parseBrickbankProductUrl(
+                                        linkResponse.responseText,
+                                        /mueller\.(?:de|at)\/p\//i
+                                    );
+                                    if (productUrl) publishMuellerProductUrl(productUrl);
+                                }
+                            }
+                        );
+                    }
                 },
                 onerror: () => {
                     brickbankSettled = true;

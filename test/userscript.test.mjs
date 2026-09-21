@@ -2662,8 +2662,8 @@ test('topprice green line is removed, commercial eBay logo renders tie icon, and
 });
 
 test('Müller appears as a link-list pill only while no Müller offer row exists', () => {
-    // Brickbank beziffert Müller nur für wenige Sets; für alle übrigen gibt es
-    // keine Angebotszeile. Dann soll die Pille in der Marktplatz-Zeile stehen.
+    // Brickbank kennt Müller nicht für jedes Set; ohne Preis gibt es keine
+    // Angebotszeile und die Pille steht in der Marktplatz-Zeile.
     const group = tweakerSource.match(
         /id:\s*"btn-bl"[\s\S]*?\n\s*\]\n\s*\},/
     )?.[0] || '';
@@ -2674,8 +2674,25 @@ test('Müller appears as a link-list pill only while no Müller offer row exists
         'Die Müller-Pille muss an der Müller-Freigabe hängen, nicht bedingungslos stehen'
     );
     assert.match(group, /id:\s*"btn-mueller-search"/);
+    // Der Link folgt der Brickbank-Auflösung; die Suche ist nur der Ersatz.
+    assert.match(group, /url:\s*muellerProductUrl \|\| /);
     assert.match(group, /site:mueller\.de LEGO \$\{setNum\}/);
     assert.match(group, /icon\("mueller\.de"\)/);
+
+    // Der Produktlink steht als .cc-btn auf Brickbanks Weiterleitungsseite und
+    // wird nur gelesen, wenn keine Müller-Zeile entstanden ist.
+    assert.match(
+        tweakerSource,
+        /const brickbankLinkPageUrl = \(vendor, setNumber\) =>\s*`https:\/\/brickbank\.app\/angebote\/link\/\$\{vendor\}\/\$\{String\(setNumber/
+    );
+    assert.match(tweakerSource, /data-location="\(\[a-z\]\{2\}\)"/);
+    assert.match(tweakerSource, /makeApiCacheKey\('brickbank-link', setNumber\)/);
+    assert.match(
+        tweakerSource,
+        /!offers\.some\(offer => offer\.key === 'mueller-search'\)/
+    );
+    // Die Angebotszeile selbst nutzt Brickbanks eigenes Klickout.
+    assert.match(tweakerSource, /brickbankOffer\.url \|\|/);
 
     // Sie verschwindet, sobald irgendwo eine Müller-Zeile steht – Angebotszeilen
     // tragen data-bm-shortcut-id = "btn-<offer.key>", für Müller also
