@@ -130,23 +130,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             : typeof gmApi?.setValue === 'function'
                 ? Promise.resolve(gmApi.setValue(key, value))
                 : Promise.resolve(writeLocalFallback(key, value));
-    // Gelöschte API-Cache-Einträge werden nicht neu geschrieben: InFlight-Requests
-    // aus demselben Seitentakt haben sonst die vergifteten Antworten sofort
-    // zurück in den Cache geholt.
-    const purgedCacheKeys = new Set();
-    const deleteStoredValue = key => {
-        purgedCacheKeys.add(key);
-        if (typeof GM_deleteValue === 'function') {
-            return Promise.resolve(GM_deleteValue(key));
-        }
-        if (typeof gmApi?.deleteValue === 'function') {
-            return Promise.resolve(gmApi.deleteValue(key));
-        }
-        try {
-            window.localStorage.removeItem(key);
-        } catch (error) {}
-        return Promise.resolve();
-    };
 
     function createWorkerClientId() {
         if (window.crypto?.randomUUID) return window.crypto.randomUUID();
@@ -246,8 +229,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         const cached = await readStoredValue(key, null);
         const cachedIsUsable = cached &&
             Number.isFinite(Number(cached.timestamp)) &&
-            cached.data !== undefined &&
-            !purgedCacheKeys.has(key);
+            cached.data !== undefined;
         if (cachedIsUsable && Date.now() - Number(cached.timestamp) < ttlMs) {
             return cached.data;
         }
@@ -259,17 +241,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         const request = (async () => {
             try {
                 const freshData = await fetchFn();
-                // WAF-/Challenge-Seiten (z. B. BrickLink) sind keine nutzbaren
-                // Daten. Sie werden nie gecacht; sonst würde eine einzelne
-                // Challenge die Quelle für die gesamte TTL "vergiften" und die
-                // Minifigurenliste bliebe dauerhaft hängen.
-                if (
-                    typeof freshData?.responseText === 'string' &&
-                    freshData.responseText.includes('awsWafCookieDomainList')
-                ) {
-                    await deleteStoredValue(key).catch(() => {});
-                    throw new Error('BrickLink-WAF-Herausforderung erhalten');
-                }
                 if (isCacheable(freshData)) {
                     await writeStoredValue(key, {
                         timestamp: Date.now(),
