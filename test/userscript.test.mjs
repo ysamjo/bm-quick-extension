@@ -775,6 +775,32 @@ test('Der JSON-LD-Bestpreis füllt die Referenz, bevor Händlerzeilen gerendert 
     );
 });
 
+test('BrickOwl lässt nur versiegelte Lots durch die Zustandsliste', () => {
+    const helperSource = tweakerSource.match(
+        /const BRICKOWL_SEALED_CONDITIONS = \[[\s\S]*?const isSealedBrickOwlCondition = condition => \{[\s\S]*?\n            \};/
+    )?.[0];
+    assert.ok(helperSource, 'Zustandsliste von BrickOwl nicht gefunden');
+    const context = vm.createContext({ String, Array, Object });
+    vm.runInContext(`${helperSource}\nglobalThis.check = isSealedBrickOwlCondition;`, context);
+
+    // Die zehn BrickOwl-Zustände: nur news darf übrig bleiben.
+    assert.equal(context.check('Neu (Versiegelt)'), true);
+    assert.equal(context.check('  neu   (versiegelt) '), true);
+    assert.equal(context.check('New (Sealed)'), true);
+    ['Neu', 'Neu (Vollständig)', 'Neu (Unvollständig)', 'Gebraucht (Komplett)',
+        'Gebraucht (Unvollständig)', 'Gebraucht (Wie Neu)', 'Gebraucht (Gut)',
+        'Gebraucht (Akzeptabel)', 'Sonstiges', ''].forEach(label => {
+        assert.equal(context.check(label), false, `${label} darf nicht als versiegelt gelten`);
+    });
+
+    // Der alte Test ließ wegen \bNeu\b auch „Neu (Unvollständig)" durch.
+    assert.doesNotMatch(tweakerSource, /Neu\\s\*\(\?:Sealed\|Versiegelt\)[\s\S]{0,120}\\bNeu\\b/);
+    assert.match(
+        tweakerSource,
+        /if \(!isSealedBrickOwlCondition\(condition\)\) \{\s*return null;\s*\}/
+    );
+});
+
 test('eBay offers below half the Brickmerge price are rejected', () => {
     const sharedSource = fs.readFileSync(
         new URL('../src/shared.js', import.meta.url),

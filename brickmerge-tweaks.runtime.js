@@ -15428,6 +15428,20 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         const price = Number(normalized);
                         return Number.isFinite(price) && price > 0 ? price : null;
                     }
+                    // BrickOwl vergibt pro Lot genau einen von zehn Zuständen: new,
+                    // news, newc, newi, usedc, usedi, usedn, usedg, useda, other. Für den
+                    // Wiederverkauf zählt nur ungeöffnete Ware, also news.
+                    const BRICKOWL_SEALED_CONDITIONS = [
+                        'new (sealed)',
+                        'neu (versiegelt)',
+                        'neu (verschlossen)',
+                        'neu (ungeöffnet)',
+                        'neu (originalverpackt)'
+                    ];
+                    const isSealedBrickOwlCondition = condition => {
+                        const normalized = String(condition || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                        return BRICKOWL_SEALED_CONDITIONS.includes(normalized);
+                    };
                     function parseBrickOwlGermanOffers(html, fallbackUrl) {
                         try {
                             const payload = JSON.parse(html);
@@ -15450,13 +15464,10 @@ globalThis.BM_findShopShippingRule = merchantName => {
                             const cells = Array.from(row.children);
                             if (cells.length < 7) return null;
 
-                            const rowText = (row.textContent || '')
-                                .replace(/\s+/g, ' ')
-                                .trim();
                             const condition = (cells[1].textContent || '')
                                 .replace(/\s+/g, ' ')
                                 .trim();
-                            if (!/New\s*\(Sealed\)|Neu\s*\((?:Sealed|Versiegelt|Verschlossen|Ungeöffnet|Originalverpackt)\)|\bNeu\b/i.test(condition || rowText)) {
+                            if (!isSealedBrickOwlCondition(condition)) {
                                 return null;
                             }
 
