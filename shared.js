@@ -11,7 +11,6 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
     networkBlocking: true,
     luckyFallback: true,
     autoContinueRedirect: true,
-    metaGptBridge: true,
     marketplacesInOfferlist: true,
     listView: true,
     twoColumnGrid: false,
@@ -509,36 +508,6 @@ globalThis.BM_buildMinifigCrosswalk = (rebrickableEntries, brickLinkItems) => {
         crosswalk.set(sources[sourceIndex].id, targets[targetIndex].id);
     });
     return crosswalk;
-};
-
-globalThis.BM_parseBrickmergeDetailLines = values => {
-    const allowedLabels = [
-        'Teile', 'Minifiguren', 'Setgewicht', 'Box-Maße', 'Maße', 'Volumen', 'Release',
-        'UVP', 'bisheriger Bestpreis', 'All-Time-Bestpreis', 'ATB', 'akt. brickmerge Preis', 'akt. Bestpreis', 'POV'
-    ];
-    const fields = [];
-    for (const rawValue of values || []) {
-        const line = String(rawValue || '')
-            .replace(/\u00a0/g, ' ')
-            .replace(/\s+/g, ' ')
-            .replace(/^[|·•]+\s*/, '')
-            .replace(/\s*Korrektur melden\s*/gi, ' ')
-            .trim();
-        if (!line) continue;
-        for (const label of allowedLabels) {
-            const prefix = `${label}:`;
-            const index = line.toLocaleLowerCase('de').indexOf(
-                prefix.toLocaleLowerCase('de')
-            );
-            if (index < 0) continue;
-            const value = line.slice(index + prefix.length).trim();
-            if (value && !fields.some(field => field.label === label)) {
-                fields.push({ label, value });
-            }
-            break;
-        }
-    }
-    return fields;
 };
 
 globalThis.BM_mergeSettings = value => ({

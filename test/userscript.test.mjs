@@ -1219,7 +1219,6 @@ test('volume detail line matches native Brickmerge formatting without hover', ()
     assert.match(tweakerSource, /formatted\.replace\('\.', ','\)/);
     assert.match(tweakerSource, /toLocaleString\('de-DE'/);
     assert.match(tweakerSource, /`\${formattedPrice} €\/l`/);
-    assert.match(sharedSource, /'Box-Maße',\s*'Maße',\s*'Volumen',\s*'Release'/);
 });
 
 test('box dimensions renamed to Maße and Abmessungen line is collapsible via icon toggle', () => {
@@ -1360,7 +1359,6 @@ test('historical best price is abbreviated to ATB with tooltip and formatted suf
     assert.match(tweakerSource, /title = 'All-Time-Bestpreis'/);
     assert.match(tweakerSource, /textContent = 'ATB'/);
     assert.match(tweakerSource, /akt\. Bestpreis/);
-    assert.match(sharedSource, /'All-Time-Bestpreis',\s*'ATB',\s*'akt\. brickmerge Preis',\s*'akt\. Bestpreis'/);
 
     const formatSuffixMatch = tweakerSource.match(/function formatHistoricalBestPriceSuffix\([\s\S]*?\n    \}/);
     assert.ok(formatSuffixMatch, 'formatHistoricalBestPriceSuffix function found');

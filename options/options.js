@@ -1,7 +1,6 @@
 const form = document.getElementById('settings-form');
 const status = document.getElementById('status');
 const SETTING_GROUPS = Object.freeze({
-    cleanupAndLayout: ['cleaner', 'networkBlocking', 'detailLayout'],
     pricesAndSorting: ['priceCalculations', 'shippingAndSorting']
 });
 

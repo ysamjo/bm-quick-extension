@@ -92,11 +92,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             window.localStorage.setItem(key, JSON.stringify(value));
         } catch (error) {}
     };
-    const removeLocalFallback = key => {
-        try {
-            window.localStorage.removeItem(key);
-        } catch (error) {}
-    };
     const readStoredValue = (key, fallback = null) =>
         typeof GM_getValue === 'function'
             ? Promise.resolve(GM_getValue(key, fallback))
@@ -109,12 +104,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             : typeof gmApi?.setValue === 'function'
                 ? Promise.resolve(gmApi.setValue(key, value))
                 : Promise.resolve(writeLocalFallback(key, value));
-    const deleteStoredValue = key =>
-        typeof GM_deleteValue === 'function'
-            ? Promise.resolve(GM_deleteValue(key))
-            : typeof gmApi?.deleteValue === 'function'
-                ? Promise.resolve(gmApi.deleteValue(key))
-                : Promise.resolve(removeLocalFallback(key));
 
     function createWorkerClientId() {
         if (window.crypto?.randomUUID) return window.crypto.randomUUID();
@@ -6928,10 +6917,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         element.__bmAnimFrame = requestAnimationFrame(step);
     }
     globalThis.BM_animateNumber = bmAnimateNumber;
-    globalThis.BM_extractRedDiscountFromHtml = bmExtractRedDiscountFromHtml;
-    globalThis.BM_extractBlackDiscountFromHtml = bmExtractBlackDiscountFromHtml;
-    globalThis.BM_applyDiscountsToCard = bmApplyDiscountsToCard;
-    globalThis.BM_applyDiscountsToAllCards = bmApplyDiscountsToAllCards;
 
     function bmApplyDiscountsToCard(card, redDiscount, blackDiscount) {
         if (!card) return;
@@ -7780,7 +7765,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             if (persist) {
                 try {
                     localStorage.setItem('bm-view-mode', mode);
-                    localStorage.setItem('bm-grid-2col', 'false');
                 } catch (e) {}
                 if (typeof chrome !== 'undefined' && chrome.storage?.local) {
                     chrome.storage.local.get('settings').then(({ settings: cur }) => {
@@ -7907,8 +7891,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             });
         }
     }
-
-    const setupTwoColumnGrid = setupListingView;
 
     setupListingView(BM_SETTINGS);
     if (document.readyState === 'loading') {
@@ -11048,10 +11030,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         return 'overall';
     }
 
-    function setPriceBasisMode(_mode) {
-        // Calculation basis is now controlled via Settings (marketplacesInOfferlist)
-    }
-
     function getOfferRowPrice(priceRow, priceSpan) {
         if (!priceRow && !priceSpan) return null;
         const row = priceRow || priceSpan?.closest('.pricerow');
@@ -12052,11 +12030,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             ));
             document.querySelectorAll('a[data-bmid="btn-idealo"]')
                 .forEach(applyIdealoStatusToShortcut);
-        };
-        const triggerIdealoRequest = () => {
-            publishIdealoRequestState('loading');
-            if (idealoRequestHandler) idealoRequestHandler();
-            else idealoRequestPending = true;
         };
         const applyKleinanzeigenStatusToShortcut = shortcut => {
             if (!shortcut) return;
@@ -21635,162 +21608,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         button.setAttribute('aria-label', button.title);
     }
 
-    function renderForm(container, setNumber, depotData) {
-        container.replaceChildren();
-        const form = document.createElement('form');
-        form.action = '/';
-        form.method = 'post';
-        form.append(
-            input('hidden', 'a', { value: 'depot' }),
-            input('hidden', 'l', { value: depotData.listId })
-        );
-
-        const fields = document.createElement('div');
-        fields.className = 'bmd-fields';
-        fields.append(
-            field('Setnummer', input('text', 'addset', {
-                value: setNumber,
-                readonly: 'readonly'
-            })),
-            field('Menge', input('number', 'lotqty', {
-                value: '1', min: '1', max: '9999', required: true
-            })),
-            field('Einkaufsdatum', input('date', 'lotdate', { value: today() })),
-            field('Einkaufspreis', input('text', 'lotprice', {
-                value: formatPrice(currentBestPrice()),
-                maxlength: '12',
-                placeholder: '239,99',
-                inputmode: 'decimal'
-            }))
-        );
-
-        const condition = document.createElement('select');
-        condition.name = 'lotcondition';
-        [['1', 'neu'], ['0', 'gebraucht']].forEach(([value, label]) => {
-            const option = document.createElement('option');
-            option.value = value;
-            option.textContent = label;
-            condition.appendChild(option);
-        });
-        fields.appendChild(field('Zustand', condition));
-
-        const storage = document.createElement('select');
-        storage.name = 'lotstorage';
-        const options = depotData.storageOptions.length
-            ? depotData.storageOptions
-            : [
-                { value: '', label: 'ohne Lagerort' },
-                { value: '__new__', label: '+ Neues Lager hinzufügen' }
-            ];
-        options.forEach(entry => {
-            const option = document.createElement('option');
-            option.value = entry.value;
-            option.textContent = entry.label;
-            storage.appendChild(option);
-        });
-        const storageField = field('Lager', storage, true);
-        const newStorage = input('text', 'lotstoragenew', {
-            maxlength: '50',
-            placeholder: 'Name des Lagers'
-        });
-        newStorage.className = 'bmd-new-storage';
-        newStorage.hidden = true;
-        storageField.appendChild(newStorage);
-        fields.appendChild(storageField);
-        fields.appendChild(field('Notiz zur Charge', input('text', 'lotnote', {
-            maxlength: '255',
-            placeholder: 'z. B. VIP 10%'
-        }), true));
-        form.appendChild(fields);
-
-        storage.addEventListener('change', () => {
-            const isNew = storage.value === '__new__';
-            newStorage.hidden = !isNew;
-            newStorage.required = isNew;
-            if (isNew) newStorage.focus();
-        });
-
-        const submit = document.createElement('button');
-        submit.type = 'submit';
-        submit.className = 'button small smallRedButton bmd-submit';
-        submit.textContent = 'Zum Bestand hinzufügen';
-        const status = document.createElement('span');
-        status.className = 'bmd-status';
-        status.setAttribute('role', 'status');
-        form.append(submit, status);
-
-        form.addEventListener('submit', async event => {
-            event.preventDefault();
-            if (!form.reportValidity()) return;
-            const addedQuantity = Number.parseInt(
-                form.elements.lotqty.value || '1',
-                10
-            );
-            submit.disabled = true;
-            status.className = 'bmd-status';
-            status.textContent = 'Wird hinzugefügt …';
-            try {
-                const response = await brickmergeFetch('/', {
-                    method: 'POST',
-                    body: new URLSearchParams(new FormData(form)),
-                    headers: {
-                        Accept: 'text/html',
-                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-                    }
-                });
-                const result = new DOMParser().parseFromString(
-                    await response.text(),
-                    'text/html'
-                );
-                const serverError = result.querySelector('.dp-err');
-                if (!response.ok || serverError) {
-                    throw new Error(
-                        serverError?.textContent.replace(/\s+/g, ' ').trim() ||
-                        'Hinzufügen fehlgeschlagen.'
-                    );
-                }
-                if (!result.querySelector('#dpWrap')) {
-                    throw new Error('Bitte melde dich bei brickmerge an.');
-                }
-                form.elements.lotqty.value = '1';
-                form.elements.lotdate.value = today();
-                form.elements.lotprice.value = formatPrice(currentBestPrice());
-                form.elements.lotnote.value = '';
-                newStorage.value = '';
-                const detailButton = document.querySelector(
-                    `.bmd-depot-button[data-bmd-set-number="${setNumber}"], .bm-detail-action-buttons-row .bmd-depot-button`
-                );
-                const previousStock = Number.parseInt(
-                    detailButton?.dataset.bmdStock || '',
-                    10
-                );
-                if (detailButton && Number.isFinite(previousStock)) {
-                    setDetailStock(
-                        detailButton,
-                        previousStock + (Number.isFinite(addedQuantity)
-                            ? addedQuantity
-                            : 1)
-                    );
-                } else {
-                    depotDataPromises.delete(setNumber);
-                    void loadDepotData(setNumber).then(data => {
-                        setDetailStock(detailButton, data.stock);
-                    }).catch(() => {});
-                }
-                depotDataPromises.delete(setNumber);
-                void syncDepotOfferRow(setNumber);
-                status.className = 'bmd-status bmd-status-ok';
-                status.textContent = `LEGO ${setNumber} wurde hinzugefügt.`;
-            } catch (error) {
-                status.className = 'bmd-status bmd-status-error';
-                status.textContent = error?.message || 'Hinzufügen fehlgeschlagen.';
-            } finally {
-                submit.disabled = false;
-            }
-        });
-        container.appendChild(form);
-    }
-
     let activeOverlay = null;
     let activeTrigger = null;
 
@@ -22059,68 +21876,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
     function openSaleThresholdOverlay(setNumber, purchasePrice, trigger) {
         openRoiCalculatorOverlay(setNumber, purchasePrice, trigger);
-    }
-
-    function openOverlay(setNumber, trigger) {
-        if (activeOverlay) return;
-        activeTrigger = trigger;
-        const overlay = document.createElement('div');
-        overlay.className = 'bmd-overlay';
-        const dialog = document.createElement('section');
-        dialog.className = 'bmd-dialog';
-        dialog.setAttribute('role', 'dialog');
-        dialog.setAttribute('aria-modal', 'true');
-        dialog.setAttribute('aria-labelledby', 'bmd-dialog-title');
-
-        const header = document.createElement('header');
-        header.className = 'bmd-dialog-header';
-        const title = document.createElement('h3');
-        title.id = 'bmd-dialog-title';
-        title.textContent = `LEGO ${setNumber} zum Bestand hinzufügen`;
-        const close = document.createElement('button');
-        close.type = 'button';
-        close.className = 'bmd-close';
-        close.textContent = '×';
-        close.title = 'Schließen';
-        close.setAttribute('aria-label', 'Formular schließen');
-        close.addEventListener('click', closeOverlay);
-        header.append(title, close);
-
-        const body = document.createElement('div');
-        body.className = 'bmd-dialog-body';
-        const loading = document.createElement('span');
-        loading.className = 'bmd-loading';
-        loading.textContent = 'Bestandsformular wird geladen …';
-        body.appendChild(loading);
-        dialog.append(header, body);
-        overlay.appendChild(dialog);
-        overlay.addEventListener('click', event => {
-            if (event.target === overlay) closeOverlay();
-        });
-
-        activeOverlay = overlay;
-        document.body.appendChild(overlay);
-        document.body.classList.add('bmd-overlay-open');
-        document.addEventListener('keydown', handleKeydown);
-        close.focus();
-
-        loadDepotData(setNumber).then(data => {
-            if (!body.isConnected) return;
-            renderForm(body, setNumber, data);
-            body.querySelector('input[name="lotqty"]')?.focus();
-        }).catch(error => {
-            if (!body.isConnected) return;
-            const message = document.createElement('span');
-            message.className = 'bmd-login';
-            message.append(document.createTextNode(
-                `${error?.message || 'Bestandsformular nicht verfügbar'} `
-            ));
-            const link = document.createElement('a');
-            link.href = '/?a=depot';
-            link.textContent = 'Zum Bestand';
-            message.appendChild(link);
-            body.replaceChildren(message);
-        });
     }
 
     function openNativeDepotAdd(setNumber) {
@@ -24635,11 +24390,6 @@ function doGet(e) {
         group.append(syncBtn, settingsBtn);
         tools.prepend(group);
     }
-
-    globalThis.BM_buildSheetsPayload = buildSheetsPayload;
-    globalThis.BM_readSheetsSyncSettings = readSheetsSyncSettings;
-    globalThis.BM_saveSheetsSyncSettings = saveSheetsSyncSettings;
-    globalThis.BM_GOOGLE_APPS_SCRIPT_TEMPLATE = GOOGLE_APPS_SCRIPT_TEMPLATE;
 
     function updateDepotSaleThresholds() {
         const wrap = document.getElementById('dpWrap');
