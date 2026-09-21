@@ -65,6 +65,42 @@ globalThis.BM_buildMetaGptTransferUrl = (
     url.hash = fragment.toString();
     return url.href;
 };
+// Brickmerge nennt seinen eigenen Bestpreis auch im JSON-LD-Block des ersten
+// HTML. Solange die Händlerzeilen noch nicht gerendert sind, ist das die
+// einzige Referenz, gegen die die 50%-Plausibilität geprüft werden kann.
+globalThis.BM_getJsonLdBestPrice = (doc = globalThis.document) => {
+    const toPrice = value => {
+        if (typeof value === 'number') {
+            return Number.isFinite(value) && value > 0 ? value : null;
+        }
+        const text = String(value || '').trim();
+        if (!text) return null;
+        const parsed = Number(text.includes(',') ? text.replace(/\./g, '').replace(',', '.') : text);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    };
+    const prices = [];
+    Array.from(doc?.querySelectorAll?.('script[type="application/ld+json"]') || [])
+        .forEach(node => {
+            let data = null;
+            try {
+                data = JSON.parse(node.textContent || '');
+            } catch {
+                return;
+            }
+            const entries = Array.isArray(data) ? data : (data?.['@graph'] || [data]);
+            entries.filter(entry => entry?.['@type'] === 'Product').forEach(product => {
+                const offers = Array.isArray(product.offers) ? product.offers : [product.offers];
+                offers.forEach(offer => {
+                    if (!offer) return;
+                    if (String(offer.priceCurrency || 'EUR').toUpperCase() !== 'EUR') return;
+                    if (/outofstock|soldout/i.test(String(offer.availability || ''))) return;
+                    const price = toPrice(offer.lowPrice ?? offer.price ?? product.lowPrice);
+                    if (price !== null) prices.push(price);
+                });
+            });
+        });
+    return prices.length > 0 ? Math.min(...prices) : null;
+};
 globalThis.BM_MARKETPLACE_MIN_REFERENCE_RATIO = 0.5;
 globalThis.BM_MARKETPLACE_REFERENCE_FILTER_SOURCES = Object.freeze([
     'ebay',

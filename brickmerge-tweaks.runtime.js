@@ -207,6 +207,42 @@ globalThis.BM_buildMetaGptTransferUrl = (
     url.hash = fragment.toString();
     return url.href;
 };
+// Brickmerge nennt seinen eigenen Bestpreis auch im JSON-LD-Block des ersten
+// HTML. Solange die Händlerzeilen noch nicht gerendert sind, ist das die
+// einzige Referenz, gegen die die 50%-Plausibilität geprüft werden kann.
+globalThis.BM_getJsonLdBestPrice = (doc = globalThis.document) => {
+    const toPrice = value => {
+        if (typeof value === 'number') {
+            return Number.isFinite(value) && value > 0 ? value : null;
+        }
+        const text = String(value || '').trim();
+        if (!text) return null;
+        const parsed = Number(text.includes(',') ? text.replace(/\./g, '').replace(',', '.') : text);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    };
+    const prices = [];
+    Array.from(doc?.querySelectorAll?.('script[type="application/ld+json"]') || [])
+        .forEach(node => {
+            let data = null;
+            try {
+                data = JSON.parse(node.textContent || '');
+            } catch {
+                return;
+            }
+            const entries = Array.isArray(data) ? data : (data?.['@graph'] || [data]);
+            entries.filter(entry => entry?.['@type'] === 'Product').forEach(product => {
+                const offers = Array.isArray(product.offers) ? product.offers : [product.offers];
+                offers.forEach(offer => {
+                    if (!offer) return;
+                    if (String(offer.priceCurrency || 'EUR').toUpperCase() !== 'EUR') return;
+                    if (/outofstock|soldout/i.test(String(offer.availability || ''))) return;
+                    const price = toPrice(offer.lowPrice ?? offer.price ?? product.lowPrice);
+                    if (price !== null) prices.push(price);
+                });
+            });
+        });
+    return prices.length > 0 ? Math.min(...prices) : null;
+};
 globalThis.BM_MARKETPLACE_MIN_REFERENCE_RATIO = 0.5;
 globalThis.BM_MARKETPLACE_REFERENCE_FILTER_SOURCES = Object.freeze([
     'ebay',
@@ -1604,6 +1640,14 @@ globalThis.BM_findShopShippingRule = merchantName => {
             // aktualisieren. Dazu gehört auch der manuelle Kleinanzeigen-Apify-Fallback.
             const buttonSources = settings => enabledSources(settings);
 
+            // Müller gehört nicht zur Standardliste: Die Quelle läuft über Brickbank und
+            // wird nur zusätzlich über Apify gezogen, wenn der Tweaker keinen Müller-Preis
+            // kennt. Der Tweaker meldet das über seinen Brickbank-Fallback.
+            const withMuellerSource = (sources, muellerNeeded) =>
+                muellerNeeded && !sources.includes('mueller')
+                    ? [...sources, 'mueller']
+                    : sources;
+
             const core = Object.freeze({
                 CARD_SELECTOR,
                 SOURCE_ORDER,
@@ -1622,6 +1666,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 createLimiter,
                 enabledSources,
                 buttonSources,
+                withMuellerSource,
                 isSearchPage
             });
             globalThis.BM_OVERVIEW_PRICE_CORE = core;
@@ -2221,7 +2266,11 @@ globalThis.BM_findShopShippingRule = merchantName => {
                             );
                             return;
                         }
-                        if (sources.length === 0) {
+                        const activeSources = withMuellerSource(
+                            sources,
+                            globalThis.BM_muellerApifyNeeded?.() === true
+                        );
+                        if (activeSources.length === 0) {
                             setRefreshButtonState(
                                 button,
                                 'error',
@@ -2237,7 +2286,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                             const label = button.querySelector('.bm-refresh-label');
                             if (label) label.textContent =
                                 'Marktplätze werden geladen … ' +
-                                `(${completedSources.size}/${sources.length})`;
+                                `(${completedSources.size}/${activeSources.length})`;
                             document.dispatchEvent(new CustomEvent(
                                 'bm-marketplace-source-update',
                                 {
@@ -2255,7 +2304,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                             await refreshBundle(
                                 workerBaseUrl,
                                 data,
-                                sources,
+                                activeSources,
                                 handleSourceUpdate
                             );
                             setRefreshButtonState(button, 'done');
@@ -15222,6 +15271,34 @@ globalThis.BM_findShopShippingRule = merchantName => {
                                 url: link?.href || ''
                             };
                         });
+                    const hasNativeMerchantIn = (entries, aliases) => {
+                        const normalizedAliases = aliases.map(normalizeMerchantText);
+                        return entries.some(entry =>
+                            normalizedAliases.some(alias =>
+                                entry.haystack === alias ||
+                                entry.haystack.startsWith(`${alias} `) ||
+                                entry.haystack.includes(`link zu ${alias} `)
+                            )
+                        );
+                    };
+                    // Brickbank und der Apify-Fallback nutzen dasselbe Müller-Logo, das
+                    // Brickmerge selbst ausliefert.
+                    const MUELLER_LOGO_URL = new URL(
+                        '/img/merchants/m_ller_ico.gif',
+                        window.location.origin
+                    ).href;
+                    // Brickbank beziffert Müller nur für einen Bruchteil der Sets. Apify darf
+                    // erst fragen, wenn die Brickbank-Antwort da ist und weder sie noch die
+                    // Offerlist einen Müller-Preis kennt — jeder Lauf kostet einen Actor-Start.
+                    let brickbankSettled = false;
+                    const hasMuellerPrice = () => offersByKey.has('mueller-search') ||
+                        offersByKey.has('mueller') ||
+                        hasNativeMerchantIn(
+                            getNativeMerchantEntries(),
+                            ['müller', 'mueller']
+                        );
+                    globalThis.BM_muellerApifyNeeded = () => brickbankSettled &&
+                        BM_isOfferShopEnabled('mueller') && !hasMuellerPrice();
                     const chooseAvailableOffer = offer => {
                         const candidates = Array.isArray(offer?.candidateOffers) &&
                             offer.candidateOffers.length > 0
@@ -15248,16 +15325,8 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         // gelesen. Zuvor wurde die komplette Offerlist für jeden
                         // einzelnen Zusatzanbieter erneut durchsucht.
                         const nativeMerchantEntries = getNativeMerchantEntries();
-                        const hasNativeMerchant = aliases => {
-                            const normalizedAliases = aliases.map(normalizeMerchantText);
-                            return nativeMerchantEntries.some(entry =>
-                                normalizedAliases.some(alias =>
-                                    entry.haystack === alias ||
-                                    entry.haystack.startsWith(`${alias} `) ||
-                                    entry.haystack.includes(`link zu ${alias} `)
-                                )
-                            );
-                        };
+                        const hasNativeMerchant = aliases =>
+                            hasNativeMerchantIn(nativeMerchantEntries, aliases);
                         const availableOffers = Array.from(offersByKey.entries()).map(([key, offer]) => {
                             const available = chooseAvailableOffer(offer);
                             if (available) offersByKey.set(key, available);
@@ -15548,7 +15617,10 @@ globalThis.BM_findShopShippingRule = merchantName => {
                             const priceSpan = priceRow.querySelector('span.price');
                             return priceSpan ? getBaseOfferPrice(priceSpan) : null;
                         }).filter(price => Number.isFinite(price) && price > 0);
-                        return prices.length > 0 ? Math.min(...prices) : null;
+                        if (prices.length > 0) return Math.min(...prices);
+                        // Ohne gerenderte Händlerzeile wäre jeder Referenzvergleich ein
+                        // stiller Fehlschlag; der JSON-LD-Wert des Seitenaufrufs hilft.
+                        return globalThis.BM_getJsonLdBestPrice?.(document) ?? null;
                     };
 
                     const getEbayOfferTotal = offer => {
@@ -15999,7 +16071,15 @@ globalThis.BM_findShopShippingRule = merchantName => {
                             ['vinted', { label: 'Vinted', logoDomain: 'vinted.de' }],
                             ['leboncoin', { label: 'Leboncoin', logoDomain: 'leboncoin.fr' }],
                             ['stockx', { label: 'StockX', logoDomain: 'stockx.com' }],
-                            ['klarna', { label: 'Klarna', logoDomain: 'klarna.com' }]
+                            ['klarna', { label: 'Klarna', logoDomain: 'klarna.com' }],
+                            // manualOnly: Müller hängt am Brickbank-Fallback und läuft nicht
+                            // im passiven Zyklus mit, weil der Actor sonst fast jedes Set
+                            // teuer abfragen würde.
+                            ['mueller', {
+                                label: 'Müller',
+                                logoDomain: 'mueller.de',
+                                manualOnly: true
+                            }]
                         ]);
                         const applyApifyMarketplaceResult = (
                             source,
@@ -16044,7 +16124,9 @@ globalThis.BM_findShopShippingRule = merchantName => {
                                                 ? BM_MOBILE_CHROME.runtime.getURL('icons/logo-stockx.svg')
                                                 : source === 'klarna'
                                                     ? BM_MOBILE_CHROME.runtime.getURL('icons/logo-klarna.png')
-                                                    : icon(logoDomain),
+                                                    : source === 'mueller'
+                                                        ? MUELLER_LOGO_URL
+                                                        : icon(logoDomain),
                                     `${source}-apify`,
                                     `${label}: Angebot ${index + 1} von ${result.comparedOffers} passenden Angeboten; ${stockxCurrencyNote}Gesamtpreis${Number.isFinite(transactionFee) ? ` inklusive geschätzter Transaktionsgebühr ${formatEuroValue(transactionFee)} €` : ''}; ${candidate.title}`,
                                     {
@@ -16118,6 +16200,12 @@ globalThis.BM_findShopShippingRule = merchantName => {
                                     error
                                 )
                             );
+                        };
+                        // Der Brickbank-Aufruf liegt in einem äußeren Scope und kann diese
+                        // Funktion nicht direkt erreichen; er meldet den Müller-Fallback an.
+                        globalThis.BM_fetchMuellerFromApifyCache = () => {
+                            if (!globalThis.BM_muellerApifyNeeded()) return;
+                            fetchApifyMarketplaceOffer('mueller', 'Müller', 'mueller.de');
                         };
                         apifyMarketplaceConfigs.forEach((config, source) => {
                             if (config.manualOnly) return;
@@ -16497,10 +16585,12 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         },
                         timeout: 15000,
                         onload: response => {
+                            brickbankSettled = true;
                             if (response.status !== 200) {
                                 console.warn(
                                     `Brickmerge Tweaker: Brickbank antwortete mit Status ${response.status}.`
                                 );
+                                globalThis.BM_fetchMuellerFromApifyCache?.();
                                 return;
                             }
 
@@ -16522,10 +16612,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                                     label: 'Müller',
                                     pattern: /m[uü]eller|müller/i,
                                     searchDomain: 'mueller.de',
-                                    logoUrl: new URL(
-                                        '/img/merchants/m_ller_ico.gif',
-                                        window.location.origin
-                                    ).href,
+                                    logoUrl: MUELLER_LOGO_URL,
                                     logoFallbackUrl:
                                         'https://www.google.com/s2/favicons?sz=128&domain_url=mueller.de'
                                 }
@@ -16580,16 +16667,24 @@ globalThis.BM_findShopShippingRule = merchantName => {
                                 };
                             }).filter(Boolean);
                             if (offers.length > 0) storeOffers(offers);
+                            // Ohne Müller-Preis bei Brickbank wird zumindest der gefüllte
+                            // Worker-Cache gelesen; der Actor-Lauf startet erst über den
+                            // Refresh-Button.
+                            globalThis.BM_fetchMuellerFromApifyCache?.();
                         },
                         onerror: () => {
+                            brickbankSettled = true;
                             console.warn(
                                 'Brickmerge Tweaker: Brickbank-Preisabfrage fehlgeschlagen.'
                             );
+                            globalThis.BM_fetchMuellerFromApifyCache?.();
                         },
                         ontimeout: () => {
+                            brickbankSettled = true;
                             console.warn(
                                 'Brickmerge Tweaker: Brickbank-Preisabfrage - Timeout.'
                             );
+                            globalThis.BM_fetchMuellerFromApifyCache?.();
                         }
                     });
 

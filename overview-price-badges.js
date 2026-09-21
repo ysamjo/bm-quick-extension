@@ -334,6 +334,14 @@
     // aktualisieren. Dazu gehört auch der manuelle Kleinanzeigen-Apify-Fallback.
     const buttonSources = settings => enabledSources(settings);
 
+    // Müller gehört nicht zur Standardliste: Die Quelle läuft über Brickbank und
+    // wird nur zusätzlich über Apify gezogen, wenn der Tweaker keinen Müller-Preis
+    // kennt. Der Tweaker meldet das über seinen Brickbank-Fallback.
+    const withMuellerSource = (sources, muellerNeeded) =>
+        muellerNeeded && !sources.includes('mueller')
+            ? [...sources, 'mueller']
+            : sources;
+
     const core = Object.freeze({
         CARD_SELECTOR,
         SOURCE_ORDER,
@@ -352,6 +360,7 @@
         createLimiter,
         enabledSources,
         buttonSources,
+        withMuellerSource,
         isSearchPage
     });
     globalThis.BM_OVERVIEW_PRICE_CORE = core;
@@ -951,7 +960,11 @@
                     );
                     return;
                 }
-                if (sources.length === 0) {
+                const activeSources = withMuellerSource(
+                    sources,
+                    globalThis.BM_muellerApifyNeeded?.() === true
+                );
+                if (activeSources.length === 0) {
                     setRefreshButtonState(
                         button,
                         'error',
@@ -967,7 +980,7 @@
                     const label = button.querySelector('.bm-refresh-label');
                     if (label) label.textContent =
                         'Marktplätze werden geladen … ' +
-                        `(${completedSources.size}/${sources.length})`;
+                        `(${completedSources.size}/${activeSources.length})`;
                     document.dispatchEvent(new CustomEvent(
                         'bm-marketplace-source-update',
                         {
@@ -985,7 +998,7 @@
                     await refreshBundle(
                         workerBaseUrl,
                         data,
-                        sources,
+                        activeSources,
                         handleSourceUpdate
                     );
                     setRefreshButtonState(button, 'done');

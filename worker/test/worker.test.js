@@ -1449,6 +1449,56 @@ test('BrickLink-Minifiguren werden mit Namen und Menge strukturiert extrahiert',
     assert.equal(result.some(item => item.id === 'sx4'), false);
   });
 
+  test('Müller verwertet nur lagernde LEGO-Treffer der gesuchten Setnummer', () => {
+    const result = __test.normalizeMuellerItems([
+      {
+        name: 'LEGO City 60378 Personentransport',
+        price: 44.99,
+        currency: 'EUR',
+        url: 'https://www.mueller.de/p/lego-city-60378-personentransport-PPN99001/',
+        ean: '5702017424965',
+        productId: '99001',
+        inStock: true,
+        deliveryInfo: 'Online verfügbar'
+      },
+      {
+        name: 'LEGO City 60378 Personentransport',
+        price: 39.99,
+        currency: 'EUR',
+        url: 'https://www.mueller.de/p/lego-city-60378-nicht-lagernd/',
+        inStock: false
+      },
+      {
+        name: 'Bübchen Shampoo & Duschgel 2in1',
+        price: 2.45,
+        currency: 'EUR',
+        url: 'https://www.mueller.de/p/buebchen-shampoo/',
+        inStock: true
+      },
+      {
+        name: 'LEGO City 60379 Hubschrauber',
+        price: 19.99,
+        currency: 'EUR',
+        url: 'https://www.mueller.de/p/lego-city-60379/',
+        inStock: true
+      }
+    ], '60378');
+    assert.deepEqual(__test.APIFY_CONFIG.mueller.buildInput('60378'), {
+      searchQuery: 'LEGO 60378',
+      maxResults: 8,
+      proxyConfiguration: {
+        useApifyProxy: true,
+        apifyProxyGroups: ['RESIDENTIAL'],
+        apifyProxyCountry: 'DE'
+      }
+    });
+    assert.equal(result.length, 1);
+    assert.equal(result[0].marketplace, 'mueller');
+    assert.equal(result[0].total, 44.99);
+    assert.equal(result[0].shopName, 'Müller');
+    assert.equal(result[0].id, '99001');
+  });
+
   test('Idealo normalisiert und sortiert die drei günstigsten Händlerangebote', () => {
     const result = __test.normalizeIdealoItems([{
       status: 'found',

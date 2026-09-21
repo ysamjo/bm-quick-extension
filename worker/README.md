@@ -65,6 +65,15 @@ abrufen“. Der separate Product-Offers-Actor benötigt bereits eine Klarna-
 Produkt-URL und ist deshalb für den direkten Brickmerge-EAN-Abruf nicht die
 passende Eingabe.
 
+Müller wird über `studio-amba/mueller-de-scraper` abgefragt (`/mueller?set=...`).
+Der Actor sucht stichwortartig in der gesamten Drogerie, deshalb akzeptiert
+`normalizeMuellerItems` nur Treffer mit „LEGO" und exakt der gesuchten Setnummer
+im Titel und verwirft als nicht lagernd markierte Produkte. `mueller.de` legt ein
+JS-Bot-Challenge vor, womit residential Proxies zwingend sind; das Kostenlimit
+liegt bei 0,05 USD pro Lauf. Die Quelle ist kein Dauerabruf: Brickbank beziffert
+Müller nur für einen kleinen Teil der Sets, daher fragt die Extension Müller
+über Apify erst an, wenn Brickbank und Offerlist keinen Müller-Preis kennen.
+
 `/ebay-minifig?itemNo=...` liefert den günstigsten passenden eBay-Sofort-Kaufen-
 Treffer für eine BrickLink-Minifiguren-ID. Wie `/price` wird die Route intern an
 `ebay-price-api` delegiert. OAuth, Secrets, eBay-Cache und Rate-Limits bleiben

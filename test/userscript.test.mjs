@@ -701,6 +701,80 @@ test('minifigure crosswalk assigns similar variants globally by character identi
     assert.equal(new Set(crosswalk.values()).size, 4);
 });
 
+// Ohne Referenzpreis wäre die 50%-Plausibilität ein stiller No-Op. Brickmerge
+// liefert seinen Bestpreis aber im JSON-LD des ersten HTML mit.
+test('Der JSON-LD-Bestpreis füllt die Referenz, bevor Händlerzeilen gerendert sind', () => {
+    const sharedSource = fs.readFileSync(
+        new URL('../src/shared.js', import.meta.url),
+        'utf8'
+    );
+    const context = vm.createContext({ URL });
+    vm.runInContext(sharedSource, context);
+
+    const docWith = payloads => ({
+        querySelectorAll: () => payloads.map(text => ({
+            textContent: typeof text === 'string' ? text : JSON.stringify(text)
+        }))
+    });
+    const aggregate = offer => ({
+        '@context': 'https://schema.org/',
+        '@type': 'Product',
+        offers: {
+            '@type': 'AggregateOffer',
+            priceCurrency: 'EUR',
+            lowPrice: '1499.99',
+            availability: 'https://schema.org/InStock',
+            ...offer
+        }
+    });
+
+    assert.equal(context.BM_getJsonLdBestPrice(docWith([aggregate()])), 1499.99);
+    assert.equal(
+        context.BM_getJsonLdBestPrice(docWith([aggregate({ lowPrice: '1.499,99' })])),
+        1499.99,
+        'auch deutsch formatierte Zahlen dürfen die Referenz nicht kippen'
+    );
+    assert.equal(
+        context.BM_getJsonLdBestPrice(
+            docWith([
+                aggregate({ lowPrice: '181.99' }),
+                aggregate({ lowPrice: undefined, price: 90.5 })
+            ])
+        ),
+        90.5
+    );
+    assert.equal(
+        context.BM_getJsonLdBestPrice(
+            docWith([aggregate({ availability: 'https://schema.org/OutOfStock' })])
+        ),
+        null,
+        'ein Ausverkaufspreis ist keine Referenz für den aktuellen Bestpreis'
+    );
+    assert.equal(
+        context.BM_getJsonLdBestPrice(docWith([aggregate({ priceCurrency: 'USD' })])),
+        null
+    );
+    assert.equal(context.BM_getJsonLdBestPrice(docWith(['{kein json'])), null);
+    assert.equal(context.BM_getJsonLdBestPrice(docWith([])), null);
+    assert.equal(context.BM_getJsonLdBestPrice(undefined), null);
+
+    // Der Tweaker darf die JSON-LD-Zahl nur als Ersatz benutzen, nicht zuerst.
+    assert.match(
+        tweakerSource,
+        /if \(prices\.length > 0\) return Math\.min\(\.\.\.prices\);\s*\n\s*\/\/[^\n]*\n\s*\/\/[^\n]*\n\s*return globalThis\.BM_getJsonLdBestPrice\?\.\(document\) \?\? null;/
+    );
+
+    // Die gefundene Referenz muss wirklich durch den Filter laufen.
+    assert.equal(
+        context.BM_isMarketplacePricePlausible(
+            'idealo',
+            49.99,
+            context.BM_getJsonLdBestPrice(docWith([aggregate({ lowPrice: '100' })]))
+        ),
+        false
+    );
+});
+
 test('eBay offers below half the Brickmerge price are rejected', () => {
     const sharedSource = fs.readFileSync(
         new URL('../src/shared.js', import.meta.url),
@@ -2587,6 +2661,89 @@ test('Müller appears as a link-list pill only while no Müller offer row exists
     )?.[0] || '';
     assert.notEqual(rules, '', 'Shortcut-Regeln der Linkleiste nicht gefunden');
     assert.match(rules, /id: 'btn-mueller-search', pattern: \/\\bm\[uü\]eller/);
+});
+
+test('Müller fragt Apify erst nach dem Brickbank-Fallback und nur auf der Detailseite ab', () => {
+    // Kommentare dürfen die Reihenfolge-Prüfungen nicht zerschneiden.
+    const codeOnly = tweakerSource.replace(/^\s*\/\/.*$/gm, '');
+    // Jeder Müller-Actor-Lauf kostet Geld: Die Quelle darf nie im passiven
+    // Zyklus laufen, sondern nur, wenn Brickbank tatsächlich keinen Müller-Preis
+    // geliefert hat.
+    assert.match(
+        tweakerSource,
+        /\['mueller', \{[\s\S]*?manualOnly: true\s*\}\]/
+    );
+    assert.match(
+        tweakerSource,
+        /apifyMarketplaceConfigs\.forEach\(\(config, source\) => \{\s*if \(config\.manualOnly\) return;/
+    );
+
+    const gate = tweakerSource.match(
+        /let brickbankSettled = false;[\s\S]*?BM_muellerApifyNeeded = \(\) =>[\s\S]*?hasMuellerPrice\(\);/
+    )?.[0] || '';
+    assert.notEqual(gate, '', 'Müller-Gate im Tweaker nicht gefunden');
+    assert.match(gate, /brickbankSettled &&/);
+    assert.match(gate, /BM_isOfferShopEnabled\('mueller'\)/);
+    assert.match(gate, /!hasMuellerPrice\(\)/);
+    assert.match(
+        gate,
+        /hasNativeMerchantIn\(\s*getNativeMerchantEntries\(\),\s*\['müller', 'mueller'\]\s*\)/
+    );
+
+    // Jede Fallback-Meldung muss nach einer Brickbank-Abschlussmarkierung
+    // passieren, sonst hängt Müller für immer in der Warteschleife. onLoad setzt
+    // die Markierung einmal oben und meldet danach in beiden Zweigen.
+    const settledCount = tweakerSource.match(/brickbankSettled = true;/g)?.length || 0;
+    const fallbackCount = tweakerSource.match(/globalThis\.BM_fetchMuellerFromApifyCache\?\.\(\);/g)?.length || 0;
+    assert.equal(settledCount, 3, 'Erwartet onLoad, onError und onTimeout');
+    assert.equal(fallbackCount, settledCount + 1, 'zusätzlich der Nicht-200-Zweig');
+    assert.match(
+        tweakerSource,
+        /onload: response => \{\s*brickbankSettled = true;\s*if \(response\.status !== 200\) \{/
+    );
+    assert.match(
+        codeOnly,
+        /if \(offers\.length > 0\) storeOffers\(offers\);\s*globalThis\.BM_fetchMuellerFromApifyCache\?\.\(\);/
+    );
+    // Der Fallback liest ausschließlich den Worker-Cache; ein bezahlter
+    // Actor-Lauf beginnt erst mit dem Refresh-Button der Detailseite.
+    assert.match(
+        tweakerSource,
+        /globalThis\.BM_fetchMuellerFromApifyCache = \(\) => \{[\s\S]*?fetchApifyMarketplaceOffer\(\s*'mueller',\s*'Müller',\s*'mueller\.de'\s*\);/
+    );
+
+    const overviewSource = fs.readFileSync(
+        new URL('../src/overview-price-badges.js', import.meta.url),
+        'utf8'
+    );
+    const context = vm.createContext({ URL });
+    vm.runInContext(overviewSource, context);
+    const { withMuellerSource, buttonSources } = context.BM_OVERVIEW_PRICE_CORE;
+
+    // Die Arrays stammen aus einem vm-Kontext, deshalb über Strings vergleichen.
+    const join = list => Array.from(list).join(',');
+    assert.equal(
+        join(withMuellerSource(['klarna', 'stockx'], true)),
+        'klarna,stockx,mueller'
+    );
+    assert.equal(join(withMuellerSource(['klarna'], false)), 'klarna');
+    assert.equal(
+        join(withMuellerSource(['klarna', 'mueller'], true)),
+        'klarna,mueller',
+        'eine doppelte Müller-Quelle würde doppelt Geld kosten'
+    );
+    assert.equal(
+        Array.from(buttonSources({ linkRows: {}, offerShops: { mueller: true } }))
+            .includes('mueller'),
+        false,
+        'Müller gehört nicht zur Standardquelle des Refresh-Buttons'
+    );
+    // Ohne gelesene Setnummer bricht der Klick ab, bevor Apify erreicht wird.
+    assert.match(overviewSource, /if \(!data\) \{[\s\S]*?Setnummer oder EAN konnte noch nicht gelesen werden/);
+    assert.match(
+        overviewSource,
+        /const activeSources = withMuellerSource\(\s*sources,\s*globalThis\.BM_muellerApifyNeeded\?\.\(\) === true\s*\)/
+    );
 });
 
 

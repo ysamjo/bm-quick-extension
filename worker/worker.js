@@ -716,6 +716,42 @@ function normalizeStockxItems(rawItems, setNumber, officialSetTitle = null) {
   }).filter(Boolean);
 }
 __name(normalizeStockxItems, "normalizeStockxItems");
+// Der Müller-Actor liefert Suchergebnisse der gesamten Drogerie, nicht nur
+// Spielwaren. Ohne Setnummer im Titel ist ein Treffer nicht verwertbar.
+function normalizeMuellerItems(rawItems, setNumber, officialSetTitle = null) {
+  if (!Array.isArray(rawItems)) return [];
+  return rawItems.map((item) => {
+    if (!item || typeof item !== "object") return null;
+    const title = normalizedText(item.name ?? item.title ?? item.productName);
+    const description = normalizedText(item.productDescription ?? item.description ?? "");
+    if (!/\blego\b/i.test(title) ||
+      !isRelevantLegoListing(title, description, setNumber, officialSetTitle)) return null;
+    if (item.inStock === false) return null;
+    if (normalizedText(item.currency ?? "EUR").toUpperCase() !== "EUR") return null;
+    const price = parseListingPrice(item.price);
+    if (price === null) return null;
+    return {
+      marketplace: "mueller",
+      id: item.productId ?? item.sku ?? item.ean ?? null,
+      title,
+      price,
+      total: price,
+      currency: "EUR",
+      url: absolutizeUrl(item.url, "https://www.mueller.de/") ||
+        `https://www.mueller.de/suche/?text=${encodeURIComponent(`LEGO ${setNumber}`)}`,
+      imageUrl: normalizedText(item.imageUrl) || null,
+      condition: "Neu",
+      shippingAvailable: null,
+      shippingCost: null,
+      shopName: "Müller",
+      sellerName: "Müller",
+      ean: normalizedText(item.ean) || null,
+      deliveryInfo: normalizedText(item.deliveryInfo) || null,
+      raw: item
+    };
+  }).filter(Boolean);
+}
+__name(normalizeMuellerItems, "normalizeMuellerItems");
 function normalizeIdealoItems(rawItems) {
   const candidates = [];
   const visit = (value) => {
@@ -1213,6 +1249,8 @@ var TTL = Object.freeze({
   googleShoppingEmpty: 20 * 60,
   klarna: 2 * 60 * 60,
   klarnaEmpty: 20 * 60,
+  mueller: 2 * 60 * 60,
+  muellerEmpty: 20 * 60,
   idealo: 2 * 60 * 60,
   idealoEmpty: 20 * 60,
   brickbank: 2 * 60 * 60,
@@ -1324,6 +1362,25 @@ var APIFY_CONFIG = Object.freeze({
     buildInput(_setNumber, ean) {
       return { startEANs: [ean] };
     }
+  }),
+  mueller: Object.freeze({
+    actorId: "studio-amba~mueller-de-scraper",
+    cacheVersion: "v1",
+    listingHost: "www.mueller.de",
+    maxTotalChargeUsd: 0.05,
+    normalize: normalizeMuellerItems,
+    buildInput(setNumber) {
+      return {
+        searchQuery: `LEGO ${setNumber}`,
+        maxResults: 8,
+        // mueller.de legt ein JS-Bot-Challenge vor, daher zwingend residential.
+        proxyConfiguration: {
+          useApifyProxy: true,
+          apifyProxyGroups: ["RESIDENTIAL"],
+          apifyProxyCountry: "DE"
+        }
+      };
+    }
   })
 });
 var index_default = {
@@ -1353,6 +1410,7 @@ var index_default = {
             "/stockx",
             "/google-shopping",
             "/klarna",
+            "/mueller",
             "/idealo",
             "/bricklink",
             "/offers/dismissals",
@@ -1405,6 +1463,9 @@ var index_default = {
       }
       if (url.pathname === "/klarna") {
         return startApifyMarketplaceJob(request, url, env, "klarna");
+      }
+      if (url.pathname === "/mueller") {
+        return startApifyMarketplaceJob(request, url, env, "mueller");
       }
       if (url.pathname === "/google-shopping") {
         return handleGoogleShopping(request, url, env, ctx);
@@ -1569,6 +1630,7 @@ const OFFER_BUNDLE_SOURCES = Object.freeze([
   "leboncoin",
   "stockx",
   "klarna",
+  "mueller",
   "idealo",
   "bricklink"
 ]);
@@ -1676,6 +1738,12 @@ async function handleOfferBundle(request, url, env, ctx, cacheOnly) {
       makeSourceUrl("/klarna"),
       env,
       "klarna"
+    ),
+    mueller: () => startApifyMarketplaceJob(
+      request,
+      makeSourceUrl("/mueller"),
+      env,
+      "mueller"
     ),
     idealo: () => startApifyIdealoJob(
       request,
@@ -2949,6 +3017,7 @@ var __test = Object.freeze({
   parseGoogleShoppingDelivery,
   normalizeGoogleShoppingResults,
   normalizeStockxItems,
+  normalizeMuellerItems,
   normalizeIdealoItems,
   extractBricklinkMinifigItemNos,
   extractBricklinkMinifigItems,
