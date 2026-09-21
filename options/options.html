@@ -19,13 +19,14 @@
     <form id="settings-form">
       <section>
         <h2>💰 Preisvergleich</h2>
+        <p class="intro"><span data-count-shops>13 von 13</span> Quellen aktiv.</p>
         <div class="menu-list">
-          <label class="setting main"><input type="checkbox" data-setting="marketplacesInOfferlist"> <span><strong>Externe Quellen einbeziehen</strong><small>Bringt Händler von eBay, BrickLink, Kleinanzeigen und Co. in die Offerlist, in alle Preisanzeigen und in den Abruf-Button. Ohne diese Option zählt ausschließlich der beste Preis aus den Brickmerge-Händlern.</small></span></label>
-          <label class="setting"><input type="checkbox" data-setting-group="pricesAndSorting"> <span><strong>Effektivpreis statt Listenpreis</strong><small>Rechnet Versandkosten und Freigrenzen mit ein und sortiert die Offerlist nach dem Preis, der am Ende tatsächlich gezahlt wird.</small></span></label>
+          <label class="setting main"><input type="checkbox" data-setting="marketplacesInOfferlist"> <span><strong>Externe Quellen einbeziehen</strong><small>Bringt Händler von eBay, BrickLink, Kleinanzeigen und Co. in die Offerlist und in den Bestpreis. Ohne diese Option zählt nur der beste Brickmerge-Händlerpreis.</small></span></label>
+          <label class="setting"><input type="checkbox" data-setting-group="pricesAndSorting"> <span><strong>Effektivpreis statt Listenpreis</strong><small>Rechnet Versandkosten und Freigrenzen mit ein; sortiert wird nach dem Preis, den du tatsächlich zahlst.</small></span></label>
         </div>
 
         <details class="bm-shops-details">
-          <summary>13 Quellen einzeln an- oder abschalten</summary>
+          <summary>Quellen einzeln an- oder abschalten</summary>
 
           <div class="sub-group-title">Deutschland &amp; internationale Anbieter</div>
           <div class="shop-grid menu-list">
@@ -53,14 +54,13 @@
 
       <section>
         <h2>🔗 Linkleiste</h2>
+        <p class="intro"><span data-count-rows>5 von 5</span> Zeilen aktiv – direkt über der Angebotsliste.</p>
         <div class="menu-list">
-          <label class="setting main"><input type="checkbox" data-setting="linkPanel"> <span><strong>Zusätzliche Linkleiste anzeigen</strong><small>Blendet oberhalb der Offerlist eine eigene Zeile mit Händler-, Länder- und Ressourcenlinks ein. Einzelne Gruppen lassen sich unten ausschalten.</small></span></label>
-        </div>
-        <div class="menu-list">
+          <label class="setting main"><input type="checkbox" data-setting="linkPanel"> <span><strong>Linkleiste anzeigen</strong><small>Hauptschalter für alle Zeilen darunter.</small></span></label>
           <label class="setting"><input type="checkbox" data-link-row="tools"> <span><strong>Tools</strong><small>Preisalarm, Wunschliste, ROI-Rechner und Depot</small></span></label>
           <label class="setting"><input type="checkbox" data-link-row="marketplaces"> <span><strong>Marktplätze</strong><small>eBay, Kleinanzeigen, Vinted, StockX, BrickOwl und BrickLink</small></span></label>
-          <label class="setting"><input type="checkbox" data-link-row="france"> <span><strong>Frankreich 🇫🇷</strong><small>eBay.fr, Leboncoin und Idealo Frankreich – inklusive der dazugehörigen Preisabrufe</small></span></label>
-          <label class="setting"><input type="checkbox" data-link-row="resources"> <span><strong>Ressourcen</strong><small>CMF Scanner, Rebrickable, Meta, Geizhals, Mydealz, Google Shopping, Klarna, idealo und Reviews</small></span></label>
+          <label class="setting"><input type="checkbox" data-link-row="france"> <span><strong>Frankreich 🇫🇷</strong><small>eBay.fr, Leboncoin und Idealo Frankreich – samt den dazugehörigen Preisabrufen</small></span></label>
+          <label class="setting"><input type="checkbox" data-link-row="resources"> <span><strong>Ressourcen</strong><small>Rebrickable, Geizhals, mydealz, Google Shopping, Klarna, idealo, Reviews und CMF-Scanner</small></span></label>
           <label class="setting"><input type="checkbox" data-link-row="history"> <span><strong>Verkaufshistorie</strong><small>Erzielte Preise bei eBay, BrickLink und Keepa</small></span></label>
         </div>
       </section>
@@ -69,16 +69,16 @@
         <h2>🔍 Suche &amp; Navigation</h2>
         <div class="menu-list">
           <label class="setting"><input type="checkbox" data-setting="searchInSidebar"> <span><strong>Suche in Seitenleiste öffnen</strong><small>Ergebnisse aus dem Popup schweben über der aktuellen Seite statt in einem neuen Tab.</small></span></label>
-          <label class="setting"><input type="checkbox" data-setting="luckyFallback"> <span><strong>Intelligente Suche</strong><small>Findet Brickmerge nichts, führt die Suche über DuckDuckGo direkt zum passenden Set.</small></span></label>
-          <label class="setting"><input type="checkbox" data-setting="autoContinueRedirect"> <span><strong>Shop-Weiterleitung automatisch fortsetzen</strong><small>Überspringt die Zwischenseiten beim Klick auf einen Händler.</small></span></label>
+          <label class="setting"><input type="checkbox" data-setting="luckyFallback"> <span><strong>Intelligente Suche</strong><small>Findet Brickmerge kein Set, führt die Suche über DuckDuckGo direkt zum passenden Treffer.</small></span></label>
+          <label class="setting"><input type="checkbox" data-setting="autoContinueRedirect"> <span><strong>Shop-Weiterleitung automatisch fortsetzen</strong><small>Überspringt die Zwischenseite „Du verlässt brickmerge…“ beim Klick auf einen Händler.</small></span></label>
         </div>
       </section>
 
       <section>
         <h2>🛠️ Werkzeuge auf der Detailseite</h2>
         <div class="menu-list">
-          <label class="setting"><input type="checkbox" data-setting="copyAndMinifigures"> <span><strong>Kopieren und Minifiguren</strong><small>Knopf Set-Infos kopieren sowie Teile- und Minifiguren-Übersicht.</small></span></label>
-          <label class="setting"><input type="checkbox" data-setting="selectionPopup"> <span><strong>Markierten Begriff suchen</strong><small>Markieren allein löst nichts aus; erst ein Klick auf das Brickmerge-Symbol sucht den Text in der Seitenleiste.</small></span></label>
+          <label class="setting"><input type="checkbox" data-setting="copyAndMinifigures"> <span><strong>Setdaten kopieren &amp; Minifiguren</strong><small>Knopf für Titel, Setnummer und Preis plus Teile- und Minifiguren-Übersicht.</small></span></label>
+          <label class="setting"><input type="checkbox" data-setting="selectionPopup"> <span><strong>Markierten Begriff suchen</strong><small>Markieren allein löst nichts aus: erst ein Klick auf das Brickmerge-Symbol sucht den Text in der Seitenleiste.</small></span></label>
         </div>
       </section>
 

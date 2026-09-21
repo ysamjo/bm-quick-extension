@@ -50,7 +50,8 @@ h2 { margin: 0 0 12px; font-size: 18px; }
 .setting span { min-width: 0; flex: 1; }
 .setting small { margin-top: 2px; color: #6a6a6a; }
 .setting.main { border-bottom: 1px solid #eee; margin-bottom: 4px; padding-bottom: 12px; }
-.shop-grid, .menu-list { display: grid; grid-template-columns: 1fr; gap: 2px; }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2px 16px; }
+.menu-list { display: grid; grid-template-columns: 1fr; gap: 2px; }
 .sub-group-title {
   font-size: 12px;
   font-weight: 700;

@@ -21,24 +21,48 @@ function populate(settingsValue) {
     document.querySelectorAll('[data-link-row]').forEach(input => {
         input.checked = settings.linkRows[input.dataset.linkRow] !== false;
     });
-    updateShopControls();
+    updateOverview();
 }
 
 function updateShopControls() {
     const marketplacesEnabled = document.querySelector('[data-setting="marketplacesInOfferlist"]')?.checked !== false;
     const franceEnabled = document.querySelector('[data-link-row="france"]')?.checked === true;
-    ['ebayFr', 'leboncoin', 'idealo'].forEach(shop => {
-        const input = document.querySelector(`[data-shop="${shop}"]`);
-        if (!input) return;
-        const disabled = !marketplacesEnabled || !franceEnabled;
-        input.disabled = disabled;
-        input.closest('.setting')?.classList.toggle('is-disabled', disabled);
-    });
+    const enabled = shop => ['ebayFr', 'leboncoin', 'idealo'].includes(shop)
+        ? marketplacesEnabled && franceEnabled
+        : marketplacesEnabled;
     document.querySelectorAll('[data-shop]').forEach(input => {
-        if (['ebayFr', 'leboncoin', 'idealo'].includes(input.dataset.shop)) return;
-        input.disabled = !marketplacesEnabled;
-        input.closest('.setting')?.classList.toggle('is-disabled', !marketplacesEnabled);
+        setControlEnabled(input, enabled(input.dataset.shop));
     });
+}
+
+function updateLinkRowControls() {
+    const enabled = document.querySelector('[data-setting="linkPanel"]')?.checked !== false;
+    document.querySelectorAll('[data-link-row]').forEach(input => {
+        setControlEnabled(input, enabled);
+    });
+}
+
+function setControlEnabled(input, enabled) {
+    input.disabled = !enabled;
+    input.closest('label')?.classList.toggle('is-disabled', !enabled);
+}
+
+function updateCounters() {
+    const count = (selector, target) => {
+        const inputs = [...document.querySelectorAll(selector)];
+        const active = inputs.filter(input => input.checked && !input.disabled).length;
+        document.querySelectorAll(target).forEach(el => {
+            el.textContent = `${active} von ${inputs.length}`;
+        });
+    };
+    count('[data-shop]', '[data-count-shops]');
+    count('[data-link-row]', '[data-count-rows]');
+}
+
+function updateOverview() {
+    updateShopControls();
+    updateLinkRowControls();
+    updateCounters();
 }
 
 function readForm() {
@@ -70,15 +94,6 @@ async function reloadBrickmergeTabs() {
 
 chrome.storage.local.get('settings').then(({ settings }) => populate(settings));
 
-document.querySelector('[data-link-row="france"]')?.addEventListener(
-    'change',
-    updateShopControls
-);
-document.querySelector('[data-setting="marketplacesInOfferlist"]')?.addEventListener(
-    'change',
-    updateShopControls
-);
-
 async function saveSettings() {
     await chrome.storage.local.set({ settings: readForm() });
     await reloadBrickmergeTabs();
@@ -92,6 +107,7 @@ form.addEventListener('submit', async event => {
 });
 
 form.addEventListener('change', async () => {
+    updateOverview();
     await saveSettings();
 });
 
