@@ -389,8 +389,8 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
     assert.match(selectionPopup, /document\.addEventListener\('selectionchange'/);
     assert.match(selectionPopup, /sendResponse\(\{ term \}\)/);
     assert.doesNotMatch(selectionPopup, /attachShadow|createElement|Google Lucky|bubble/);
-    assert.match(options, /<h2>Markierungssuche<\/h2>/);
-    assert.match(options, /Zeigt beim Markieren nichts an/);
+    assert.match(options, /data-setting="selectionPopup"/);
+    assert.match(options, /Markieren allein löst nichts aus/);
     assert.match(popup, /id="query"[^>]*autofocus/);
     assert.match(popup, /placeholder="Setnummer oder Suchbegriff"/);
 });
