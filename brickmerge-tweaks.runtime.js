@@ -253,7 +253,8 @@ globalThis.BM_MARKETPLACE_REFERENCE_FILTER_SOURCES = Object.freeze([
     'stockx',
     'google-shopping',
     'klarna',
-    'idealo'
+    'idealo',
+    'mueller'
 ]);
 globalThis.BM_getMarketplaceMinimumPrice = referencePrice => {
     const reference = Number(referencePrice);

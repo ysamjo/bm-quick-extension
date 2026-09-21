@@ -2772,6 +2772,44 @@ test('Müller fragt Apify erst nach dem Brickbank-Fallback und nur auf der Detai
     );
 });
 
+test('Jede Apify-Quelle steckt in der Liste der 50-Prozent-Prüfung', () => {
+    const workerSource = fs.readFileSync(
+        new URL('../worker/worker.js', import.meta.url),
+        'utf8'
+    );
+    const apifyConfig = workerSource.match(
+        /var APIFY_CONFIG = Object\.freeze\(\{([\s\S]*?)\n\}\);/
+    )?.[1];
+    assert.ok(apifyConfig, 'APIFY_CONFIG im Worker nicht gefunden');
+    const apifySources = Array.from(
+        apifyConfig.matchAll(/^ {2}(\w+): Object\.freeze\(\{/gm),
+        match => match[1]
+    );
+    assert.ok(apifySources.length >= 6, 'APIFY_CONFIG scheint unvollständig zu lesen');
+
+    const context = vm.createContext({ URL });
+    vm.runInContext(sharedSource, context);
+    const filtered = Array.from(
+        context.BM_MARKETPLACE_REFERENCE_FILTER_SOURCES
+    );
+    // Idealo startet seinen Actor außerhalb von APIFY_CONFIG, ist aber
+    // derselbe bezahlte Scraper-Pfad.
+    for (const source of [...apifySources, 'idealo']) {
+        assert.ok(
+            filtered.includes(source),
+            `${source} läuft über Apify, wird aber ohne Referenzpreis durchgelassen`
+        );
+    }
+    assert.equal(
+        context.BM_isMarketplacePricePlausible('mueller', 49.99, 149.99),
+        false
+    );
+    assert.equal(
+        context.BM_isMarketplacePricePlausible('mueller', 79.99, 149.99),
+        true
+    );
+});
+
 
 
 
