@@ -2563,6 +2563,32 @@ test('topprice green line is removed, commercial eBay logo renders tie icon, and
     assert.match(tweakerSource, /txt === 'preisfehler melden' \|\| txt\.includes\('preisfehler'\)/);
 });
 
+test('Müller appears as a link-list pill only while no Müller offer row exists', () => {
+    // Brickbank beziffert Müller nur für wenige Sets; für alle übrigen gibt es
+    // keine Angebotszeile. Dann soll die Pille in der Marktplatz-Zeile stehen.
+    const group = tweakerSource.match(
+        /id:\s*"btn-bl"[\s\S]*?\n\s*\]\n\s*\},/
+    )?.[0] || '';
+    assert.notEqual(group, '', 'Marktplatz-Gruppe der Linkleiste nicht gefunden');
+    assert.match(
+        group,
+        /BM_isOfferShopEnabled\('mueller-search'\)/,
+        'Die Müller-Pille muss an der Müller-Freigabe hängen, nicht bedingungslos stehen'
+    );
+    assert.match(group, /id:\s*"btn-mueller-search"/);
+    assert.match(group, /site:mueller\.de LEGO \$\{setNum\}/);
+    assert.match(group, /icon\("mueller\.de"\)/);
+
+    // Sie verschwindet, sobald irgendwo eine Müller-Zeile steht – Angebotszeilen
+    // tragen data-bm-shortcut-id = "btn-<offer.key>", für Müller also
+    // btn-mueller-search.
+    const rules = tweakerSource.match(
+        /const rules = \[[\s\S]*?\n\s*\];/
+    )?.[0] || '';
+    assert.notEqual(rules, '', 'Shortcut-Regeln der Linkleiste nicht gefunden');
+    assert.match(rules, /id: 'btn-mueller-search', pattern: \/\\bm\[uü\]eller/);
+});
+
 
 
 

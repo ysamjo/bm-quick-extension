@@ -14438,7 +14438,21 @@ globalThis.BM_findShopShippingRule = merchantName => {
                             { id: "btn-vinted", name: "Vinted", url: `https://www.vinted.de/catalog?search_text=lego+${setNum}`, icon: icon("vinted.de") },
                             { id: "btn-stockx", name: "StockX", url: `https://stockx.com/search?s=lego%20${setNum}`, icon: icon("stockx.com") },
                             { id: "btn-bo", name: "BrickOwl", url: brickOwlSearchUrl(setNum), icon: icon("brickowl.com") },
-                            { id: "btn-bl", name: "Bricklink", url: `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setNum}-1#T=S&O={%22ss%22:%22DE%22,%22cond%22:%22N%22,%22ii%22:0,%22loc%22:%22DE%22,%22iconly%22:0}`, icon: icon("bricklink.com") }
+                            { id: "btn-bl", name: "Bricklink", url: `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setNum}-1#T=S&O={%22ss%22:%22DE%22,%22cond%22:%22N%22,%22ii%22:0,%22loc%22:%22DE%22,%22iconly%22:0}`, icon: icon("bricklink.com") },
+                            /* Müller-Ersatz: Brickbank beziffert Müller nur für einen kleinen
+                               Teil der Sets (gemessen 21.09.2026: 92 lagernde Sets, alle
+                               mueller.at). Für jedes andere Set liefert pvg einen leeren
+                               Stub – preis null, kein Produktlink – und es entsteht keine
+                               Angebotszeile. Diese Pille führt stattdessen zur Müller-Suche.
+                               Sie verschwindet, sobald irgendwo eine Müller-Zeile steht,
+                               siehe syncMarketplaceShortcutLinks(). */
+                            ...(BM_isOfferShopEnabled('mueller-search') ? [{
+                                id: "btn-mueller-search",
+                                name: "Müller",
+                                title: "Kein Müller-Preis bei Brickbank – direkt bei Müller suchen",
+                                url: `https://duckduckgo.com/?q=${encodeURIComponent(`!ducky site:mueller.de LEGO ${setNum}`)}`,
+                                icon: icon("mueller.de")
+                            }] : [])
                         ]
                     },
                     {
@@ -14781,7 +14795,13 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         { id: 'btn-leboncoin', pattern: /\bleboncoin(?:-apify)?\b/i },
                         { id: 'btn-stockx', pattern: /\bstockx(?:-apify)?\b/i },
                         { id: 'btn-bl', pattern: /\bbricklink\b/i },
-                        { id: 'btn-bo', pattern: /\bbrickowl\b|brickowl-de/i }
+                        { id: 'btn-bo', pattern: /\bbrickowl\b|brickowl-de/i },
+                        // Die Müller-Pille ist der Ersatz für die fehlende Angebotszeile:
+                        // sie erscheint nur, solange nirgends ein Müller-Preis steht.
+                        // Angebotszeilen tragen data-bm-shortcut-id = "btn-<offer.key>",
+                        // für Müller also btn-mueller-search; der Pattern fängt zusätzlich
+                        // eine native Brickmerge-Zeile ab.
+                        { id: 'btn-mueller-search', pattern: /\bm[uü]eller(?:-search)?\b/i }
                     ];
                     rules.forEach(({ id, pattern }) => {
                         const shortcut = document.querySelector(`a[data-bmid="${id}"]`);
