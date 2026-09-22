@@ -3061,3 +3061,32 @@ test('Toolbar-Suche lädt die Seitenleiste nach, statt in einen neuen Tab auszuw
         2
     );
 });
+
+test('Detailseiten-Blasen rasten über dem Bild ein, statt im Fluss zu driften', () => {
+    const rule = tweakerSource.match(
+        /\.content\.setdetails \.large-3\.medium-4\.columns\.hide-for-small\s*\n\s*> \.off:not\(\.bm-bestprice-black-bubble\)[\s\S]*?\n        \}/
+    );
+    assert.ok(rule, 'Detailseiten-.off-Regel fehlt');
+
+    // Die native .off steht auf der Detailseite im Fluss (position: relative);
+    // ohne absolutes Einrasten schieben top/left sie mittig ins Produktbild.
+    assert.match(rule[0], /position: absolute !important;/);
+    assert.match(rule[0], /top: 0\.45rem !important;/);
+    assert.match(rule[0], /left: 0\.75rem !important;/);
+
+    // Schwarze Blase nutzt dieselbe Ecke und rutscht nur, wenn eine rote da ist.
+    const black = tweakerSource.match(
+        /\.bm-featured-black-bubble \{[\s\S]*?\n        \}/
+    );
+    assert.ok(black, 'Schwarze Blase der Detailseite fehlt');
+    assert.match(black[0], /position: absolute !important;/);
+    assert.match(black[0], /left: 0\.75rem !important;/);
+    assert.match(
+        tweakerSource,
+        /\.bm-featured-black-bubble\.bm-featured-black-bubble-stacked \{[\s\S]*?top: calc\(0\.45rem \+ 38px\)/
+    );
+
+    // Beide Blasen sind auf die 32px der Suchseiten-Kacheln normiert.
+    assert.match(rule[0], /width: 32px !important;/);
+    assert.match(black[0], /width: 32px !important;/);
+});

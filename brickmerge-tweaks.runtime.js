@@ -4494,6 +4494,9 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     > .off:not(.bm-bestprice-black-bubble),
                 .content.setdetails .show-for-small-only.text-center
                     > .off:not(.bm-bestprice-black-bubble) {
+                    /* Die Detailseiten-.off steht im Fluss (position: relative); ohne
+                       absolutes Einrasten würden top/left sie nur mittig ins Bild schieben. */
+                    position: absolute !important;
                     top: 0.45rem !important;
                     left: 0.75rem !important;
                     /* Auf Kachelgröße der Suchseite normiert (32px) */
