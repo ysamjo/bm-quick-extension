@@ -1819,7 +1819,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 height: 32px;
                 min-width: 32px;
                 min-height: 32px;
-                font-size: 0.78rem;
+                font-size: 10.5px;
                 transform: translateY(-50%);
             }
             #offerlist .bm-total-discount-bubble {
@@ -1829,7 +1829,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 height: 32px;
                 min-width: 32px;
                 min-height: 32px;
-                font-size: 0.78rem;
+                font-size: 10.5px;
                 transform: translateY(-50%);
             }
             #offerlist .price > .show-for-small-only.small {
