@@ -4821,7 +4821,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             pointer-events: none !important;
         }
 
-        /* Detailseite: Horizontale 4er-Aktionszeile (Preisalarm, Wunschliste, Depot, ROI-Rechner) */
+        /* Detailseite: Horizontale 4er-Aktionszeile (Preisalarm, Wunschliste, Depot, ROI) */
         .bm-detail-action-buttons-row {
             display: grid !important;
             grid-template-columns: repeat(4, 1fr) !important;
@@ -4880,7 +4880,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             /* Das Icon sitzt per ensureButtonIcon() INNERHALB von
                .bmd-button-content, nicht als Geschwister des Buttons. Der
                gap:4px des Buttons erreicht es deshalb nicht — der Abstand zum
-               Text muss hier als Rand stehen (wie in der Tools-Zeile). */
+               Text muss hier als Rand stehen. */
             margin: 0 4px 0 0 !important;
         }
         .bm-detail-action-buttons-row .bmd-open-button .bmd-button-icon svg {
@@ -4893,129 +4893,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             stroke-linecap: round !important;
             stroke-linejoin: round !important;
         }
-
-        /* Tools-Zeile: Die vier Aktionsbuttons (Preisalarm, Wunschliste,
-           ROI-Rechner, Depot) stehen nicht mehr unter der Angebotsliste,
-           sondern als eigene Zeile "Tools" in der Linkleiste. Die Hülle
-           bleibt im DOM (Query-Selektoren der übrigen Logik greifen weiter),
-           wird aber per display:contents aus dem Fluss genommen, damit die
-           Buttons direkt in der Link-Zeile liegen. Optisch bleiben es normale
-           Aktionsbuttons wie unter der Angebotsliste – nur auf Zeilenhöhe der
-           Linkleiste komprimiert, damit die Reihe nicht auseinanderläuft. */
-        .bm-detail-action-buttons-row.bmd-in-link-panel {
-            display: contents !important;
-            margin: 0 !important;
-        }
-        .bm-info-links.bmd-tools-row {
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            width: max-content !important;
-            gap: 5px 8px !important;
-            padding: 0 !important;
-        }
-        .bm-info-links.bmd-tools-row .bmd-open-button,
-        .bmd-tools-row .bmd-open-button {
-            display: inline-flex !important;
-            flex: 0 0 auto !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 4px !important;
-            width: auto !important;
-            height: 26px !important;
-            min-height: 26px !important;
-            max-height: 26px !important;
-            margin: 0 !important;
-            padding: 2px 8px !important;
-            border: 1px solid #E2E8F0 !important;
-            border-radius: 8px !important;
-            background: #F8FAFC !important;
-            color: #B80000 !important;
-            font-size: 11px !important;
-            font-weight: 700 !important;
-            line-height: 1.15 !important;
-            font-family: inherit !important;
-            white-space: nowrap !important;
-            text-decoration: none !important;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
-            box-sizing: border-box !important;
-            cursor: pointer !important;
-            -webkit-appearance: none !important;
-            transition: all 0.15s ease-in-out !important;
-        }
-        .bm-info-links.bmd-tools-row .bmd-open-button:hover,
-        .bm-info-links.bmd-tools-row .bmd-open-button:focus,
-        .bmd-tools-row .bmd-open-button:hover,
-        .bmd-tools-row .bmd-open-button:focus {
-            background: #B80000 !important;
-            border-color: #B80000 !important;
-            color: #FFFFFF !important;
-            outline: none !important;
-        }
-        .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-content,
-        .bmd-tools-row .bmd-open-button .bmd-button-content {
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            height: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            gap: 0 !important;
-            line-height: 1.2 !important;
-        }
-        .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-icon,
-        .bmd-tools-row .bmd-open-button .bmd-button-icon {
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            width: 14px !important;
-            height: 14px !important;
-            min-width: 14px !important;
-            min-height: 14px !important;
-            flex: 0 0 14px !important;
-            margin: 0 4px 0 0 !important;
-            padding: 0 !important;
-            line-height: 1 !important;
-        }
-        .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-icon svg,
-        .bmd-tools-row .bmd-open-button .bmd-button-icon svg {
-            display: block !important;
-            width: 14px !important;
-            height: 14px !important;
-            stroke: currentColor !important;
-            fill: none !important;
-            stroke-width: 2 !important;
-            stroke-linecap: round !important;
-            stroke-linejoin: round !important;
-        }
-        .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-label-full,
-        .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-label-mobile,
-        .bmd-tools-row .bmd-open-button .bmd-button-label-full,
-        .bmd-tools-row .bmd-open-button .bmd-button-label-mobile {
-            font-size: 11px !important;
-            font-weight: 700 !important;
-            color: inherit !important;
-            line-height: 1.15 !important;
-        }
-        @media (max-width: 480px) {
-            .bm-info-links.bmd-tools-row .bmd-open-button,
-            .bmd-tools-row .bmd-open-button {
-                font-size: 11px !important;
-                height: 26px !important;
-                min-height: 26px !important;
-                padding: 2px 8px !important;
-                margin: 0 !important;
-            }
-            .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-label-full,
-            .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-label-mobile,
-            .bmd-tools-row .bmd-open-button .bmd-button-label-full,
-            .bmd-tools-row .bmd-open-button .bmd-button-label-mobile {
-                font-size: 11px !important;
-                font-weight: 700 !important;
-                color: inherit !important;
-                line-height: 1.15 !important;
-            }
-        }
-
 
         /* Mobile Filterleiste: Alle 6 Filter sofort sichtbar im 3x2 Grid, kein Scrolling */
         @media (max-width: 768px) {
@@ -12831,13 +12708,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             }
             container.querySelectorAll('.bm-link-slider').forEach(setupSingleSlider);
         }
-        window.bmSetupLinkSliders = setupLinkSliders;
 
         function injectBox() {
             if (!BM_SETTINGS.linkPanel) {
                 removeDuplicateLinkPanels();
                 fetchAndInjectPrices(setNum);
-                // Linkleiste aus: Aktionsbuttons bleiben unter der Angebotsliste.
+                // Ohne Linkleiste: Aktionsbuttons ebenso unter der Angebotsliste.
                 window.setTimeout(() => {
                     if (typeof globalThis.bmSetupDetailButton === 'function') {
                         globalThis.bmSetupDetailButton();
@@ -20384,31 +20260,31 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         const style = document.createElement('style');
         style.id = STYLE_ID;
         style.textContent = `
-            .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) {
+            .bmd-open-button {
                 display:inline-flex!important;align-items:center!important;
                 justify-content:center!important;gap:.5rem;width:auto;
                 min-width:0;margin:0 0 .35rem!important;
                 font-family:inherit!important;line-height:1.2!important;
                 white-space:nowrap;box-sizing:border-box;cursor:pointer
             }
-            .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *):hover,.bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *):focus {
+            .bmd-open-button:hover,.bmd-open-button:focus {
                 outline:none
             }
-            .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) .bmd-button-content {
+            .bmd-open-button .bmd-button-content {
                 display:inline-flex!important;align-items:center;gap:.35rem
             }
-            .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) .bmd-button-icon {
+            .bmd-open-button .bmd-button-icon {
                 display:inline-flex;align-items:center;justify-content:center;
                 width:1.2rem;height:1.2rem;flex:0 0 1.2rem;
                 line-height:1
             }
-            .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) .bmd-button-icon svg {
+            .bmd-open-button .bmd-button-icon svg {
                 display:block;width:1.15rem;height:1.15rem;fill:none;
                 stroke:currentColor;stroke-width:1.8;stroke-linecap:round;
                 stroke-linejoin:round
             }
             .bmd-button-label-mobile { display:none }
-            .bmd-parts-stock-button:not(.bm-link):not(.bmd-in-link-panel *) {
+            .bmd-parts-stock-button {
                 width:100%!important;margin:.35rem 0 0!important;
                 border:1px solid #E2E8F0!important;border-radius:8px!important;
                 background:#F8FAFC!important;color:#B80000!important;
@@ -20416,7 +20292,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 text-align:left!important;text-shadow:none!important;
                 box-shadow:none!important
             }
-            .bmd-parts-stock-button:not(.bm-link):not(.bmd-in-link-panel *):hover,.bmd-parts-stock-button:not(.bm-link):not(.bmd-in-link-panel *):focus {
+            .bmd-parts-stock-button:hover,.bmd-parts-stock-button:focus {
                 background:#B80000!important;color:#fff!important;border-color:#B80000!important;outline:none
             }
             .bm-mobile-parts-stock-wrap {
@@ -21033,9 +20909,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         max(15px,env(safe-area-inset-left))
                 }
                 .bmd-dialog-header h3 { font-size:1.08rem!important }
-                .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) { min-width:0;font-size:.7rem!important }
-                .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) .bmd-button-label-full { display:none }
-                .bmd-open-button:not(.bm-link):not(.bmd-in-link-panel *) .bmd-button-label-mobile { display:inline }
+                .bmd-open-button { min-width:0;font-size:.7rem!important }
+                .bmd-open-button .bmd-button-label-full { display:none }
+                .bmd-open-button .bmd-button-label-mobile { display:inline }
                 .bmd-fields { grid-template-columns:1fr }
                 .bmd-field-wide { grid-column:auto }
                 .bmd-dashboard-summary { grid-template-columns:repeat(2,minmax(0,1fr)) }
@@ -22158,118 +22034,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
     }
 
-    /**
-     * Hängt die Aktionszeile (Preisalarm, Wunschliste, ROI-Rechner, Depot) als
-     * eigene Zeile "Tools" in die Linkleiste ein – dort, wo Marktplätze,
-     * Ressourcen und Verkaufshistorie stehen. Die Buttons behalten ihre Hülle
-     * und damit alle bestehenden Handler; per CSS (display: contents) stehen
-     * sie direkt in der Link-Zeile. Die Funktion ist idempotent: Sie kann nach
-     * jedem Neuaufbau der Linkleiste erneut aufgerufen werden.
-     */
-    function mountDetailActionRowIntoLinkPanel(actionRow) {
-        if (!actionRow) return false;
-        const panel = document.getElementById('bm-link-panel') || document.querySelector('.bm-link-panel');
-        if (!panel) return false;
-
-        let section = panel.querySelector('.bm-info-group.bmd-tools-group');
-        if (!section) {
-            // Die Tools-Zeile folgt der Einstellung (Linkleiste → Tools) und
-            // hält sich an dieselbe Ein-/Aus-Logik wie die anderen Zeilen.
-            if (BM_SETTINGS?.linkRows?.tools === false) return false;
-            section = document.createElement('section');
-            section.className = 'bm-info-group bmd-tools-group';
-            const title = document.createElement('div');
-            title.className = 'bm-info-title';
-            title.textContent = 'Tools';
-            const slider = document.createElement('div');
-            slider.className = 'bm-link-slider';
-            const viewport = document.createElement('div');
-            viewport.className = 'bm-link-viewport';
-            const row = document.createElement('div');
-            row.className = 'bm-info-links bmd-tools-row';
-
-            const previous = document.createElement('button');
-            previous.type = 'button';
-            previous.className = 'bm-link-scroll bm-link-scroll-prev';
-            previous.title = 'Nach links';
-            previous.setAttribute('aria-label', 'Tools: nach links');
-            previous.appendChild(document.createElement('span'));
-
-            const next = document.createElement('button');
-            next.type = 'button';
-            next.className = 'bm-link-scroll bm-link-scroll-next';
-            next.title = 'Nach rechts';
-            next.setAttribute('aria-label', 'Tools: nach rechts');
-            next.appendChild(document.createElement('span'));
-
-            [previous, next].forEach(control => {
-                const fixedStyles = {
-                    display: 'none',
-                    position: 'absolute',
-                    top: '50%',
-                    zIndex: '20',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '1.65rem',
-                    height: '1.65rem',
-                    minWidth: '1.65rem',
-                    minHeight: '1.65rem',
-                    margin: '0',
-                    padding: '0',
-                    transform: 'translateY(-50%)',
-                    background: '#fff',
-                    border: '1px solid #aaa',
-                    borderRadius: '50%',
-                    boxShadow: '0 1px 4px rgba(0, 0, 0, 0.22)',
-                    color: '#a80000',
-                    lineHeight: '1',
-                    boxSizing: 'border-box',
-                    cursor: 'pointer'
-                };
-                Object.entries(fixedStyles).forEach(([property, value]) => {
-                    control.style.setProperty(
-                        property.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`),
-                        value,
-                        'important'
-                    );
-                });
-                control.style.setProperty('-webkit-appearance', 'none', 'important');
-            });
-            previous.style.setProperty('left', '0.15rem', 'important');
-            next.style.setProperty('right', '0.15rem', 'important');
-
-            viewport.appendChild(row);
-            slider.appendChild(previous);
-            slider.appendChild(viewport);
-            slider.appendChild(next);
-            section.appendChild(title);
-            section.appendChild(slider);
-            // Als letzte Zeile der Linkleiste, direkt über der Angebotsliste.
-            panel.appendChild(section);
-
-            if (typeof window.bmSetupLinkSliders === 'function') {
-                window.bmSetupLinkSliders(panel);
-            }
-        }
-
-        const row = section.querySelector('.bmd-tools-row');
-        if (!row) return false;
-        if (actionRow.parentElement !== row) {
-            const staleButtons = row.querySelectorAll('.bmd-open-button');
-            if (staleButtons.length && actionRow.querySelector('.bmd-open-button')) {
-                staleButtons.forEach(button => {
-                    if (button.parentElement === row) button.remove();
-                });
-            }
-            row.appendChild(actionRow);
-        }
-        actionRow.classList.add('bmd-in-link-panel');
-        if (typeof window.bmSetupLinkSliders === 'function') {
-            window.bmSetupLinkSliders(panel);
-        }
-        return true;
-    }
-
     function setupDetailButton() {
         globalThis.bmSetupDetailButton = setupDetailButton;
         window.setupDetailButton = setupDetailButton;
@@ -22288,53 +22052,46 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             }
         });
 
-        // Hülle für die 4 Aktionsbuttons. Sie stehen seit 1.3.32 nicht mehr
-        // unter der Angebotsliste, sondern als eigene Zeile "Tools" in der
-        // Linkleiste (Marktplätze, Ressourcen, Verkaufshistorie). Fehlt die
-        // Linkleiste (Einstellung aus), bleibt der alte Platz unter der Liste.
+        // Hülle für die 4 Aktionsbuttons: eine Überschrift-lose Reihe direkt
+        // unter der Angebotsliste. Kein Scroller – die vier Buttons teilen sich
+        // die Zeilenbreite (siehe .bm-detail-action-buttons-row).
         let actionRow = document.querySelector('.bm-detail-action-buttons-row');
         if (!actionRow) {
             actionRow = document.createElement('div');
             actionRow.className = 'bm-detail-action-buttons-row';
         }
 
-        const mountedInLinkPanel = mountDetailActionRowIntoLinkPanel(actionRow);
+        const offerList = document.getElementById('offerlist') || document.querySelector('.content.setdetails #offerlist');
+        const soldOutActive = document.querySelector('#SoldOutContainer:has(.pricerow), #soldOut:has(.pricerow)');
+        const offersSection = soldOutActive || document.querySelector('#ol1st > section:first-of-type') || offerList?.closest('section') || offerList;
 
-        if (!mountedInLinkPanel) {
-            actionRow.classList.remove('bmd-in-link-panel');
-            const offerList = document.getElementById('offerlist') || document.querySelector('.content.setdetails #offerlist');
-            const soldOutActive = document.querySelector('#SoldOutContainer:has(.pricerow), #soldOut:has(.pricerow)');
-            const offersSection = soldOutActive || document.querySelector('#ol1st > section:first-of-type') || offerList?.closest('section') || offerList;
-
-            if (offersSection) {
-                if (actionRow.previousElementSibling !== offersSection) {
-                    offersSection.after(actionRow);
+        if (offersSection) {
+            if (actionRow.previousElementSibling !== offersSection) {
+                offersSection.after(actionRow);
+            }
+        } else {
+            const instructionsHeading = Array.from(document.querySelectorAll(
+                '#ol1st h3, .content.setdetails h3, .content.setdetails h2'
+            )).find(heading => /Bauanleitungen|Bauanleitung/i.test(heading.textContent || ''));
+            const instructionsSection = instructionsHeading?.closest('section') || instructionsHeading;
+            if (instructionsSection) {
+                if (actionRow.nextElementSibling !== instructionsSection) {
+                    instructionsSection.before(actionRow);
                 }
             } else {
-                const instructionsHeading = Array.from(document.querySelectorAll(
-                    '#ol1st h3, .content.setdetails h3, .content.setdetails h2'
-                )).find(heading => /Bauanleitungen|Bauanleitung/i.test(heading.textContent || ''));
-                const instructionsSection = instructionsHeading?.closest('section') || instructionsHeading;
-                if (instructionsSection) {
-                    if (actionRow.nextElementSibling !== instructionsSection) {
-                        instructionsSection.before(actionRow);
-                    }
-                } else {
-                    const mainContent = document.querySelector('.content.setdetails') || document.body;
-                    if (!actionRow.parentElement) {
-                        mainContent.appendChild(actionRow);
-                    }
+                const mainContent = document.querySelector('.content.setdetails') || document.body;
+                if (!actionRow.parentElement) {
+                    mainContent.appendChild(actionRow);
                 }
             }
         }
 
-        // Falls mehr als eine actionRow existiert, Überzählige entfernen
-        const allActionRows = document.querySelectorAll('.bm-detail-action-buttons-row');
-        if (allActionRows.length > 1) {
-            allActionRows.forEach((row, idx) => {
-                if (idx > 0) row.remove();
-            });
-        }
+        // Falls mehr als eine actionRow existiert: Überzählige entfernen, aber
+        // immer die gerade bestückte Zeile behalten (sie steht nach dem Umhängen
+        // nicht mehr zwangsläufig an erster Stelle).
+        document.querySelectorAll('.bm-detail-action-buttons-row').forEach(row => {
+            if (row !== actionRow) row.remove();
+        });
 
         // Alle stray Buttons außerhalb der zentralen actionRow entfernen
         document.querySelectorAll('.bmd-open-button, .bmd-parts-stock-button, .bmd-depot-button').forEach(btn => {
@@ -22435,10 +22192,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             roiContent.className = 'bmd-button-content';
             const roiLabel = document.createElement('span');
             roiLabel.className = 'bmd-button-label-full';
-            roiLabel.textContent = 'ROI-Rechner';
+            roiLabel.textContent = 'ROI';
             const roiMobileLabel = document.createElement('span');
             roiMobileLabel.className = 'bmd-button-label-mobile';
-            roiMobileLabel.textContent = 'ROI-Rechner';
+            roiMobileLabel.textContent = 'ROI';
             roiContent.append(roiLabel, roiMobileLabel);
             roiButton.appendChild(roiContent);
             roiButton.title = 'Erforderlichen Verkaufspreis und Marge für dieses Set berechnen';

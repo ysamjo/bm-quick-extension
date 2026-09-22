@@ -492,7 +492,7 @@ test('the depot IIFE reaches observeUntil and BM_SETTINGS across the IIFE bounda
     );
     assert.ok(depotIife.length > 1000, 'Depot-IIFE nicht gefunden');
     assert.match(depotIife, /observeUntil\(fillCurrentPrice, 5000\)/);
-    assert.match(depotIife, /BM_SETTINGS\?\.linkRows\?\.tools/);
+    assert.match(depotIife, /globalThis\.bmSetupDetailButton/);
 });
 
 test('depot page stays native while detail pages keep the stock action', () => {
@@ -2305,8 +2305,8 @@ test('detail action row contains strictly 4 buttons without duplicates and sideb
     // 2. Stray buttons outside .bm-detail-action-buttons-row are removed
     assert.match(tweakerSource, /document\.querySelectorAll\('\.bmd-open-button, \.bmd-parts-stock-button, \.bmd-depot-button'\)\.forEach\(btn => \{/);
     assert.match(tweakerSource, /if \(!btn\.closest\('\.bm-detail-action-buttons-row'\)\) \{\s*btn\.remove\(\);/);
-    // 3. Multiple action rows are removed
-    assert.match(tweakerSource, /const allActionRows = document\.querySelectorAll\('\.bm-detail-action-buttons-row'\);/);
+    // 3. Multiple action rows are removed – die frisch eingehängte Zeile bleibt
+    assert.match(tweakerSource, /document\.querySelectorAll\('\.bm-detail-action-buttons-row'\)\.forEach\(row => \{\s*if \(row !== actionRow\) row\.remove\(\);/);
     // 4. In-row duplicates are purged
     assert.match(tweakerSource, /actionRow\.querySelectorAll\('\.bmd-alarm-button'\)\.forEach\(\(btn, idx\) => \{ if \(idx > 0\) btn\.remove\(\); \}\);/);
     assert.match(tweakerSource, /actionRow\.querySelectorAll\('\.bmd-wishlist-button'\)\.forEach\(\(btn, idx\) => \{ if \(idx > 0\) btn\.remove\(\); \}\);/);
@@ -2586,25 +2586,21 @@ test('depot view is styled like wishlist with card layout, KPI statsbar, and res
     assert.match(tweakerSource, /cell\.setAttribute\('data-label',\s*'Bestand'\)/);
 });
 
-test('tools row is in a horizontal slider carousel with scroll arrows and offerlist is flex', () => {
-    // 1. Tools row has nowrap and max-content width
-    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row\s*\{[^}]*flex-wrap:\s*nowrap\s*!important/);
-    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row\s*\{[^}]*width:\s*max-content\s*!important/);
-
-    // 2. mountDetailActionRowIntoLinkPanel creates bm-link-slider, viewport, and scroll arrows
+test('link-bar rows scroll as carousels and offerlist is flex', () => {
+    // 1. Jede Linkleisten-Zeile bekommt Slider, Viewport und Scroll-Pfeile
     assert.match(tweakerSource, /slider\.className\s*=\s*['"]bm-link-slider['"]/);
     assert.match(tweakerSource, /viewport\.className\s*=\s*['"]bm-link-viewport['"]/);
     assert.match(tweakerSource, /bm-link-scroll\s+bm-link-scroll-prev/);
     assert.match(tweakerSource, /bm-link-scroll\s+bm-link-scroll-next/);
 
-    // 3. Offerlist .row.collapse is a flex container on mobile screens
+    // 2. Offerlist .row.collapse is a flex container on mobile screens
     assert.match(tweakerSource, /@media\s+screen\s+and\s*\(max-width:\s*640px\)\s*\{[\s\S]*?#offerlist\s+\.row\.collapse\s*\{[^}]*display:\s*flex\s*!important;[^}]*flex-wrap:\s*nowrap\s*!important;/);
 
-    // 4. Link sliders have zIndex 20 and cursor pointer on scroll buttons
+    // 3. Link sliders have zIndex 20 and cursor pointer on scroll buttons
     assert.match(tweakerSource, /\.bm-link-scroll\s*\{[\s\S]*?z-index:\s*20;/);
     assert.match(tweakerSource, /\.bm-link-scroll\s*\{[\s\S]*?cursor:\s*pointer;/);
-    assert.match(tweakerSource, /window\.bmSetupLinkSliders\s*=\s*setupLinkSliders;/);
-    assert.match(tweakerSource, /window\.bmSetupLinkSliders\(panel\);/);
+    assert.match(tweakerSource, /setupLinkSliders\(existingPanel\);/);
+    assert.match(tweakerSource, /setupLinkSliders\(box\);/);
 });
 
 test('overview-price-badges uses resilient getRequestHandler instead of bare GM_xmlhttpRequest', () => {
@@ -2618,21 +2614,31 @@ test('overview-price-badges uses resilient getRequestHandler instead of bare GM_
     assert.doesNotMatch(overviewSource, /(?<![.\w])GM_xmlhttpRequest\s*\(/);
 });
 
-test('tools buttons in the link panel are normal action buttons, not bm-link pills', () => {
-    // 1. Keine Pill-Klasse mehr: weder beim Anlegen noch beim Einhängen in die
-    //    Linkleiste bekommt ein Tools-Button die .bm-link-Klasse.
+test('action buttons sit in one heading-less row below the offer list, not in the link bar', () => {
+    // 1. Keine Linkleisten-Montage mehr: keine Tools-Zeile, kein Pill-Wrapper
+    assert.doesNotMatch(tweakerSource, /bmd-tools-row/);
+    assert.doesNotMatch(tweakerSource, /bmd-in-link-panel/);
+    assert.doesNotMatch(tweakerSource, /mountDetailActionRowIntoLinkPanel/);
     assert.doesNotMatch(tweakerSource, /classList\.add\('bm-link'\)/);
     assert.doesNotMatch(
         tweakerSource,
         /className = 'bmd-open-button bmd-parts-stock-button bmd-[a-z-]+ bm-link'/
     );
 
-    // 2. Gleicher Button-Look wie die Aktionszeile unter der Angebotsliste
-    const toolsButtonRule =
-        /\.bm-info-links\.bmd-tools-row \.bmd-open-button,\s*\.bmd-tools-row \.bmd-open-button \{([\s\S]*?)\}/;
-    const match = tweakerSource.match(toolsButtonRule);
-    assert.ok(match, 'Tools-Button-Regel fehlt');
-    const rules = match[1];
+    // 2. Die Reihe hängt direkt unter der Angebotsliste
+    assert.match(tweakerSource, /offersSection\.after\(actionRow\)/);
+
+    // 3. Vier gleich breite Buttons in einer Zeile – kein Scroller, keine Überschrift
+    const rowRule = tweakerSource.match(/\.bm-detail-action-buttons-row \{([\s\S]*?)\}/)?.[1] || '';
+    assert.notEqual(rowRule, '', 'Regel für die Aktionszeile fehlt');
+    assert.match(rowRule, /display:\s*grid\s*!important/);
+    assert.match(rowRule, /grid-template-columns:\s*repeat\(4,\s*1fr\)\s*!important/);
+    assert.doesNotMatch(rowRule, /overflow-x/);
+
+    // 4. Normale Aktionsbuttons: heller Rahmen, helle Fläche, rote Schrift
+    const buttonRule =
+        tweakerSource.match(/\.bm-detail-action-buttons-row \.bmd-open-button \{([\s\S]*?)\}/)?.[1] || '';
+    assert.notEqual(buttonRule, '', 'Regel für die Aktionsbuttons fehlt');
     for (const declaration of [
         /border:\s*1px solid #E2E8F0\s*!important/,
         /border-radius:\s*8px\s*!important/,
@@ -2642,30 +2648,26 @@ test('tools buttons in the link panel are normal action buttons, not bm-link pil
         /font-weight:\s*700\s*!important/,
         /box-shadow:\s*0 1px 2px rgba\(0, 0, 0, 0\.04\)\s*!important/
     ]) {
-        assert.match(rules, declaration);
+        assert.match(buttonRule, declaration);
     }
-
-    // 3. Nur auf Zeilenhöhe der Linkleiste komprimiert, Hover wie unten voller Farbumschlag
-    assert.match(rules, /height:\s*26px\s*!important/);
-    assert.match(rules, /padding:\s*2px 8px\s*!important/);
-    assert.doesNotMatch(rules, /border-radius:\s*5px/);
     assert.match(
         tweakerSource,
-        /\.bmd-tools-row \.bmd-open-button:focus \{[\s\S]*?background:\s*#B80000\s*!important[\s\S]*?color:\s*#FFFFFF\s*!important/
+        /\.bm-detail-action-buttons-row \.bmd-open-button:hover,[\s\S]*?background:\s*#B80000\s*!important[\s\S]*?color:\s*#FFFFFF\s*!important/
     );
 
-    // 4. Icon bleibt 14x14 und folgt der Schriftfarbe (kein Pill-15px-Icon)
+    // 5. Icon 14x14 in Schriftfarbe
     assert.match(
         tweakerSource,
-        /\.bm-info-links\.bmd-tools-row \.bmd-open-button \.bmd-button-icon[\s\S]*?width:\s*14px\s*!important/
+        /\.bm-detail-action-buttons-row \.bmd-open-button \.bmd-button-icon \{[\s\S]*?width:\s*14px\s*!important/
     );
     assert.match(
         tweakerSource,
-        /\.bm-info-links\.bmd-tools-row \.bmd-open-button \.bmd-button-icon svg[\s\S]*?stroke:\s*currentColor\s*!important/
+        /\.bm-detail-action-buttons-row \.bmd-open-button \.bmd-button-icon svg \{[\s\S]*?stroke:\s*currentColor\s*!important/
     );
 
-    // 5. Mobile Medienabfrage hält dasselbe Aussehen
-    assert.match(tweakerSource, /@media\s*\(max-width:\s*480px\)\s*\{[\s\S]*?\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?font-size:\s*11px\s*!important/);
+    // 6. ROI heißt in der Aktionszeile nur noch "ROI"
+    assert.match(tweakerSource, /roiLabel\.textContent = 'ROI';/);
+    assert.match(tweakerSource, /roiMobileLabel\.textContent = 'ROI';/);
 });
 
 test('setupDetailButton and applyOfferPresentation are safely dispatched without ReferenceError', () => {

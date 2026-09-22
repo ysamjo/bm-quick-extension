@@ -30,7 +30,6 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
         brickowl: true
     },
     linkRows: {
-        tools: true,
         marketplaces: true,
         france: globalThis.BM_PLATFORM?.franceDefault !== false,
         resources: true,
