@@ -9470,7 +9470,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     if (detailLink && !card.dataset.bmCardClickAttached) {
                         card.dataset.bmCardClickAttached = 'true';
                         card.addEventListener('click', (e) => {
-                            const merchantLink = e.target.closest('.bm-list-merchant, .bm-btn-shop, .bm-overview-effective-source, a[target="_blank"]');
+                            const merchantLink = e.target.closest('.bm-list-merchant, .bm-btn-shop, .bm-overview-effective-source, a[target="_blank"], a[data-reveal-id]');
                             if (merchantLink) {
                                 return;
                             }
@@ -9487,7 +9487,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         });
                         card.addEventListener('auxclick', (e) => {
                             if (e.button === 1 && detailLink) {
-                                const merchantLink = e.target.closest('.bm-list-merchant, .bm-btn-shop, .bm-overview-effective-source, a[target="_blank"]');
+                                const merchantLink = e.target.closest('.bm-list-merchant, .bm-btn-shop, .bm-overview-effective-source, a[target="_blank"], a[data-reveal-id]');
                                 if (!merchantLink) {
                                     e.preventDefault();
                                     window.open(detailLink, '_blank');
@@ -9606,11 +9606,18 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         }
 
                         // 2. Rabatt-Badge (.off) erfassen
-                        const offBadge = card.querySelector(':scope > .off, .off');
+                        let offBadge = card.querySelector(':scope > .off, .off');
+
+                        // Kacheln ohne aktuelles Angebot: Alarm-Link und UVP sind der
+                        // einzige Inhalt ihrer Preiszeile und bleiben stehen.
+                        const keepWhenNoPrice = !priceText
+                            ? [...offerBox.querySelectorAll('a:has(.alarmbutton), .small')].filter(node => node.textContent.trim())
+                            : [];
 
                         offerBox.replaceChildren();
 
                         const fragment = document.createDocumentFragment();
+                        keepWhenNoPrice.forEach(node => fragment.appendChild(node));
 
                         if (priceText) {
                             const priceSpan = document.createElement('span');

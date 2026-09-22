@@ -3004,6 +3004,29 @@ test('WAF-Chancen versacken im Cache, der Retry leert sie und Cookiebot-Embeds l
     );
 });
 
+test('Kacheln ohne aktuelles Angebot behalten Alarm-Link und UVP, ohne über den Rand zu hängen', () => {
+    // Der Rabatt-Badge wird nachträglich erzeugt, die Bindung darf also kein
+    // const sein: ein TypeError bricht die ganze Kachel-Schleife ab, die
+    // site-eigenen .producttag-Pills bleiben ungeordnet und hängen über dem
+    // Kachelrand.
+    assert.match(
+        tweakerSource,
+        /let offBadge = card\.querySelector\(':scope > \.off, \.off'\);/
+    );
+
+    // Ohne Preiszeile sind Alarm-Link und UVP die einzigen Inhalte, die die
+    // Kachel hat – die Preisnormalisierung darf sie nicht leeren.
+    assert.match(tweakerSource, /const keepWhenNoPrice = !priceText/);
+    assert.match(tweakerSource, /a:has\(\.alarmbutton\), \.small/);
+    assert.match(tweakerSource, /keepWhenNoPrice\.forEach\(node => fragment\.appendChild\(node\)\);/);
+
+    // Der Alarm-Link öffnet ein Modal – die Kachel-Klickfalle darf ihn nicht schlucken.
+    assert.equal(
+        (tweakerSource.match(/a\[target="_blank"\], a\[data-reveal-id\]/g) || []).length,
+        2
+    );
+});
+
 
 
 
