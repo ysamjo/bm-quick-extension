@@ -4896,10 +4896,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
         /* Tools-Zeile: Die vier Aktionsbuttons (Preisalarm, Wunschliste,
            ROI-Rechner, Depot) stehen nicht mehr unter der Angebotsliste,
-           sondern als eigene Zeile "Tools" in der Linkleiste. Die Huelle
+           sondern als eigene Zeile "Tools" in der Linkleiste. Die Hülle
            bleibt im DOM (Query-Selektoren der übrigen Logik greifen weiter),
            wird aber per display:contents aus dem Fluss genommen, damit die
-           Buttons direkt in der Link-Zeile liegen. */
+           Buttons direkt in der Link-Zeile liegen. Optisch bleiben es normale
+           Aktionsbuttons wie unter der Angebotsliste – nur auf Zeilenhöhe der
+           Linkleiste komprimiert, damit die Reihe nicht auseinanderläuft. */
         .bm-detail-action-buttons-row.bmd-in-link-panel {
             display: contents !important;
             margin: 0 !important;
@@ -4912,62 +4914,42 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             padding: 0 !important;
         }
         .bm-info-links.bmd-tools-row .bmd-open-button,
-        .bm-info-links.bmd-tools-row button.bm-link,
-        .bmd-tools-row .bmd-open-button,
-        .bmd-tools-row button.bm-link {
+        .bmd-tools-row .bmd-open-button {
             display: inline-flex !important;
             flex: 0 0 auto !important;
             align-items: center !important;
             justify-content: center !important;
+            gap: 4px !important;
             width: auto !important;
-            min-width: 0 !important;
             height: 26px !important;
             min-height: 26px !important;
             max-height: 26px !important;
             margin: 0 !important;
-            padding: 2px 7px 2px 5px !important;
-            border: 1px solid #ccc !important;
-            border-radius: 5px !important;
-            background: #fff !important;
-            color: #222 !important;
-            font-size: 0.78rem !important;
-            font-weight: 400 !important;
+            padding: 2px 8px !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 8px !important;
+            background: #F8FAFC !important;
+            color: #B80000 !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
             line-height: 1.15 !important;
             font-family: inherit !important;
+            white-space: nowrap !important;
             text-decoration: none !important;
-            box-shadow: none !important;
-            text-shadow: none !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
             box-sizing: border-box !important;
             cursor: pointer !important;
             -webkit-appearance: none !important;
-            gap: 0 !important;
-            transition: none !important;
+            transition: all 0.15s ease-in-out !important;
         }
         .bm-info-links.bmd-tools-row .bmd-open-button:hover,
         .bm-info-links.bmd-tools-row .bmd-open-button:focus,
         .bmd-tools-row .bmd-open-button:hover,
         .bmd-tools-row .bmd-open-button:focus {
-            background: #fff !important;
-            border-color: #ccc !important;
-            color: #222 !important;
-            box-shadow: none !important;
+            background: #B80000 !important;
+            border-color: #B80000 !important;
+            color: #FFFFFF !important;
             outline: none !important;
-        }
-        .bm-info-links.bmd-tools-row .bmd-open-button:hover span,
-        .bm-info-links.bmd-tools-row .bmd-open-button:focus span,
-        .bmd-tools-row .bmd-open-button:hover span,
-        .bmd-tools-row .bmd-open-button:focus span {
-            text-decoration: underline !important;
-        }
-        .bm-info-links.bmd-tools-row .bmd-open-button:hover .bmd-button-icon svg,
-        .bm-info-links.bmd-tools-row .bmd-open-button:focus .bmd-button-icon svg,
-        .bmd-tools-row .bmd-open-button:hover .bmd-button-icon svg,
-        .bmd-tools-row .bmd-open-button:focus .bmd-button-icon svg {
-            stroke: #222 !important;
-        }
-        .bm-info-links.bmd-tools-row .bmd-open-button:active,
-        .bmd-tools-row .bmd-open-button:active {
-            background: #f4f4f4 !important;
         }
         .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-content,
         .bmd-tools-row .bmd-open-button .bmd-button-content {
@@ -4985,11 +4967,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
-            width: 15px !important;
-            height: 15px !important;
-            min-width: 15px !important;
-            min-height: 15px !important;
-            flex: 0 0 15px !important;
+            width: 14px !important;
+            height: 14px !important;
+            min-width: 14px !important;
+            min-height: 14px !important;
+            flex: 0 0 14px !important;
             margin: 0 4px 0 0 !important;
             padding: 0 !important;
             line-height: 1 !important;
@@ -4999,9 +4981,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             display: block !important;
             width: 14px !important;
             height: 14px !important;
-            stroke: #222 !important;
+            stroke: currentColor !important;
             fill: none !important;
-            stroke-width: 1.8 !important;
+            stroke-width: 2 !important;
             stroke-linecap: round !important;
             stroke-linejoin: round !important;
         }
@@ -5009,27 +4991,27 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-label-mobile,
         .bmd-tools-row .bmd-open-button .bmd-button-label-full,
         .bmd-tools-row .bmd-open-button .bmd-button-label-mobile {
-            font-size: 0.78rem !important;
-            font-weight: 400 !important;
-            color: #222 !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            color: inherit !important;
             line-height: 1.15 !important;
         }
         @media (max-width: 480px) {
             .bm-info-links.bmd-tools-row .bmd-open-button,
             .bmd-tools-row .bmd-open-button {
-                font-size: 0.78rem !important;
+                font-size: 11px !important;
                 height: 26px !important;
                 min-height: 26px !important;
-                padding: 2px 7px 2px 5px !important;
+                padding: 2px 8px !important;
                 margin: 0 !important;
             }
             .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-label-full,
             .bm-info-links.bmd-tools-row .bmd-open-button .bmd-button-label-mobile,
             .bmd-tools-row .bmd-open-button .bmd-button-label-full,
             .bmd-tools-row .bmd-open-button .bmd-button-label-mobile {
-                font-size: 0.78rem !important;
-                font-weight: 400 !important;
-                color: #222 !important;
+                font-size: 11px !important;
+                font-weight: 700 !important;
+                color: inherit !important;
                 line-height: 1.15 !important;
             }
         }
@@ -22282,9 +22264,6 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             row.appendChild(actionRow);
         }
         actionRow.classList.add('bmd-in-link-panel');
-        actionRow.querySelectorAll('.bmd-open-button').forEach(btn => {
-            btn.classList.add('bm-link');
-        });
         if (typeof window.bmSetupLinkSliders === 'function') {
             window.bmSetupLinkSliders(panel);
         }
@@ -22404,7 +22383,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (!alarmButton) {
             alarmButton = document.createElement('button');
             alarmButton.type = 'button';
-            alarmButton.className = 'bmd-open-button bmd-parts-stock-button bmd-alarm-button bm-link';
+            alarmButton.className = 'bmd-open-button bmd-parts-stock-button bmd-alarm-button';
             alarmButton.dataset.bmdSetNumber = setNumber;
             const content = document.createElement('span');
             content.className = 'bmd-button-content';
@@ -22427,7 +22406,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (!wishlistButton) {
             wishlistButton = document.createElement('button');
             wishlistButton.type = 'button';
-            wishlistButton.className = 'bmd-open-button bmd-parts-stock-button bmd-wishlist-button bm-link';
+            wishlistButton.className = 'bmd-open-button bmd-parts-stock-button bmd-wishlist-button';
             wishlistButton.dataset.bmdSetNumber = setNumber;
             const content = document.createElement('span');
             content.className = 'bmd-button-content';
@@ -22450,7 +22429,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (!roiButton) {
             roiButton = document.createElement('button');
             roiButton.type = 'button';
-            roiButton.className = 'bmd-open-button bmd-parts-stock-button bmd-roi-calculator-button bm-link';
+            roiButton.className = 'bmd-open-button bmd-parts-stock-button bmd-roi-calculator-button';
             roiButton.dataset.bmdSetNumber = setNumber;
             const roiContent = document.createElement('span');
             roiContent.className = 'bmd-button-content';
@@ -22488,7 +22467,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (!depotButton) {
             depotButton = document.createElement('button');
             depotButton.type = 'button';
-            depotButton.className = 'bmd-open-button bmd-parts-stock-button bmd-depot-button bm-link';
+            depotButton.className = 'bmd-open-button bmd-parts-stock-button bmd-depot-button';
             depotButton.dataset.bmdSetNumber = setNumber;
             const content = document.createElement('span');
             content.className = 'bmd-button-content';

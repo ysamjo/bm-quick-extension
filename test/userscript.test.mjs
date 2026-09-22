@@ -2618,21 +2618,54 @@ test('overview-price-badges uses resilient getRequestHandler instead of bare GM_
     assert.doesNotMatch(overviewSource, /(?<![.\w])GM_xmlhttpRequest\s*\(/);
 });
 
-test('tools buttons in link panel match .bm-link pills in dimensions, padding, height and icon size', () => {
-    // 1. Height, padding, font-size, border-radius match bm-link
-    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?height:\s*26px\s*!important/);
-    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?padding:\s*2px 7px 2px 5px\s*!important/);
-    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?font-size:\s*0\.78rem\s*!important/);
-    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?border-radius:\s*5px\s*!important/);
-    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?margin:\s*0\s*!important/);
+test('tools buttons in the link panel are normal action buttons, not bm-link pills', () => {
+    // 1. Keine Pill-Klasse mehr: weder beim Anlegen noch beim Einhängen in die
+    //    Linkleiste bekommt ein Tools-Button die .bm-link-Klasse.
+    assert.doesNotMatch(tweakerSource, /classList\.add\('bm-link'\)/);
+    assert.doesNotMatch(
+        tweakerSource,
+        /className = 'bmd-open-button bmd-parts-stock-button bmd-[a-z-]+ bm-link'/
+    );
 
-    // 2. Icon size matches bm-link's 15x15px
-    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button \.bmd-button-icon[\s\S]*?width:\s*15px\s*!important/);
-    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button \.bmd-button-icon[\s\S]*?height:\s*15px\s*!important/);
-    assert.match(tweakerSource, /\.bm-info-links\.bmd-tools-row \.bmd-open-button \.bmd-button-icon[\s\S]*?margin:\s*0 4px 0 0\s*!important/);
+    // 2. Gleicher Button-Look wie die Aktionszeile unter der Angebotsliste
+    const toolsButtonRule =
+        /\.bm-info-links\.bmd-tools-row \.bmd-open-button,\s*\.bmd-tools-row \.bmd-open-button \{([\s\S]*?)\}/;
+    const match = tweakerSource.match(toolsButtonRule);
+    assert.ok(match, 'Tools-Button-Regel fehlt');
+    const rules = match[1];
+    for (const declaration of [
+        /border:\s*1px solid #E2E8F0\s*!important/,
+        /border-radius:\s*8px\s*!important/,
+        /background:\s*#F8FAFC\s*!important/,
+        /color:\s*#B80000\s*!important/,
+        /font-size:\s*11px\s*!important/,
+        /font-weight:\s*700\s*!important/,
+        /box-shadow:\s*0 1px 2px rgba\(0, 0, 0, 0\.04\)\s*!important/
+    ]) {
+        assert.match(rules, declaration);
+    }
 
-    // 3. Mobile media query preserves 0.78rem and 26px height
-    assert.match(tweakerSource, /@media\s*\(max-width:\s*480px\)\s*\{[\s\S]*?\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?font-size:\s*0\.78rem\s*!important/);
+    // 3. Nur auf Zeilenhöhe der Linkleiste komprimiert, Hover wie unten voller Farbumschlag
+    assert.match(rules, /height:\s*26px\s*!important/);
+    assert.match(rules, /padding:\s*2px 8px\s*!important/);
+    assert.doesNotMatch(rules, /border-radius:\s*5px/);
+    assert.match(
+        tweakerSource,
+        /\.bmd-tools-row \.bmd-open-button:focus \{[\s\S]*?background:\s*#B80000\s*!important[\s\S]*?color:\s*#FFFFFF\s*!important/
+    );
+
+    // 4. Icon bleibt 14x14 und folgt der Schriftfarbe (kein Pill-15px-Icon)
+    assert.match(
+        tweakerSource,
+        /\.bm-info-links\.bmd-tools-row \.bmd-open-button \.bmd-button-icon[\s\S]*?width:\s*14px\s*!important/
+    );
+    assert.match(
+        tweakerSource,
+        /\.bm-info-links\.bmd-tools-row \.bmd-open-button \.bmd-button-icon svg[\s\S]*?stroke:\s*currentColor\s*!important/
+    );
+
+    // 5. Mobile Medienabfrage hält dasselbe Aussehen
+    assert.match(tweakerSource, /@media\s*\(max-width:\s*480px\)\s*\{[\s\S]*?\.bm-info-links\.bmd-tools-row \.bmd-open-button[\s\S]*?font-size:\s*11px\s*!important/);
 });
 
 test('setupDetailButton and applyOfferPresentation are safely dispatched without ReferenceError', () => {
