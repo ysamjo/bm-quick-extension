@@ -2105,6 +2105,34 @@ test('list view integrates compact 2-row layout, inline EOL badge, and merchant 
     assert.match(tweakerSource, /grid-template-areas:\s*["']thumb header["']\s*["']thumb price["']/);
 });
 
+test('list view keeps the price on one line and the merchant in its own row', () => {
+    // Der Preis startet bündig unter dem Titel: das Theme-Padding der offerbox fällt weg.
+    assert.match(
+        tweakerSource,
+        /html\.bm-view-list[^}]+\.productprice \.offerbox,[\s\S]*?\.offerbox \{\s*min-height: 0 !important;[\s\S]*?padding: 0 !important;/
+    );
+    // Zwei eigene Zeilen in .productprice: Preisreihe, darunter der Händler.
+    assert.match(
+        tweakerSource,
+        /html\.bm-view-list[^}]+\.productprice,[\s\S]{0,120}?\.productprice \{[\s\S]*?flex-direction: column !important;[\s\S]*?align-items: flex-start !important;/
+    );
+    assert.match(tweakerSource, /\(priceArea \|\| offerBox\)\.appendChild\(merchantBadge\);/);
+    assert.doesNotMatch(tweakerSource, /fragment\.appendChild\(merchantBadge\)/);
+    // In der Ein-Spalten-Liste darf die Preiszeile nicht umbrechen; nur der UVP gibt Breite nach.
+    assert.match(
+        tweakerSource,
+        /html\.bm-view-list[^}]+\.productprice \.offerbox \{\s*flex-wrap: nowrap !important;\s*\}/
+    );
+    assert.match(
+        tweakerSource,
+        /\.offerbox > \.stroke \{\s*flex: 0 1 auto !important;[\s\S]*?text-overflow: ellipsis !important;/
+    );
+    assert.match(
+        tweakerSource,
+        /\.offerbox > \.bm-list-black-bubble \{\s*flex: 0 0 auto !important;/
+    );
+});
+
 test('list view EOL extraction accurately parses specification rows, product tags, and textual EOL without external requests', () => {
     const htmlSpec = '<br /> | Release: <strong>11/2022</strong>, EOL: <strong>&asymp;07/2027</strong>, <span class="tooltipster">PLC:</span>';
     const htmlRetired = '<br /> | Release: <strong>10/2019</strong>, EOL: <strong>12/2022</strong>,';

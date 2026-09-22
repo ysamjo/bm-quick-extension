@@ -4124,14 +4124,42 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             font-size: 11px !important;
             line-height: 1.3 !important;
             color: #475569 !important;
+            /* Preiszeile und Händler sind zwei eigene Zeilen, beide bündig
+               links unter dem Titel. */
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 3px !important;
         }
         html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox,
         html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox {
             min-height: 0 !important;
+            /* Das Theme gibt der offerbox 8px Innenrand; dadurch startete der
+               Preis rechts neben dem Titel statt bündig unter ihm. */
+            padding: 0 !important;
+            max-width: 100% !important;
             display: flex !important;
             align-items: center !important;
             flex-wrap: wrap !important;
             gap: 6px !important;
+        }
+        /* Ein-Spalten-Liste: die Preiszeile bricht nie um. Nur der gestrichene
+           UVP darf enger rücken, Preis und Badges behalten ihre Breite. */
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox {
+            flex-wrap: nowrap !important;
+        }
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .theprice,
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .off,
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .bm-list-off,
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .bm-list-black-bubble {
+            flex: 0 0 auto !important;
+        }
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .stroke {
+            flex: 0 1 auto !important;
+            min-width: 0 !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
         }
         html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .theprice,
         html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .theprice {
@@ -6729,7 +6757,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         const cleanMerchant = String(merchant).replace(/^bei\s+/i, '').trim();
         if (!cleanMerchant) return;
 
-        // 1. Listenansicht: Badge in .offerbox als klickbarer Link
+        // 1. Listenansicht: klickbarer Händlerlink in der eigenen Zeile unter der Preisreihe
         const listBadge = card.querySelector('.bm-list-merchant');
         if (listBadge) {
             listBadge.textContent = cleanMerchant;
@@ -7568,22 +7596,29 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 const cachedShopUrl = setKey ? (bmListShopUrlCache.get(setKey) || sessionStorage.getItem(`bm_shop_${setKey}`) || '') : '';
 
                 // Listenansicht: Händler direkt klickbar als <a>
-                const merchantBadge = document.createElement('a');
-                merchantBadge.className = 'bm-list-merchant';
-                merchantBadge.target = '_blank';
-                merchantBadge.rel = 'noopener noreferrer';
+                let merchantBadge = priceArea?.querySelector(':scope > .bm-list-merchant');
+                if (!merchantBadge) {
+                    merchantBadge = document.createElement('a');
+                    merchantBadge.className = 'bm-list-merchant';
+                    merchantBadge.target = '_blank';
+                    merchantBadge.rel = 'noopener noreferrer';
+                    merchantBadge.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                    });
+                }
                 merchantBadge.href = cachedShopUrl || detailLink || '#';
                 merchantBadge.textContent = cachedMerchant || '';
                 merchantBadge.style.display = cachedMerchant ? 'inline-flex' : 'none';
-                merchantBadge.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                });
-                fragment.appendChild(merchantBadge);
 
                 // EOL-Datum in offerbox
                 fragment.appendChild(eolBadge);
 
                 offerBox.appendChild(fragment);
+
+                // Der Händler kommt unter die Preiszeile, nicht hinein: in der
+                // Liste ist die Zeile sonst zu breit für den Smartphone-Screen
+                // und der Name bricht mitten in der Preiszeile um.
+                (priceArea || offerBox).appendChild(merchantBadge);
 
                 // Split-CTA für Kachelansicht erzeugen (Shop-Direktlink + Angebote-Vergleich)
                 let splitCta = card.querySelector('.bm-split-cta');
