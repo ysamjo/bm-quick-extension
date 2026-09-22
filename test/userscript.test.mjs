@@ -2825,6 +2825,64 @@ test('Jede Apify-Quelle steckt in der Liste der 50-Prozent-Prüfung', () => {
     );
 });
 
+test('WAF-Chancen versacken im Cache, der Retry leert sie und Cookiebot-Embeds laufen an', () => {
+    // Eine BrickLink-Challenge ist kein Datensatz: nicht schreiben und den
+    // abgelaufenen Eintrag nicht als Ersatz zurückgeben.
+    assert.match(tweakerSource, /const isWafChallenge = value =>/);
+    assert.match(
+        tweakerSource,
+        /if \(isWafChallenge\(freshData\)\) \{\s*await deleteStoredValue\(key\)\.catch\(\(\) => \{\}\);\s*throw Object\.assign\(/
+    );
+    assert.match(
+        tweakerSource,
+        /if \(error\?\.bmWafChallenge\) throw error;\s*if \(cachedIsUsable && allowStaleOnError\) return cached\.data;/
+    );
+
+    // "Erneut versuchen" im Minifig-Overlay muss dieselben Schlüssel treffen,
+    // die die Quellen beim Laden benutzen.
+    assert.match(
+        tweakerSource,
+        /makeApiCacheKey\(\s*'rebrickable-minifigs-v1',\s*`\$\{activeSetNum\}-1`\s*\)/
+    );
+    assert.match(
+        tweakerSource,
+        /makeApiCacheKey\(\s*'bricklink-set-minifigs-v2',\s*`\$\{setNum \|\| activeSetNum\}-1`\s*\)/
+    );
+    assert.match(
+        tweakerSource,
+        /catalogItemInv\.asp\?S=\$\{activeSetNum\}-1&viewItemType=M/
+    );
+    assert.match(
+        tweakerSource,
+        /\]\.forEach\(key => \{\s*deleteStoredValue\(key\)\.catch\(\(\) => \{\}\);\s*\}\);/
+    );
+
+    // Die Videos warten auf ein Consent-Script, das nie läuft.
+    assert.match(
+        tweakerSource,
+        /function activateCookieblockedEmbeds\(\) \{/
+    );
+    assert.match(
+        tweakerSource,
+        /setupEanBarcode,\s*activateCookieblockedEmbeds,/
+    );
+    assert.match(
+        tweakerSource,
+        /window\.setTimeout\(activateCookieblockedEmbeds, delay\)/
+    );
+
+    // Der Build darf nicht mehr in die Quelle zurückschreiben.
+    const buildSource = fs.readFileSync(
+        new URL('../build-userscript.mjs', import.meta.url),
+        'utf8'
+    );
+    assert.doesNotMatch(buildSource, /applySessionFixes|bm-session-fixes/);
+    assert.equal(
+        fs.existsSync(new URL('../apply-session-fixes.mjs', import.meta.url)),
+        false
+    );
+});
+
 
 
 

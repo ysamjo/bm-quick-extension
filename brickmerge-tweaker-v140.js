@@ -130,6 +130,24 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             : typeof gmApi?.setValue === 'function'
                 ? Promise.resolve(gmApi.setValue(key, value))
                 : Promise.resolve(writeLocalFallback(key, value));
+    // BrickLink liefert bei zu vielen Anfragen eine WAF-Challenge als HTML. Die
+    // ist kein Datensatz und darf den Cache weder füllen noch aus ihm bedient
+    // werden – sonst bleibt die Quelle für die ganze TTL blockiert.
+    const isWafChallenge = value =>
+        typeof value?.responseText === 'string' &&
+        value.responseText.includes('awsWafCookieDomainList');
+    const deleteStoredValue = key => {
+        if (typeof GM_deleteValue === 'function') {
+            return Promise.resolve(GM_deleteValue(key));
+        }
+        if (typeof gmApi?.deleteValue === 'function') {
+            return Promise.resolve(gmApi.deleteValue(key));
+        }
+        try {
+            window.localStorage.removeItem(key);
+        } catch (error) {}
+        return Promise.resolve();
+    };
 
     function createWorkerClientId() {
         if (window.crypto?.randomUUID) return window.crypto.randomUUID();
@@ -241,6 +259,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         const request = (async () => {
             try {
                 const freshData = await fetchFn();
+                if (isWafChallenge(freshData)) {
+                    await deleteStoredValue(key).catch(() => {});
+                    throw Object.assign(
+                        new Error('BrickLink-WAF-Herausforderung erhalten'),
+                        { bmWafChallenge: true }
+                    );
+                }
                 if (isCacheable(freshData)) {
                     await writeStoredValue(key, {
                         timestamp: Date.now(),
@@ -250,6 +275,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 }
                 return cachedIsUsable ? cached.data : freshData;
             } catch (error) {
+                // Ein abgelaufener Eintrag kann selbst die Challenge-Seite sein;
+                // dann darf er nicht als "noch so gut" zurückgegeben werden.
+                if (error?.bmWafChallenge) throw error;
                 if (cachedIsUsable && allowStaleOnError) return cached.data;
                 throw error;
             } finally {
@@ -2283,6 +2311,18 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             > .off:not(.bm-bestprice-black-bubble) {
             top: 0.45rem !important;
             left: 0.75rem !important;
+            /* Auf Kachelgröße der Suchseite normiert (36px) */
+            width: 36px !important;
+            height: 36px !important;
+            min-width: 36px !important;
+            min-height: 36px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 12px !important;
+            font-weight: 800 !important;
+            line-height: 1 !important;
+            box-sizing: border-box !important;
         }
         .bm-featured-black-bubble {
             position: absolute !important;
@@ -2292,24 +2332,24 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             display: inline-flex !important;
             align-items: center;
             justify-content: center;
-            width: 54px !important;
-            height: 54px !important;
-            min-width: 54px !important;
-            min-height: 54px !important;
+            width: 36px !important;
+            height: 36px !important;
+            min-width: 36px !important;
+            min-height: 36px !important;
             margin: 0 !important;
             padding: 0 !important;
             border: 1px solid #000 !important;
             border-radius: 999px !important;
             background: #222 !important;
             color: #fff !important;
-            font-size: 1rem !important;
+            font-size: 12px !important;
             font-weight: bold !important;
             line-height: 1 !important;
             text-align: center;
             box-sizing: border-box;
         }
         .bm-featured-black-bubble.bm-featured-black-bubble-stacked {
-            top: calc(0.45rem + 60px) !important;
+            top: calc(0.45rem + 42px) !important;
         }
         .bm-full-product-description {
             float: none !important;
@@ -8388,6 +8428,22 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (document.readyState !== 'loading') setupSearchResultsFallback();
         else window.addEventListener('DOMContentLoaded', setupSearchResultsFallback, { once: true });
     }
+    // Die Placeholder-Iframes stehen schon im ersten HTML und bleiben sonst
+    // sichtbar leer, bis runSetDetailInitializers läuft – deshalb früh und
+    // zusätzlich mehrfach nachholen.
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            activateCookieblockedEmbeds,
+            { once: true }
+        );
+    } else {
+        activateCookieblockedEmbeds();
+    }
+    [300, 900, 2200].forEach(delay =>
+        window.setTimeout(activateCookieblockedEmbeds, delay)
+    );
+
 
     function createMetaGptTransferId() {
         if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -11436,6 +11492,35 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         });
     }
 
+    // Brickmerge koppelt die YouTube-Embeds an den Cookiebot-Consent: Die
+    // Iframes tragen nur data-cookieblock-src, das echte src setzt erst das
+    // Consent-Script. Weil die Tools Cookiebot blockieren, bleiben die Videos
+    // sonst dauerhaft leer – diese Routine füllt die src selbst nach.
+    function activateCookieblockedEmbeds() {
+        const activate = frame => {
+            const blockedSource = frame.getAttribute('data-cookieblock-src') ||
+                frame.getAttribute('data-src') ||
+                frame.getAttribute('data-lazy-src');
+            const hasSource = Boolean(frame.getAttribute('src'));
+            if (blockedSource && !hasSource) {
+                frame.setAttribute('src', blockedSource);
+            }
+            if (!hasSource) {
+                frame.setAttribute('loading', 'lazy');
+            }
+            frame.setAttribute('allowfullscreen', 'true');
+            frame.style.removeProperty('background');
+            frame.style.removeProperty('background-image');
+        };
+        const candidates = Array.from(
+            document.querySelectorAll('iframe[data-cookieblock-src]')
+        );
+        const placeholderFrames = Array.from(document.querySelectorAll(
+            'iframe.video, .flex-video > iframe'
+        ));
+        candidates.concat(placeholderFrames).forEach(activate);
+    }
+
     function runSetDetailInitializers() {
         [
             setupDesktopDetailGrid,
@@ -11443,6 +11528,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             removeRelativeDayLabelsFromBestPriceLines,
             setupDesktopOfferGallery,
             setupEanBarcode,
+            activateCookieblockedEmbeds,
             setupDesktopSidebarInstructions,
             setupDesktopSidebarParts,
             expandProductDescription,
@@ -17764,6 +17850,29 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     } catch (error) {
                         // Continue without cache invalidation.
                     }
+                    // Beim manuellen "Erneut versuchen" auch die 6-24h-API-Caches
+                    // für dieses Set leeren: Eine WAF-Challenge oder eine leere
+                    // Antwort blockiert die Quelle sonst bis zum TTL-Ablauf.
+                    [
+                        makeApiCacheKey(
+                            'rebrickable-minifigs-v1',
+                            `${activeSetNum}-1`
+                        ),
+                        makeApiCacheKey(
+                            'bricklink-set-minifigs-v2',
+                            `${setNum || activeSetNum}-1`
+                        ),
+                        makeApiCacheKey(
+                            'bricklink-minifig-inventory',
+                            `https://www.bricklink.com/catalogItemInv.asp?S=${activeSetNum}-1&viewItemType=M`
+                        ),
+                        makeApiCacheKey(
+                            'bricklink-minifig-inventory',
+                            `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${activeSetNum}-1`
+                        )
+                    ].forEach(key => {
+                        deleteStoredValue(key).catch(() => {});
+                    });
                 }
                 subtitle.textContent = setLabel;
                 setStatus('Minifiguren werden geladen …');
