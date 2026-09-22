@@ -528,6 +528,27 @@ globalThis.BM_mergeSettings = value => ({
 globalThis.BM_isFranceEnabled = settings =>
     settings?.linkRows?.france === true;
 
+// Auf schon offenen Tabs, in Incognito ohne Freigabe und auf den
+// ausgeschlossenen Seiten läuft page-overlay.js nicht von selbst. Ohne
+// Nachladen gibt es dort statt der Seitenleiste einen neuen Tab.
+globalThis.BM_openFloatingSidebar = async (tabId, product) => {
+    if (!Number.isInteger(tabId)) return null;
+    const message = { type: 'bm-show-floating-sidebar', product };
+    try {
+        return await chrome.tabs.sendMessage(tabId, message) || null;
+    } catch {}
+    if (typeof chrome.scripting?.executeScript !== 'function') return null;
+    try {
+        await chrome.scripting.executeScript({
+            target: { tabId },
+            files: ['page-overlay.js']
+        });
+        return await chrome.tabs.sendMessage(tabId, message) || null;
+    } catch {
+        return null;
+    }
+};
+
 globalThis.BM_parsePrice = value => {
     if (typeof value === 'number') return Number.isFinite(value) ? value : null;
     const text = String(value || '').replace(/\s/g, '');

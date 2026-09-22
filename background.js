@@ -334,10 +334,7 @@ async function openProductPanel(tabId, product, rememberProduct = true) {
         throw new Error('Kein LEGO-Set erkannt.');
     }
     if (rememberProduct) await updateDetectedProduct(tabId, product);
-    const response = await chrome.tabs.sendMessage(tabId, {
-        type: 'bm-show-floating-sidebar',
-        product
-    });
+    const response = await globalThis.BM_openFloatingSidebar(tabId, product);
     if (!response?.ok) {
         throw new Error(response?.error || 'Seitenleiste konnte nicht geöffnet werden.');
     }

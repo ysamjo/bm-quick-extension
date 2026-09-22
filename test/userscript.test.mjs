@@ -3031,3 +3031,33 @@ test('Kacheln ohne aktuelles Angebot behalten Alarm-Link und UVP, ohne über den
 
 
 
+
+test('Toolbar-Suche lädt die Seitenleiste nach, statt in einen neuen Tab auszuweichen', () => {
+    const popupSource = fs.readFileSync(
+        new URL('../popup/popup.js', import.meta.url),
+        'utf8'
+    );
+
+    // shared.js kennt den Helfer, der page-overlay.js per scripting nachlädt,
+    // wenn ein Tab kein Content-Script hat (vor dem Update geöffnet, Incognito
+    // ohne Freigabe, ausgeschlossene Seiten).
+    assert.match(sharedSource, /globalThis\.BM_openFloatingSidebar = async \(tabId, product\) =>/);
+    assert.match(sharedSource, /files: \['page-overlay\.js'\]/);
+    assert.equal(
+        JSON.parse(fs.readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'))
+            .permissions.includes('scripting'),
+        true
+    );
+
+    // Popup und Service Worker laufen beide über den Helfer.
+    assert.match(popupSource, /await BM_openFloatingSidebar\(tab\.id, product\)/);
+    assert.doesNotMatch(popupSource, /chrome\.tabs\.sendMessage/);
+    assert.match(backgroundSource, /globalThis\.BM_openFloatingSidebar\(tabId, product\)/);
+
+    // Ohne Seitenleiste füllt die Suche einen leeren Tab, statt einen zweiten zu öffnen.
+    assert.match(popupSource, /chrome\.tabs\.update\(tab\.id, \{ url: url\.href \}\)/);
+    assert.equal(
+        (popupSource.match(/chrome\.tabs\.create\(\{ url: url\.href \}\)/g) || []).length,
+        2
+    );
+});

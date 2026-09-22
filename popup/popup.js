@@ -20,29 +20,39 @@ form.addEventListener('submit', async event => {
         }
     } catch {}
 
-    if (searchInSidebar) {
+    if (!searchInSidebar) {
+        chrome.tabs.create({ url: url.href });
+        window.close();
+        return;
+    }
+
+    const product = {
+        setNumber: query,
+        name: query,
+        query
+    };
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const response = tab?.id
+        ? await BM_openFloatingSidebar(tab.id, product)
+        : null;
+    if (response?.ok) {
+        void chrome.runtime.sendMessage({
+            type: 'bm-page-product-detected',
+            tabId: tab.id,
+            product
+        }).catch(() => {});
+        window.close();
+        return;
+    }
+
+    // Wo sich keine Seitenleiste öffnen lässt, bekommt der leere Tab die
+    // Suche statt einen zweiten Tab zu erzeugen.
+    const empty = tab?.id && (!tab.url || tab.url === 'about:blank' || tab.url === 'chrome://newtab/');
+    if (empty) {
         try {
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (tab?.id) {
-                const product = {
-                    setNumber: query,
-                    name: query,
-                    query
-                };
-                const response = await chrome.tabs.sendMessage(tab.id, {
-                    type: 'bm-show-floating-sidebar',
-                    product
-                });
-                if (response?.ok) {
-                    void chrome.runtime.sendMessage({
-                        type: 'bm-page-product-detected',
-                        tabId: tab.id,
-                        product
-                    }).catch(() => {});
-                    window.close();
-                    return;
-                }
-            }
+            await chrome.tabs.update(tab.id, { url: url.href });
+            window.close();
+            return;
         } catch {}
     }
 

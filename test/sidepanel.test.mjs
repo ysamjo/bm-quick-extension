@@ -124,7 +124,8 @@ test('manifest registers badge detection and the floating sidebar', () => {
     ));
     assert.equal(manifest.side_panel, undefined);
     assert.equal(manifest.permissions.includes('sidePanel'), false);
-    assert.equal(manifest.permissions.includes('scripting'), false);
+    // scripting lädt page-overlay.js auf Tabs nach, die beim Update offen waren
+    assert.equal(manifest.permissions.includes('scripting'), true);
     assert.equal(manifest.content_scripts.some(entry =>
         entry.js?.includes('page-product-detector.js') &&
         entry.js?.includes('page-overlay.js')
@@ -204,7 +205,11 @@ test('toolbar click opens the floating sidebar only for a detected product', () 
     assert.match(background, /chrome\.action\.setBadgeText\(\{ tabId, text: badgeText \}\)/);
     assert.match(background, /fetchBrickmergeBestPrice/);
     assert.match(background, /chrome\.action\.onClicked\.addListener/);
-    assert.match(background, /type: 'bm-show-floating-sidebar'/);
+    assert.match(background, /globalThis\.BM_openFloatingSidebar\(tabId, product\)/);
+    assert.match(fs.readFileSync(
+        new URL('../shared.js', import.meta.url),
+        'utf8'
+    ), /type: 'bm-show-floating-sidebar'/);
     assert.doesNotMatch(background, /chrome\.sidePanel/);
     assert.match(
         background,
@@ -241,6 +246,16 @@ test('toolbar search popup is activated when no LEGO set is detected', async () 
         console: { error() {} },
         importScripts() {},
         BM_mergeSettings(value) { return value || {}; },
+        async BM_openFloatingSidebar(tabId, product) {
+            panelMessages.push({
+                tabId,
+                message: {
+                    type: 'bm-show-floating-sidebar',
+                    product: product ? { ...product } : undefined
+                }
+            });
+            return { ok: true };
+        },
         chrome: {
             action: {
                 async setBadgeText() {},
@@ -622,10 +637,18 @@ test('popup search opens floating sidebar on active tab by default and supports 
     vm.runInContext(sharedSource, sharedContext);
     assert.equal(sharedContext.globalThis.BM_EXTENSION_DEFAULTS.searchInSidebar, true);
 
-    const runPopupSearch = async ({ settings = {}, tab = { id: 77 }, tabSendError = false }) => {
+    const runPopupSearch = async ({
+        settings = {},
+        tab = { id: 77, url: 'https://www.vinted.de/catalog?search_text=lego+7592' },
+        tabSendError = false,
+        sendFailures = 0,
+        injectFails = false
+    }) => {
         let formSubmitListener = null;
         let closed = false;
         const createdTabs = [];
+        const updatedTabs = [];
+        const injected = [];
         const sentTabMessages = [];
         const runtimeMessages = [];
 
@@ -639,7 +662,7 @@ test('popup search opens floating sidebar on active tab by default and supports 
 
         const popupContext = vm.createContext({
             URL,
-            BM_mergeSettings: sharedContext.globalThis.BM_mergeSettings,
+            console,
             document: {
                 getElementById(id) {
                     if (id === 'search-form') return mockForm;
@@ -657,14 +680,23 @@ test('popup search opens floating sidebar on active tab by default and supports 
                         async get() { return { settings }; }
                     }
                 },
+                scripting: {
+                    async executeScript(options) {
+                        if (injectFails) throw new Error('Cannot access');
+                        injected.push(options);
+                    }
+                },
                 tabs: {
                     async query() { return tab ? [tab] : []; },
                     async sendMessage(tabId, message) {
-                        if (tabSendError) throw new Error('Tab unavailable');
+                        if (tabSendError || injected.length < sendFailures) {
+                            throw new Error('Tab unavailable');
+                        }
                         sentTabMessages.push({ tabId, message });
                         return { ok: true };
                     },
-                    async create(options) { createdTabs.push(options); }
+                    async create(options) { createdTabs.push(options); },
+                    async update(tabId, options) { updatedTabs.push({ tabId, options }); }
                 },
                 runtime: {
                     async sendMessage(message) {
@@ -676,6 +708,9 @@ test('popup search opens floating sidebar on active tab by default and supports 
             }
         });
 
+        // popup.html lädt shared.js vor popup.js – hier genauso, damit der
+        // Test den echten Nachlade-Helfer erwischt.
+        vm.runInContext(sharedSource, popupContext);
         vm.runInContext(popupJs, popupContext);
         assert.equal(typeof formSubmitListener, 'function');
 
@@ -683,7 +718,7 @@ test('popup search opens floating sidebar on active tab by default and supports 
         await formSubmitListener({ preventDefault() { prevented = true; } });
         assert.equal(prevented, true);
 
-        return { closed, createdTabs, sentTabMessages, runtimeMessages };
+        return { closed, createdTabs, updatedTabs, injected, sentTabMessages, runtimeMessages };
     };
 
     // 1. Default settings -> opens floating sidebar on active tab
@@ -713,16 +748,39 @@ test('popup search opens floating sidebar on active tab by default and supports 
         }
     });
 
-    // 2. When active tab fails (e.g. chrome:// internal page) -> falls back to new tab
+    // 2. Tab ohne Content-Script (nach Update offen) -> Overlay nachladen, Seitenleiste bleibt
+    const resInjected = await runPopupSearch({ sendFailures: 1 });
+    assert.equal(resInjected.closed, true);
+    assert.equal(resInjected.createdTabs.length, 0);
+    assert.deepEqual(JSON.parse(JSON.stringify(resInjected.injected[0])), {
+        target: { tabId: 77 },
+        files: ['page-overlay.js']
+    });
+    assert.equal(resInjected.sentTabMessages.length, 1);
+    assert.equal(resInjected.runtimeMessages.length, 1);
+
+    // 3. Nicht nachladbar (chrome://, Incognito ohne Freigabe) -> neuer Tab
     const resFallback = await runPopupSearch({ tabSendError: true });
     assert.equal(resFallback.closed, true);
+    assert.equal(resFallback.sentTabMessages.length, 0);
     assert.equal(resFallback.createdTabs.length, 1);
     assert.match(resFallback.createdTabs[0].url, /brickmerge\.de\/\?find=LEGO\+Orchidee\+10311/);
 
-    // 3. When searchInSidebar is explicitly disabled -> opens new tab directly
+    // 4. Leerer Tab, keine Seitenleiste möglich -> ihn füllen statt einen zweiten öffnen
+    const resBlank = await runPopupSearch({
+        tab: { id: 77, url: 'chrome://newtab/' },
+        tabSendError: true
+    });
+    assert.equal(resBlank.closed, true);
+    assert.equal(resBlank.createdTabs.length, 0);
+    assert.equal(resBlank.updatedTabs.length, 1);
+    assert.match(resBlank.updatedTabs[0].options.url, /brickmerge\.de\/\?find=LEGO\+Orchidee\+10311/);
+
+    // 5. When searchInSidebar is explicitly disabled -> opens new tab directly
     const resDisabled = await runPopupSearch({ settings: { searchInSidebar: false } });
     assert.equal(resDisabled.closed, true);
     assert.equal(resDisabled.sentTabMessages.length, 0);
+    assert.equal(resDisabled.injected.length, 0);
     assert.equal(resDisabled.createdTabs.length, 1);
     assert.match(resDisabled.createdTabs[0].url, /brickmerge\.de\/\?find=LEGO\+Orchidee\+10311/);
 });
