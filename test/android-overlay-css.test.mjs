@@ -9,19 +9,25 @@ import test from 'node:test';
 //      injiziert in onPageStarted, also vor dem ersten Bild
 //   C  webview-bootstrap.js -> #bm-android-app-shell
 //      injiziert, sobald das Bootstrap-Skript geladen ist
-//   A  src/brickmerge-tweaker.js -> globalStyle (das Runtime)
+//   A  src/brickmerge-tweaker.js -> die CSS-Literal des Runtime
 //      injiziert zuletzt, in boot.onload
 //
-// Alle drei setzen dieselben Selektoren mit demselben Praefix html.bm-android-app,
-// alle mit !important. Bei gleicher Spezifitaet entscheidet die Dokumentreihenfolge:
-// A gewinnt. E und C sind damit reine Vorlauf-Kopien — sie duerfen vom Ergebnis her
-// nichts anderes erzeugen als A, sonst springt das Layout, sobald das Runtime
-// geladen ist. Genau das ist passiert (Header-Padding 12px -> 14px, Schliessen-
-// Knopf 8px -> 10px, unterer Abstand 20px -> 24px).
+// Alle drei setzen dieselben Selektoren, alle mit !important. Bei gleicher
+// Spezifitaet entscheidet die Dokumentreihenfolge: A gewinnt. E und C sind damit
+// reine Vorlauf-Kopien — sie duerfen vom Ergebnis her nichts anderes erzeugen
+// als A, sonst springt das Layout, sobald das Runtime geladen ist. Genau das ist
+// passiert (Header-Padding 12px -> 14px, Bubble 36px -> 32px, Kachelhoehe 105px
+// -> 155px).
 //
-// Dieser Test haelt die drei Kopien deckungsgleich. Er prueft nur Deklarationen,
-// die in beiden Quellen vorkommen; Zusatz-Eigenschaften der Vorlauf-Kopien (z.B.
-// background, das A nicht setzt) sind erlaubt und bleiben wirksam.
+// Noch teurer sind Regeln, die E/C *nur dort* gibt: ihr html.bm-android-app-
+// Praefix macht sie spezifischer als jede Unpraefix-Regel des Runtime, beide
+// !important — die Vorlauf-Kopie gewinnt dann dauerhaft, nicht nur bis zum
+// Laden. Deshalb vergleicht dieser Test auch gegen die entpraefixte Runtime-
+// Regel (ALLOW_LIST markiert die Fälle, die bewusst als App-OVERRIDE gemeint sind).
+//
+// Der Test prueft nur Deklarationen, die in beiden Quellen vorkommen; Zusatz-
+// eigenschaften der Vorlauf-Kopien (z.B. background, das A nicht setzt) sind
+// erlaubt und bleiben wirksam.
 
 const readIf = (relative) => {
     try {
@@ -32,7 +38,9 @@ const readIf = (relative) => {
 };
 
 // --------------------------------------------------------------- Mini-Parser
-// Liefert CSS-Regeln mit Selektor, Rumpf und umschliessender @media-Bedingung.
+// Liefert CSS-Regeln mit Selektor, Rumpf und umschliessenden At-Rules
+// (@media-Kette und @keyframes-Name — sonst vergleicht man zwei verschiedene
+// "to"-Schluessel).
 function parseRules(css, lineOffset = 1) {
     const clean = css.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
     const rules = [];
@@ -48,16 +56,17 @@ function parseRules(css, lineOffset = 1) {
         }
         if (ch === '{') {
             const selector = prelude.replace(/\s+/g, ' ').trim();
-            if (selector.startsWith('@media')) stack.push({ media: selector });
+            if (selector.startsWith('@')) stack.push({ at: selector });
             else stack.push({ rule: true, selector, line: preludeLine, bodyAt: i + 1 });
             prelude = '';
         } else if (ch === '}') {
             const top = stack.pop();
             if (top && top.rule) {
+                const scope = stack.map((s) => s.at).filter(Boolean).join(' ');
                 rules.push({
                     selector: top.selector,
                     body: clean.slice(top.bodyAt, i).replace(/\s+/g, ' ').trim(),
-                    media: stack.map((s) => s.media).filter(Boolean).join(' && '),
+                    scope,
                     line: top.line
                 });
             }
@@ -68,6 +77,31 @@ function parseRules(css, lineOffset = 1) {
         }
     }
     return rules;
+}
+
+// Kommata auf hoechster Ebene — innerhalb von :is(...), [title="a,b"] oder
+// URL-Notation sind sie Teil des Selektors.
+function splitSelectors(selector) {
+    const parts = [];
+    let depth = 0;
+    let quote = '';
+    let start = 0;
+    for (let i = 0; i < selector.length; i++) {
+        const ch = selector[i];
+        if (quote) {
+            if (ch === quote) quote = '';
+            continue;
+        }
+        if (ch === '"' || ch === "'") quote = ch;
+        else if (ch === '(' || ch === '[') depth += 1;
+        else if (ch === ')' || ch === ']') depth -= 1;
+        else if (ch === ',' && depth === 0) {
+            parts.push(selector.slice(start, i));
+            start = i + 1;
+        }
+    }
+    parts.push(selector.slice(start));
+    return parts;
 }
 
 const declarations = (body) =>
@@ -82,14 +116,15 @@ const declarations = (body) =>
 
 // Einfacher Selektor -> { Eigenschaft: Wert }. Spaetere Regel derselben Quelle
 // ueberschreibt fruehere — wie im Browser.
-function bySimpleSelector(rules) {
+function bySelector(rules) {
     const out = new Map();
     for (const rule of rules) {
-        for (const raw of rule.selector.split(',')) {
+        for (const raw of splitSelectors(rule.selector)) {
             const selector = raw.trim();
             if (!selector) continue;
-            if (!out.has(selector)) out.set(selector, { props: new Map(), line: rule.line });
-            const entry = out.get(selector);
+            const key = `${rule.scope} ${selector}`;
+            if (!out.has(key)) out.set(key, { props: new Map(), line: rule.line, selector, scope: rule.scope });
+            const entry = out.get(key);
             for (const [property, value] of declarations(rule.body)) {
                 entry.props.set(property, { value, line: rule.line });
             }
@@ -98,13 +133,22 @@ function bySimpleSelector(rules) {
     return out;
 }
 
-const normalize = (value) => value.replace(/\s*,\s*/g, ',').replace(/\s+/g, ' ').trim();
+// Whitespace, Kommata und das !important des Vorlauf-Schutzes sind kein Befund.
+const normalize = (value) =>
+    value.replace(/\s*!\s*important\s*$/i, '').replace(/\s*,\s*/g, ',').replace(/\s+/g, ' ').trim();
+
+const APP_PREFIX = 'html.bm-android-app ';
+
+// App-OVERRIDE: die Vorlauf-Schicht darf hier bewusst anders enden als die
+// Unpraefix-Regel des Runtime, weil die App-Shell ohne Site-Fuss auskommt.
+const ALLOW_LIST = new Set([
+    'html.bm-android-app #wrap.bm-set-wrap|margin-bottom'
+]);
 
 // ------------------------------------------------------------ CSS aus Dateien
-function runtimeCss(source) {
-    const lines = source.split('\n');
-    const start = lines.findIndex((l) => l.includes('const globalCss = `'));
-    assert.ok(start >= 0, 'const globalCss = ` nicht gefunden');
+function templateLiteral(lines, startNeedle) {
+    const start = lines.findIndex((l) => l.includes(startNeedle));
+    assert.ok(start >= 0, `${startNeedle} nicht gefunden`);
     let end = -1;
     for (let i = start + 1; i < lines.length; i++) {
         if (/^\s*`;\s*$/.test(lines[i])) {
@@ -112,25 +156,31 @@ function runtimeCss(source) {
             break;
         }
     }
-    assert.ok(end > start, 'Ende des globalCss-Literals nicht gefunden');
+    assert.ok(end > start, `Ende des Literals ${startNeedle} nicht gefunden`);
     const first = lines[start].slice(lines[start].indexOf('`') + 1);
     return { css: [first, ...lines.slice(start + 1, end)].join('\n'), lineOffset: start + 1 };
 }
 
-function bootstrapCss(source) {
-    const lines = source.split('\n');
-    const start = lines.findIndex((l) => l.includes('appShellStyle.textContent = `'));
-    assert.ok(start >= 0, 'appShellStyle.textContent nicht gefunden');
-    let end = -1;
-    for (let i = start + 1; i < lines.length; i++) {
-        if (/^\s*`;\s*$/.test(lines[i])) {
-            end = i;
-            break;
+// Jedes Template-Literal, das nach CSS aussieht — das Runtime verteilt seine
+// Regeln auf mehrere <style>-Bloes (globalCss, Dialoge, Depot-Blatt).
+function cssLiterals(lines) {
+    const out = [];
+    for (let i = 0; i < lines.length; i++) {
+        if (!/^\s*(?:(?:const|let|var)\s+[\w.$]+|[\w.$]+\.textContent)\s*=\s*`\s*$/.test(lines[i])) continue;
+        let end = -1;
+        for (let j = i + 1; j < lines.length; j++) {
+            if (/^\s*`;\s*$/.test(lines[j])) {
+                end = j;
+                break;
+            }
         }
+        if (end < 0) continue;
+        const css = lines.slice(i + 1, end).join('\n');
+        const braces = (css.match(/{/g) || []).length;
+        const colons = (css.match(/:/g) || []).length;
+        if (braces >= 3 && colons > braces) out.push({ css, lineOffset: i + 1 });
     }
-    assert.ok(end > start, 'Ende des appShellStyle-Literals nicht gefunden');
-    const first = lines[start].slice(lines[start].indexOf('`') + 1);
-    return { css: [first, ...lines.slice(start + 1, end)].join('\n'), lineOffset: start + 1 };
+    return out;
 }
 
 function earlyShellCss(source) {
@@ -156,18 +206,24 @@ const tweakerSource = fs.readFileSync(
     new URL('../src/brickmerge-tweaker.js', import.meta.url),
     'utf8'
 );
-const bootstrapSource = readIf(
-    '../../Android/app/src/main/assets/webview-bootstrap.js'
-);
-const javaSource = readIf(
-    '../../Android/app/src/main/java/de/brickmerge/MainActivity.java'
-);
+const tweakerLines = tweakerSource.split('\n');
+const bootstrapSource = readIf('../../Android/app/src/main/assets/webview-bootstrap.js');
+const javaSource = readIf('../../Android/app/src/main/java/de/brickmerge/MainActivity.java');
+
+// Spaetere Literale gewinnen — wie die Documentreihenfolge der style-Elemente.
+const runtimeMap = new Map();
+const globalCss = templateLiteral(tweakerLines, 'const globalCss = `');
+for (const literal of [globalCss, ...cssLiterals(tweakerLines)]) {
+    for (const [key, entry] of bySelector(parseRules(literal.css, literal.lineOffset))) {
+        runtimeMap.set(key, entry);
+    }
+}
 
 const isAppPrefixed = (rule) => /html\.bm-android-app/.test(rule.selector);
-
-const runtime = runtimeCss(tweakerSource);
-const runtimeOverlay = parseRules(runtime.css, runtime.lineOffset).filter(isAppPrefixed);
-const runtimeMap = bySimpleSelector(runtimeOverlay);
+// Fuer die Wurzel-Ebenen-Pruefung nur das Haupt-Blatt: die Dialog- und
+// Depot-Literale des Runtime kennen eigene Breakpoints.
+const runtimeOverlay = parseRules(globalCss.css, globalCss.lineOffset).filter(isAppPrefixed);
+const runtimeGlobalOverlay = bySelector(parseRules(globalCss.css, globalCss.lineOffset));
 
 // -------------------------------------------------------------------- Tests
 test('Runtime-Overlay-Regeln liegen auf Root-Ebene, nicht in einem Breakpoint', () => {
@@ -175,50 +231,71 @@ test('Runtime-Overlay-Regeln liegen auf Root-Ebene, nicht in einem Breakpoint', 
     // @media (max-width: 768px) von Z.4943 — das schliesst bereits bei Z.5206.
     // Waeren sie im Breakpoint, wuerden sie auf breiten Geraeten gar nicht greifen.
     assert.ok(runtimeOverlay.length > 0, 'keine Overlay-Regeln gefunden');
-    const inMedia = runtimeOverlay.filter((r) => r.media);
+    const inMedia = runtimeOverlay.filter((r) => r.scope);
     assert.deepEqual(
-        inMedia.map((r) => `Z.${r.line}: ${r.media}`),
+        inMedia.map((r) => `Z.${r.line}: ${r.scope}`),
         [],
         'Overlay-Regeln mit Praefix duerfen nicht in einem @media stehen'
     );
 });
 
-test('Bootstrap und Early-Shell widersprechen dem Runtime nicht', { skip: !bootstrapSource || !javaSource ? 'Android-Repo nicht im Arbeitsverzeichnis' : false }, () => {
-    const bootstrap = bootstrapCss(bootstrapSource);
-    const early = earlyShellCss(javaSource);
+test('Runtime und Vorlauf-Schichten enthalten denselben Selektor-Level', () => {
+    // Der Drift-Test unten vergleicht pro (Selektor-, Eigenschafts-)Paar. Damit er
+    // ueberhaupt etwas prueft, muss das Runtime selbst unzpraefixierte Regeln
+    // kennen — sonst vergleicht man nur Aepfel mit Aepfeln aus derselben Quelle.
+    assert.ok([...runtimeMap.keys()].some((k) => !k.includes(APP_PREFIX)), 'nur praefixierte Runtime-Regeln');
+});
 
-    const sources = [
-        { name: 'webview-bootstrap.js', map: bySimpleSelector(parseRules(bootstrap.css, bootstrap.lineOffset).filter(isAppPrefixed)), label: 'C' },
-        { name: 'MainActivity.java (FAST_STYLE_INJECTOR)', map: bySimpleSelector(parseRules(early.css, early.lineOffset).filter(isAppPrefixed)), label: 'E' }
-    ];
-
+const compareLayers = (label, map) => {
     const problems = [];
-    for (const { name, map } of sources) {
-        for (const [selector, runtimeEntry] of runtimeMap) {
-            const other = map.get(selector);
-            if (!other) continue;
-            for (const [property, runtimeValue] of runtimeEntry.props) {
-                const otherValue = other.props.get(property);
-                if (!otherValue) continue;
-                if (normalize(otherValue.value) === normalize(runtimeValue.value)) continue;
-                problems.push(
-                    `${name} Z.${otherValue.line}  ${selector}\n` +
-                    `      ${property}: ${otherValue.value}   <-- Vorlauf-Kopie\n` +
-                    `      ${property}: ${runtimeValue.value}   <-- Runtime, gewinnt (src/brickmerge-tweaker.js Z.${runtimeValue.line})`
-                );
-            }
+    for (const [key, entry] of map) {
+        const candidates = [key];
+        if (entry.selector.startsWith(APP_PREFIX)) {
+            candidates.push(`${entry.scope} ${entry.selector.slice(APP_PREFIX.length)}`);
+        }
+        let runtime = null;
+        for (const candidate of candidates) {
+            runtime = runtimeMap.get(candidate);
+            if (runtime) break;
+        }
+        if (!runtime) continue;
+        for (const [property, value] of entry.props) {
+            const runtimeValue = runtime.props.get(property);
+            if (!runtimeValue) continue;
+            if (ALLOW_LIST.has(`${entry.selector}|${property}`)) continue;
+            if (normalize(value.value) === normalize(runtimeValue.value)) continue;
+            problems.push(
+                `${label} Z.${value.line}  ${entry.scope ? `${entry.scope} ` : ''}${entry.selector}\n` +
+                `      ${property}: ${value.value}   <-- Vorlauf-Kopie\n` +
+                `      ${property}: ${runtimeValue.value}   <-- Runtime, gewinnt (src/brickmerge-tweaker.js Z.${runtimeValue.line})`
+            );
         }
     }
+    return problems;
+};
 
-    assert.deepEqual(
-        problems,
-        [],
-        'Die Vorlauf-Kopien der Android-Overlay-CSS weichen vom Runtime ab. Sie werden vor dem ' +
-        'Runtime geladen und erzeugen deshalb einen sichtbaren Sprung, sobald das Runtime greift. ' +
-        'Die Werte in webview-bootstrap.js bzw. MainActivity.java auf die Runtime-Werte ziehen:\n\n' +
-        problems.join('\n\n')
-    );
-});
+test('Vorlauf-Schichten widersprechen dem Runtime in keiner geteilten Regel',
+    { skip: !bootstrapSource || !javaSource ? 'Android-Repo nicht im Arbeitsverzeichnis' : false }, () => {
+        const bootstrap = bySelector(
+            parseRules(templateLiteral(bootstrapSource.split('\n'), 'appShellStyle.textContent = `').css)
+        );
+        const early = bySelector(parseRules(earlyShellCss(javaSource).css));
+        const problems = [
+            ...compareLayers('webview-bootstrap.js', bootstrap),
+            ...compareLayers('MainActivity.java (FAST_STYLE_INJECTOR)', early)
+        ];
+
+        assert.deepEqual(
+            problems,
+            [],
+            'Die Vorlauf-Kopien der Android-Overlay-CSS weichen vom Runtime ab. Sie werden vor dem ' +
+            'Runtime geladen und erzeugen deshalb einen sichtbaren Sprung, sobald das Runtime greift. ' +
+            'Weicht eine praefixierte Kopie von einer unpraefixten Runtime-Regel ab, ueberschreibt sie ' +
+            'das Runtime sogar dauerhaft (hoehere Spezifitaet, beide !important). Also: Werte in ' +
+            'webview-bootstrap.js bzw. MainActivity.java auf die Runtime-Werte ziehen:\n\n' +
+            problems.join('\n\n')
+        );
+    });
 
 test('Das Runtime wird nach dem Bootstrap geladen', { skip: !javaSource ? 'Android-Repo nicht im Arbeitsverzeichnis' : false }, () => {
     // Nur deshalb gewinnt die Runtime-Kopie die Kaskade: gleiche Selektoren,
@@ -237,39 +314,37 @@ test('Das Runtime wird nach dem Bootstrap geladen', { skip: !javaSource ? 'Andro
     assert.ok(appendBoot > appendRuntime, 'Bootstrap muss nach dem Runtime-Aufbau angehaengt werden');
 });
 
-// Die Rabatt-Bubbles waren der Fall, den die obige Pruefung nicht sieht: ihre
-// Selektoren tragen kein html.bm-android-app, trotzdem existieren sie in allen
-// drei Schichten — mit unterschiedlichen Zahlen (36/46/11.5 gegen 32/42/10.5).
-// Weil E und C vor dem Runtime greifen, bedeutet das einen sichtbaren Sprung
-// beim Laden; gleiche Zahlen heben ihn auf.
+// Die Rabatt-Bubbles waren der Fall, den die Kaskadenpruefung oben nicht sieht:
+// ihre Selektoren tragen kein html.bm-android-app, trotzdem existieren sie in
+// allen drei Schichten — mit unterschiedlichen Zahlen (36/46/11.5 gegen
+// 32/42/10.5). Weil E und C vor dem Runtime greifen, bedeutet das einen
+// sichtbaren Sprung beim Laden; gleiche Zahlen heben ihn auf.
 const BUBBLE_PROPS = ['top', 'left', 'width', 'height', 'font-size'];
 const isBubbleRule = (selector) =>
     /bm-card-black-bubble$/.test(selector) || /(^|\s)\.off$/.test(selector);
 
 test('Rabatt-Bubbles nutzen in allen drei Schichten dieselbe kompakte Groesse',
     { skip: !bootstrapSource || !javaSource ? 'Android-Repo nicht im Arbeitsverzeichnis' : false }, () => {
-        const runtimeMap = bySimpleSelector(parseRules(runtime.css, runtime.lineOffset));
-        const bootstrapMap = bySimpleSelector(
-            parseRules(bootstrapCss(bootstrapSource).css, bootstrapCss(bootstrapSource).lineOffset)
+        const bootstrap = bySelector(
+            parseRules(templateLiteral(bootstrapSource.split('\n'), 'appShellStyle.textContent = `').css)
         );
-        const early = earlyShellCss(javaSource);
-        const earlyMap = bySimpleSelector(parseRules(early.css, early.lineOffset));
+        const early = bySelector(parseRules(earlyShellCss(javaSource).css));
 
-        const bubbles = [...runtimeMap.keys()].filter(isBubbleRule);
+        const bubbles = [...runtimeGlobalOverlay.keys()].filter(isBubbleRule);
         assert.ok(bubbles.length >= 2, `keine Bubble-Regeln im Runtime gefunden: ${bubbles}`);
 
         // Die Norm ist die kompakte Kachelgroesse, nicht die alte 36er-Version.
-        const card = runtimeMap.get(bubbles.find((s) => /bm-card-black-bubble$/.test(s)));
+        const card = runtimeGlobalOverlay.get(bubbles.find((s) => /bm-card-black-bubble$/.test(s)));
         assert.equal(card.props.get('width')?.value, '32px !important');
         assert.equal(card.props.get('font-size')?.value, '10.5px !important');
 
         const problems = [];
         for (const selector of bubbles) {
-            for (const [name, map] of [['webview-bootstrap.js', bootstrapMap], ['MainActivity.java (FAST_STYLE_INJECTOR)', earlyMap]]) {
+            for (const [name, map] of [['webview-bootstrap.js', bootstrap], ['MainActivity.java (FAST_STYLE_INJECTOR)', early]]) {
                 const other = map.get(selector);
                 if (!other) continue;
                 for (const property of BUBBLE_PROPS) {
-                    const runtimeValue = runtimeMap.get(selector).props.get(property);
+                    const runtimeValue = runtimeGlobalOverlay.get(selector).props.get(property);
                     const otherValue = other.props.get(property);
                     if (!runtimeValue || !otherValue) continue;
                     if (normalize(otherValue.value) === normalize(runtimeValue.value)) continue;

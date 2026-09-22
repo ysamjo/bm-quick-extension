@@ -13,7 +13,6 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
     autoContinueRedirect: true,
     marketplacesInOfferlist: true,
     listView: true,
-    twoColumnGrid: false,
     offerShops: {
         ebay: true,
         ebayFr: true,
@@ -512,8 +511,9 @@ globalThis.BM_buildMinifigCrosswalk = (rebrickableEntries, brickLinkItems) => {
 globalThis.BM_mergeSettings = value => ({
     ...globalThis.BM_EXTENSION_DEFAULTS,
     ...(value || {}),
+    // twoColumnGrid ist als Setting weg; der Lesepfad bleibt, damit alte
+    // Installationen beim Update nicht die Ansicht wechseln.
     listView: value?.listView !== undefined ? value.listView === true : (value?.twoColumnGrid !== false),
-    twoColumnGrid: value?.twoColumnGrid === true,
     marketplacesInOfferlist: value?.marketplacesInOfferlist !== false,
     offerShops: {
         ...globalThis.BM_EXTENSION_DEFAULTS.offerShops,

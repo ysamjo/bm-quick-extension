@@ -155,7 +155,6 @@ globalThis.BM_EXTENSION_DEFAULTS = Object.freeze({
     autoContinueRedirect: true,
     marketplacesInOfferlist: true,
     listView: true,
-    twoColumnGrid: false,
     offerShops: {
         ebay: true,
         ebayFr: true,
@@ -654,8 +653,9 @@ globalThis.BM_buildMinifigCrosswalk = (rebrickableEntries, brickLinkItems) => {
 globalThis.BM_mergeSettings = value => ({
     ...globalThis.BM_EXTENSION_DEFAULTS,
     ...(value || {}),
+    // twoColumnGrid ist als Setting weg; der Lesepfad bleibt, damit alte
+    // Installationen beim Update nicht die Ansicht wechseln.
     listView: value?.listView !== undefined ? value.listView === true : (value?.twoColumnGrid !== false),
-    twoColumnGrid: value?.twoColumnGrid === true,
     marketplacesInOfferlist: value?.marketplacesInOfferlist !== false,
     offerShops: {
         ...globalThis.BM_EXTENSION_DEFAULTS.offerShops,
@@ -2642,8 +2642,19 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     });
                     if (!target) return false;
 
-                    // Do not auto-redirect if there is a voucher code to copy
-                    const hasVoucher = document.querySelector('.code, .gutschein, [onclick*="copy"]');
+                    // Nur ein echter Gutschein-Hinweis darf bremsen. Die seitenweite
+                    // Suche traf auch site-eigene .code-Felder (PLZ, Artikelnummer) und
+                    // legte den Auto-Redirect dann grundlos still.
+                    const looksLikeVoucher = element => {
+                        if (!element || element.offsetParent === null) return false;
+                        if (element.matches('input, textarea, select, option')) return false;
+                        const around = `${element.className} ${element.title || ''} ${element.parentElement?.className || ''}`;
+                        if (/gutschein|rabatt|coupon|sparen/i.test(around)) return true;
+                        const code = (element.textContent || '').replace(/\s+/g, '');
+                        return /^[A-Z0-9][A-Z0-9\-_/.+]{3,23}$/.test(code);
+                    };
+                    const hasVoucher = ['.gutschein', '.code', '[onclick*="copy"]']
+                        .some(selector => Array.from(document.querySelectorAll(selector)).some(looksLikeVoucher));
                     if (hasVoucher) return false;
 
                     completed = true;
@@ -3533,7 +3544,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 #offerlist .bm-ebay-private { --bm-ebay-accent: #7b2e83; }
                 #offerlist .bm-ebay-logo-link .bm-marketplace-logo-caption {
                     color: var(--bm-ebay-accent, #555) !important;
-                    font-size: 0.58rem;
                     font-weight: 700;
                 }
                 #offerlist .bm-marketplace-country-badge {
@@ -3720,7 +3730,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     display: inline;
                     color: #B80000 !important;
                     font-size: inherit;
-                    font-weight: inherit;
                     white-space: nowrap;
                 }
                 #offerlist .bm-shipping-unknown {
@@ -4118,9 +4127,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 .bm-sidebar-parts {
                     display: none;
                 }
-                .bm-sidebar-warning {
-                    display: none;
-                }
                 a[href*="preisfehler"],
                 button[onclick*="preisfehler"],
                 a[data-reveal-id*="preisfehler"],
@@ -4418,45 +4424,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     .content.setdetails .topprice.bm-overall-bestprice .bm-topprice-price-cell {
                         padding-right: 4.5rem !important;
                     }
-                }
-                .bm-marketplace-deal-badge {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 0.35rem;
-                    margin-top: 0.45rem;
-                    margin-bottom: 0.25rem;
-                    padding: 0.3rem 0.6rem;
-                    border-radius: 4px;
-                    background: #eef8ee;
-                    border: 1px solid #c2e0c2;
-                    color: #1b5e20 !important;
-                    font-size: 0.82rem;
-                    font-weight: 600;
-                    line-height: 1.25;
-                    text-decoration: none !important;
-                    cursor: pointer;
-                    box-sizing: border-box;
-                    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
-                }
-                .bm-marketplace-deal-badge:hover,
-                .bm-marketplace-deal-badge:focus-visible {
-                    background: #dcf2dc;
-                    border-color: #a3d4a3;
-                    color: #0d3813 !important;
-                    outline: none;
-                    transform: translateY(-1px);
-                }
-                .bm-marketplace-deal-badge .bm-deal-icon {
-                    font-size: 0.95rem;
-                    line-height: 1;
-                }
-                .bm-marketplace-deal-badge .bm-deal-savings {
-                    font-size: 0.76rem;
-                    font-weight: 700;
-                    color: #2e7d32;
-                    background: rgba(46, 125, 50, 0.12);
-                    padding: 0.1rem 0.35rem;
-                    border-radius: 3px;
                 }
                 .bm-copy-btn {
                     cursor: pointer;
@@ -5092,27 +5059,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     font-size: 0.75rem;
                     line-height: 1.3;
                 }
-                .bm-chart-dialog .bm-chart-history-row {
-                    display: flex;
-                    flex-wrap: wrap;
-                    align-items: center;
-                    gap: 0.25rem;
-                    margin: 0 0 0.6rem !important;
-                    line-height: 1.35rem !important;
-                }
-                .bm-chart-dialog .bm-chart-history-row strong {
-                    color: #333 !important;
-                }
-                .bm-chart-dialog .bm-chart-history-row br {
-                    display: none !important;
-                }
-                .bm-chart-dialog .bm-chart-history-row .button {
-                    margin: 0.2rem 0.2rem 0.2rem 0 !important;
-                    padding: 0.3rem 0.5rem !important;
-                    font-size: 0.75rem !important;
-                    line-height: 1.1 !important;
-                    text-shadow: none !important;
-                }
                 .bm-chart-dialog #bigChart {
                     display: block;
                     width: 100% !important;
@@ -5715,12 +5661,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         flex-wrap: nowrap;
                         column-gap: 0.4rem;
                     }
-                    .bm-chart-label-full {
-                        display: none;
-                    }
-                    .bm-chart-label-mobile {
-                        display: inline;
-                    }
                     .bm-chart-best-price {
                         min-width: 0;
                         flex: 1 1 auto;
@@ -5920,11 +5860,11 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 .bm-settings-actions {
                     display: flex;
                     align-items: center;
-                    gap: 0.6rem;
                     padding: 0.8rem 1.25rem;
                 }
                 .bm-settings-header {
                     justify-content: space-between;
+                    gap: 0.6rem;
                     min-height: 56px;
                     background: #fff;
                     border-bottom: 1px solid #F1F5F9;
@@ -6137,9 +6077,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 /* Kompakte Listenansicht für Sets (ausschließlich auf Mobilgeräten aktiv, auf Desktop entfernt) */
                 @media screen and (max-width: 768px) {
                 html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores),
-                html.bm-view-list :is(#productrow, .productrow) .wrapper#wrappernormal:not(.merchants):not(.themen):not(.brickstores),
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores),
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper#wrappernormal:not(.merchants):not(.themen):not(.brickstores) {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper#wrappernormal:not(.merchants):not(.themen):not(.brickstores) {
                     display: flex !important;
                     flex-direction: column !important;
                     gap: 8px !important;
@@ -6149,13 +6087,10 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     float: none !important;
                 }
                 html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::before,
-                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::after,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::before,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::after {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::after {
                     display: none !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide {
                     width: 100% !important;
                     max-width: 100% !important;
                     min-width: 0 !important;
@@ -6180,17 +6115,14 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     cursor: pointer !important;
                     transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide:hover,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide:hover {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide:hover {
                     background: #F8FAFC !important;
                     border-color: #CBD5E1 !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide:active,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide:active {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide:active {
                     background: #F1F5F9 !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productimg,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productimg {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productimg {
                     grid-area: thumb !important;
                     width: 82px !important;
                     height: 82px !important;
@@ -6210,16 +6142,14 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     overflow: hidden !important;
                     cursor: pointer !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productimg a,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productimg a {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productimg a {
                     display: flex !important;
                     align-items: center !important;
                     justify-content: center !important;
                     width: 100% !important;
                     height: 100% !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productimg img,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productimg img {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productimg img {
                     max-width: 76px !important;
                     max-height: 76px !important;
                     width: auto !important;
@@ -6228,14 +6158,11 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     margin: 0 auto !important;
                     display: block !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > .off,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide > .off {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > .off {
                     display: none !important;
                 }
                 html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .offerbox .off,
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-off,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .offerbox .off,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-list-off {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-off {
                     position: static !important;
                     display: inline-flex !important;
                     align-items: center !important;
@@ -6259,15 +6186,10 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-slidebadge,
                 html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide a[id^="merk"],
                 html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide a[id^="a"],
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide a[id^="dp"],
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-slidebadge,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide a[id^="merk"],
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide a[id^="a"],
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide a[id^="dp"] {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide a[id^="dp"] {
                     display: none !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttitle,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .producttitle {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttitle {
                     grid-area: header !important;
                     font-size: 13.5px !important;
                     font-weight: 700 !important;
@@ -6282,14 +6204,12 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     text-align: left !important;
                     cursor: pointer !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttitle a.detail,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .producttitle a.detail {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttitle a.detail {
                     font-weight: 700 !important;
                     color: #0F172A !important;
                     text-decoration: none !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttitle a.button,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .producttitle a.button {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttitle a.button {
                     display: inline-block !important;
                     font-size: 10px !important;
                     font-weight: 600 !important;
@@ -6301,20 +6221,15 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     border-radius: 4px !important;
                     vertical-align: middle !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttag,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .producttag {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttag {
                     display: none !important;
                 }
                 html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > a.detail:has(.dealheat),
                 html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > a:has(.dealheat),
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .dealheat,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide > a.detail:has(.dealheat),
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide > a:has(.dealheat),
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .dealheat {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .dealheat {
                     display: none !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice {
                     grid-area: price !important;
                     margin: 0 !important;
                     padding: 0 !important;
@@ -6328,8 +6243,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     align-items: flex-start !important;
                     gap: 3px !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox {
                     min-height: 0 !important;
                     /* Das Theme gibt der offerbox 8px Innenrand; dadurch startete der
                        Preis rechts neben dem Titel statt bündig unter ihm. */
@@ -6358,8 +6272,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     text-overflow: ellipsis !important;
                     white-space: nowrap !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .theprice,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .theprice {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .theprice {
                     font-size: 16.5px !important;
                     font-weight: 800 !important;
                     color: #B80000 !important;
@@ -6368,25 +6281,20 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     cursor: pointer !important;
                     pointer-events: auto !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .stroke,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .stroke {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .stroke {
                     font-size: 11px !important;
                     color: #64748B !important;
                     text-decoration: line-through !important;
                     margin: 0 !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice a[href="#info"],
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice a[href="#info"] {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice a[href="#info"] {
                     display: none !important;
                 }
                 html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice br,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice br,
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .small:not(.stroke),
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .small:not(.stroke) {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .small:not(.stroke) {
                     display: none !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-eol,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-list-eol {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-eol {
                     position: absolute !important;
                     top: 4px !important;
                     left: 4px !important;
@@ -6404,12 +6312,10 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     line-height: 1.2 !important;
                     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-eol:empty,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-list-eol:empty {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-eol:empty {
                     display: none !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-card-top-badge,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-card-top-badge {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-card-top-badge {
                     display: none !important;
                 }
                 }
@@ -6647,14 +6553,11 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 }
 
                 /* Split-CTA in Listen- und 2-Spalten-Ansicht verstecken (da dort eigenes Layout) */
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-split-cta,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-split-cta {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-split-cta {
                     display: none !important;
                 }
                 html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-list-merchant,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-list-merchant,
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-overview-effective-source,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-overview-effective-source {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-overview-effective-source {
                     display: inline-flex !important;
                     align-items: center !important;
                     font-size: 11px !important;
@@ -6669,30 +6572,22 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     text-decoration: none !important;
                     cursor: pointer !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-list-merchant:empty,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-list-merchant:empty {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-list-merchant:empty {
                     display: none !important;
                 }
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide strong:not(.theprice),
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide strong:not(.theprice) {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide strong:not(.theprice) {
                     display: none !important;
                 }
                 html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .pricerow,
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide div.pricerow,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .pricerow,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide div.pricerow {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide div.pricerow {
                     display: none !important;
                 }
                 html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > span:not(.off):not(.small):not(.bm-list-eol),
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > meta,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide > span:not(.off):not(.small):not(.bm-list-eol),
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide > meta {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > meta {
                     display: none !important;
                 }
                 html.bm-view-list :is(#productrow, .productrow) .wrapper .nextpage,
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.nextpage,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper .nextpage,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.nextpage {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.nextpage {
                     width: 100% !important;
                     max-width: 100% !important;
                     min-height: 50px !important;
@@ -6997,8 +6892,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 }
 
                 /* Schwarze Bubble in Listenansicht (inline in der offerbox) */
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-black-bubble,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-list-black-bubble {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-black-bubble {
                     position: static !important;
                     display: inline-flex !important;
                     align-items: center !important;
@@ -7021,8 +6915,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 }
 
                 /* Ausblenden der schwarzen Bubble in der jeweils anderen Ansicht */
-                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-card-black-bubble,
-                html.bm-grid-2col :is(#productrow, .productrow) .wrapper div.slide .bm-card-black-bubble {
+                html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-card-black-bubble {
                     display: none !important;
                 }
                 html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .bm-list-black-bubble {
@@ -7264,9 +7157,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         transform: scale(0.97) !important;
                         background: #F1F5F9 !important;
                     }
-                    #contenttoprow .bm-filter-toggle {
-                        display: none !important;
-                    }
                     /* Bestpreis-Schalter auf Händlerseiten (z. B. "Nur Baby-Walz Bestpreisangebote zeigen") */
                     #contenttoprow .small-12.columns > .button:has(form[name="sctoggle"]),
                     #contenttoprow .small-12.columns > div:has(form[name="sctoggle"]),
@@ -7334,8 +7224,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     }
                     #contenttoprow .small-12.columns > .button:has(form[name="sctoggle"]) > div,
                     #contenttoprow .small-12.columns > div:has(form[name="sctoggle"]) > div,
-                    #contenttoprow .bm-bestprice-toggle > div:has(form[name="sctoggle"]),
-                    #contenttoprow .bm-bestprice-toggle .bm-bestprice-switch-wrapper {
+                    #contenttoprow .bm-bestprice-toggle > div:has(form[name="sctoggle"]) {
                         order: 2 !important;
                         float: none !important;
                         padding: 0 !important;
@@ -8115,8 +8004,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 html.bm-overlay-active nav[aria-label="breadcrumb"],
                 html.bm-overlay-active [itemscope][itemtype*="BreadcrumbList"],
                 html.bm-overlay-active .bm-view-switcher,
-                html.bm-overlay-active .bm-search-row,
-                html.bm-overlay-active .bm-filter-bar,
                 html.bm-overlay-active #footer,
                 html.bm-overlay-active footer,
                 html.bm-overlay-active .footer,
@@ -9900,14 +9787,14 @@ globalThis.BM_findShopShippingRule = merchantName => {
 
                 if (isNonOfferListingPage()) {
                     document.querySelector('.bm-view-switcher')?.remove();
-                    document.documentElement.classList.remove('bm-view-list', 'bm-grid-2col');
+                    document.documentElement.classList.remove('bm-view-list');
                     return;
                 }
 
                 // Auf Desktop (> 768px) ist die Listenansicht komplett entfernt (Desktop nutzt immer Kacheln)
                 if (window.innerWidth > 768) {
                     document.querySelector('.bm-view-switcher')?.remove();
-                    document.documentElement.classList.remove('bm-view-list', 'bm-grid-2col');
+                    document.documentElement.classList.remove('bm-view-list');
                     const productRow = document.getElementById('productrow') || document.getElementById('productrowcontainer');
                     if (productRow) {
                         bmEnhanceListViewCards(productRow);
@@ -9931,7 +9818,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                                 setupListingView(settings);
                             } else {
                                 document.querySelector('.bm-view-switcher')?.remove();
-                                document.documentElement.classList.remove('bm-view-list', 'bm-grid-2col');
+                                document.documentElement.classList.remove('bm-view-list');
                             }
                         });
                     }
@@ -9940,14 +9827,13 @@ globalThis.BM_findShopShippingRule = merchantName => {
 
                 const applyViewMode = (mode, persist = false) => {
                     if (window.innerWidth > 768) {
-                        document.documentElement.classList.remove('bm-view-list', 'bm-grid-2col');
+                        document.documentElement.classList.remove('bm-view-list');
                         document.querySelector('.bm-view-switcher')?.remove();
                         bmEnhanceListViewCards();
                         return;
                     }
                     const isList = mode === 'list';
                     document.documentElement.classList.toggle('bm-view-list', isList);
-                    document.documentElement.classList.remove('bm-grid-2col');
                     bmEnhanceListViewCards();
                     document.querySelectorAll('div.slide[id^="set"]').forEach(card => {
                         const red = card.dataset.bmRedDiscount ? parseInt(card.dataset.bmRedDiscount, 10) : parseInt(card.querySelector('.off')?.textContent || '0', 10);
@@ -9975,14 +9861,12 @@ globalThis.BM_findShopShippingRule = merchantName => {
                                     ? BM_mergeSettings(cur)
                                     : (cur || {});
                                 merged.listView = isList;
-                                merged.twoColumnGrid = false;
                                 BM_MOBILE_CHROME.storage.local.set({ settings: merged }).catch(() => {});
                             }).catch(() => {});
                         }
                         if (window.BrickmergeNative && typeof window.BrickmergeNative.setValue === 'function') {
                             try {
                                 window.BrickmergeNative.setValue('setting_listView', isList ? 'true' : 'false');
-                                window.BrickmergeNative.setValue('setting_twoColumnGrid', 'false');
                             } catch (e) {}
                         }
                     }
@@ -10087,7 +9971,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     window.addEventListener('resize', () => {
                         if (window.innerWidth > 768) {
                             document.querySelector('.bm-view-switcher')?.remove();
-                            document.documentElement.classList.remove('bm-view-list', 'bm-grid-2col');
+                            document.documentElement.classList.remove('bm-view-list');
                         } else {
                             setupListingView(settings);
                         }
@@ -20791,8 +20675,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         retailerLabel.classList.add('bm-native-bestprice-label');
                     }
                 }
-
-                productPrice.querySelector('.bm-marketplace-deal-badge')?.remove();
 
                 if (!BM_SETTINGS.marketplacesInOfferlist || !prices.isMarketplaceCheaper || !prices.marketplaceBest) {
                     restoreDetailImageDiscountBubbles();

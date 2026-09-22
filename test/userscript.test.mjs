@@ -2109,12 +2109,12 @@ test('list view keeps the price on one line and the merchant in its own row', ()
     // Der Preis startet bündig unter dem Titel: das Theme-Padding der offerbox fällt weg.
     assert.match(
         tweakerSource,
-        /html\.bm-view-list[^}]+\.productprice \.offerbox,[\s\S]*?\.offerbox \{\s*min-height: 0 !important;[\s\S]*?padding: 0 !important;/
+        /html\.bm-view-list[^}]+\.productprice \.offerbox \{\s*min-height: 0 !important;[\s\S]*?padding: 0 !important;/
     );
     // Zwei eigene Zeilen in .productprice: Preisreihe, darunter der Händler.
     assert.match(
         tweakerSource,
-        /html\.bm-view-list[^}]+\.productprice,[\s\S]{0,120}?\.productprice \{[\s\S]*?flex-direction: column !important;[\s\S]*?align-items: flex-start !important;/
+        /html\.bm-view-list[^}]+\.productprice \{[\s\S]*?flex-direction: column !important;[\s\S]*?align-items: flex-start !important;/
     );
     assert.match(tweakerSource, /\(priceArea \|\| offerBox\)\.appendChild\(merchantBadge\);/);
     assert.doesNotMatch(tweakerSource, /fragment\.appendChild\(merchantBadge\)/);
@@ -2405,9 +2405,9 @@ test('list view is removed on desktop and scoped strictly to mobile', () => {
     assert.match(tweakerSource, /@media screen and \(min-width:\s*769px\)\s*\{\s*\.bm-view-switcher\s*\{\s*display:\s*none\s*!important;/);
     assert.match(precleanSource, /@media screen and \(min-width:\s*769px\)\s*\{\s*\.bm-view-switcher\s*\{\s*display:\s*none\s*!important;/);
     // 3. JS setupListingView checks desktop and removes list view + switcher
-    assert.match(tweakerSource, /if\s*\(window\.innerWidth\s*>\s*768\)\s*\{\s*document\.querySelector\('\.bm-view-switcher'\)\?\.remove\(\);\s*document\.documentElement\.classList\.remove\('bm-view-list',\s*'bm-grid-2col'\);/);
+    assert.match(tweakerSource, /if\s*\(window\.innerWidth\s*>\s*768\)\s*\{\s*document\.querySelector\('\.bm-view-switcher'\)\?\.remove\(\);\s*document\.documentElement\.classList\.remove\('bm-view-list'\);/);
     // 4. JS applyViewMode aborts and cleans up if triggered on desktop
-    assert.match(tweakerSource, /const applyViewMode = \(mode,\s*persist\s*=\s*false\)\s*=>\s*\{\s*if\s*\(window\.innerWidth\s*>\s*768\)\s*\{\s*document\.documentElement\.classList\.remove\('bm-view-list',\s*'bm-grid-2col'\);/);
+    assert.match(tweakerSource, /const applyViewMode = \(mode,\s*persist\s*=\s*false\)\s*=>\s*\{\s*if\s*\(window\.innerWidth\s*>\s*768\)\s*\{\s*document\.documentElement\.classList\.remove\('bm-view-list'\);/);
 });
 
 test('app mode hides breadcrumbs, headlinerow, and set title without white gap', () => {

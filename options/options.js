@@ -4,8 +4,11 @@ const SETTING_GROUPS = Object.freeze({
     pricesAndSorting: ['priceCalculations', 'shippingAndSorting']
 });
 
+let storedSettings = null;
+
 function populate(settingsValue) {
-    const settings = BM_mergeSettings(settingsValue);
+    storedSettings = BM_mergeSettings(settingsValue);
+    const settings = storedSettings;
     document.querySelectorAll('[data-setting]').forEach(input => {
         input.checked = settings[input.dataset.setting] !== false;
     });
@@ -66,7 +69,9 @@ function updateOverview() {
 }
 
 function readForm() {
-    const settings = BM_mergeSettings();
+    // Startpunkt sind die gespeicherten Werte: Keys ohne Formularfeld
+    // (cleaner, detailLayout, listView) wandern unveraendert durch.
+    const settings = BM_mergeSettings(storedSettings);
     document.querySelectorAll('[data-setting]').forEach(input => {
         settings[input.dataset.setting] = input.checked;
     });
