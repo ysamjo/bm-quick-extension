@@ -2305,8 +2305,15 @@ test('startseite centers Deal-Alarm and hides SEO intro paragraphs without hidin
     assert.match(tweakerSource, /function setupJumpLinks/);
 });
 
-test('go to top button removes white border', () => {
+test('go to top button keeps the app look: borderless, on top, raised', () => {
     assert.match(tweakerSource, /#toTop\s*\{[^}]*border:\s*none\s*!important/);
+    assert.match(tweakerSource, /#toTop\s*\{[^}]*z-index:\s*2147483647\s*!important/);
+    assert.match(tweakerSource, /#toTop\s*\{[^}]*opacity:\s*0\.9\s*!important/);
+    assert.match(tweakerSource, /#toTop\s*\{[^}]*box-shadow:\s*0 4px 14px rgba\(0, 0, 0, 0\.3\)\s*!important/);
+    assert.match(
+        tweakerSource,
+        /#toTop:hover,\s*#toTop:active,\s*#toTop:focus\s*\{\s*opacity:\s*1\s*!important/
+    );
 });
 
 test('modal dialogs hide desktop scrollbars while preserving scrolling', () => {

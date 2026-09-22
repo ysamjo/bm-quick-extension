@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Brickmerge Tools",
-  "version": "5.6.100",
+  "version": "5.6.101",
   "description": "Brickmerge-Werkzeuge mit schwebender Detailleiste und erkanntem LEGO-Set-Indikator.",
   "icons": {
     "16": "icons/icon16.png",

@@ -4481,10 +4481,22 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             margin-top: 4px !important;
         }
 
-        /* Go-to-Top Button: kein weißer Rand */
+        /* Go-to-Top Button: kein weißer Rand. Ohne z-index liegt der Reiter
+           hinter den Angebotszeilen (Test: elementFromPoint trifft die
+           Rabattblase statt des Buttons) und ist bei opacity 0.5 kaum
+           sichtbar. Werte entsprechen dem Stand der App. */
         #toTop {
             border: none !important;
             outline: none !important;
+            z-index: 2147483647 !important;
+            opacity: 0.9 !important;
+            pointer-events: auto !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+        }
+        #toTop:hover,
+        #toTop:active,
+        #toTop:focus {
+            opacity: 1 !important;
         }
 
         /* Mobile Breadcrumbs ausblenden */
