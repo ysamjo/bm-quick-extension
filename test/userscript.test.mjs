@@ -2635,6 +2635,13 @@ test('action buttons sit in one heading-less row below the offer list, not in th
     assert.match(rowRule, /grid-template-columns:\s*repeat\(4,\s*1fr\)\s*!important/);
     assert.doesNotMatch(rowRule, /overflow-x/);
 
+    // 3b. Auf schmalem Screen teilt sich die Zeile nach Inhalt – sonst wird
+    //     "Wunschliste" abgeschnitten, während "ROI" Leerlauf hält.
+    assert.match(
+        tweakerSource,
+        /@media \(max-width: 480px\) \{\s*\.bm-detail-action-buttons-row \{[\s\S]*?grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*max-content\)\)\s*!important;\s*justify-content:\s*space-between\s*!important;/
+    );
+
     // 4. Normale Aktionsbuttons: heller Rahmen, helle Fläche, rote Schrift
     const buttonRule =
         tweakerSource.match(/\.bm-detail-action-buttons-row \.bmd-open-button \{([\s\S]*?)\}/)?.[1] || '';

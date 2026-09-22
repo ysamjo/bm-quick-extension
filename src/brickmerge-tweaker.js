@@ -4833,6 +4833,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         @media (max-width: 480px) {
             .bm-detail-action-buttons-row {
                 gap: 5px !important;
+                /* Vier gleich breite Spalten würden "Wunschliste" abschneiden,
+                   während "ROI" Leerlauf hält. Auf schmalem Screen teilt sich
+                   die Breite nach Inhalt, der Rest läuft als Abstand zwischen
+                   die Buttons. */
+                grid-template-columns: repeat(4, minmax(0, max-content)) !important;
+                justify-content: space-between !important;
             }
         }
         .bm-detail-action-buttons-row .bmd-open-button {
