@@ -633,9 +633,53 @@ test('tracked Brickmerge coupon links open the shop without reloading the set pa
     assert.match(normalizeLinks, /searchParams\.set\('m', merchantId\)/);
     assert.match(normalizeLinks, /searchParams\.set\('i', itemNumber\)/);
     assert.match(normalizeLinks, /link\.removeAttribute\('onclick'\)/);
+    // Gutschein-Angebote (bei eBay der Regelfall) waren bisher ausgenommen –
+    // genau ihr href führt aber auf die Trefferliste statt zum Händler.
+    assert.doesNotMatch(normalizeLinks, /querySelector\('\.code'\)/);
+    assert.doesNotMatch(normalizeLinks, /link\.hasAttribute\('onclick'\)/);
     assert.match(
         tweakerSource,
         /\[true, normalizeBrickmergeTrackedOfferLinks\],[\s\S]*?\[true, syncDismissedOfferRows\]/
+    );
+});
+
+test('tile merchant links go to the shop redirect instead of the brickmerge hit list', () => {
+    const go2Source = tweakerSource.match(
+        /function bmGo2DirectUrl\(candidate\) \{[\s\S]*?\n    \}/
+    )?.[0];
+    assert.ok(go2Source, 'bmGo2DirectUrl fehlt');
+    const extractSource = tweakerSource.match(
+        /function bmExtractShopUrlFromHtml\(html\) \{[\s\S]*?\n    \}/
+    )?.[0];
+    assert.ok(extractSource, 'bmExtractShopUrlFromHtml fehlt');
+
+    const [bmGo2DirectUrl, bmExtractShopUrlFromHtml] = new Function(
+        `${go2Source}; ${extractSource}; return [bmGo2DirectUrl, bmExtractShopUrlFromHtml];`
+    )();
+
+    // Code-Angebot: Trefferlisten-href mit go2i/go2m wird zum /go2/-Ziel des onclick
+    assert.equal(
+        bmGo2DirectUrl('/index.php?find=10311-1&go2i=10311-1&go2m=332'),
+        'https://www.brickmerge.de/go2/?i=10311-1&m=332'
+    );
+    // Ein echtes /go2/-Ziel und fremde Adressen bleiben unangetastet
+    assert.equal(
+        bmGo2DirectUrl('https://www.brickmerge.de/go2/?m=412&i=75419-1'),
+        'https://www.brickmerge.de/go2/?m=412&i=75419-1'
+    );
+    assert.equal(
+        bmGo2DirectUrl('https://www.ebay.de/sch/i.html?_nkw=lego+10311'),
+        'https://www.ebay.de/sch/i.html?_nkw=lego+10311'
+    );
+
+    // Der extrahierte Kachel-Link folgt dem topprice-href des Code-Angebots
+    assert.equal(
+        bmExtractShopUrlFromHtml(
+            '<div class="topprice"><a href="/index.php?find=10311-1&amp;go2i=10311-1&amp;go2m=332" ' +
+            'onclick="setTimeout(function(){window.location.href=\'/go2/?m=332&amp;i=10311-1\';},100);" ' +
+            'title="Link zu eBay.de">29,59 € <span class="small code">[Code]</span></a></div>'
+        ),
+        'https://www.brickmerge.de/go2/?i=10311-1&m=332'
     );
 });
 
@@ -2276,7 +2320,7 @@ test('desktop filters remain original and setupMobileFilterBar scopes strictly t
 
 test('direct shop links decode HTML entities &amp; and &#38; in URL parameters', () => {
     assert.match(tweakerSource, /rawUrl\s*=\s*rawUrl\.replace\(\/&amp;\/g,\s*'&'\)\.replace\(\/&#0\*38;\/g,\s*'&'\)/);
-    assert.match(tweakerSource, /const cleanUrl\s*=\s*String\(shopUrl\)\.replace\(\/&amp;\/g,\s*'&'\)/);
+    assert.match(tweakerSource, /const cleanUrl\s*=\s*bmGo2DirectUrl\(String\(shopUrl\)\.replace\(\/&amp;\/g,\s*'&'\)/);
 });
 
 test('desktop header with search bar remains original while tiles background is white', () => {

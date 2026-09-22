@@ -6571,6 +6571,32 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         return '';
     }
 
+    // Angebote mit Gutscheincode (bei eBay der Regelfall) verlinken nicht auf
+    // die Weiterleitungsseite, sondern auf die Trefferliste /index.php?find=…
+    // mit go2i/go2m-Parametern; der echte /go2/-Link steckt nur in einem
+    // onclick-Hack. Der übernimmt weder Kachel noch neuer Tab, deshalb hier
+    // die Umstellung auf das Ziel des onclick.
+    function bmGo2DirectUrl(candidate) {
+        if (!candidate) return '';
+        let url;
+        try {
+            url = new URL(String(candidate).replace(/&amp;/g, '&'), 'https://www.brickmerge.de');
+        } catch (error) {
+            return candidate;
+        }
+        const item = url.searchParams.get('go2i') || '';
+        const merchant = url.searchParams.get('go2m') || '';
+        if (!item || !merchant) return candidate;
+        const direct = new URL('/go2/', url.origin);
+        url.searchParams.forEach((value, key) => {
+            if (key === 'go2i' || key === 'go2m' || key === 'find') return;
+            direct.searchParams.set(key, value);
+        });
+        direct.searchParams.set('i', item);
+        direct.searchParams.set('m', merchant);
+        return direct.href;
+    }
+
     function bmExtractShopUrlFromHtml(html) {
         if (!html) return '';
         let rawUrl = '';
@@ -6594,7 +6620,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (!rawUrl) return '';
         rawUrl = rawUrl.replace(/&amp;/g, '&').replace(/&#0*38;/g, '&');
         try {
-            return new URL(rawUrl, 'https://www.brickmerge.de').href.replace(/&amp;/g, '&');
+            return bmGo2DirectUrl(
+                new URL(rawUrl, 'https://www.brickmerge.de').href.replace(/&amp;/g, '&')
+            );
         } catch (e) {
             return rawUrl;
         }
@@ -6722,7 +6750,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
     function bmApplyShopUrlToCard(card, shopUrl, merchant) {
         if (!card || !shopUrl) return;
-        const cleanUrl = String(shopUrl).replace(/&amp;/g, '&').replace(/&#0*38;/g, '&');
+        const cleanUrl = bmGo2DirectUrl(String(shopUrl).replace(/&amp;/g, '&').replace(/&#0*38;/g, '&'));
         const shopBtn = card.querySelector('.bm-btn-shop');
         if (shopBtn) {
             shopBtn.href = cleanUrl;
@@ -14934,15 +14962,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 return;
             }
 
-            if (link.hasAttribute('onclick') || link.closest('.pricerow')?.querySelector('.code')) {
-                return;
-            }
-
+            // Angebote mit Gutscheincode führen genau hierher: ihr href zeigt auf
+            // die Trefferliste, der eigentliche /go2/-Link steckt in einem
+            // onclick-Hack. Beides wird durch den direkten Link ersetzt.
             const directUrl = new URL('/go2/', window.location.origin);
             trackedUrl.searchParams.forEach((val, key) => {
                 if (key === 'go2i') directUrl.searchParams.set('i', val);
                 else if (key === 'go2m') directUrl.searchParams.set('m', val);
-                else directUrl.searchParams.set(key, val);
+                else if (key !== 'find') directUrl.searchParams.set(key, val);
             });
             if (!directUrl.searchParams.has('i')) directUrl.searchParams.set('i', itemNumber);
             if (!directUrl.searchParams.has('m')) directUrl.searchParams.set('m', merchantId);
