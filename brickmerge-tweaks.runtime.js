@@ -4508,15 +4508,15 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     > .off:not(.bm-bestprice-black-bubble) {
                     top: 0.45rem !important;
                     left: 0.75rem !important;
-                    /* Auf Kachelgröße der Suchseite normiert (36px) */
-                    width: 36px !important;
-                    height: 36px !important;
-                    min-width: 36px !important;
-                    min-height: 36px !important;
+                    /* Auf Kachelgröße der Suchseite normiert (32px) */
+                    width: 32px !important;
+                    height: 32px !important;
+                    min-width: 32px !important;
+                    min-height: 32px !important;
                     display: inline-flex !important;
                     align-items: center !important;
                     justify-content: center !important;
-                    font-size: 12px !important;
+                    font-size: 10.5px !important;
                     font-weight: 800 !important;
                     line-height: 1 !important;
                     box-sizing: border-box !important;
@@ -4529,24 +4529,24 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     display: inline-flex !important;
                     align-items: center;
                     justify-content: center;
-                    width: 36px !important;
-                    height: 36px !important;
-                    min-width: 36px !important;
-                    min-height: 36px !important;
+                    width: 32px !important;
+                    height: 32px !important;
+                    min-width: 32px !important;
+                    min-height: 32px !important;
                     margin: 0 !important;
                     padding: 0 !important;
                     border: 1px solid #000 !important;
                     border-radius: 999px !important;
                     background: #222 !important;
                     color: #fff !important;
-                    font-size: 12px !important;
+                    font-size: 10.5px !important;
                     font-weight: bold !important;
                     line-height: 1 !important;
                     text-align: center;
                     box-sizing: border-box;
                 }
                 .bm-featured-black-bubble.bm-featured-black-bubble-stacked {
-                    top: calc(0.45rem + 42px) !important;
+                    top: calc(0.45rem + 38px) !important;
                 }
                 .bm-full-product-description {
                     float: none !important;
@@ -6458,22 +6458,22 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 /* Klassische Kachel: Rabatt-Badge (.off) bleibt oben links auf dem Produktbild */
                 html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .off {
                     position: absolute !important;
-                    top: 6px !important;
-                    left: 6px !important;
+                    top: 4px !important;
+                    left: 4px !important;
                     z-index: 5 !important;
                     display: inline-flex !important;
                     align-items: center !important;
                     justify-content: center !important;
-                    width: 36px !important;
-                    height: 36px !important;
-                    min-width: 36px !important;
-                    min-height: 36px !important;
+                    width: 32px !important;
+                    height: 32px !important;
+                    min-width: 32px !important;
+                    min-height: 32px !important;
                     padding: 0 !important;
                     border: none !important;
                     border-radius: 999px !important;
                     background: #B80000 !important;
                     color: #FFFFFF !important;
-                    font-size: 12px !important;
+                    font-size: 10.5px !important;
                     font-weight: 800 !important;
                     line-height: 1 !important;
                     text-align: center !important;
@@ -6969,22 +6969,22 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 /* Schwarze Bubble auf Kachelansicht (Abstand zum 2. besten Angebot) */
                 html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-card-black-bubble {
                     position: absolute !important;
-                    top: 46px !important;
-                    left: 6px !important;
+                    top: 42px !important;
+                    left: 4px !important;
                     z-index: 5 !important;
                     display: inline-flex !important;
                     align-items: center !important;
                     justify-content: center !important;
-                    width: 36px !important;
-                    height: 36px !important;
-                    min-width: 36px !important;
-                    min-height: 36px !important;
+                    width: 32px !important;
+                    height: 32px !important;
+                    min-width: 32px !important;
+                    min-height: 32px !important;
                     padding: 0 !important;
                     border: 1.5px solid #0F172A !important;
                     border-radius: 999px !important;
                     background: #0F172A !important;
                     color: #FFFFFF !important;
-                    font-size: 11.5px !important;
+                    font-size: 10.5px !important;
                     font-weight: 800 !important;
                     line-height: 1 !important;
                     text-align: center !important;
@@ -6993,7 +6993,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg:not(:has(.off)) .bm-card-black-bubble,
                 html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg:has(.off[hidden]) .bm-card-black-bubble,
                 html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg:has(.off[style*="display: none"]) .bm-card-black-bubble {
-                    top: 6px !important;
+                    top: 4px !important;
                 }
 
                 /* Schwarze Bubble in Listenansicht (inline in der offerbox) */

@@ -236,3 +236,50 @@ test('Das Runtime wird nach dem Bootstrap geladen', { skip: !javaSource ? 'Andro
     assert.ok(appendRuntime > runtimeSrc, 'Runtime muss in boot.onload angehaengt werden');
     assert.ok(appendBoot > appendRuntime, 'Bootstrap muss nach dem Runtime-Aufbau angehaengt werden');
 });
+
+// Die Rabatt-Bubbles waren der Fall, den die obige Pruefung nicht sieht: ihre
+// Selektoren tragen kein html.bm-android-app, trotzdem existieren sie in allen
+// drei Schichten — mit unterschiedlichen Zahlen (36/46/11.5 gegen 32/42/10.5).
+// Weil E und C vor dem Runtime greifen, bedeutet das einen sichtbaren Sprung
+// beim Laden; gleiche Zahlen heben ihn auf.
+const BUBBLE_PROPS = ['top', 'left', 'width', 'height', 'font-size'];
+const isBubbleRule = (selector) =>
+    /bm-card-black-bubble$/.test(selector) || /(^|\s)\.off$/.test(selector);
+
+test('Rabatt-Bubbles nutzen in allen drei Schichten dieselbe kompakte Groesse',
+    { skip: !bootstrapSource || !javaSource ? 'Android-Repo nicht im Arbeitsverzeichnis' : false }, () => {
+        const runtimeMap = bySimpleSelector(parseRules(runtime.css, runtime.lineOffset));
+        const bootstrapMap = bySimpleSelector(
+            parseRules(bootstrapCss(bootstrapSource).css, bootstrapCss(bootstrapSource).lineOffset)
+        );
+        const early = earlyShellCss(javaSource);
+        const earlyMap = bySimpleSelector(parseRules(early.css, early.lineOffset));
+
+        const bubbles = [...runtimeMap.keys()].filter(isBubbleRule);
+        assert.ok(bubbles.length >= 2, `keine Bubble-Regeln im Runtime gefunden: ${bubbles}`);
+
+        // Die Norm ist die kompakte Kachelgroesse, nicht die alte 36er-Version.
+        const card = runtimeMap.get(bubbles.find((s) => /bm-card-black-bubble$/.test(s)));
+        assert.equal(card.props.get('width')?.value, '32px !important');
+        assert.equal(card.props.get('font-size')?.value, '10.5px !important');
+
+        const problems = [];
+        for (const selector of bubbles) {
+            for (const [name, map] of [['webview-bootstrap.js', bootstrapMap], ['MainActivity.java (FAST_STYLE_INJECTOR)', earlyMap]]) {
+                const other = map.get(selector);
+                if (!other) continue;
+                for (const property of BUBBLE_PROPS) {
+                    const runtimeValue = runtimeMap.get(selector).props.get(property);
+                    const otherValue = other.props.get(property);
+                    if (!runtimeValue || !otherValue) continue;
+                    if (normalize(otherValue.value) === normalize(runtimeValue.value)) continue;
+                    problems.push(
+                        `${name} Z.${otherValue.line}  ${selector}\n` +
+                        `      ${property}: ${otherValue.value}   <-- Vorlauf-Kopie\n` +
+                        `      ${property}: ${runtimeValue.value}   <-- Runtime`
+                    );
+                }
+            }
+        }
+        assert.deepEqual(problems, [], 'Die Vorlauf-Kopien der Bubble-Geometrie weichen vom Runtime ab:\n\n' + problems.join('\n\n'));
+    });
