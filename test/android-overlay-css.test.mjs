@@ -316,8 +316,7 @@ test('Das Runtime wird nach dem Bootstrap geladen', { skip: !javaSource ? 'Andro
 
 // Die Rabatt-Bubbles waren der Fall, den die Kaskadenpruefung oben nicht sieht:
 // ihre Selektoren tragen kein html.bm-android-app, trotzdem existieren sie in
-// allen drei Schichten — mit unterschiedlichen Zahlen (36/46/11.5 gegen
-// 32/42/10.5). Weil E und C vor dem Runtime greifen, bedeutet das einen
+// allen drei Schichten. Weil E und C vor dem Runtime greifen, bedeutet das einen
 // sichtbaren Sprung beim Laden; gleiche Zahlen heben ihn auf.
 const BUBBLE_PROPS = ['top', 'left', 'width', 'height', 'font-size'];
 const isBubbleRule = (selector) =>
@@ -333,10 +332,10 @@ test('Rabatt-Bubbles nutzen in allen drei Schichten dieselbe kompakte Groesse',
         const bubbles = [...runtimeGlobalOverlay.keys()].filter(isBubbleRule);
         assert.ok(bubbles.length >= 2, `keine Bubble-Regeln im Runtime gefunden: ${bubbles}`);
 
-        // Die Norm ist die kompakte Kachelgroesse, nicht die alte 36er-Version.
+        // Die Norm ist die Zwischengroesse (42px), nicht die alte kompakte Version.
         const card = runtimeGlobalOverlay.get(bubbles.find((s) => /bm-card-black-bubble$/.test(s)));
-        assert.equal(card.props.get('width')?.value, '32px !important');
-        assert.equal(card.props.get('font-size')?.value, '10.5px !important');
+        assert.equal(card.props.get('width')?.value, '42px !important');
+        assert.equal(card.props.get('font-size')?.value, '12px !important');
 
         const problems = [];
         for (const selector of bubbles) {

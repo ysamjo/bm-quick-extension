@@ -1631,6 +1631,21 @@ test('minifigure overlay includes set title in header subtitle', () => {
     assert.match(tweakerSource, /const setLabel = setTitle \|\| \((?:activeSetNum|setNum)/);
 });
 
+test('minifigure overlay table rows override host site zebra striping with white background', () => {
+    assert.match(
+        tweakerSource,
+        /\.bm-minifig-content tr:nth-of-type\(even\)[\s\S]*?background:#fff !important;/
+    );
+    assert.match(
+        tweakerSource,
+        /\.bm-minifig-content td:first-child[\s\S]*?grid-row:1;/
+    );
+    assert.doesNotMatch(
+        tweakerSource,
+        /\.bm-minifig-content td:first-child[\s\S]*?grid-row:1 \/ span 2;/
+    );
+});
+
 test('chart, EAN, and minifigure overlays have robust, bulletproof close buttons', () => {
     // Chart close button is a flex item in header and reset properly
     assert.match(tweakerSource, /\.bm-chart-dialog-close\s*\{[\s\S]*?display:\s*inline-flex\s*!important/);
@@ -2130,6 +2145,30 @@ test('list view keeps the price on one line and the merchant in its own row', ()
     assert.match(
         tweakerSource,
         /\.offerbox > \.bm-list-black-bubble \{\s*flex: 0 0 auto !important;/
+    );
+    assert.match(
+        tweakerSource,
+        /html\.bm-view-list[^}]+\.productprice \.offerbox \{[\s\S]*?font-size: 0 !important;/
+    );
+    assert.match(
+        tweakerSource,
+        /\.offerbox > \.theprice \{[\s\S]*?order: 1 !important;/
+    );
+    assert.match(
+        tweakerSource,
+        /\.offerbox > :is\(\.off, \.bm-list-off\) \{[\s\S]*?order: 2 !important;/
+    );
+    assert.match(
+        tweakerSource,
+        /\.offerbox > \.bm-list-black-bubble \{[\s\S]*?order: 3 !important;/
+    );
+    assert.match(
+        tweakerSource,
+        /\.offerbox > \.stroke \{[\s\S]*?order: 4 !important;/
+    );
+    assert.match(
+        tweakerSource,
+        /\.offerbox > \.bm-list-eol \{\s*order: 5 !important;\s*\}/
     );
 });
 
@@ -2714,11 +2753,14 @@ test('action buttons sit in one heading-less row below the offer list, not in th
     assert.match(rowRule, /grid-template-columns:\s*repeat\(4,\s*1fr\)\s*!important/);
     assert.doesNotMatch(rowRule, /overflow-x/);
 
-    // 3b. Auf schmalem Screen teilt sich die Zeile nach Inhalt – sonst wird
-    //     "Wunschliste" abgeschnitten, während "ROI" Leerlauf hält.
+    // 3b. Auf schmalem Screen decken alle 4 Buttons die volle Breite ab, ohne ungleichmäßige Lücken dazwischen.
     assert.match(
         tweakerSource,
-        /@media \(max-width: 480px\) \{\s*\.bm-detail-action-buttons-row \{[\s\S]*?grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*max-content\)\)\s*!important;\s*justify-content:\s*space-between\s*!important;/
+        /@media \(max-width: 480px\) \{\s*\.bm-detail-action-buttons-row \{[^}]*?grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)\s*!important;/
+    );
+    assert.doesNotMatch(
+        tweakerSource,
+        /@media \(max-width: 480px\) \{\s*\.bm-detail-action-buttons-row \{[^}]*?justify-content:\s*space-between/
     );
 
     // 4. Normale Aktionsbuttons: heller Rahmen, helle Fläche, rote Schrift
@@ -3083,10 +3125,168 @@ test('Detailseiten-Blasen rasten über dem Bild ein, statt im Fluss zu driften',
     assert.match(black[0], /left: 0\.75rem !important;/);
     assert.match(
         tweakerSource,
-        /\.bm-featured-black-bubble\.bm-featured-black-bubble-stacked \{[\s\S]*?top: calc\(0\.45rem \+ 38px\)/
+        /\.bm-featured-black-bubble\.bm-featured-black-bubble-stacked \{[\s\S]*?top: calc\(0\.45rem \+ 48px\)/
     );
 
-    // Beide Blasen sind auf die 32px der Suchseiten-Kacheln normiert.
-    assert.match(rule[0], /width: 32px !important;/);
-    assert.match(black[0], /width: 32px !important;/);
+    // Beide Blasen nutzen die Zwischengröße (42px: zwischen kompakt 32px und Original 50px).
+    assert.match(rule[0], /width: 42px !important;/);
+    assert.match(black[0], /width: 42px !important;/);
+
+    // Anker-Regel: Blasen sitzen am Bühnen-Container (.large-3.medium-4.columns.hide-for-small / .show-for-small-only.text-center),
+    // damit sie sauber in der oberen linken Ecke der Bühne stehen und nicht über dem zentrierten Produktbild liegen.
+    assert.match(
+        tweakerSource,
+        /\.content\.setdetails \.large-3\.medium-4\.columns\.hide-for-small,\s*\n\s*\.content\.setdetails \.show-for-small-only\.text-center\s*\{[\s\S]*?position: relative !important;/
+    );
+    assert.match(
+        tweakerSource,
+        /\.content\.setdetails \.show-for-small-only\.text-center\s*\n\s*> \.off:not\(\.bm-bestprice-black-bubble\)/
+    );
 });
+
+test('Angebotsliste wird auch ohne native brickmerge-Angebote mit eigenen Marktplatz-Angeboten aufgebaut', () => {
+    // 1. ensureOfferListContainer existiert und baut #offerlist mit #ol1st > section und #ol2nd auf
+    assert.match(tweakerSource, /function ensureOfferListContainer\(\)/);
+    assert.match(tweakerSource, /globalThis\.BM_ensureOfferListContainer = ensureOfferListContainer;/);
+    assert.match(tweakerSource, /offerlist\.id = 'offerlist';/);
+    assert.match(tweakerSource, /ol1st\.id = 'ol1st';/);
+    assert.match(tweakerSource, /section\.className = 'bm-offer-section';/);
+    assert.match(tweakerSource, /ol2nd\.id = 'ol2nd';/);
+
+    // 2. ensureOfferListContainer positioniert vor .bm-detail-action-buttons-row oder Fallbacks
+    assert.match(tweakerSource, /actionRow && actionRow\.parentElement === detailLeft/);
+    assert.match(tweakerSource, /detailLeft\.insertBefore\(offerlist, actionRow\)/);
+
+    // 3. injectMarketplaceOffers stellt #offerlist sicher, wenn keines existiert
+    assert.match(
+        tweakerSource,
+        /if \(!offerlist && Array\.isArray\(offers\) && offers\.length > 0\) \{\s*offerlist = ensureOfferListContainer\(\);\s*\}/
+    );
+
+    // 4. injectMarketplaceOffers findet section-Fallback auch wenn firstPriceRow null ist (EOL-Sets ohne Händlerangebote wie 71469)
+    assert.match(
+        tweakerSource,
+        /parent = offerlist\.querySelector\('#ol1st > section:first-of-type'\) \|\|\s*offerlist\.querySelector\('#ol1st > section'\) \|\|\s*offerlist\.querySelector\('section'\);/
+    );
+
+    // 5. mergeSoldOutOffersIntoOfferList hängt an section an, selbst wenn keine aktiven Händlerpreise vorliegen
+    assert.match(
+        tweakerSource,
+        /const target = firstMainPriceRow\?\.closest\('\.row\.collapse'\)\?\.parentElement \|\|\s*offerlist\.querySelector\('#ol1st > section:first-of-type'\) \|\|\s*offerlist\.querySelector\('#ol1st > section'\) \|\|\s*offerlist\.querySelector\('section'\);/
+    );
+
+    // 6. createDiscountSettingsUI räumt verwaiste Toolbars auf, wenn noch keine Angebotszeile existiert
+    assert.match(
+        tweakerSource,
+        /if \(!offerlist \|\| !firstOffer\?\.parentElement\) \{\s*offerlist\?\.querySelector\('\.bm-offer-toolbar'\)\?\.remove\(\);\s*return;\s*\}/
+    );
+
+    // 7. currentBestPrice liest span.price im offerlist aus, falls .topprice fehlt
+    assert.match(
+        tweakerSource,
+        /for \(const element of document\.querySelectorAll\(\s*'#offerlist span\.price'\s*\)\)/
+    );
+});
+
+test('ensureOfferListContainer und injectMarketplaceOffers verhalten sich isoliert im DOM korrekt', () => {
+    // Simulierte DOM-Knoten für ensureOfferListContainer
+    function createMockNode(tagName = 'div', id = '', className = '') {
+        const children = [];
+        return {
+            tagName: tagName.toUpperCase(),
+            id,
+            className,
+            children,
+            parentElement: null,
+            appendChild(child) {
+                child.parentElement = this;
+                children.push(child);
+                return child;
+            },
+            prepend(child) {
+                child.parentElement = this;
+                children.unshift(child);
+                return child;
+            },
+            insertBefore(newNode, refNode) {
+                newNode.parentElement = this;
+                const idx = children.indexOf(refNode);
+                if (idx !== -1) {
+                    children.splice(idx, 0, newNode);
+                } else {
+                    children.push(newNode);
+                }
+                return newNode;
+            },
+            querySelector(selector) {
+                if (selector === '#ol1st') return children.find(c => c.id === 'ol1st') || null;
+                if (selector === '#ol2nd') return children.find(c => c.id === 'ol2nd') || null;
+                if (selector.includes('section')) {
+                    const ol1st = children.find(c => c.id === 'ol1st');
+                    if (ol1st) {
+                        return ol1st.children.find(c => c.tagName === 'SECTION') || null;
+                    }
+                    return children.find(c => c.tagName === 'SECTION') || null;
+                }
+                return null;
+            }
+        };
+    }
+
+    const mockBody = createMockNode('body');
+    const mockDetailLeft = createMockNode('div', '', 'bm-detail-left');
+    const mockActionRow = createMockNode('div', '', 'bm-detail-action-buttons-row');
+    mockDetailLeft.appendChild(mockActionRow);
+    mockBody.appendChild(mockDetailLeft);
+
+    let docOfferlist = null;
+    const mockDoc = {
+        getElementById(id) {
+            if (id === 'offerlist') return docOfferlist;
+            return null;
+        },
+        querySelector(selector) {
+            if (selector === '.content.setdetails .bm-detail-left') return mockDetailLeft;
+            if (selector === '.bm-detail-action-buttons-row') return mockActionRow;
+            return null;
+        },
+        createElement(tag) {
+            return createMockNode(tag);
+        }
+    };
+
+    const fnSource = tweakerSource.slice(
+        tweakerSource.indexOf('function ensureOfferListContainer() {'),
+        tweakerSource.indexOf('globalThis.BM_ensureOfferListContainer = ensureOfferListContainer;')
+    );
+    const ensureFn = new Function('document', `${fnSource}; return ensureOfferListContainer;`)(mockDoc);
+
+    const createdOfferlist = ensureFn();
+    assert.ok(createdOfferlist, 'Offerlist wurde erzeugt');
+    assert.equal(createdOfferlist.id, 'offerlist');
+    assert.equal(mockDetailLeft.children[0], createdOfferlist, 'Offerlist wurde vor der Action-Row eingefügt');
+    assert.equal(mockDetailLeft.children[1], mockActionRow, 'Action-Row bleibt unter der Offerlist');
+
+    const ol1st = createdOfferlist.querySelector('#ol1st');
+    assert.ok(ol1st, '#ol1st wurde erzeugt');
+    const section = ol1st.querySelector('section');
+    assert.ok(section, 'section wurde in #ol1st erzeugt');
+    assert.equal(section.className, 'bm-offer-section');
+
+    // Zweiter Aufruf liefert dasselbe Element ohne Duplikate
+    docOfferlist = createdOfferlist;
+    const existing = ensureFn();
+    assert.equal(existing, createdOfferlist);
+});
+
+test('grid view hides secondary price rows and trailing comparison lines in CSS and removes them in DOM enhancement', () => {
+    // 1. CSS checks: secondary productprice, offerbox, and trailing comparison lines hidden in grid view
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.productprice\s*~\s*\.productprice/);
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.productprice:not\(:first-of-type\)/);
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.bm-split-cta\s*~\s*:is\(\.productprice,\s*\.offerbox,\s*\.pricerow,\s*\.small,\s*p\)/);
+
+    // 2. DOM cleanup check: secondary productprice removal and trailing cleanup
+    assert.match(tweakerSource, /const allPriceAreas = card\.querySelectorAll\('\.productprice'\);/);
+    assert.match(tweakerSource, /trailingToRemove\.forEach\(el => el\.remove\(\)\);/);
+});
+

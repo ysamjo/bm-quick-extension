@@ -2272,6 +2272,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             30% { background-color: #ffe082 !important; }
             100% { background-color: transparent; }
         }
+        /* Detailseiten-Bühne: Container bildet den Positionierungskontext,
+           sodass die Blasen sauber in der oberen linken Ecke der Bühne sitzen,
+           statt mitten über dem zentrierten Produktbild zu liegen. */
+        .content.setdetails .large-3.medium-4.columns.hide-for-small,
+        .content.setdetails .show-for-small-only.text-center {
+            position: relative !important;
+        }
         .content.setdetails .large-3.medium-4.columns.hide-for-small
             > .off:not(.bm-bestprice-black-bubble),
         .content.setdetails .show-for-small-only.text-center
@@ -2281,15 +2288,16 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             position: absolute !important;
             top: 0.45rem !important;
             left: 0.75rem !important;
-            /* Auf Kachelgröße der Suchseite normiert (32px) */
-            width: 32px !important;
-            height: 32px !important;
-            min-width: 32px !important;
-            min-height: 32px !important;
+            z-index: 100 !important;
+            /* Zwischengröße: größer als Kachel-kompakt (32px), kleiner als Original (50px) */
+            width: 42px !important;
+            height: 42px !important;
+            min-width: 42px !important;
+            min-height: 42px !important;
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
-            font-size: 10.5px !important;
+            font-size: 12px !important;
             font-weight: 800 !important;
             line-height: 1 !important;
             box-sizing: border-box !important;
@@ -2302,24 +2310,32 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             display: inline-flex !important;
             align-items: center;
             justify-content: center;
-            width: 32px !important;
-            height: 32px !important;
-            min-width: 32px !important;
-            min-height: 32px !important;
+            width: 42px !important;
+            height: 42px !important;
+            min-width: 42px !important;
+            min-height: 42px !important;
             margin: 0 !important;
             padding: 0 !important;
             border: 1px solid #000 !important;
             border-radius: 999px !important;
             background: #222 !important;
             color: #fff !important;
-            font-size: 10.5px !important;
+            font-size: 12px !important;
             font-weight: bold !important;
             line-height: 1 !important;
             text-align: center;
             box-sizing: border-box;
         }
         .bm-featured-black-bubble.bm-featured-black-bubble-stacked {
-            top: calc(0.45rem + 38px) !important;
+            top: calc(0.45rem + 48px) !important;
+        }
+        /* CSS-Fallback: schwarze Blase rutscht auch ohne JS-Klasse nach unten,
+           sobald eine sichtbare rote Blase im selben Container steht. */
+        .content.setdetails .large-3.medium-4.columns.hide-for-small:has(> .off:not(.bm-bestprice-black-bubble):not([hidden]):not([style*="display: none"]))
+            > .bm-featured-black-bubble:not(.bm-featured-black-bubble-stacked),
+        .content.setdetails .show-for-small-only.text-center:has(> .off:not(.bm-bestprice-black-bubble):not([hidden]):not([style*="display: none"]))
+            > .bm-featured-black-bubble:not(.bm-featured-black-bubble-stacked) {
+            top: calc(0.45rem + 48px) !important;
         }
         .bm-full-product-description {
             float: none !important;
@@ -3934,9 +3950,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             height: 82px !important;
             min-height: 82px !important;
             max-height: 82px !important;
-            background: #F8FAFC !important;
-            border: 1px solid #F1F5F9 !important;
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
             border-radius: 8px !important;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12) !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -4057,26 +4074,54 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             max-width: 100% !important;
             display: flex !important;
             align-items: center !important;
-            flex-wrap: wrap !important;
+            flex-wrap: nowrap !important;
             gap: 6px !important;
+            /* Zero-Font eliminiert nackte Brickmerge-Textknoten ("ab", "130,00 € (", ")") */
+            font-size: 0 !important;
         }
         /* Ein-Spalten-Liste: die Preiszeile bricht nie um. Nur der gestrichene
            UVP darf enger rücken, Preis und Badges behalten ihre Breite. */
         html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox {
             flex-wrap: nowrap !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .theprice,
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .off,
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .bm-list-off,
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .theprice {
+            flex: 0 0 auto !important;
+            order: 1 !important;
+            font-size: 16.5px !important;
+            font-weight: 800 !important;
+            color: #B80000 !important;
+            letter-spacing: -0.3px;
+            line-height: 1 !important;
+            cursor: pointer !important;
+            pointer-events: auto !important;
+        }
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > :is(.off, .bm-list-off) {
+            flex: 0 0 auto !important;
+            order: 2 !important;
+            font-size: 10.5px !important;
+        }
         html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .bm-list-black-bubble {
             flex: 0 0 auto !important;
+            order: 3 !important;
+            font-size: 10.5px !important;
         }
         html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .stroke {
             flex: 0 1 auto !important;
+            order: 4 !important;
             min-width: 0 !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
             white-space: nowrap !important;
+            font-size: 11px !important;
+            color: #64748B !important;
+            text-decoration: line-through !important;
+            margin: 0 !important;
+        }
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .bm-list-eol {
+            order: 5 !important;
+        }
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > :not(.theprice):not(.off):not(.bm-list-off):not(.bm-list-black-bubble):not(.stroke):not(.bm-list-eol) {
+            display: none !important;
         }
         html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .theprice {
             font-size: 16.5px !important;
@@ -4176,16 +4221,16 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
-            width: 32px !important;
-            height: 32px !important;
-            min-width: 32px !important;
-            min-height: 32px !important;
+            width: 42px !important;
+            height: 42px !important;
+            min-width: 42px !important;
+            min-height: 42px !important;
             padding: 0 !important;
             border: none !important;
             border-radius: 999px !important;
             background: #B80000 !important;
             color: #FFFFFF !important;
-            font-size: 10.5px !important;
+            font-size: 12px !important;
             font-weight: 800 !important;
             line-height: 1 !important;
             text-align: center !important;
@@ -4307,7 +4352,18 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             display: none !important;
         }
 
-        /* Klassische Kachel: Unerwünschte Leerzeilen, alten Moosgrün-Balken und dealheat ausblenden */
+        /* Klassische Kachel: Unerwünschte Leerzeilen, alten Moosgrün-Balken, dealheat und nachlaufende zweite Preis-/Vergleichszeilen ("ab ... gespart: ...") ausblenden */
+        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .productprice ~ .productprice,
+        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .productprice ~ .offerbox,
+        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .productprice ~ .pricerow,
+        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .productprice:not(:first-of-type),
+        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .offerbox:not(:first-of-type),
+        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .bm-split-cta ~ :is(.productprice, .offerbox, .pricerow, .small, p),
+        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .pricerow,
+        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide div.pricerow,
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice ~ .productprice,
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice:not(:first-of-type),
+        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .offerbox:not(:first-of-type),
         html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide > a.detail:has(.dealheat),
         html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide > a:has(.dealheat),
         html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .dealheat,
@@ -4670,22 +4726,22 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         /* Schwarze Bubble auf Kachelansicht (Abstand zum 2. besten Angebot) */
         html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-card-black-bubble {
             position: absolute !important;
-            top: 42px !important;
+            top: 52px !important;
             left: 4px !important;
             z-index: 5 !important;
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
-            width: 32px !important;
-            height: 32px !important;
-            min-width: 32px !important;
-            min-height: 32px !important;
+            width: 42px !important;
+            height: 42px !important;
+            min-width: 42px !important;
+            min-height: 42px !important;
             padding: 0 !important;
             border: 1.5px solid #0F172A !important;
             border-radius: 999px !important;
             background: #0F172A !important;
             color: #FFFFFF !important;
-            font-size: 10.5px !important;
+            font-size: 12px !important;
             font-weight: 800 !important;
             line-height: 1 !important;
             text-align: center !important;
@@ -4766,23 +4822,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             margin: 10px 0 16px !important;
             box-sizing: border-box !important;
         }
-        @media (max-width: 480px) {
-            .bm-detail-action-buttons-row {
-                gap: 5px !important;
-                /* Vier gleich breite Spalten würden "Wunschliste" abschneiden,
-                   während "ROI" Leerlauf hält. Auf schmalem Screen teilt sich
-                   die Breite nach Inhalt, der Rest läuft als Abstand zwischen
-                   die Buttons. */
-                grid-template-columns: repeat(4, minmax(0, max-content)) !important;
-                justify-content: space-between !important;
-            }
-        }
         .bm-detail-action-buttons-row .bmd-open-button {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             gap: 4px !important;
             width: 100% !important;
+            min-width: 0 !important;
             padding: 8px 3px !important;
             font-size: 11px !important;
             font-weight: 700 !important;
@@ -4800,6 +4846,21 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
             cursor: pointer !important;
             transition: all 0.15s ease-in-out !important;
+        }
+        .bm-detail-action-buttons-row .bmd-open-button .bmd-button-content {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+        .bm-detail-action-buttons-row .bmd-open-button .bmd-button-content span {
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
         }
         .bm-detail-action-buttons-row .bmd-open-button:hover,
         .bm-detail-action-buttons-row .bmd-open-button:focus {
@@ -4834,6 +4895,19 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             stroke-width: 2 !important;
             stroke-linecap: round !important;
             stroke-linejoin: round !important;
+        }
+        @media (max-width: 480px) {
+            .bm-detail-action-buttons-row {
+                gap: 5px !important;
+                /* Alle 4 Buttons decken gleichmäßig die komplette Breite ab,
+                   ohne ungleichmäßige Leerräume dazwischen zu hinterlassen. */
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            }
+            .bm-detail-action-buttons-row .bmd-open-button {
+                padding: 8px 2px !important;
+                font-size: 10.5px !important;
+                letter-spacing: -0.2px !important;
+            }
         }
 
         /* Mobile Filterleiste: Alle 6 Filter sofort sichtbar im 3x2 Grid, kein Scrolling */
@@ -6820,7 +6894,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 redBubble.className = 'off';
                 if (isList && offerBox) {
                     redBubble.classList.add('bm-list-off');
-                    offerBox.appendChild(redBubble);
+                    const ref = offerBox.querySelector('.bm-list-black-bubble, .stroke, .bm-list-eol');
+                    if (ref) {
+                        offerBox.insertBefore(redBubble, ref);
+                    } else {
+                        offerBox.appendChild(redBubble);
+                    }
                 } else {
                     productImg.prepend(redBubble);
                 }
@@ -6835,8 +6914,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             redBubble.style.display = isList ? 'inline-flex' : 'inline-flex';
             if (isList) {
                 redBubble.classList.add('bm-list-off');
-                if (offerBox && !offerBox.contains(redBubble)) {
-                    offerBox.appendChild(redBubble);
+                if (offerBox) {
+                    const ref = offerBox.querySelector('.bm-list-black-bubble, .stroke, .bm-list-eol');
+                    if (!offerBox.contains(redBubble)) {
+                        if (ref) offerBox.insertBefore(redBubble, ref);
+                        else offerBox.appendChild(redBubble);
+                    } else if (ref && redBubble.compareDocumentPosition(ref) & Node.DOCUMENT_POSITION_PRECEDING) {
+                        offerBox.insertBefore(redBubble, ref);
+                    }
                 }
             } else {
                 redBubble.classList.remove('bm-list-off');
@@ -6854,7 +6939,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 blackBubble.className = isList ? 'bm-list-black-bubble' : 'bm-card-black-bubble';
                 blackBubble.title = `${blackDiscount}% günstiger als das nächstteurere Angebot`;
                 if (isList && offerBox) {
-                    offerBox.appendChild(blackBubble);
+                    const ref = offerBox.querySelector('.stroke, .bm-list-eol');
+                    if (ref) {
+                        offerBox.insertBefore(blackBubble, ref);
+                    } else {
+                        offerBox.appendChild(blackBubble);
+                    }
                 } else {
                     productImg.appendChild(blackBubble);
                 }
@@ -6869,8 +6959,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             blackBubble.style.display = 'inline-flex';
             if (isList) {
                 blackBubble.className = 'bm-list-black-bubble';
-                if (offerBox && !offerBox.contains(blackBubble)) {
-                    offerBox.appendChild(blackBubble);
+                if (offerBox) {
+                    const ref = offerBox.querySelector('.stroke, .bm-list-eol');
+                    if (!offerBox.contains(blackBubble)) {
+                        if (ref) offerBox.insertBefore(blackBubble, ref);
+                        else offerBox.appendChild(blackBubble);
+                    } else if (ref && blackBubble.compareDocumentPosition(ref) & Node.DOCUMENT_POSITION_PRECEDING) {
+                        offerBox.insertBefore(blackBubble, ref);
+                    }
                 }
             } else {
                 blackBubble.className = 'bm-card-black-bubble';
@@ -7355,7 +7451,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 }
             }
 
-            const priceArea = card.querySelector('.productprice');
+            const allPriceAreas = card.querySelectorAll('.productprice');
+            const priceArea = allPriceAreas[0] || card.querySelector('.productprice');
+            if (allPriceAreas.length > 1) {
+                for (let i = 1; i < allPriceAreas.length; i++) {
+                    allPriceAreas[i].remove();
+                }
+            }
             let offerBox = priceArea?.querySelector('.offerbox') || card.querySelector('.offerbox');
             if (!offerBox && priceArea && !card.dataset.bmListEnhanced) {
                 offerBox = document.createElement('div');
@@ -7432,11 +7534,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     fragment.appendChild(priceSpan);
                 }
 
+                let cleanUvp = '';
                 if (uvpText) {
-                    const uvpSpan = document.createElement('span');
-                    uvpSpan.className = 'stroke bm-list-uvp';
-                    uvpSpan.textContent = uvpText.replace(/\s+/g, ' ');
-                    fragment.appendChild(uvpSpan);
+                    const uvpMatch = uvpText.match(/UVP\s*[\d\s.,]*\s*€/i);
+                    cleanUvp = uvpMatch ? uvpMatch[0].replace(/\s+/g, ' ').trim() : uvpText.replace(/\s+/g, ' ').trim();
                 }
 
                 let redVal = offBadge ? parseInt(offBadge.textContent || '', 10) : 0;
@@ -7487,6 +7588,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                             productImg.appendChild(blackBadge);
                         }
                     }
+                }
+
+                if (cleanUvp) {
+                    const uvpSpan = document.createElement('span');
+                    uvpSpan.className = 'stroke bm-list-uvp';
+                    uvpSpan.textContent = cleanUvp;
+                    fragment.appendChild(uvpSpan);
                 }
 
                 const cachedMerchant = setKey ? (bmListMerchantCache.get(setKey) || sessionStorage.getItem(`bm_mch_${setKey}`) || '') : '';
@@ -7564,6 +7672,30 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     }
                 }
 
+                // Option C: Nachlaufende zweite Preiszeilen / Vergleichszeilen ("ab ... gespart: ...")
+                // und die native pricerow komplett aus dem DOM entfernen
+                const trailingToRemove = card.querySelectorAll(
+                    '.pricerow, div.pricerow, .viewShop, ' +
+                    '.productprice ~ .productprice, .productprice ~ .offerbox, .productprice ~ .pricerow, ' +
+                    '.bm-split-cta ~ .productprice, .bm-split-cta ~ .offerbox, .bm-split-cta ~ .pricerow, ' +
+                    '.bm-split-cta ~ .small:not(.stroke), .bm-split-cta ~ p'
+                );
+                trailingToRemove.forEach(el => el.remove());
+
+                if (splitCta) {
+                    let nextEl = splitCta.nextElementSibling;
+                    while (nextEl) {
+                        const cur = nextEl;
+                        nextEl = nextEl.nextElementSibling;
+                        if (
+                            cur.matches('.pricerow, .productprice, .offerbox, .small, p, [class*="price"]') ||
+                            /(?:ab\s*\d+.*€|gespart\s*:)/i.test(cur.textContent || '')
+                        ) {
+                            cur.remove();
+                        }
+                    }
+                }
+
                 if (document.documentElement.classList.contains('bm-view-list')) {
                     card.querySelectorAll('a[id^="merk"], a[id^="a"], a[id^="dp"], .bm-slidebadge').forEach(el => el.remove());
                 }
@@ -7608,7 +7740,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (window.innerWidth > 768) {
             document.querySelector('.bm-view-switcher')?.remove();
             document.documentElement.classList.remove('bm-view-list');
-            const productRow = document.getElementById('productrow') || document.getElementById('productrowcontainer');
+            const productRow = document.querySelector('#productrow, .productrow, #productrowcontainer');
             if (productRow) {
                 bmEnhanceListViewCards(productRow);
                 if (typeof MutationObserver !== 'undefined' && !productRow.dataset.bmListCardObserver) {
@@ -7701,7 +7833,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
         setupMobileFilterBar();
 
-        const productRow = document.getElementById('productrow') || document.getElementById('productrowcontainer');
+        const productRow = document.querySelector('#productrow, .productrow, #productrowcontainer');
         if (!productRow) return;
 
         // Prüfen, ob die Seite tatsächlich Set-Inserate enthält
@@ -9023,7 +9155,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
         const firstOffer = offerlist?.querySelector('.row.collapse:has(.pricerow)') ||
             offerlist?.querySelector('.row.collapse');
-        if (!offerlist || !firstOffer?.parentElement) return;
+        if (!offerlist || !firstOffer?.parentElement) {
+            offerlist?.querySelector('.bm-offer-toolbar')?.remove();
+            return;
+        }
 
         const toolbar = document.createElement('div');
         toolbar.className = 'bm-offer-toolbar';
@@ -11416,7 +11551,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         const firstMainPriceRow = Array.from(offerlist.querySelectorAll(
             '.medium-4.small-9.columns.pricerow[data-mid]'
         )).find(priceRow => !priceRow.closest('#soldOut'));
-        const target = firstMainPriceRow?.closest('.row.collapse')?.parentElement;
+        const target = firstMainPriceRow?.closest('.row.collapse')?.parentElement ||
+            offerlist.querySelector('#ol1st > section:first-of-type') ||
+            offerlist.querySelector('#ol1st > section') ||
+            offerlist.querySelector('section');
         if (!target) return false;
 
         soldOutRows.forEach(wrapper => {
@@ -12746,7 +12884,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             setupLinkSliders(box);
             setupMetaGptLink(box);
             syncMarketplaceShortcutLinks();
-            const offerlist = document.getElementById('offerlist');
+            const offerlist = document.getElementById('offerlist') ||
+                (setNum && BM_SETTINGS.marketplacesInOfferlist !== false ? ensureOfferListContainer() : null);
             if (offerlist) {
                 let shortcutSyncTimer = 0;
                 const scheduleShortcutSync = () => {
@@ -16330,7 +16469,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     color:#fff;
                     outline:none;
                 }
-                .bm-minifig-content table {
+                .bm-minifig-content table,
+                table.bm-minifig-table {
                     width:100%;
                     margin:0;
                     border:0;
@@ -16338,16 +16478,36 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     table-layout:fixed;
                     color:#333 !important;
                     font-size:0.9rem;
+                    background:#fff !important;
                 }
-                .bm-minifig-content tr {
+                .bm-minifig-content tbody,
+                table.bm-minifig-table tbody {
+                    background:#fff !important;
+                }
+                .bm-minifig-content tr,
+                .bm-minifig-content tr.even,
+                .bm-minifig-content tr.alt,
+                .bm-minifig-content tr:nth-of-type(even),
+                .bm-minifig-content tr:nth-of-type(odd),
+                table.bm-minifig-table tr,
+                table.bm-minifig-table tr.even,
+                table.bm-minifig-table tr.alt,
+                table.bm-minifig-table tr:nth-of-type(even),
+                table.bm-minifig-table tr:nth-of-type(odd) {
                     border-bottom:1px solid #e3e3e3;
-                    background:#fff;
+                    background:#fff !important;
                 }
-                .bm-minifig-content tr:last-child {
+                .bm-minifig-content tr:last-child,
+                table.bm-minifig-table tr:last-child {
                     border-bottom:0;
                 }
-                .bm-minifig-content tr:hover td {
-                    background:#fff8f6 !important;
+                @media (hover: hover) {
+                    .bm-minifig-content tr:hover,
+                    .bm-minifig-content tr:hover td,
+                    table.bm-minifig-table tr:hover,
+                    table.bm-minifig-table tr:hover td {
+                        background:#fff8f6 !important;
+                    }
                 }
                 .bm-minifig-content tr.bm-minifig-row-link {
                     cursor:pointer;
@@ -16529,7 +16689,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         font-size:1.08rem;
                     }
                     .bm-minifig-content table,
-                    .bm-minifig-content tbody {
+                    .bm-minifig-content tbody,
+                    table.bm-minifig-table,
+                    table.bm-minifig-table tbody {
                         display:block;
                     }
                     .bm-minifig-content {
@@ -16537,35 +16699,42 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         min-height:0;
                         padding-bottom:env(safe-area-inset-bottom);
                     }
-                    .bm-minifig-content tr {
+                    .bm-minifig-content tr,
+                    table.bm-minifig-table tr {
                         display:grid;
                         grid-template-columns:92px minmax(0,1fr);
                         width:100%;
                         min-height:132px;
                     }
-                    .bm-minifig-content td {
+                    .bm-minifig-content td,
+                    table.bm-minifig-table td {
                         display:block;
                         width:auto !important;
                         padding:10px 8px;
                     }
-                    .bm-minifig-content td:first-child {
+                    .bm-minifig-content td:first-child,
+                    table.bm-minifig-table td:first-child {
                         grid-column:1;
-                        grid-row:1 / span 2;
+                        grid-row:1;
                         padding:14px 6px;
                     }
-                    .bm-minifig-content td:nth-child(2) {
+                    .bm-minifig-content td:nth-child(2),
+                    table.bm-minifig-table td:nth-child(2) {
                         display:none !important;
                     }
-                    .bm-minifig-content td:nth-child(3) {
+                    .bm-minifig-content td:nth-child(3),
+                    table.bm-minifig-table td:nth-child(3) {
                         display:none !important;
                     }
-                    .bm-minifig-content td:last-child {
+                    .bm-minifig-content td:last-child,
+                    table.bm-minifig-table td:last-child {
                         grid-column:2;
                         grid-row:1;
-                        align-self:start;
+                        align-self:stretch;
                         padding:14px 10px 14px 4px;
                     }
-                    .bm-minifig-content img {
+                    .bm-minifig-content img,
+                    table.bm-minifig-table img {
                         max-width:78px;
                         max-height:96px;
                     }
@@ -18313,6 +18482,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
         // Wenn es auf dem Produktbild keine rote UVP-Bubble gibt, fehlt sonst die
         // Vorlage zum Klonen. In dem Fall zeigen wir die schwarze Bubble einzeln.
+        // Beide Blasen sitzen direkt am Bühnen-Container in der oberen linken Ecke.
     function ensureFeaturedBlackBubble(discountText) {
             const featuredContainers = [
                 document.querySelector(
@@ -18324,13 +18494,20 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             ].filter(Boolean);
 
             featuredContainers.forEach(container => {
-                let bubble = container.querySelector(':scope > .bm-featured-black-bubble');
+                const bubbleHome = container;
+                const nativeRed = container.querySelector(
+                    '.off:not(.bm-bestprice-black-bubble):not(.black-discount-bubble)'
+                );
+                if (nativeRed && nativeRed.parentElement !== bubbleHome) {
+                    bubbleHome.prepend(nativeRed);
+                }
+                let bubble = bubbleHome.querySelector(':scope > .bm-featured-black-bubble');
                 if (!bubble) {
                     bubble = document.createElement('div');
                     bubble.className = 'black-discount-bubble bm-featured-black-bubble';
-                    container.prepend(bubble);
+                    bubbleHome.prepend(bubble);
                 }
-                const nativeRedBubble = Array.from(container.querySelectorAll(
+                const nativeRedBubble = Array.from(bubbleHome.querySelectorAll(
                     ':scope > .off, :scope > span[style*="position"], ' +
                     ':scope > div[style*="position"]'
                 )).find(element =>
@@ -18422,6 +18599,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 delete bubble.dataset.bmOriginalTitle;
             }
         });
+        // Ohne sichtbare rote Blase sitzt eine verbliebene schwarze wieder oben.
+        document.querySelectorAll(
+            '.content.setdetails .bm-featured-black-bubble'
+        ).forEach(black => black.classList.remove('bm-featured-black-bubble-stacked'));
     }
 
     function updateDetailImageDiscountBubbles(discountPercent) {
@@ -18435,15 +18616,19 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         ].filter(Boolean);
 
         containers.forEach(container => {
+            const bubbleHome = container;
             let bubble = container.querySelector(
                 ':scope > .off:not(.bm-bestprice-black-bubble):not(.black-discount-bubble), ' +
                 '.off:not(.bm-bestprice-black-bubble):not(.black-discount-bubble)'
             );
+            if (bubble && bubble.parentElement !== bubbleHome) {
+                bubbleHome.prepend(bubble);
+            }
             if (!bubble) {
                 bubble = document.createElement('div');
                 bubble.className = 'off';
                 bubble.dataset.bmCreated = 'true';
-                container.prepend(bubble);
+                bubbleHome.prepend(bubble);
             }
             if (bubble.dataset.bmOriginalDiscount === undefined && bubble.dataset.bmCreated !== 'true') {
                 bubble.dataset.bmOriginalDiscount = bubble.textContent.trim();
@@ -18454,6 +18639,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             const hasMinus = (bubble.dataset.bmOriginalDiscount && bubble.dataset.bmOriginalDiscount.startsWith('-'));
             bubble.textContent = hasMinus ? `-${discountPercent}%` : `${discountPercent}%`;
             bubble.title = `${discountPercent}% unter UVP (Bestpreis)`;
+            // Rote Blase sichtbar → schwarze darunter stapeln (Reihenfolge der
+            // Funktionsaufrufe ist nicht garantiert, daher hier nachziehen).
+            const black = bubbleHome.querySelector(':scope > .bm-featured-black-bubble');
+            if (black) black.classList.add('bm-featured-black-bubble-stacked');
         });
     }
 
@@ -19184,26 +19373,103 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
     }
 
+    function ensureOfferListContainer() {
+        let offerlist = document.getElementById('offerlist');
+        if (offerlist) return offerlist;
+
+        offerlist = document.createElement('div');
+        offerlist.id = 'offerlist';
+        offerlist.className = 'row bm-created-offerlist';
+
+        const ol1st = document.createElement('div');
+        ol1st.id = 'ol1st';
+        ol1st.className = 'large-8 columns';
+
+        const section = document.createElement('section');
+        section.className = 'bm-offer-section';
+
+        const heading = document.createElement('h3');
+        heading.className = 'bm-offer-heading';
+        heading.textContent = 'Verfügbare Angebote im Preisvergleich';
+        section.appendChild(heading);
+
+        ol1st.appendChild(section);
+        offerlist.appendChild(ol1st);
+
+        const ol2nd = document.createElement('div');
+        ol2nd.id = 'ol2nd';
+        ol2nd.className = 'large-4 columns text-center';
+        offerlist.appendChild(ol2nd);
+
+        const detailLeft = document.querySelector('.content.setdetails .bm-detail-left');
+        const actionRow = document.querySelector('.bm-detail-action-buttons-row');
+        const soldOutContainer = document.getElementById('SoldOutContainer') || document.getElementById('soldOut');
+        const productRow = document.getElementById('productrowcontainer') || document.getElementById('productrow');
+        const feedback = document.getElementById('feedback');
+
+        if (detailLeft) {
+            if (actionRow && actionRow.parentElement === detailLeft) {
+                detailLeft.insertBefore(offerlist, actionRow);
+            } else {
+                detailLeft.appendChild(offerlist);
+            }
+        } else if (actionRow && actionRow.parentElement) {
+            actionRow.parentElement.insertBefore(offerlist, actionRow);
+        } else if (soldOutContainer && soldOutContainer.parentElement) {
+            soldOutContainer.parentElement.insertBefore(offerlist, soldOutContainer);
+        } else if (productRow && productRow.parentElement) {
+            productRow.parentElement.insertBefore(offerlist, productRow);
+        } else if (feedback && feedback.parentElement) {
+            feedback.parentElement.insertBefore(offerlist, feedback);
+        } else {
+            const container = document.querySelector('.content.setdetails') ||
+                document.querySelector('#wrap') ||
+                document.body;
+            container.appendChild(offerlist);
+        }
+
+        if (typeof ensureOfferPresentationObserver === 'function') {
+            ensureOfferPresentationObserver();
+        }
+
+        return offerlist;
+    }
+    globalThis.BM_ensureOfferListContainer = ensureOfferListContainer;
+
     function injectMarketplaceOffers(offers) {
         if (BM_SETTINGS.marketplacesInOfferlist === false) {
             document.querySelectorAll('.bm-marketplace-offer').forEach(row => row.remove());
             return;
         }
-        const offerlist = document.getElementById('offerlist');
-        const firstPriceRow = offerlist?.querySelector(
+
+        let offerlist = document.getElementById('offerlist');
+        if (!offerlist && Array.isArray(offers) && offers.length > 0) {
+            offerlist = ensureOfferListContainer();
+        }
+        if (!offerlist) return;
+
+        const firstPriceRow = offerlist.querySelector(
             '.pricerow:not([data-bm-marketplace="true"])'
         );
-        const parent = firstPriceRow?.closest('.row.collapse')?.parentElement;
-        if (!offerlist || !parent) {
-            if (offerlist && !offerlist.dataset.bmMarketplaceRetryScheduled) {
-                offerlist.dataset.bmMarketplaceRetryScheduled = 'true';
-                window.setTimeout(() => {
-                    delete offerlist.dataset.bmMarketplaceRetryScheduled;
-                    injectMarketplaceOffers(offers);
-                }, 250);
+        let parent = firstPriceRow?.closest('.row.collapse')?.parentElement;
+        if (!parent) {
+            parent = offerlist.querySelector('#ol1st > section:first-of-type') ||
+                offerlist.querySelector('#ol1st > section') ||
+                offerlist.querySelector('section');
+            if (!parent) {
+                let ol1st = offerlist.querySelector('#ol1st');
+                if (!ol1st) {
+                    ol1st = document.createElement('div');
+                    ol1st.id = 'ol1st';
+                    ol1st.className = 'large-8 columns';
+                    offerlist.prepend(ol1st);
+                }
+                parent = document.createElement('section');
+                parent.className = 'bm-offer-section';
+                ol1st.appendChild(parent);
             }
-            return;
         }
+        if (!parent) return;
 
         parent.querySelectorAll('.bm-marketplace-offer').forEach(row => row.remove());
 
@@ -19431,7 +19697,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         });
 
         mergeSoldOutOffersIntoOfferList();
-        window.setTimeout(() => applyOfferPresentation(), 0);
+        window.setTimeout(() => {
+            applyOfferPresentation();
+            if (typeof globalThis.bmSetupDetailButton === 'function') {
+                globalThis.bmSetupDetailButton();
+            } else if (typeof window.setupDetailButton === 'function') {
+                window.setupDetailButton();
+            }
+        }, 0);
     }
 
     // Fehlt bei Brickmerge eine Versandangabe, gilt das Angebot als versandkostenfrei.
@@ -20152,7 +20425,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
     let offerPresentationRunning = false;
     let offerPresentationObserver = null;
-    const observeOfferPresentationMutations = () => {
+    function observeOfferPresentationMutations() {
         const target = document.getElementById('offerlist');
         if (!offerPresentationObserver || !target) return;
         offerPresentationObserver.observe(target, {
@@ -20160,8 +20433,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             subtree: true,
             characterData: true
         });
-    };
-    const ensureOfferPresentationObserver = () => {
+    }
+    function ensureOfferPresentationObserver() {
         const target = document.getElementById('offerlist');
         if (!target) return false;
         if (!offerPresentationObserver) {
@@ -20172,7 +20445,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         offerPresentationObserver.disconnect();
         observeOfferPresentationMutations();
         return true;
-    };
+    }
+    globalThis.BM_ensureOfferPresentationObserver = ensureOfferPresentationObserver;
     function applyOfferPresentation() {
         if (offerPresentationRunning) return;
         offerPresentationRunning = true;
@@ -21064,6 +21338,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             const price = parseEuro(element.textContent);
             if (price !== null) return price;
         }
+        for (const element of document.querySelectorAll(
+            '#offerlist span.price'
+        )) {
+            const price = parseEuro(element.textContent);
+            if (price !== null) return price;
+        }
         return null;
     }
 
@@ -21580,7 +21860,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 if (depotBtn) setDetailStock(depotBtn, data.stock);
             }
             const tryInject = () => {
-                const offerlist = document.getElementById('offerlist');
+                let offerlist = document.getElementById('offerlist');
+                if (!offerlist && data && Number.isFinite(data.stock) && data.stock > 0) {
+                    offerlist = ensureOfferListContainer();
+                }
                 if (offerlist) {
                     injectDepotInventoryOfferRow(data, normalized);
                     return true;
