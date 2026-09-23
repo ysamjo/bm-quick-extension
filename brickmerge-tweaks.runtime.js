@@ -3423,7 +3423,9 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 #offerlist .bm-ebay-logo-link,
                 #offerlist .bm-ebay-logo-link.bm-has-meta {
                     grid-template-rows: minmax(0, 1fr) 13px;
-                    padding: 2px 3px 1px !important;
+                    /* Waagerechte Innenkante wie bei den anderen Händlern: links sitzt
+                       der 9 px breite gelbe Streifen der Zeile. */
+                    padding: 2px 7px 1px !important;
                 }
                 #offerlist .bm-marketplace-logo-stage {
                     position: relative;
@@ -3470,33 +3472,13 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     gap: 0;
                     border-top: 2px solid var(--bm-ebay-accent, #777);
                 }
-                #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage > img {
-                    max-width: 70% !important;
-                    max-height: 78% !important;
-                }
-                #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage {
-                    display: grid;
-                    grid-template-columns: 46px 18px !important;
-                    align-items: center;
-                    justify-content: center;
-                    justify-items: center;
-                    gap: 2px !important;
-                    width: 100%;
-                    height: 100%;
-                    padding: 0 1px !important;
-                    box-sizing: border-box;
-                    overflow: visible !important;
-                }
-                #offerlist .bm-ebay-wordmark {
-                    display: block !important;
-                    grid-column: 1;
-                    width: 46px !important;
-                    height: auto !important;
-                    max-width: 46px !important;
-                    max-height: 20px !important;
-                    margin: 0 !important;
+                /* eBay ist eine einzige Figur (Wortmarke plus Verkäufer-Marke im selben
+                   SVG) und liegt damit in derselben zentrierten Bühne wie die anderen
+                   Händlerlogos; nur die Farbe kommt von der Wortmarke selbst. */
+                #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage > .bm-ebay-wordmark {
+                    flex: 0 1 auto;
+                    min-width: 0;
                     color: #111 !important;
-                    overflow: visible;
                     shape-rendering: geometricPrecision;
                 }
                 #offerlist .bm-ebay-wordmark path { fill: currentColor; }
@@ -3517,37 +3499,9 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     pointer-events: auto;
                 }
                 #offerlist .bm-ebay-wordmark,
-                #offerlist .bm-ebay-seller-type-icon,
                 #offerlist .bm-marketplace-country-flag {
                     pointer-events: none;
                 }
-                #offerlist .bm-ebay-seller-type-icon {
-                    position: static;
-                    grid-column: 2;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 16px;
-                    height: 16px;
-                    min-width: 16px;
-                    min-height: 16px;
-                    padding: 0;
-                    color: #111 !important;
-                    background: transparent !important;
-                    border: 0;
-                    border-radius: 0;
-                    box-shadow: none;
-                    line-height: 0;
-                }
-                #offerlist .bm-ebay-seller-type-icon svg {
-                    display: block;
-                    width: 15px;
-                    height: 15px;
-                    fill: currentColor;
-                    shape-rendering: geometricPrecision;
-                }
-                #offerlist .bm-ebay-commercial-icon,
-                #offerlist .bm-ebay-private-icon { color: #111 !important; }
                 #offerlist .bm-ebay-domain-suffix {
                     display: inline-flex;
                     flex: 0 0 auto;
@@ -3572,7 +3526,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 }
                 #offerlist .bm-marketplace-country-flag {
                     position: static;
-                    grid-column: 2;
+                    flex: 0 0 auto;
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
@@ -3595,33 +3549,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     min-height: 11px;
                     overflow: visible;
                     line-height: 0;
-                }
-                @media screen and (min-width: 641px) {
-                    #offerlist .bm-ebay-logo-link .bm-marketplace-logo-stage {
-                        grid-template-columns: 50px 18px !important;
-                        gap: 3px;
-                    }
-                    #offerlist .bm-ebay-wordmark {
-                        width: 50px !important;
-                        max-width: 50px !important;
-                        max-height: 20px !important;
-                    }
-                    #offerlist .bm-ebay-seller-type-icon {
-                        width: 14px;
-                        height: 14px;
-                        min-width: 14px;
-                        min-height: 14px;
-                    }
-                    #offerlist .bm-ebay-seller-type-icon svg {
-                        width: 13px;
-                        height: 13px;
-                    }
-                    #offerlist .bm-marketplace-country-flag {
-                        width: 16px;
-                        height: 11px;
-                        min-width: 16px;
-                        min-height: 11px;
-                    }
                 }
                 #offerlist .bm-marketplace-logo-cell {
                     display: flex !important;
@@ -4286,35 +4213,26 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     background: #fff !important;
                     overflow: visible !important;
                 }
-                .content.setdetails .topprice .bm-topprice-logo-cell .bm-ebay-wordmark {
+                /* Das eBay-Logo füllt die Zelle exakt so wie die Händlerbilder daneben
+                   (84x31); Wortmarke und Verkäufer-Marke sind eine gemeinsame Figur. */
+                .content.setdetails .topprice .bm-topprice-logo-cell .bm-marketplace-logo {
                     display: inline-block !important;
-                    max-width: 46px !important;
-                    max-height: 20px !important;
-                    width: 46px !important;
+                    flex: 0 1 auto;
+                    min-width: 0;
+                    max-width: 84px !important;
+                    max-height: 31px !important;
+                    width: auto !important;
                     height: auto !important;
                     margin: 0 !important;
                     vertical-align: middle !important;
+                    object-fit: contain !important;
+                }
+                .content.setdetails .topprice .bm-topprice-logo-cell .bm-ebay-wordmark {
                     color: #111 !important;
-                    overflow: visible;
                     shape-rendering: geometricPrecision;
                 }
                 .content.setdetails .topprice .bm-topprice-logo-cell .bm-ebay-wordmark path {
                     fill: currentColor;
-                }
-                .content.setdetails .topprice .bm-topprice-logo-cell .bm-ebay-seller-type-icon {
-                    display: inline-flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    width: 16px !important;
-                    height: 16px !important;
-                    color: #111 !important;
-                    line-height: 0 !important;
-                }
-                .content.setdetails .topprice .bm-topprice-logo-cell .bm-ebay-seller-type-icon svg {
-                    display: block !important;
-                    width: 14px !important;
-                    height: 14px !important;
-                    fill: currentColor !important;
                 }
                 .content.setdetails .topprice .bm-topprice-logo-cell .bm-marketplace-country-flag {
                     display: inline-block !important;
@@ -4515,6 +4433,9 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     display: inline-flex !important;
                     align-items: center !important;
                     justify-content: center !important;
+                    /* Die native .off bringt padding-top mit, das den Text nach unten
+                       drückt; ohne Rückgabe sitzt er nicht mittig in der Blase. */
+                    padding: 0 !important;
                     font-size: 12px !important;
                     font-weight: 800 !important;
                     line-height: 1 !important;
@@ -4583,7 +4504,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     text-underline-offset: 2px;
                 }
                 .bm-lego-article-link:hover,
-                .bm-lego-article-link:focus {
+                .bm-lego-article-link:focus-visible {
                     color: #700;
                     text-decoration-color: currentColor;
                 }
@@ -4597,22 +4518,36 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     color: inherit;
                     text-decoration: none;
                 }
+                /* Eine Hover-Optik für den ganzen Info-Block: :focus-visible statt
+                   :focus, damit die Markierung nach dem Klick nicht hängen bleibt. */
+                .bm-detail-line-link,
+                .bm-designer-link,
+                .bm-theme-link,
+                .bm-price-history-link {
+                    transition: background-color 120ms ease, color 120ms ease;
+                }
                 .bm-detail-line-link:hover,
-                .bm-detail-line-link:focus,
+                .bm-detail-line-link:focus-visible,
                 .bm-designer-link:hover,
-                .bm-designer-link:focus,
+                .bm-designer-link:focus-visible,
+                .bm-theme-link:hover,
+                .bm-theme-link:focus-visible,
                 .bm-price-history-link:hover,
-                .bm-price-history-link:focus {
+                .bm-price-history-link:focus-visible {
                     color: #fff !important;
-                    background-color: #700;
+                    /* !important: die Sprungmarke „akt. Bestpreis" bringt ihre
+                       Hintergrundfarbe als inline-Feld des Servers mit. */
+                    background-color: #700 !important;
                     text-decoration: none;
                 }
                 .bm-detail-line-link:hover *,
-                .bm-detail-line-link:focus *,
+                .bm-detail-line-link:focus-visible *,
                 .bm-designer-link:hover *,
-                .bm-designer-link:focus *,
+                .bm-designer-link:focus-visible *,
+                .bm-theme-link:hover *,
+                .bm-theme-link:focus-visible *,
                 .bm-price-history-link:hover *,
-                .bm-price-history-link:focus * {
+                .bm-price-history-link:focus-visible * {
                     color: #fff !important;
                 }
                 .bm-dimensions-toggle-btn {
@@ -11166,6 +11101,10 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     );
                 });
 
+                root.querySelectorAll('a[href="#offerlist"]').forEach(anchor => {
+                    anchor.classList.add('bm-detail-line-link');
+                });
+
                 const nobrs = Array.from(root.querySelectorAll('nobr'));
                 for (let i = 0; i < nobrs.length - 1; i++) {
                     const current = nobrs[i];
@@ -12840,7 +12779,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 const articleLink = details.querySelector('.bm-lego-article-link') || details.querySelector('a[href*="lego.com/de-de/product/"]');
                 const themeSpan = document.createElement('span');
                 themeSpan.className = 'bm-theme-row';
-                themeSpan.innerHTML = `&nbsp;| Theme: <a class="bm-theme-link" href="${themeHref || '#'}" title="Themenseite ${cleanThemeName} aufrufen"><strong>${cleanThemeName}</strong></a><br>`;
+                themeSpan.innerHTML = `&nbsp;| <a class="bm-detail-line-link bm-theme-link" href="${themeHref || '#'}" title="Themenseite ${cleanThemeName} aufrufen">Theme: <strong>${cleanThemeName}</strong></a><br>`;
 
                 if (articleLink) {
                     const nextNode = articleLink.nextSibling;
@@ -12967,7 +12906,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                             return false;
                         }
                     });
-                const createDesignerLink = designer => {
+                const createDesignerLink = (designer, label = '') => {
                     const query = `site:brickmerge.de Designer: ${designer}`;
                     const link = document.createElement('a');
                     link.className = 'bm-lego-article-link bm-designer-link';
@@ -12975,6 +12914,9 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     link.target = '_blank';
                     link.rel = 'noopener noreferrer';
                     link.title = `Brickmerge-Sets von ${designer} in Google Bilder suchen`;
+                    // Die Zeile wird als Ganzes markiert, also gehört die Beschriftung
+                    // in den Anker – wie bei Artikel-Nr. und Minifiguren.
+                    if (label) link.appendChild(document.createTextNode(label));
                     const strong = document.createElement('strong');
                     strong.textContent = designer;
                     link.appendChild(strong);
@@ -12991,17 +12933,19 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     if (designers.length === 0) return;
 
                     const fragment = document.createDocumentFragment();
-                    fragment.appendChild(document.createTextNode(labelMatch[1]));
                     designers.forEach((designer, index) => {
                         if (index > 0) fragment.appendChild(document.createTextNode(' | '));
-                        fragment.appendChild(createDesignerLink(designer));
+                        fragment.appendChild(createDesignerLink(
+                            designer,
+                            index === 0 ? labelMatch[1] : ''
+                        ));
                     });
                     line.range.deleteContents();
                     line.range.insertNode(fragment);
                     return;
                 }
 
-                designerNodes.forEach(designerNode => {
+                designerNodes.forEach((designerNode, nodeIndex) => {
                     const designers = designerNode.textContent
                         .replace(/\s+/g, ' ')
                         .trim()
@@ -13010,13 +12954,32 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         .filter(Boolean);
                     if (designers.length === 0) return;
 
+                    let label = '';
+                    if (nodeIndex === 0) label = takeDesignerLabelFrom(designerNode);
+
                     const fragment = document.createDocumentFragment();
                     designers.forEach((designer, index) => {
                         if (index > 0) fragment.appendChild(document.createTextNode(' | '));
-                        fragment.appendChild(createDesignerLink(designer));
+                        fragment.appendChild(createDesignerLink(
+                            designer,
+                            index === 0 ? label : ''
+                        ));
                     });
                     designerNode.replaceWith(fragment);
                 });
+            }
+
+            // "Designer:" steht als Text direkt vor dem <strong>-Namen; der Anker soll
+            // die ganze Zeile umspannen, also wird die Beschriftung in ihn hineingezogen.
+            // Der führende Trennstrich bleibt stehen – ihn markieren die anderen Zeilen
+            // dank findDetailsLineRange ebenfalls nicht.
+            function takeDesignerLabelFrom(designerNode) {
+                const textNode = designerNode.previousSibling;
+                if (textNode?.nodeType !== Node.TEXT_NODE) return '';
+                const match = String(textNode.nodeValue || '').match(/Designer\s*:\s*$/i);
+                if (!match) return '';
+                textNode.nodeValue = textNode.nodeValue.slice(0, match.index);
+                return match[0];
             }
 
             function linkPackageDimensionsCalculator() {
@@ -16942,7 +16905,70 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 }
             }
 
-            function ensureBlackEbayWordmark(link) {
+            // Wortmarke und Verkäufer-Marke sind EIN Asset: beide liegen in einem SVG,
+            // damit das eBay-Logo als eine Figur skaliert und platziert wird wie die
+            // anderen Händlerlogos auch. Ein separates Marken-Span daneben stand immer
+            // einen Tick zu hoch und ließ das Logo schief wirken.
+            const BM_EBAY_WORDMARK_PATHS = [
+                'm633.07803 212.53323c-45.43873 1.48929-73.6715 9.689-73.6715 39.61897 0 19.37591 15.44713 40.38162 54.66334 40.38162 52.57698 0 80.64259-28.65902 80.64259-75.66331l.003-5.16994c-18.43302 0-41.16414.16089-61.63704.83266zm111.75103 62.10248c0 14.58313.42155 28.9782 1.69406 41.94092h-46.61408c-1.24325-10.67368-1.6972-21.27945-1.6972-31.56656-25.20195 30.97941-55.17735 39.88537-96.76149 39.88537-61.67674 0-94.70072-32.59982-94.70072-70.30689 0-54.61215 44.91583-73.86739 122.89013-75.65391 21.32332-.48686 45.27419-.55894 65.07531-.55894l-.003-5.33606c0-36.56098-23.44364-51.59335-64.06765-51.59335-30.15876 0-52.38579 12.48057-54.6764 34.0468h-52.65168c5.57217-53.77165 62.06643-67.37115 111.74005-67.37115 59.50837 0 109.77228 21.17288 109.77228 84.11481z',
+                'm199.63633 185.86602c-1.94427-46.87735-35.77951-64.41973-71.94139-64.41973-38.99421 0-70.12667 19.7327-75.58026 64.41973zm-148.601922 33.32488c2.704332 45.48365 34.069782 72.38437 77.197532 72.38437 29.88033 0 56.45979-12.17498 65.35948-38.66041h51.68424c-10.05205 53.73979-67.15384 71.98058-116.303 71.98058C39.606424 324.89544 0 275.67889 0 209.30653 0 136.24203 40.965642 88.12194 129.78809 88.12194c70.69867 0 122.49992 36.99926 122.49992 117.75572v13.31324z',
+                'm380.83181 290.6235c46.57228 0 78.44078-33.52181 78.44078-84.10854 0-50.58203-31.8685-84.10854-78.44078-84.10854-46.31058 0-78.44392 33.52651-78.44392 84.10854 0 50.58673 32.13334 84.10854 78.44392 84.10854zM252.2854 0h50.10249l-.005 125.87707c24.55682-29.25975 58.38892-37.75513 91.68976-37.75513 55.83503 0 117.85132 37.6773 117.85132 119.02875 0 68.12232-49.32155 117.74475-118.78114 117.74475-36.35726 0-70.58062-13.04265-91.68663-38.88294 0 10.32107-.57618 20.72364-1.70503 30.56413h-49.17162c.85513-15.90944 1.70555-35.7184 1.70555-51.74693z',
+                'M1000 96.45747 845.05541 400.75099h-56.10615l44.54652-84.4951-116.60545-219.79842h58.6266l85.80469 171.73057 85.56283-171.73057z'
+            ];
+            // Die Marken stammen aus einer 24x24-Schablone. Auf 260 von 400.75 Einheiten
+            // skaliert bleiben sie gut lesbar, ohne die Wortmarke zu überdecken.
+            // Die Marken füllen ihre 24x24-Schablone aus: bei 260 von 400.75 Einheiten
+            // Höhe bliebe sonst nur ein Haarstrich lesbar. Eine Krawatte ist in dieser
+            // Größe nicht mehr von einem Ausrutscher zu unterscheiden, deshalb steht
+            // „gewerblich" für eine Aktentasche und „privat" für eine Person.
+            const BM_EBAY_SELLER_MARKS = {
+                commercial: 'M9 3.5h6V6h4.5A2.5 2.5 0 0 1 22 8.5V11H2V8.5A2.5 2.5 0 0 1 5.5 6H9V3.5zM2 13h20v6.5a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 19.5V13z',
+                private: 'M12 12.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zm0 1.5c-6.2 0-10 3.2-10 7.5V23h20v-1.5c0-4.3-3.8-7.5-10-7.5z'
+            };
+            const BM_EBAY_SELLER_MARK_TITLES = {
+                commercial: 'Gewerblicher eBay-Verkäufer',
+                private: 'Privater eBay-Verkäufer'
+            };
+            const BM_EBAY_WORDMARK_HEIGHT = 400.75098;
+            const BM_EBAY_WORDMARK_WIDTH = 1000;
+            const BM_EBAY_SELLER_MARK_SIZE = 260;
+            const BM_EBAY_SELLER_MARK_GAP = 40;
+            const BM_EBAY_LOGO_WIDTH =
+                BM_EBAY_WORDMARK_WIDTH + BM_EBAY_SELLER_MARK_GAP + BM_EBAY_SELLER_MARK_SIZE;
+
+            function ebayLogoSvgMarkup(kind) {
+                const mark = BM_EBAY_SELLER_MARKS[kind] || '';
+                const label = mark ? BM_EBAY_SELLER_MARK_TITLES[kind] : 'eBay';
+                const width = mark ? BM_EBAY_LOGO_WIDTH : BM_EBAY_WORDMARK_WIDTH;
+                // Explizite Maß-Angaben, damit CSS mit width:auto und max-* die
+                // Proportionen der gesamten Figur halten kann.
+                let markup = `<svg class="bm-marketplace-logo bm-ebay-wordmark" ` +
+                    `viewBox="0 0 ${width} ${BM_EBAY_WORDMARK_HEIGHT}" ` +
+                    `width="${width}" height="${BM_EBAY_WORDMARK_HEIGHT}" ` +
+                    `role="img" aria-label="${label}"><title>${label}</title>`;
+                for (const d of BM_EBAY_WORDMARK_PATHS) {
+                    markup += `<path d="${d}"/>`;
+                }
+                if (mark) {
+                    const scale = BM_EBAY_SELLER_MARK_SIZE / 24;
+                    const offsetY = (BM_EBAY_WORDMARK_HEIGHT - BM_EBAY_SELLER_MARK_SIZE) / 2;
+                    markup += `<g class="bm-ebay-seller-mark" transform="translate(` +
+                        `${BM_EBAY_WORDMARK_WIDTH + BM_EBAY_SELLER_MARK_GAP} ${offsetY.toFixed(3)}) ` +
+                        `scale(${scale.toFixed(4)})"><path d="${mark}"/></g>`;
+                }
+                return `${markup}</svg>`;
+            }
+
+            function ebaySellerMarkKind(sellerAccountType) {
+                const normalizedType = normalizeEbaySellerAccountType(sellerAccountType);
+                return normalizedType === 'BUSINESS'
+                    ? 'commercial'
+                    : normalizedType === 'INDIVIDUAL'
+                        ? 'private'
+                        : '';
+            }
+
+            function ensureBlackEbayWordmark(link, sellerAccountType = '') {
                 const stage = link?.querySelector('.bm-marketplace-logo-stage');
                 if (!stage) return;
                 // Das originale Händlerbild bleibt als unsichtbare Klickfläche im DOM.
@@ -16955,80 +16981,27 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 }
                 stage.querySelectorAll(':scope > .bm-ebay-wordmark')
                     .forEach(logo => logo.remove());
-                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                svg.classList.add('bm-marketplace-logo', 'bm-ebay-wordmark');
-                svg.setAttribute('viewBox', '0 0 1000 400.75098');
-                svg.setAttribute('role', 'img');
-                svg.setAttribute('aria-label', 'eBay');
-                [
-                    'm633.07803 212.53323c-45.43873 1.48929-73.6715 9.689-73.6715 39.61897 0 19.37591 15.44713 40.38162 54.66334 40.38162 52.57698 0 80.64259-28.65902 80.64259-75.66331l.003-5.16994c-18.43302 0-41.16414.16089-61.63704.83266zm111.75103 62.10248c0 14.58313.42155 28.9782 1.69406 41.94092h-46.61408c-1.24325-10.67368-1.6972-21.27945-1.6972-31.56656-25.20195 30.97941-55.17735 39.88537-96.76149 39.88537-61.67674 0-94.70072-32.59982-94.70072-70.30689 0-54.61215 44.91583-73.86739 122.89013-75.65391 21.32332-.48686 45.27419-.55894 65.07531-.55894l-.003-5.33606c0-36.56098-23.44364-51.59335-64.06765-51.59335-30.15876 0-52.38579 12.48057-54.6764 34.0468h-52.65168c5.57217-53.77165 62.06643-67.37115 111.74005-67.37115 59.50837 0 109.77228 21.17288 109.77228 84.11481z',
-                    'm199.63633 185.86602c-1.94427-46.87735-35.77951-64.41973-71.94139-64.41973-38.99421 0-70.12667 19.7327-75.58026 64.41973zm-148.601922 33.32488c2.704332 45.48365 34.069782 72.38437 77.197532 72.38437 29.88033 0 56.45979-12.17498 65.35948-38.66041h51.68424c-10.05205 53.73979-67.15384 71.98058-116.303 71.98058C39.606424 324.89544 0 275.67889 0 209.30653 0 136.24203 40.965642 88.12194 129.78809 88.12194c70.69867 0 122.49992 36.99926 122.49992 117.75572v13.31324z',
-                    'm380.83181 290.6235c46.57228 0 78.44078-33.52181 78.44078-84.10854 0-50.58203-31.8685-84.10854-78.44078-84.10854-46.31058 0-78.44392 33.52651-78.44392 84.10854 0 50.58673 32.13334 84.10854 78.44392 84.10854zM252.2854 0h50.10249l-.005 125.87707c24.55682-29.25975 58.38892-37.75513 91.68976-37.75513 55.83503 0 117.85132 37.6773 117.85132 119.02875 0 68.12232-49.32155 117.74475-118.78114 117.74475-36.35726 0-70.58062-13.04265-91.68663-38.88294 0 10.32107-.57618 20.72364-1.70503 30.56413h-49.17162c.85513-15.90944 1.70555-35.7184 1.70555-51.74693z',
-                    'M1000 96.45747 845.05541 400.75099h-56.10615l44.54652-84.4951-116.60545-219.79842h58.6266l85.80469 171.73057 85.56283-171.73057z'
-                ].forEach(data => {
-                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    path.setAttribute('d', data);
-                    svg.appendChild(path);
-                });
-                stage.prepend(svg);
-            }
-            function decorateEbaySellerTypeIcon(link, sellerAccountType, isFrance = false) {
-                if (!link) return;
-                link.querySelectorAll('.bm-ebay-seller-type-icon')
-                    .forEach(icon => icon.remove());
-                if (isFrance) return;
-
-                const normalizedType = normalizeEbaySellerAccountType(
-                    sellerAccountType
+                stage.insertAdjacentHTML(
+                    'afterbegin',
+                    ebayLogoSvgMarkup(ebaySellerMarkKind(sellerAccountType))
                 );
-                const kind = normalizedType === 'BUSINESS'
-                    ? 'commercial'
-                    : normalizedType === 'INDIVIDUAL'
-                        ? 'private'
-                        : '';
-                if (!kind) return;
-
-                const stage = link.querySelector('.bm-marketplace-logo-stage');
-                if (!stage) return;
-                const marker = document.createElement('span');
-                marker.className =
-                    `bm-ebay-seller-type-icon bm-ebay-${kind}-icon`;
-                marker.title = kind === 'commercial'
-                    ? 'Gewerblicher eBay-Verkäufer'
-                    : 'Privater eBay-Verkäufer';
-                marker.setAttribute('aria-label', marker.title);
-                marker.innerHTML = kind === 'commercial'
-                    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1.2 5 3.2 10-5 3-5-3 3.2-10L9 3zm2.2 2 0.7 2h0.2l0.7-2h-1.6z"/></svg>'
-                    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4.1 0-7 2.1-7 5v1h14v-1c0-2.9-2.9-5-7-5z"/></svg>';
-                stage.appendChild(marker);
             }
-
             function createEbayLogoHtml(options = {}) {
                 const {
                     sellerType = 'commercial',
-                    sellerName = '',
                     captionText = '',
                     isFrance = false
                 } = options;
-                const normalizedType = normalizeEbaySellerAccountType(sellerType);
-                const kind = normalizedType === 'BUSINESS' ? 'commercial' : (normalizedType === 'INDIVIDUAL' ? 'private' : 'commercial');
-                const kindClass = `bm-ebay-${kind}`;
+                const kind = ebaySellerMarkKind(sellerType) || 'commercial';
                 const caption = captionText && captionText !== 'gewerblich' && captionText !== 'eBay FR' && captionText !== 'privat'
                     ? captionText
                     : '';
-                const iconSvg = kind === 'commercial'
-                    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1.2 5 3.2 10-5 3-5-3 3.2-10L9 3zm2.2 2 0.7 2h0.2l0.7-2h-1.6z"/></svg>'
-                    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4.1 0-7 2.1-7 5v1h14v-1c0-2.9-2.9-5-7-5z"/></svg>';
-                const iconTitle = kind === 'commercial' ? 'Gewerblicher eBay-Verkäufer' : 'Privater eBay-Verkäufer';
                 const flagHtml = isFrance ? '<span class="bm-marketplace-country-flag bm-marketplace-country-flag-fr" title="Frankreich" aria-label="Frankreich"><svg viewBox="0 0 3 2" width="16" height="11" style="display:inline-block;vertical-align:middle;border-radius:1px;box-shadow:0 0 0 1px rgba(0,0,0,0.18);overflow:hidden;"><rect width="1" height="2" fill="#002395"/><rect x="1" width="1" height="2" fill="#FFFFFF"/><rect x="2" width="1" height="2" fill="#ED2939"/></svg></span>' : '';
-                const sellerBadgeHtml = (!isFrance && (kind === 'commercial' || kind === 'private'))
-                    ? `<span class="bm-ebay-seller-type-icon ${kindClass}-icon" title="${iconTitle}" aria-label="${iconTitle}">${iconSvg}</span>`
-                    : flagHtml;
                 const metaHtml = caption
                     ? `<span class="bm-marketplace-logo-meta"><span class="bm-marketplace-logo-caption" title="${caption}">${caption}</span></span>`
                     : '';
 
-                return `<span class="bm-marketplace-logo-stage"><svg class="bm-marketplace-logo bm-ebay-wordmark" viewBox="0 0 1000 400.75098" role="img" aria-label="eBay"><path d="m633.07803 212.53323c-45.43873 1.48929-73.6715 9.689-73.6715 39.61897 0 19.37591 15.44713 40.38162 54.66334 40.38162 52.57698 0 80.64259-28.65902 80.64259-75.66331l.003-5.16994c-18.43302 0-41.16414.16089-61.63704.83266zm111.75103 62.10248c0 14.58313.42155 28.9782 1.69406 41.94092h-46.61408c-1.24325-10.67368-1.6972-21.27945-1.6972-31.56656-25.20195 30.97941-55.17735 39.88537-96.76149 39.88537-61.67674 0-94.70072-32.59982-94.70072-70.30689 0-54.61215 44.91583-73.86739 122.89013-75.65391 21.32332-.48686 45.27419-.55894 65.07531-.55894l-.003-5.33606c0-36.56098-23.44364-51.59335-64.06765-51.59335-30.15876 0-52.38579 12.48057-54.6764 34.0468h-52.65168c5.57217-53.77165 62.06643-67.37115 111.74005-67.37115 59.50837 0 109.77228 21.17288 109.77228 84.11481z"/><path d="m199.63633 185.86602c-1.94427-46.87735-35.77951-64.41973-71.94139-64.41973-38.99421 0-70.12667 19.7327-75.58026 64.41973zm-148.601922 33.32488c2.704332 45.48365 34.069782 72.38437 77.197532 72.38437 29.88033 0 56.45979-12.17498 65.35948-38.66041h51.68424c-10.05205 53.73979-67.15384 71.98058-116.303 71.98058C39.606424 324.89544 0 275.67889 0 209.30653 0 136.24203 40.965642 88.12194 129.78809 88.12194c70.69867 0 122.49992 36.99926 122.49992 117.75572v13.31324z"/><path d="m380.83181 290.6235c46.57228 0 78.44078-33.52181 78.44078-84.10854 0-50.58203-31.8685-84.10854-78.44078-84.10854-46.31058 0-78.44392 33.52651-78.44392 84.10854 0 50.58673 32.13334 84.10854 78.44392 84.10854zM252.2854 0h50.10249l-.005 125.87707c24.55682-29.25975 58.38892-37.75513 91.68976-37.75513 55.83503 0 117.85132 37.6773 117.85132 119.02875 0 68.12232-49.32155 117.74475-118.78114 117.74475-36.35726 0-70.58062-13.04265-91.68663-38.88294 0 10.32107-.57618 20.72364-1.70503 30.56413h-49.17162c.85513-15.90944 1.70555-35.7184 1.70555-51.74693z"/><path d="M1000 96.45747 845.05541 400.75099h-56.10615l44.54652-84.4951-116.60545-219.79842h58.6266l85.80469 171.73057 85.56283-171.73057z"/></svg>${sellerBadgeHtml}</span>${metaHtml}`;
+                return `<span class="bm-marketplace-logo-stage">${ebayLogoSvgMarkup(isFrance ? '' : kind)}${flagHtml}</span>${metaHtml}`;
             }
 
             function decorateNativeToppriceEbayLogo() {
@@ -17062,7 +17035,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         if (matchingRow) {
                             const wrapper = matchingRow.closest('.row.collapse') || matchingRow;
                             isFrance = Boolean(wrapper.querySelector('.bm-marketplace-country-flag-fr, .bm-ebay-fr-source')) || /ebay\s*(?:fr|frankreich)/i.test(wrapper.textContent || '');
-                            isPrivate = Boolean(wrapper.querySelector('.bm-ebay-private, .bm-ebay-private-icon')) || /privat/i.test(wrapper.querySelector('.bm-marketplace-logo-caption, .merchant')?.textContent || '');
+                            isPrivate = Boolean(wrapper.querySelector('.bm-ebay-private')) || /privat/i.test(wrapper.querySelector('.bm-marketplace-logo-caption, .merchant')?.textContent || '');
                         }
                         logoCell.classList.add('bm-topprice-logo-cell', 'bm-ebay-logo-link');
                         if (isFrance) {
@@ -17167,8 +17140,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                     logoLink.querySelectorAll('.bm-marketplace-country-badge')
                         .forEach(badge => badge.remove());
                     normalizeMarketplaceLogoLink(logoLink);
-                    ensureBlackEbayWordmark(logoLink);
-                    decorateEbaySellerTypeIcon(logoLink, 'BUSINESS');
+                    ensureBlackEbayWordmark(logoLink, 'BUSINESS');
                 });
             }
 
@@ -20982,7 +20954,7 @@ globalThis.BM_findShopShippingRule = merchantName => {
                 const sourceKey = String(marketplaceBest.sourceKey || '').toLowerCase();
                 const isFrance = sourceKey === 'ebay-fr' || /france|frankreich|\bfr\b/i.test(marketplaceBest.label || '') || Boolean(wrapper?.querySelector('.bm-marketplace-country-flag-fr, .bm-ebay-fr-source'));
                 const isEbay = sourceKey.startsWith('ebay') || /ebay/i.test(marketplaceBest.label || '') || /ebay/i.test(prices.marketplaceBest?.label || '');
-                const isPrivate = Boolean(wrapper?.querySelector('.bm-ebay-private, .bm-ebay-private-icon')) || /privat/i.test(wrapper?.querySelector('.bm-marketplace-logo-caption')?.textContent || '');
+                const isPrivate = Boolean(wrapper?.querySelector('.bm-ebay-private')) || /privat/i.test(wrapper?.querySelector('.bm-marketplace-logo-caption')?.textContent || '');
 
                 if (isEbay) {
                     const sellerType = isPrivate ? 'INDIVIDUAL' : 'BUSINESS';
@@ -21826,9 +21798,6 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         iconLink.appendChild(badge);
                     }
                     normalizeMarketplaceLogoLink(iconLink);
-                        if (offer.key === 'ebay' || offer.key === 'ebay-fr') {
-                            ensureBlackEbayWordmark(iconLink);
-                        }
                     if (offer.logoCountryFlag) {
                         const stage = iconLink.querySelector('.bm-marketplace-logo-stage');
                         if (stage && !stage.querySelector('.bm-marketplace-country-flag')) {
@@ -21846,10 +21815,9 @@ globalThis.BM_findShopShippingRule = merchantName => {
                         }
                     }
                     if (offer.key === 'ebay' || offer.key === 'ebay-fr') {
-                        decorateEbaySellerTypeIcon(
+                        ensureBlackEbayWordmark(
                             iconLink,
-                            offer.key === 'ebay' ? 'INDIVIDUAL' : '',
-                            offer.key === 'ebay-fr'
+                            offer.key === 'ebay' ? 'INDIVIDUAL' : ''
                         );
                     }
                     if (offer.logoDomainSuffix) {

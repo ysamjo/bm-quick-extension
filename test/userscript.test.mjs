@@ -1218,12 +1218,17 @@ test('eBay Offerlist uses black logos with distinct source markers', () => {
     );
     assert.match(tweakerSource, /function ensureBlackEbayWordmark\(/);
     assert.match(tweakerSource, /bm-ebay-wordmark/);
-    assert.match(tweakerSource, /viewBox', '0 0 1000 400\.75098'/);
+    assert.match(tweakerSource, /BM_EBAY_WORDMARK_HEIGHT = 400\.75098/);
     assert.match(tweakerSource, /createElementNS/);
-    assert.match(tweakerSource, /grid-template-columns:\s*50px 18px/);
-    assert.match(tweakerSource, /function decorateEbaySellerTypeIcon\(/);
-    assert.match(tweakerSource, /bm-ebay-commercial-icon/);
-    assert.match(tweakerSource, /bm-ebay-private-icon/);
+    // Wortmarke und Verkäufer-Marke sitzen in EINEM SVG: die Marke wird als
+    // <g> in dieselbe Figur gesetzt statt als eigenes Span daneben.
+    assert.match(tweakerSource, /bm-ebay-seller-mark/);
+    assert.match(
+        tweakerSource,
+        /viewBox="0 0 \$\{width\} \$\{BM_EBAY_WORDMARK_HEIGHT\}"/
+    );
+    assert.doesNotMatch(tweakerSource, /bm-ebay-seller-type-icon/);
+    assert.doesNotMatch(tweakerSource, /grid-template-columns:\s*50px 18px/);
     assert.match(tweakerSource, /bm-ebay-original-click-target/);
     assert.match(tweakerSource, /const originalImage = stage\.querySelector/);
     assert.match(tweakerSource, /bm-marketplace-logo-row/);
@@ -1240,6 +1245,17 @@ test('eBay Offerlist uses black logos with distinct source markers', () => {
         /offer\.key === 'ebay' \? 'INDIVIDUAL' : ''/
     );
     assert.doesNotMatch(tweakerSource, /logoDomainSuffix:\s*'\.(?:de|fr)'/);
+    // Die eBay-Zelle bekommt dieselbe Innenkante wie die Händlerbilder: links
+    // sitzt der 9 px Streifen der Zeile, sonst schneidet er die Wortmarke an.
+    assert.match(
+        tweakerSource,
+        /#offerlist \.bm-ebay-logo-link,\s*\n\s*#offerlist \.bm-ebay-logo-link\.bm-has-meta \{[\s\S]*?padding: 2px 7px 1px !important/
+    );
+    // Keine eigene Größenordnung: es gilt der gemeinsame 92%/84%-Rahmen.
+    assert.doesNotMatch(
+        tweakerSource,
+        /\.bm-marketplace-logo-stage > \.bm-ebay-wordmark \{[^}]*max-width:\s*100%/
+    );
 });
 
 
@@ -2231,12 +2247,16 @@ test('filter dropdown arrows are completely removed from pseudo-elements', () =>
     assert.match(precleanSource, /#contenttoprow\s+\.dropdown\.button::after/);
 });
 
-test('eBay logo in best price box matches offerlist styling with SVG wordmark and seller badge', () => {
+test('eBay logo in best price box is one SVG figure sized like the other logos', () => {
     assert.match(tweakerSource, /function createEbayLogoHtml/);
     assert.match(tweakerSource, /function decorateNativeToppriceEbayLogo/);
     assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell\.bm-ebay-logo-link\.bm-has-meta/);
     assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell\s+\.bm-ebay-wordmark/);
-    assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell\s+\.bm-ebay-seller-type-icon/);
+    // Die Figur nutzt dieselbe Zellengröße wie die Händlerbilder daneben.
+    assert.match(
+        tweakerSource,
+        /\.content\.setdetails\s+\.topprice\s+\.bm-topprice-logo-cell\s+\.bm-marketplace-logo\s*\{[^}]*max-width:\s*84px\s*!important;[^}]*max-height:\s*31px\s*!important;/
+    );
 
     // Verify that "gewerblich" caption and layout breaks are prevented in the best price box
     assert.doesNotMatch(tweakerSource, /captionText:\s*'gewerblich'/);
@@ -2363,8 +2383,41 @@ test('mobile view narrows merchant logo column by 10% in offerlist (22.5%) and b
 test('theme line is inserted under article number with leading pipe and breadcrumbs are hidden on mobile', () => {
     assert.match(tweakerSource, /function insertThemeUnderArticleNumber/);
     assert.match(tweakerSource, /\.bm-theme-row/);
-    assert.match(tweakerSource, /&nbsp;\|\s*Theme:\s*<a\s+class="bm-theme-link"/);
+    // Die Beschriftung gehört in den Anker, damit die Zeile komplett markiert.
+    assert.match(
+        tweakerSource,
+        /&nbsp;\|\s*<a class="bm-detail-line-link bm-theme-link"[^>]*>Theme:\s*<strong>/
+    );
     assert.match(tweakerSource, /@media\s*\(max-width:\s*64em\)\s*\{[\s\S]*?\[itemscope\]\[itemtype\*="BreadcrumbList"\][\s\S]*?display:\s*none\s*!important;/);
+});
+
+test('Info-Block markiert jede Zeile gleich und ohne hängenden Fokus', () => {
+    const hoverRule = tweakerSource.match(
+        /\.bm-detail-line-link:hover,[\s\S]*?\n        \}/
+    );
+    assert.ok(hoverRule, 'Die gemeinsame Hover-Regel des Info-Blocks fehlt');
+    assert.match(hoverRule[0], /\.bm-designer-link:hover/);
+    assert.match(hoverRule[0], /\.bm-theme-link:hover/);
+    assert.match(hoverRule[0], /\.bm-price-history-link:hover/);
+    // :focus ohne -visible bleibt nach dem Klick stehen und wirkt wie ein
+    // zweiter, unerklärlicher Zustand.
+    assert.doesNotMatch(hoverRule[0], /:focus(?!-visible)/);
+
+    // Theme und Designer ziehen die Beschriftung in den Anker, damit die ganze
+    // Zeile markiert wird – anders als vorher.
+    assert.match(tweakerSource, /function takeDesignerLabelFrom/);
+    assert.match(
+        tweakerSource,
+        /createDesignerLink\(\s*designer,\s*index === 0 \? label : ''/
+    );
+
+    // Die Sprungmarke „akt. Bestpreis" kommt mit einer Hintergrundfarbe als
+    // inline-Feld vom Server – ohne !important bliebe sie beim Hover stehen.
+    assert.match(hoverRule[0], /background-color:\s*#700\s*!important/);
+    assert.match(
+        tweakerSource,
+        /root\.querySelectorAll\('a\[href="#offerlist"\]'\)\.forEach\(\s*anchor => \{\s*anchor\.classList\.add\('bm-detail-line-link'\)/
+    );
 });
 
 test('startseite centers Deal-Alarm and hides SEO intro paragraphs without hiding jump targets', () => {
@@ -2823,8 +2876,10 @@ test('topprice green line is removed, commercial eBay logo renders tie icon, and
     // 1. .topprice and .topprice a have transparent background and border-none to prevent green line under logo cell
     assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice,\s*\.content\.setdetails\s+\.topprice\s+a\s*\{[^}]*background:\s*transparent\s*!important;[^}]*border-bottom:\s*none\s*!important;/);
 
-    // 2. createEbayLogoHtml renders seller type icon for both commercial and private sellers
-    assert.match(tweakerSource, /const sellerBadgeHtml = \(!isFrance && \(kind === 'commercial' \|\| kind === 'private'\)\)/);
+    // 2. createEbayLogoHtml übergibt die Verkäufer-Marke an die eine SVG-Figur;
+    //    für eBay FR steht stattdessen die Landesflagge.
+    assert.match(tweakerSource, /ebayLogoSvgMarkup\(isFrance \? '' : kind\)/);
+    assert.doesNotMatch(tweakerSource, /sellerBadgeHtml/);
 
     // 3. Preisfehler melden is removed from DOM and hidden via CSS
     assert.match(tweakerSource, /a\[href\*="preisfehler"\],\s*button\[onclick\*="preisfehler"\],\s*a\[data-reveal-id\*="preisfehler"\],\s*\.preisfehler\s*\{[^}]*display:\s*none\s*!important;/);
@@ -3138,6 +3193,11 @@ test('Detailseiten-Blasen rasten über dem Bild ein, statt im Fluss zu driften',
     // Beide Blasen nutzen die Zwischengröße (42px: zwischen kompakt 32px und Original 50px).
     assert.match(rule[0], /width: 42px !important;/);
     assert.match(black[0], /width: 42px !important;/);
+
+    // Die native .off bringt padding-top mit und schiebt den Text damit unter
+    // die Blumenmitte — beide Blasen müssen die Innenschale zurückgeben.
+    assert.match(rule[0], /padding: 0 !important;/);
+    assert.match(black[0], /padding: 0 !important;/);
 
     // Anker-Regel: Blasen sitzen am Bühnen-Container (.large-3.medium-4.columns.hide-for-small / .show-for-small-only.text-center),
     // damit sie sauber in der oberen linken Ecke der Bühne stehen und nicht über dem zentrierten Produktbild liegen.
