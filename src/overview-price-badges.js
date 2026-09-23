@@ -278,7 +278,7 @@
             bubble = document.createElement('div');
             bubble.className = 'off';
             const productImg = card.querySelector('.productimg') || card;
-            if (document.documentElement.classList.contains('bm-view-list')) {
+            if (document.documentElement.dataset.bmView === 'list') {
                 bubble.classList.add('bm-list-off');
                 offerBox.appendChild(bubble);
             } else {
@@ -295,7 +295,7 @@
             }
             bubble.hidden = newVal === 0;
             if (newVal === 0) bubble.style.display = 'none';
-            else if (!document.documentElement.classList.contains('bm-view-list')) bubble.style.display = 'inline-flex';
+            else if (document.documentElement.dataset.bmView !== 'list') bubble.style.display = 'inline-flex';
         }
     };
 

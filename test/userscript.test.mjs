@@ -2124,19 +2124,19 @@ test('list view keeps the price on one line and the merchant in its own row', ()
     // Der Preis startet bündig unter dem Titel: das Theme-Padding der offerbox fällt weg.
     assert.match(
         tweakerSource,
-        /html\.bm-view-list[^}]+\.productprice \.offerbox \{\s*min-height: 0 !important;[\s\S]*?padding: 0 !important;/
+        /html\[data-bm-view="list"\][^}]+\.productprice \.offerbox \{\s*min-height: 0 !important;[\s\S]*?padding: 0 !important;/
     );
     // Zwei eigene Zeilen in .productprice: Preisreihe, darunter der Händler.
     assert.match(
         tweakerSource,
-        /html\.bm-view-list[^}]+\.productprice \{[\s\S]*?flex-direction: column !important;[\s\S]*?align-items: flex-start !important;/
+        /html\[data-bm-view="list"\][^}]+\.productprice \{[\s\S]*?flex-direction: column !important;[\s\S]*?align-items: flex-start !important;/
     );
     assert.match(tweakerSource, /\(priceArea \|\| offerBox\)\.appendChild\(merchantBadge\);/);
     assert.doesNotMatch(tweakerSource, /fragment\.appendChild\(merchantBadge\)/);
     // In der Ein-Spalten-Liste darf die Preiszeile nicht umbrechen; nur der UVP gibt Breite nach.
     assert.match(
         tweakerSource,
-        /html\.bm-view-list[^}]+\.productprice \.offerbox \{\s*flex-wrap: nowrap !important;\s*\}/
+        /html\[data-bm-view="list"\][^}]+\.productprice \.offerbox \{\s*flex-wrap: nowrap !important;\s*\}/
     );
     assert.match(
         tweakerSource,
@@ -2148,7 +2148,7 @@ test('list view keeps the price on one line and the merchant in its own row', ()
     );
     assert.match(
         tweakerSource,
-        /html\.bm-view-list[^}]+\.productprice \.offerbox \{[\s\S]*?font-size: 0 !important;/
+        /html\[data-bm-view="list"\][^}]+\.productprice \.offerbox \{[\s\S]*?font-size: 0 !important;/
     );
     assert.match(
         tweakerSource,
@@ -2209,9 +2209,13 @@ test('reveal modal dialogs (Rabattalarm, Deal-Alarm, Login) are centered and sty
 test('view switcher is restricted to pages with set offers and protects merchants and themes grids', () => {
     assert.match(tweakerSource, /body:has\(\.wrapper\.merchants\)\s+\.bm-view-switcher/);
     assert.match(tweakerSource, /body:has\(\.wrapper\.themen\)\s+\.bm-view-switcher/);
-    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)/);
-    assert.match(tweakerSource, /isNonOfferListingPage/);
+    assert.match(tweakerSource, /html\[data-bm-view="list"\]\s+:is\(#productrow,\s*\.productrow\)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)/);
     assert.match(tweakerSource, /hasSetOffers/);
+    assert.match(tweakerSource, /isDetailPage/);
+    // Der URL-Regex frueherer Versionen hat auch die Haendler-Filterseite ausgesperrt,
+    // obwohl die echte Set-Inserate hat. Kachel-Optik haengt jetzt an [data-bm-card].
+    assert.doesNotMatch(tweakerSource, /isNonOfferListingPage/);
+    assert.doesNotMatch(tweakerSource, /LEGO-Themen\|themen/);
 });
 
 test('filter dropdown arrows are completely removed from pseudo-elements', () => {
@@ -2307,17 +2311,17 @@ test('bmExtractEolFromHtml handles flexible EOL markup with entities and product
 
 test('list view swaps placement of percentage discount and EOL badge, and classic grid cards integrate merchant and EOL', () => {
     // 1. List view: EOL badge at top-left, discount badge inline in offerbox
-    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.bm-list-eol[^}]*top:\s*4px\s*!important/);
-    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.bm-list-eol[^}]*left:\s*4px\s*!important/);
-    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.off[^}]*position:\s*static\s*!important/);
+    assert.match(tweakerSource, /html\[data-bm-view="list"\]\s+\[data-bm-card\]\s+\.bm-list-eol[^}]*top:\s*4px\s*!important/);
+    assert.match(tweakerSource, /html\[data-bm-view="list"\]\s+\[data-bm-card\]\s+\.bm-list-eol[^}]*left:\s*4px\s*!important/);
+    assert.match(tweakerSource, /html\[data-bm-view="list"\]\s+\[data-bm-card\]\s+\.off[^}]*position:\s*static\s*!important/);
     assert.match(tweakerSource, /offBadge\.classList\.add\(['"]bm-list-off['"]\)/);
 
     // 2. Classic grid cards: bookmark/alarm icons hidden, top-badge top-right, EOL in offerbox, split CTA
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+a\[id\^="merk"\]/);
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.bm-card-top-badge[^}]*top:\s*4px\s*!important/);
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.bm-card-top-badge[^}]*right:\s*4px\s*!important/);
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.productprice\s+\.bm-list-eol/);
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.bm-split-cta/);
+    assert.match(tweakerSource, /html\[data-bm-view="tile"\]\s+\[data-bm-card\]\s+a\[id\^="merk"\]/);
+    assert.match(tweakerSource, /html\[data-bm-view="tile"\]\s+\[data-bm-card\]\s+\.bm-card-top-badge[^}]*top:\s*4px\s*!important/);
+    assert.match(tweakerSource, /html\[data-bm-view="tile"\]\s+\[data-bm-card\]\s+\.bm-card-top-badge[^}]*right:\s*4px\s*!important/);
+    assert.match(tweakerSource, /html\[data-bm-view="tile"\]\s+\[data-bm-card\]\s+\.productprice\s+\.bm-list-eol/);
+    assert.match(tweakerSource, /html\[data-bm-view="tile"\]\s+\[data-bm-card\]\s+\.bm-split-cta/);
     assert.match(tweakerSource, /function bmApplyMerchantToCard/);
 });
 
@@ -2331,7 +2335,7 @@ test('set detail page adds native modal CTAs for Preisalarm and Wunschliste near
 
     // Listview removes icons and resets padding
     assert.match(tweakerSource, /card\.querySelectorAll\('a\[id\^="merk"\], a\[id\^="a"\], a\[id\^="dp"\], \.bm-slidebadge'\)\.forEach\(el => el\.remove\(\)\)/);
-    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.producttitle[^}]*padding-right:\s*0\s*!important/);
+    assert.match(tweakerSource, /html\[data-bm-view="list"\]\s+\[data-bm-card\]\s+\.producttitle[^}]*padding-right:\s*0\s*!important/);
 });
 
 test('marketplace best price box logo cell stretches 100% height and red discount bubble is strictly for UVP discounts without negative signs', () => {
@@ -2411,10 +2415,10 @@ test('desktop header with search bar remains original while tiles background is 
 });
 
 test('classic tile cards enlarge product image without grey area protrusion and remove useless line above CTAs', () => {
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.productimg\s*\{[^}]*width:\s*100%\s*!important/);
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.productimg\s*\{[^}]*height:\s*155px\s*!important/);
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.productimg\s+img\s*\{[^}]*max-height:\s*145px\s*!important/);
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide\s+\.productprice\s*\{[^}]*height:\s*auto\s*!important/);
+    assert.match(tweakerSource, /html\[data-bm-view="tile"\]\s+\[data-bm-card\]\s+\.productimg\s*\{[^}]*width:\s*100%\s*!important/);
+    assert.match(tweakerSource, /html\[data-bm-view="tile"\]\s+\[data-bm-card\]\s+\.productimg\s*\{[^}]*height:\s*155px\s*!important/);
+    assert.match(tweakerSource, /html\[data-bm-view="tile"\]\s+\[data-bm-card\]\s+\.productimg\s+img\s*\{[^}]*max-height:\s*145px\s*!important/);
+    assert.match(tweakerSource, /html\[data-bm-view="tile"\]\s+\[data-bm-card\]\s+\.productprice\s*\{[^}]*height:\s*auto\s*!important/);
 });
 
 test('detail action row contains strictly 4 buttons without duplicates and sidebar parts list has zero action buttons', () => {
@@ -2439,14 +2443,17 @@ test('detail action row contains strictly 4 buttons without duplicates and sideb
 
 test('list view is removed on desktop and scoped strictly to mobile', () => {
     // 1. CSS scopes list view strictly to mobile max-width: 768px
-    assert.match(tweakerSource, /@media screen and \(max-width:\s*768px\)\s*\{\s*html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)/);
+    assert.match(tweakerSource, /@media screen and \(max-width:\s*768px\)\s*\{\s*html\[data-bm-view="list"\]\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)/);
     // 2. CSS hides view switcher on desktop min-width: 769px
     assert.match(tweakerSource, /@media screen and \(min-width:\s*769px\)\s*\{\s*\.bm-view-switcher\s*\{\s*display:\s*none\s*!important;/);
     assert.match(precleanSource, /@media screen and \(min-width:\s*769px\)\s*\{\s*\.bm-view-switcher\s*\{\s*display:\s*none\s*!important;/);
     // 3. JS setupListingView checks desktop and removes list view + switcher
-    assert.match(tweakerSource, /if\s*\(window\.innerWidth\s*>\s*768\)\s*\{\s*document\.querySelector\('\.bm-view-switcher'\)\?\.remove\(\);\s*document\.documentElement\.classList\.remove\('bm-view-list'\);/);
+    assert.match(tweakerSource, /if\s*\(window\.innerWidth\s*>\s*768\)\s*\{\s*document\.querySelector\('\.bm-view-switcher'\)\?\.remove\(\);\s*bmSetViewMode\('tile'\);/);
     // 4. JS applyViewMode aborts and cleans up if triggered on desktop
-    assert.match(tweakerSource, /const applyViewMode = \(mode,\s*persist\s*=\s*false\)\s*=>\s*\{\s*if\s*\(window\.innerWidth\s*>\s*768\)\s*\{\s*document\.documentElement\.classList\.remove\('bm-view-list'\);/);
+    assert.match(tweakerSource, /const applyViewMode = \(mode,\s*persist\s*=\s*false\)\s*=>\s*\{\s*if\s*\(window\.innerWidth\s*>\s*768\)\s*\{\s*bmSetViewMode\('tile'\);/);
+    // Die Ansicht sitzt nur noch im data-bm-view-Attribut: ein fehlender Wert bedeutet
+    // "keine Kachel-Optik" und nicht, wie beim classList-Entfernen, "Kacheln".
+    assert.doesNotMatch(tweakerSource, /classList\.(?:add|remove|toggle)\('bm-view-list'/);
 });
 
 test('app mode hides breadcrumbs, headlinerow, and set title without white gap', () => {
@@ -2516,9 +2523,9 @@ test('android toolbar background is translucent so content scrolls behind it', (
 });
 
 test('list view layout hides direct child .off and redundant small text', () => {
-    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s*>\s*\.off[^{]*\{[^}]*display:\s*none\s*!important;/);
-    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.productprice\s+\.small:not\(\.stroke\)[^{]*\{[^}]*display:\s*none\s*!important;/);
-    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.bm-list-off/);
+    assert.match(tweakerSource, /html\[data-bm-view="list"\]\s+\[data-bm-card\]\s*>\s*\.off[^{]*\{[^}]*display:\s*none\s*!important;/);
+    assert.match(tweakerSource, /html\[data-bm-view="list"\]\s+\[data-bm-card\]\s+\.productprice\s+\.small:not\(\.stroke\)[^{]*\{[^}]*display:\s*none\s*!important;/);
+    assert.match(tweakerSource, /html\[data-bm-view="list"\]\s+\[data-bm-card\]\s+\.bm-list-off/);
 });
 
 test('eBay logos use SVG France flag and topprice logo cell matches offerlist width on mobile', () => {
@@ -2680,8 +2687,8 @@ test('list view cards and price are fully clickable to detail page with pointer 
     assert.doesNotMatch(tweakerSource, /priceSpan\.addEventListener\(['"]click['"]/);
 
     // 4. CSS ensures pointer cursor on slide and theprice in list view
-    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper:not\(\.merchants\):not\(\.themen\):not\(\.brickstores\)\s+div\.slide[^{]*\{[^}]*cursor:\s*pointer\s*!important/);
-    assert.match(tweakerSource, /html\.bm-view-list\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.productprice\s+\.theprice[^{]*\{[^}]*cursor:\s*pointer\s*!important/);
+    assert.match(tweakerSource, /html\[data-bm-view="list"\]\s+\[data-bm-card\][^{]*\{[^}]*cursor:\s*pointer\s*!important/);
+    assert.match(tweakerSource, /html\[data-bm-view="list"\]\s+\[data-bm-card\]\s+\.productprice\s+\.theprice[^{]*\{[^}]*cursor:\s*pointer\s*!important/);
 });
 
 test('depot view is styled like wishlist with card layout, KPI statsbar, and responsive mobile cards', () => {
@@ -3281,14 +3288,14 @@ test('ensureOfferListContainer und injectMarketplaceOffers verhalten sich isolie
 
 test('grid view hides secondary price rows and trailing comparison lines in CSS and removes them in DOM enhancement', () => {
     // 1. CSS checks: secondary productprice, offerbox, and trailing comparison lines hidden in grid view
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.productprice\s*~\s*\.productprice/);
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.offerbox\s*~\s*\.offerbox/);
-    assert.match(tweakerSource, /html\.bm-view-list\s+:is\(#productrow,\s*\.productrow\)\s+\.wrapper\s+div\.slide\s+\.offerbox\s*~\s*\.offerbox/);
+    assert.match(tweakerSource, /html\[data-bm-view="tile"\]\s+\[data-bm-card\]\s+\.productprice\s*~\s*\.productprice/);
+    assert.match(tweakerSource, /html\[data-bm-view="tile"\]\s+\[data-bm-card\]\s+\.offerbox\s*~\s*\.offerbox/);
+    assert.match(tweakerSource, /html\[data-bm-view="list"\]\s+\[data-bm-card\]\s+\.offerbox\s*~\s*\.offerbox/);
     // :first-of-type vergleicht den Tag, nicht die Klasse. .productprice ist die dritte div
     // der Kachel und waere damit immer versteckt gewesen — die einzelne Preiszeile fiel weg.
     assert.doesNotMatch(tweakerSource, /\.productprice:not\(:first-of-type\)/);
     assert.doesNotMatch(tweakerSource, /\.offerbox:not\(:first-of-type\)/);
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.bm-split-cta\s*~\s*:is\(\.productprice,\s*\.offerbox,\s*\.pricerow,\s*\.small,\s*p\)/);
+    assert.match(tweakerSource, /html\[data-bm-view="tile"\]\s+\[data-bm-card\]\s+\.bm-split-cta\s*~\s*:is\(\.productprice,\s*\.offerbox,\s*\.pricerow,\s*\.small,\s*p\)/);
 
     // 2. DOM cleanup check: secondary productprice removal and trailing cleanup
     assert.match(tweakerSource, /const allPriceAreas = card\.querySelectorAll\('\.productprice'\);/);

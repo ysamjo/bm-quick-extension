@@ -3898,8 +3898,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
         /* Kompakte Listenansicht für Sets (ausschließlich auf Mobilgeräten aktiv, auf Desktop entfernt) */
         @media screen and (max-width: 768px) {
-        html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores),
-        html.bm-view-list :is(#productrow, .productrow) .wrapper#wrappernormal:not(.merchants):not(.themen):not(.brickstores) {
+        html[data-bm-view="list"] :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores),
+        html[data-bm-view="list"] :is(#productrow, .productrow) .wrapper#wrappernormal:not(.merchants):not(.themen):not(.brickstores) {
             display: flex !important;
             flex-direction: column !important;
             gap: 8px !important;
@@ -3908,11 +3908,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             box-sizing: border-box !important;
             float: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::before,
-        html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::after {
+        html[data-bm-view="list"] :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::before,
+        html[data-bm-view="list"] :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores)::after {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide {
+        html[data-bm-view="list"] [data-bm-card] {
             width: 100% !important;
             max-width: 100% !important;
             min-width: 0 !important;
@@ -3937,14 +3937,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             cursor: pointer !important;
             transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide:hover {
+        html[data-bm-view="list"] [data-bm-card]:hover {
             background: #F8FAFC !important;
             border-color: #CBD5E1 !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide:active {
+        html[data-bm-view="list"] [data-bm-card]:active {
             background: #F1F5F9 !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productimg {
+        html[data-bm-view="list"] [data-bm-card] .productimg {
             grid-area: thumb !important;
             width: 82px !important;
             height: 82px !important;
@@ -3965,14 +3965,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             overflow: hidden !important;
             cursor: pointer !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productimg a {
+        html[data-bm-view="list"] [data-bm-card] .productimg a {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             width: 100% !important;
             height: 100% !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productimg img {
+        html[data-bm-view="list"] [data-bm-card] .productimg img {
             max-width: 76px !important;
             max-height: 76px !important;
             width: auto !important;
@@ -3981,11 +3981,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             margin: 0 auto !important;
             display: block !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > .off {
+        html[data-bm-view="list"] [data-bm-card] > .off {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .offerbox .off,
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-off {
+        html[data-bm-view="list"] [data-bm-card] .offerbox .off,
+        html[data-bm-view="list"] [data-bm-card] .bm-list-off {
             position: static !important;
             display: inline-flex !important;
             align-items: center !important;
@@ -4006,13 +4006,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             letter-spacing: -0.2px !important;
             white-space: nowrap !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-slidebadge,
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide a[id^="merk"],
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide a[id^="a"],
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide a[id^="dp"] {
+        html[data-bm-view="list"] [data-bm-card] .bm-slidebadge,
+        html[data-bm-view="list"] [data-bm-card] a[id^="merk"],
+        html[data-bm-view="list"] [data-bm-card] a[id^="a"],
+        html[data-bm-view="list"] [data-bm-card] a[id^="dp"] {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttitle {
+        html[data-bm-view="list"] [data-bm-card] .producttitle {
             grid-area: header !important;
             font-size: 13.5px !important;
             font-weight: 700 !important;
@@ -4027,12 +4027,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             text-align: left !important;
             cursor: pointer !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttitle a.detail {
+        html[data-bm-view="list"] [data-bm-card] .producttitle a.detail {
             font-weight: 700 !important;
             color: #0F172A !important;
             text-decoration: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttitle a.button {
+        html[data-bm-view="list"] [data-bm-card] .producttitle a.button {
             display: inline-block !important;
             font-size: 10px !important;
             font-weight: 600 !important;
@@ -4044,15 +4044,15 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             border-radius: 4px !important;
             vertical-align: middle !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .producttag {
+        html[data-bm-view="list"] [data-bm-card] .producttag {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > a.detail:has(.dealheat),
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > a:has(.dealheat),
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .dealheat {
+        html[data-bm-view="list"] [data-bm-card] > a.detail:has(.dealheat),
+        html[data-bm-view="list"] [data-bm-card] > a:has(.dealheat),
+        html[data-bm-view="list"] [data-bm-card] .dealheat {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice {
+        html[data-bm-view="list"] [data-bm-card] .productprice {
             grid-area: price !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -4066,7 +4066,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             align-items: flex-start !important;
             gap: 3px !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox {
+        html[data-bm-view="list"] [data-bm-card] .productprice .offerbox {
             min-height: 0 !important;
             /* Das Theme gibt der offerbox 8px Innenrand; dadurch startete der
                Preis rechts neben dem Titel statt bündig unter ihm. */
@@ -4081,10 +4081,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
         /* Ein-Spalten-Liste: die Preiszeile bricht nie um. Nur der gestrichene
            UVP darf enger rücken, Preis und Badges behalten ihre Breite. */
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox {
+        html[data-bm-view="list"] [data-bm-card] .productprice .offerbox {
             flex-wrap: nowrap !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .theprice {
+        html[data-bm-view="list"] [data-bm-card] .productprice .offerbox > .theprice {
             flex: 0 0 auto !important;
             order: 1 !important;
             font-size: 16.5px !important;
@@ -4095,17 +4095,17 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             cursor: pointer !important;
             pointer-events: auto !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > :is(.off, .bm-list-off) {
+        html[data-bm-view="list"] [data-bm-card] .productprice .offerbox > :is(.off, .bm-list-off) {
             flex: 0 0 auto !important;
             order: 2 !important;
             font-size: 10.5px !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .bm-list-black-bubble {
+        html[data-bm-view="list"] [data-bm-card] .productprice .offerbox > .bm-list-black-bubble {
             flex: 0 0 auto !important;
             order: 3 !important;
             font-size: 10.5px !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .stroke {
+        html[data-bm-view="list"] [data-bm-card] .productprice .offerbox > .stroke {
             flex: 0 1 auto !important;
             order: 4 !important;
             min-width: 0 !important;
@@ -4117,13 +4117,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             text-decoration: line-through !important;
             margin: 0 !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > .bm-list-eol {
+        html[data-bm-view="list"] [data-bm-card] .productprice .offerbox > .bm-list-eol {
             order: 5 !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .offerbox > :not(.theprice):not(.off):not(.bm-list-off):not(.bm-list-black-bubble):not(.stroke):not(.bm-list-eol) {
+        html[data-bm-view="list"] [data-bm-card] .productprice .offerbox > :not(.theprice):not(.off):not(.bm-list-off):not(.bm-list-black-bubble):not(.stroke):not(.bm-list-eol) {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .theprice {
+        html[data-bm-view="list"] [data-bm-card] .productprice .theprice {
             font-size: 16.5px !important;
             font-weight: 800 !important;
             color: #B80000 !important;
@@ -4132,20 +4132,20 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             cursor: pointer !important;
             pointer-events: auto !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .stroke {
+        html[data-bm-view="list"] [data-bm-card] .productprice .stroke {
             font-size: 11px !important;
             color: #64748B !important;
             text-decoration: line-through !important;
             margin: 0 !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice a[href="#info"] {
+        html[data-bm-view="list"] [data-bm-card] .productprice a[href="#info"] {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice br,
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .small:not(.stroke) {
+        html[data-bm-view="list"] [data-bm-card] .productprice br,
+        html[data-bm-view="list"] [data-bm-card] .productprice .small:not(.stroke) {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-eol {
+        html[data-bm-view="list"] [data-bm-card] .bm-list-eol {
             position: absolute !important;
             top: 4px !important;
             left: 4px !important;
@@ -4163,34 +4163,34 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             line-height: 1.2 !important;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-eol:empty {
+        html[data-bm-view="list"] [data-bm-card] .bm-list-eol:empty {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-card-top-badge {
+        html[data-bm-view="list"] [data-bm-card] .bm-card-top-badge {
             display: none !important;
         }
         }
 
         /* Klassische Kachel: Merk-, Alarm- und Depot-Icons ausblenden (spart Platz) */
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide a[id^="merk"],
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide a[id^="a"],
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide a[id^="dp"],
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-slidebadge {
+        html[data-bm-view="tile"] [data-bm-card] a[id^="merk"],
+        html[data-bm-view="tile"] [data-bm-card] a[id^="a"],
+        html[data-bm-view="tile"] [data-bm-card] a[id^="dp"],
+        html[data-bm-view="tile"] [data-bm-card] .bm-slidebadge {
             display: none !important;
         }
 
         /* Klassische Kachel: Badge oben rechts über dem Produktbild (z.B. Händlerzahl sinkt, Bestpreis etc.) */
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg {
+        html[data-bm-view="tile"] [data-bm-card],
+        html[data-bm-view="tile"] [data-bm-card] .productimg {
             position: relative !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide {
+        html[data-bm-view="tile"] [data-bm-card] {
             height: auto !important;
             min-height: 0 !important;
             padding: 6px 6px 4px !important;
             box-sizing: border-box !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-card-top-badge {
+        html[data-bm-view="tile"] [data-bm-card] .bm-card-top-badge {
             position: absolute !important;
             top: 4px !important;
             right: 4px !important;
@@ -4208,12 +4208,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             line-height: 1.2 !important;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-card-top-badge:empty {
+        html[data-bm-view="tile"] [data-bm-card] .bm-card-top-badge:empty {
             display: none !important;
         }
 
         /* Klassische Kachel: Rabatt-Badge (.off) bleibt oben links auf dem Produktbild */
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .off {
+        html[data-bm-view="tile"] [data-bm-card] .off {
             position: absolute !important;
             top: 4px !important;
             left: 4px !important;
@@ -4238,7 +4238,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
 
         /* Klassische Kachel: Kompakte Bild-Bühne (mehr Raum für das Bild, reines Weiß ohne grauen Bereich) */
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg {
+        html[data-bm-view="tile"] [data-bm-card] .productimg {
             width: 100% !important;
             max-width: 100% !important;
             height: 155px !important;
@@ -4254,7 +4254,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             box-sizing: border-box !important;
             padding: 6px !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg img {
+        html[data-bm-view="tile"] [data-bm-card] .productimg img {
             max-height: 145px !important;
             max-width: 96% !important;
             width: auto !important;
@@ -4263,7 +4263,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
 
         /* Klassische Kachel: Titel (1 Zeile, truncate) */
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .producttitle {
+        html[data-bm-view="tile"] [data-bm-card] .producttitle {
             font-size: 12px !important;
             font-weight: 700 !important;
             color: #1E293B !important;
@@ -4273,11 +4273,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             margin: 5px 8px 0 !important;
             line-height: 1.3 !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .producttitle a.detail {
+        html[data-bm-view="tile"] [data-bm-card] .producttitle a.detail {
             color: #1E293B !important;
             text-decoration: none !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .producttitle a.button {
+        html[data-bm-view="tile"] [data-bm-card] .producttitle a.button {
             font-size: 9.5px !important;
             font-weight: 600 !important;
             color: #64748B !important;
@@ -4290,14 +4290,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
 
         /* Klassische Kachel: Preis + UVP auf der linken Seite, EOL-Datum immer unten rechts */
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice {
+        html[data-bm-view="tile"] [data-bm-card] .productprice {
             height: auto !important;
             min-height: 0 !important;
             margin: 4px 8px 0 !important;
             padding: 0 !important;
             line-height: 1.2 !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .offerbox {
+        html[data-bm-view="tile"] [data-bm-card] .productprice .offerbox {
             display: flex !important;
             align-items: baseline !important;
             justify-content: space-between !important;
@@ -4309,20 +4309,20 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             margin: 0 !important;
             padding: 0 !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .theprice {
+        html[data-bm-view="tile"] [data-bm-card] .productprice .theprice {
             font-size: 14.5px !important;
             font-weight: 900 !important;
             color: #0F172A !important;
             letter-spacing: -0.3px !important;
             line-height: 1.1 !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .stroke {
+        html[data-bm-view="tile"] [data-bm-card] .productprice .stroke {
             font-size: 10.5px !important;
             color: #94A3B8 !important;
             text-decoration: line-through !important;
             line-height: 1.1 !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .bm-list-eol {
+        html[data-bm-view="tile"] [data-bm-card] .productprice .bm-list-eol {
             position: static !important;
             margin-left: auto !important;
             display: inline-flex !important;
@@ -4338,49 +4338,49 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             line-height: 1.2 !important;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .bm-list-eol:empty {
+        html[data-bm-view="tile"] [data-bm-card] .productprice .bm-list-eol:empty {
             display: none !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice br,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice a[href="#info"] {
+        html[data-bm-view="tile"] [data-bm-card] .productprice br,
+        html[data-bm-view="tile"] [data-bm-card] .productprice a[href="#info"] {
             display: none !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .bm-list-off {
+        html[data-bm-view="tile"] [data-bm-card] .productprice .bm-list-off {
             display: none !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productprice .bm-list-merchant {
+        html[data-bm-view="tile"] [data-bm-card] .productprice .bm-list-merchant {
             display: none !important;
         }
 
         /* Klassische Kachel: Unerwünschte Leerzeilen, alten Moosgrün-Balken, dealheat und nachlaufende zweite Preis-/Vergleichszeilen ("ab ... gespart: ...") ausblenden */
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .productprice ~ .productprice,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .productprice ~ .offerbox,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .productprice ~ .pricerow,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .offerbox ~ .offerbox,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .bm-split-cta ~ :is(.productprice, .offerbox, .pricerow, .small, p),
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .pricerow,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide div.pricerow,
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice ~ .productprice,
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .offerbox ~ .offerbox,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide > a.detail:has(.dealheat),
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide > a:has(.dealheat),
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .dealheat,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .pricerow,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide div.pricerow,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide p:empty,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide br {
+        html[data-bm-view="tile"] [data-bm-card] .productprice ~ .productprice,
+        html[data-bm-view="tile"] [data-bm-card] .productprice ~ .offerbox,
+        html[data-bm-view="tile"] [data-bm-card] .productprice ~ .pricerow,
+        html[data-bm-view="tile"] [data-bm-card] .offerbox ~ .offerbox,
+        html[data-bm-view="tile"] [data-bm-card] .bm-split-cta ~ :is(.productprice, .offerbox, .pricerow, .small, p),
+        html[data-bm-view="tile"] [data-bm-card] .pricerow,
+        html[data-bm-view="tile"] [data-bm-card] div.pricerow,
+        html[data-bm-view="list"] [data-bm-card] .productprice ~ .productprice,
+        html[data-bm-view="list"] [data-bm-card] .offerbox ~ .offerbox,
+        html[data-bm-view="tile"] [data-bm-card] > a.detail:has(.dealheat),
+        html[data-bm-view="tile"] [data-bm-card] > a:has(.dealheat),
+        html[data-bm-view="tile"] [data-bm-card] .dealheat,
+        html[data-bm-view="tile"] [data-bm-card] .pricerow,
+        html[data-bm-view="tile"] [data-bm-card] div.pricerow,
+        html[data-bm-view="tile"] [data-bm-card] p:empty,
+        html[data-bm-view="tile"] [data-bm-card] br {
             display: none !important;
         }
 
         /* Klassische Kachel: Split-CTA (↗ Shop-Direktlink + Angebote-Vergleich) direkt unter der Preiszeile */
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-split-cta {
+        html[data-bm-view="tile"] [data-bm-card] .bm-split-cta {
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
             gap: 5px !important;
             margin: 5px 8px 8px !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-btn-shop,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-btn-offers {
+        html[data-bm-view="tile"] [data-bm-card] .bm-btn-shop,
+        html[data-bm-view="tile"] [data-bm-card] .bm-btn-offers {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -4398,26 +4398,26 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             box-sizing: border-box !important;
             cursor: pointer !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-btn-shop {
+        html[data-bm-view="tile"] [data-bm-card] .bm-btn-shop {
             background: #F1F5F9 !important;
             color: #475569 !important;
             border: 1px solid #CBD5E1 !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-btn-shop[data-bm-loading] {
+        html[data-bm-view="tile"] [data-bm-card] .bm-btn-shop[data-bm-loading] {
             color: #94A3B8 !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-btn-offers {
+        html[data-bm-view="tile"] [data-bm-card] .bm-btn-offers {
             background: #059669 !important;
             color: #FFFFFF !important;
             border: 1px solid transparent !important;
         }
 
         /* Split-CTA in Listen- und 2-Spalten-Ansicht verstecken (da dort eigenes Layout) */
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-split-cta {
+        html[data-bm-view="list"] [data-bm-card] .bm-split-cta {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-list-merchant,
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-overview-effective-source {
+        html[data-bm-view="list"] [data-bm-card] .productprice .bm-list-merchant,
+        html[data-bm-view="list"] [data-bm-card] .productprice .bm-overview-effective-source {
             display: inline-flex !important;
             align-items: center !important;
             font-size: 11px !important;
@@ -4432,22 +4432,22 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             text-decoration: none !important;
             cursor: pointer !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .productprice .bm-list-merchant:empty {
+        html[data-bm-view="list"] [data-bm-card] .productprice .bm-list-merchant:empty {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide strong:not(.theprice) {
+        html[data-bm-view="list"] [data-bm-card] strong:not(.theprice) {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .pricerow,
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide div.pricerow {
+        html[data-bm-view="list"] [data-bm-card] .pricerow,
+        html[data-bm-view="list"] [data-bm-card] div.pricerow {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > span:not(.off):not(.small):not(.bm-list-eol),
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide > meta {
+        html[data-bm-view="list"] [data-bm-card] > span:not(.off):not(.small):not(.bm-list-eol),
+        html[data-bm-view="list"] [data-bm-card] > meta {
             display: none !important;
         }
-        html.bm-view-list :is(#productrow, .productrow) .wrapper .nextpage,
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.nextpage {
+        html[data-bm-view="list"] :is(#productrow, .productrow) .wrapper .nextpage,
+        html[data-bm-view="list"] :is(#productrow, .productrow) .wrapper div.nextpage {
             width: 100% !important;
             max-width: 100% !important;
             min-height: 50px !important;
@@ -4722,7 +4722,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
         
         /* Schwarze Bubble auf Kachelansicht (Abstand zum 2. besten Angebot) */
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .bm-card-black-bubble {
+        html[data-bm-view="tile"] [data-bm-card] .bm-card-black-bubble {
             position: absolute !important;
             top: 52px !important;
             left: 4px !important;
@@ -4745,14 +4745,14 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             text-align: center !important;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg:not(:has(.off)) .bm-card-black-bubble,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg:has(.off[hidden]) .bm-card-black-bubble,
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper:not(.merchants):not(.themen):not(.brickstores) div.slide .productimg:has(.off[style*="display: none"]) .bm-card-black-bubble {
+        html[data-bm-view="tile"] [data-bm-card] .productimg:not(:has(.off)) .bm-card-black-bubble,
+        html[data-bm-view="tile"] [data-bm-card] .productimg:has(.off[hidden]) .bm-card-black-bubble,
+        html[data-bm-view="tile"] [data-bm-card] .productimg:has(.off[style*="display: none"]) .bm-card-black-bubble {
             top: 4px !important;
         }
 
         /* Schwarze Bubble in Listenansicht (inline in der offerbox) */
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-list-black-bubble {
+        html[data-bm-view="list"] [data-bm-card] .bm-list-black-bubble {
             position: static !important;
             display: inline-flex !important;
             align-items: center !important;
@@ -4775,10 +4775,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
 
         /* Ausblenden der schwarzen Bubble in der jeweils anderen Ansicht */
-        html.bm-view-list :is(#productrow, .productrow) .wrapper div.slide .bm-card-black-bubble {
+        html[data-bm-view="list"] [data-bm-card] .bm-card-black-bubble {
             display: none !important;
         }
-        html:not(.bm-view-list) :is(#productrow, .productrow) .wrapper div.slide .bm-list-black-bubble {
+        html[data-bm-view="tile"] [data-bm-card] .bm-list-black-bubble {
             display: none !important;
         }
 
@@ -6559,6 +6559,21 @@ chrome.storage.local.get('settings').then(({ settings }) => {
     let bmActiveMerchantFetches = 0;
     const BM_MAX_CONCURRENT_FETCHES = 2;
 
+    /* Ansicht der Inseratskacheln. Ein fehlendes Attribut bedeutet "keine Kachel-Optik",
+       nicht "Kacheln" wie frueher beim classList-Entfernen von bm-view-list. Nur Seiten,
+       deren Kacheln wir wirklich umbauen, bekommen einen Modus. */
+    function bmSetViewMode(mode) {
+        document.documentElement.dataset.bmView = mode === 'list' ? 'list' : 'tile';
+    }
+
+    function bmClearViewMode() {
+        delete document.documentElement.dataset.bmView;
+    }
+
+    function bmIsListMode() {
+        return document.documentElement.dataset.bmView === 'list';
+    }
+
     function bmExtractCheapestMerchantFromHtml(html) {
         if (!html) return '';
         const topMatch = html.match(/class=["']topprice["'][\s\S]*?<img[^>]+alt=["']([^"']+)["']/i);
@@ -6881,7 +6896,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
     function bmApplyDiscountsToCard(card, redDiscount, blackDiscount) {
         if (!card) return;
-        const isList = document.documentElement.classList.contains('bm-view-list');
+        const isList = bmIsListMode();
         const productImg = card.querySelector('.productimg') || card;
         const offerBox = card.querySelector('.offerbox') || card.querySelector('.productprice');
 
@@ -7488,6 +7503,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             }
             if (offerBox && !card.dataset.bmListEnhanced) {
                 card.dataset.bmListEnhanced = 'true';
+                // Erst ab hier ist die Preiszeile fertig ausgebaut. Die gesamte Kachel-Optik
+                // haengt an diesem Attribut, damit nie ein Karussell-Slide oder eine unfertige
+                // Kachel gestylt wird.
+                card.dataset.bmCard = 'true';
 
                 offerBox.querySelectorAll('a[href="#info"], .tooltipster:not(.bm-slidebadge)').forEach(a => {
                     if (a.textContent.trim() === '*' || a.getAttribute('href') === '#info') a.remove();
@@ -7550,7 +7569,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     offBadge.textContent = `${redVal}%`;
                 }
 
-                if (document.documentElement.classList.contains('bm-view-list')) {
+                if (bmIsListMode()) {
                     if (offBadge && offBadge.textContent.trim()) {
                         offBadge.classList.add('bm-list-off');
                         fragment.appendChild(offBadge);
@@ -7694,7 +7713,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                     }
                 }
 
-                if (document.documentElement.classList.contains('bm-view-list')) {
+                if (bmIsListMode()) {
                     card.querySelectorAll('a[id^="merk"], a[id^="a"], a[id^="dp"], .bm-slidebadge').forEach(el => el.remove());
                 }
 
@@ -7705,39 +7724,34 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
     function setupListingView(settings) {
         const isListActive = () => {
-            return document.documentElement.classList.contains('bm-view-list');
+            return bmIsListMode();
         };
 
-        const isNonOfferListingPage = () => {
-            if (document.querySelector('.wrapper.merchants, .wrapper.themen, .wrapper.brickstores')) {
+        /* Detailseiten haben keine Inseratskacheln, sondern die Angebotsliste.
+           Frueher pruefte hier zusaendlich ein URL-Regex auf "themen|merchants|brickstores"
+           und die Anwesenheit eines Karussell-Wrappers. Beides ist ueberfluessig geworden:
+           die Kachel-Optik haengt jetzt an [data-bm-card], und das setzt nur unser eigener
+           Umbau auf div.slide[id^="set"]. Themen- und Haendler-Karusselle haben solche
+           Kacheln nicht, die Haendler-Filterseite hat dieselben Kacheln wie jede andere
+           Suchseite. */
+        const isDetailPage = () => {
+            if (document.getElementById('offerlist') || document.getElementById('setdetails')) {
                 return true;
             }
-            const pathAndQuery = (window.location.pathname || '') + (window.location.search || '');
-            if (/H%C3%A4ndler|haendler|merchants|LEGO-Themen|themen(?!\w)|brickstores/i.test(pathAndQuery)) {
-                return true;
-            }
-            try {
-                if (decodeURIComponent(pathAndQuery).toLowerCase().includes('händler')) {
-                    return true;
-                }
-            } catch (e) {}
-            if (document.getElementById('offerlist') || document.getElementById('setdetails') ||
-                (typeof BM_getBrickmergeSetNumber === 'function' && BM_getBrickmergeSetNumber(window.location.href))) {
-                return true;
-            }
-            return false;
+            return typeof BM_getBrickmergeSetNumber === 'function' &&
+                Boolean(BM_getBrickmergeSetNumber(window.location.href));
         };
 
-        if (isNonOfferListingPage()) {
+        if (isDetailPage()) {
             document.querySelector('.bm-view-switcher')?.remove();
-            document.documentElement.classList.remove('bm-view-list');
+            bmClearViewMode();
             return;
         }
 
         // Auf Desktop (> 768px) ist die Listenansicht komplett entfernt (Desktop nutzt immer Kacheln)
         if (window.innerWidth > 768) {
             document.querySelector('.bm-view-switcher')?.remove();
-            document.documentElement.classList.remove('bm-view-list');
+            bmSetViewMode('tile');
             const productRow = document.querySelector('#productrow, .productrow, #productrowcontainer');
             if (productRow) {
                 bmEnhanceListViewCards(productRow);
@@ -7761,7 +7775,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                         setupListingView(settings);
                     } else {
                         document.querySelector('.bm-view-switcher')?.remove();
-                        document.documentElement.classList.remove('bm-view-list');
+                        bmSetViewMode('tile');
                     }
                 });
             }
@@ -7770,13 +7784,13 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
         const applyViewMode = (mode, persist = false) => {
             if (window.innerWidth > 768) {
-                document.documentElement.classList.remove('bm-view-list');
+                bmSetViewMode('tile');
                 document.querySelector('.bm-view-switcher')?.remove();
                 bmEnhanceListViewCards();
                 return;
             }
             const isList = mode === 'list';
-            document.documentElement.classList.toggle('bm-view-list', isList);
+            bmSetViewMode(isList ? 'list' : 'tile');
             bmEnhanceListViewCards();
             document.querySelectorAll('div.slide[id^="set"]').forEach(card => {
                 const red = card.dataset.bmRedDiscount ? parseInt(card.dataset.bmRedDiscount, 10) : parseInt(card.querySelector('.off')?.textContent || '0', 10);
@@ -7840,6 +7854,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         if (!hasSetOffers) {
             // Keine Inserate vorhanden -> Switcher entfernen und nicht anzeigen
             document.querySelector('.bm-view-switcher')?.remove();
+            bmClearViewMode();
             // Falls später Inserate asynchron geladen werden (z. B. Filter-Ajax/Infinite Scroll):
             if (typeof MutationObserver !== 'undefined' && !productRow.dataset.bmListingObserver) {
                 productRow.dataset.bmListingObserver = 'true';
@@ -7914,7 +7929,7 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             window.addEventListener('resize', () => {
                 if (window.innerWidth > 768) {
                     document.querySelector('.bm-view-switcher')?.remove();
-                    document.documentElement.classList.remove('bm-view-list');
+                    bmSetViewMode('tile');
                 } else {
                     setupListingView(settings);
                 }
