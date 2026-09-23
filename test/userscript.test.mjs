@@ -3282,7 +3282,12 @@ test('ensureOfferListContainer und injectMarketplaceOffers verhalten sich isolie
 test('grid view hides secondary price rows and trailing comparison lines in CSS and removes them in DOM enhancement', () => {
     // 1. CSS checks: secondary productprice, offerbox, and trailing comparison lines hidden in grid view
     assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.productprice\s*~\s*\.productprice/);
-    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.productprice:not\(:first-of-type\)/);
+    assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.offerbox\s*~\s*\.offerbox/);
+    assert.match(tweakerSource, /html\.bm-view-list\s+:is\(#productrow,\s*\.productrow\)\s+\.wrapper\s+div\.slide\s+\.offerbox\s*~\s*\.offerbox/);
+    // :first-of-type vergleicht den Tag, nicht die Klasse. .productprice ist die dritte div
+    // der Kachel und waere damit immer versteckt gewesen — die einzelne Preiszeile fiel weg.
+    assert.doesNotMatch(tweakerSource, /\.productprice:not\(:first-of-type\)/);
+    assert.doesNotMatch(tweakerSource, /\.offerbox:not\(:first-of-type\)/);
     assert.match(tweakerSource, /html:not\(\.bm-view-list\)\s+(?::is\(#productrow,\s*\.productrow\)|#productrow)\s+\.wrapper\s+div\.slide\s+\.bm-split-cta\s*~\s*:is\(\.productprice,\s*\.offerbox,\s*\.pricerow,\s*\.small,\s*p\)/);
 
     // 2. DOM cleanup check: secondary productprice removal and trailing cleanup
