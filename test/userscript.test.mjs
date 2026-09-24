@@ -1328,6 +1328,13 @@ test('overall best price box is inserted above Brickmerge best price with matchi
     assert.match(tweakerSource, /bm-offer-row-highlight/);
     assert.match(tweakerSource, /padding:\s*0\.5rem\s+4\.5rem\s+0\.5rem\s+0\.6rem;/);
     assert.match(tweakerSource, /\.content\.setdetails\s+\.topprice\s+\.bm-bestprice-bubble/);
+    // Die rote Blase entsteht auf zwei Pfaden: einer schreibt den Hintergrund
+    // inline, der andere nur die Klasse. Ohne Hintergrund in der Regel bleibt
+    // weißer Text auf grünem Grund stehen.
+    assert.match(
+        tweakerSource,
+        /\.bm-bestprice-bubble\s*\{[^}]*background:\s*#B80000\s*!important/
+    );
     assert.match(tweakerSource, /bestPriceBox\.style\.display\s*=\s*['"]block['"]/);
     assert.match(tweakerSource, /existingBlackBubble/);
 });
@@ -1676,6 +1683,58 @@ test('chart, EAN, and minifigure overlays have robust, bulletproof close buttons
     // Minifigure linking is included in set detail initializers
     assert.match(tweakerSource, /linkMinifigureDetails/);
     assert.match(tweakerSource, /runSetDetailInitializers\(\)\s*\{[\s\S]*?linkMinifigureDetails/);
+});
+
+test('chart overlay protects against accidental closing in landscape and touch mode', () => {
+    // Backdrop click handler guards against touch devices, landscape, and bm-android-app
+    assert.match(
+        tweakerSource,
+        /overlay\.addEventListener\('click'[\s\S]*?if\s*\(event\.target !== overlay\)\s*return;/
+    );
+    assert.match(
+        tweakerSource,
+        /if\s*\(document\.documentElement\.classList\.contains\('bm-android-app'\)\)\s*return;/
+    );
+    assert.match(
+        tweakerSource,
+        /if\s*\(window\.matchMedia\?\.\('\(pointer: coarse\)'\)\.matches\)\s*return;/
+    );
+    assert.match(
+        tweakerSource,
+        /if\s*\(window\.matchMedia\?\.\('\(max-width: 1024px\) and \(orientation: landscape\)'\)\.matches\)\s*return;/
+    );
+
+    // Landscape CSS ensures full bleed and compact header
+    assert.match(
+        tweakerSource,
+        /@media screen and \(orientation: landscape\)[\s\S]*?\.bm-chart-dialog\s*\{[\s\S]*?position:\s*fixed\s*!important;[\s\S]*?inset:\s*0\s*!important;/
+    );
+    assert.match(
+        tweakerSource,
+        /@media screen and \(orientation: landscape\)[\s\S]*?\.bm-chart-dialog-header[\s\S]*?padding:\s*max\(4px/
+    );
+});
+
+test('chart overlay header and title are styled with cohesive white text on red background', () => {
+    // Header background is red and title text is white
+    assert.match(
+        tweakerSource,
+        /\.bm-chart-dialog-header\s*\{[\s\S]*?background:\s*#B80000\s*!important;/
+    );
+    assert.match(
+        tweakerSource,
+        /\.bm-chart-dialog-title\s*\{[\s\S]*?color:\s*#ffffff\s*!important;[\s\S]*?-webkit-text-fill-color:\s*#ffffff\s*!important;/
+    );
+
+    // In mobile and landscape queries, title color stays white
+    assert.match(
+        tweakerSource,
+        /@media screen and \(max-width:\s*768px\)[\s\S]*?\.bm-chart-dialog-title\s*\{[\s\S]*?color:\s*#ffffff\s*!important;/
+    );
+    assert.match(
+        tweakerSource,
+        /@media screen and \(orientation: landscape\)[\s\S]*?\.bm-chart-dialog-title\s*\{[\s\S]*?color:\s*#ffffff\s*!important;/
+    );
 });
 
 test('static shop shipping rules detect merchants and free shipping thresholds', () => {
@@ -2414,6 +2473,13 @@ test('Info-Block markiert jede Zeile gleich und ohne hängenden Fokus', () => {
     // Die Sprungmarke „akt. Bestpreis" kommt mit einer Hintergrundfarbe als
     // inline-Feld vom Server – ohne !important bliebe sie beim Hover stehen.
     assert.match(hoverRule[0], /background-color:\s*#700\s*!important/);
+    // Im Ruhezustand darf keine Zeile hervorgehoben bleiben: der Server färbt
+    // die Sprungmarke sonst rosa vor.
+    const baseRule = tweakerSource.match(
+        /\.bm-detail-line-link,\s*\n\s*\.bm-detail-line-link:visited \{[\s\S]*?\n        \}/
+    );
+    assert.ok(baseRule, 'Die Basis-Regel des Info-Blocks fehlt');
+    assert.match(baseRule[0], /background-color:\s*transparent\s*!important/);
     assert.match(
         tweakerSource,
         /root\.querySelectorAll\('a\[href="#offerlist"\]'\)\.forEach\(\s*anchor => \{\s*anchor\.classList\.add\('bm-detail-line-link'\)/
@@ -3360,5 +3426,44 @@ test('grid view hides secondary price rows and trailing comparison lines in CSS 
     // 2. DOM cleanup check: secondary productprice removal and trailing cleanup
     assert.match(tweakerSource, /const allPriceAreas = card\.querySelectorAll\('\.productprice'\);/);
     assert.match(tweakerSource, /trailingToRemove\.forEach\(el => el\.remove\(\)\);/);
+});
+
+test('modal dialogs preserve scroll position and cleanly release overlay lock on close', () => {
+    // 1. userscript checks
+    assert.match(tweakerSource, /document\.addEventListener\('open\.fndtn\.reveal',\s*saveScrollPosition\)/);
+    assert.match(tweakerSource, /document\.addEventListener\('closed\.fndtn\.reveal',\s*handleModalClosed\)/);
+    assert.match(tweakerSource, /document\.addEventListener\('close\.fndtn\.reveal',\s*handleModalClosed\)/);
+    assert.match(tweakerSource, /const saveScrollPosition = \(\) =>/);
+    assert.match(tweakerSource, /const restoreScrollPosition = \(\) =>/);
+    // isAnyOverlayOpen must NOT check .reveal-modal-bg display state
+    assert.doesNotMatch(tweakerSource, /bg\.style\.display !== 'none'/);
+    // closeAllOverlays cleans up open reveal modals
+    assert.match(tweakerSource, /openModal\.classList\.remove\('open'\)/);
+
+    // 2. android bootstrap checks
+    const bootstrapUrl = new URL(
+        '../../Android/app/src/main/assets/webview-bootstrap.js',
+        import.meta.url
+    );
+    if (fs.existsSync(bootstrapUrl)) {
+        const bootstrapSource = fs.readFileSync(bootstrapUrl, 'utf8');
+        assert.match(bootstrapSource, /document\.addEventListener\('closed\.fndtn\.reveal',\s*handleModalClosed\)/);
+        assert.match(bootstrapSource, /document\.addEventListener\('close\.fndtn\.reveal',\s*handleModalClosed\)/);
+        assert.match(bootstrapSource, /const saveScrollPosition = \(\) =>/);
+        assert.match(bootstrapSource, /const restoreScrollPosition = \(\) =>/);
+        assert.doesNotMatch(bootstrapSource, /bg\.style\.display !== 'none'/);
+    }
+
+    // 3. MainActivity back key overlay checks
+    const activityUrl = new URL(
+        '../../Android/app/src/main/java/de/brickmerge/MainActivity.java',
+        import.meta.url
+    );
+    if (fs.existsSync(activityUrl)) {
+        const activitySource = fs.readFileSync(activityUrl, 'utf8');
+        // closeJs querySelector should not check .reveal-modal-bg directly as clickable background
+        assert.doesNotMatch(activitySource, /document\.querySelector\('\.reveal-modal-bg,/);
+        assert.match(activitySource, /openModal\.classList\.remove\('open'\)/);
+    }
 });
 

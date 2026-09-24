@@ -1899,6 +1899,11 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         .content.setdetails .topprice .bm-bestprice-bubble {
             right: 0.65rem !important;
         }
+        /* Der Hintergrund gehört zur Klasse, nicht zur Injektion: die eine
+           Zeile schreibt ihn inline, die andere erzeugt ein nacktes Span. */
+        .bm-bestprice-bubble {
+            background: #B80000 !important;
+        }
         .bm-bestprice-black-bubble {
             right: 2.85rem !important;
             border: 1px solid #000 !important;
@@ -2299,6 +2304,9 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         .bm-detail-line-link:visited {
             color: inherit;
             text-decoration: none;
+            /* !important: der Server legt die Sprungmarke „akt. Bestpreis"
+               rosa an – im Info-Block bleibt sonst eine Zeile hervorgehoben. */
+            background-color: transparent !important;
         }
         /* Eine Hover-Optik für den ganzen Info-Block: :focus-visible statt
            :focus, damit die Markierung nach dem Klick nicht hängen bleibt. */
@@ -2714,15 +2722,21 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             gap: 1rem;
             min-height: 64px;
             padding: 0.8rem 1.25rem;
-            border-bottom: 1px solid #ddd;
-            background: #fff;
+            border-bottom: 1px solid #990000;
+            background: #B80000 !important;
+            color: #FFFFFF !important;
             box-shadow: none !important;
             text-shadow: none !important;
         }
         .bm-chart-dialog-title {
             flex: 0 0 auto;
             margin: 0;
-            color: #333;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            -webkit-background-clip: border-box !important;
+            background-clip: border-box !important;
+            background-color: transparent !important;
+            background-image: none !important;
             font-size: 1.25rem;
             font-weight: 700;
             line-height: 1.2;
@@ -2742,17 +2756,23 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             min-height: 0 !important;
             margin: 0 !important;
             padding: 0.3rem 0.55rem !important;
-            border: 1px solid #ccc !important;
-            background: #f4f4f4 !important;
-            color: #444 !important;
+            border: 1px solid rgba(255, 255, 255, 0.35) !important;
+            background: rgba(255, 255, 255, 0.2) !important;
+            color: #FFFFFF !important;
+            border-radius: 6px !important;
             font-size: 0.72rem !important;
             line-height: 1.1 !important;
             text-shadow: none !important;
         }
+        .bm-chart-periods .buttonPeriod:hover {
+            background: rgba(255, 255, 255, 0.3) !important;
+            color: #FFFFFF !important;
+        }
         .bm-chart-periods .buttonPeriod.hasOrangeBg {
-            border-color: #ff771a !important;
-            background: #ff771a !important;
-            color: #222 !important;
+            border-color: #FFFFFF !important;
+            background: #FFFFFF !important;
+            color: #B80000 !important;
+            font-weight: 700 !important;
         }
         .bm-chart-dialog-close {
             position: relative;
@@ -2767,8 +2787,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             padding: 0 !important;
             border: 0 !important;
             border-radius: 16px !important;
-            background: #F1F5F9 !important;
-            color: #64748B !important;
+            background: rgba(255, 255, 255, 0.25) !important;
+            color: #FFFFFF !important;
             font-size: 1.25rem !important;
             font-weight: bold !important;
             line-height: 1 !important;
@@ -2777,11 +2797,12 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             -webkit-appearance: none !important;
             appearance: none !important;
             cursor: pointer !important;
+            transition: background 0.15s ease !important;
         }
         .bm-chart-dialog-close:hover,
         .bm-chart-dialog-close:focus {
-            background: #E2E8F0 !important;
-            color: #0F172A !important;
+            background: rgba(255, 255, 255, 0.4) !important;
+            color: #FFFFFF !important;
             outline: none !important;
         }
         .bm-chart-dialog-content {
@@ -3457,6 +3478,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
                 flex: 1 1 auto;
                 width: auto;
                 font-size: 1rem;
+                color: #ffffff !important;
+                -webkit-text-fill-color: #ffffff !important;
             }
             .bm-chart-dialog-close {
                 position: relative !important;
@@ -3482,21 +3505,40 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             height: 100dvh !important;
             border-radius: 0 !important;
         }
-        @media screen and (max-height: 550px) and (orientation: landscape), (hover: none) and (max-width: 1024px) and (orientation: landscape) {
+        @media screen and (orientation: landscape) and (max-height: 600px), screen and (orientation: landscape) and (max-width: 1024px), screen and (orientation: landscape) and (hover: none) {
             .bm-chart-overlay {
                 padding: 0 !important;
+                margin: 0 !important;
+                align-items: stretch !important;
+                justify-content: stretch !important;
             }
             .bm-chart-dialog {
+                position: fixed !important;
+                inset: 0 !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
                 width: 100vw !important;
+                max-width: 100vw !important;
+                min-width: 100vw !important;
                 height: 100vh !important;
                 height: 100dvh !important;
+                max-height: 100vh !important;
+                max-height: 100dvh !important;
                 border-radius: 0 !important;
+                border-top-width: 3px !important;
+                margin: 0 !important;
+                box-sizing: border-box !important;
             }
-            .bm-chart-dialog-header {
-                min-height: 40px !important;
+            .bm-chart-dialog-header,
+            .bm-chart-overlay.bm-open .bm-chart-dialog .bm-chart-dialog-header {
+                min-height: 38px !important;
+                height: auto !important;
                 flex-wrap: nowrap !important;
-                gap: 0.5rem !important;
-                padding: max(6px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 6px max(12px, env(safe-area-inset-left, 0px)) !important;
+                gap: 0.4rem !important;
+                padding: max(4px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 4px max(12px, env(safe-area-inset-left, 0px)) !important;
+                border-radius: 0 !important;
             }
             .bm-chart-dialog-close {
                 position: relative !important;
@@ -3509,17 +3551,30 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             }
             .bm-chart-dialog-title {
                 width: auto !important;
-                font-size: 0.92rem !important;
+                font-size: 0.9rem !important;
                 white-space: nowrap !important;
                 overflow: hidden !important;
                 text-overflow: ellipsis !important;
+                margin: 0 !important;
+                line-height: 1.2 !important;
+                color: #ffffff !important;
+                -webkit-text-fill-color: #ffffff !important;
             }
             .bm-chart-periods {
                 width: auto !important;
                 flex: 1 1 auto !important;
+                display: flex !important;
+                flex-wrap: nowrap !important;
+                gap: 4px !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
             }
             .bm-chart-dialog-content {
-                padding: 0.35rem 0.5rem !important;
+                padding: 0.25rem 0.5rem !important;
+                flex: 1 1 auto !important;
+                min-height: 0 !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
             }
         }
         .bm-discount-toolbar-control {
@@ -5870,54 +5925,76 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
     // --- Overlay Active State Tracker ---
     let overlayCheckPending = false;
-    const updateOverlayActiveState = () => {
-        let isOverlayOpen = false;
+    let savedScrollY = 0;
+    let hasSavedScroll = false;
 
+    const saveScrollPosition = () => {
+        if (!hasSavedScroll) {
+            const y = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+            savedScrollY = y;
+            hasSavedScroll = true;
+        }
+    };
+
+    const restoreScrollPosition = () => {
+        if (hasSavedScroll) {
+            const targetY = savedScrollY;
+            hasSavedScroll = false;
+            requestAnimationFrame(() => {
+                window.scrollTo(0, targetY);
+                requestAnimationFrame(() => {
+                    window.scrollTo(0, targetY);
+                });
+            });
+        }
+    };
+
+    const isAnyOverlayOpen = () => {
         if (document.body && (
             document.body.classList.contains('bm-ean-overlay-open') ||
             document.body.classList.contains('bm-chart-overlay-open') ||
-            document.body.classList.contains('bm-minifig-overlay-open')
+            document.body.classList.contains('bm-minifig-overlay-open') ||
+            document.body.classList.contains('bmd-overlay-open')
         )) {
-            isOverlayOpen = true;
+            return true;
         }
 
-        if (!isOverlayOpen) {
-            const openEl = document.querySelector(
-                '.reveal-modal.open, #myModal.open, div[data-reveal].open, ' +
-                '.bm-settings-overlay.is-open, .bm-filter-sheet-overlay.is-open, ' +
-                '.bm-chart-overlay.bm-open, .bmd-overlay.is-open, ' +
-                '.bm-ean-overlay, .bm-minifig-overlay, dialog[open]'
-            );
-            if (openEl) {
-                isOverlayOpen = true;
+        const openEl = document.querySelector(
+            '.reveal-modal.open, #myModal.open, div[data-reveal].open, ' +
+            '.bm-settings-overlay.is-open, .bm-filter-sheet-overlay.is-open, ' +
+            '.bm-chart-overlay.bm-open, .bmd-overlay, ' +
+            '.bm-ean-overlay, .bm-minifig-overlay, dialog[open]'
+        );
+        if (openEl) {
+            return true;
+        }
+
+        const modal = document.getElementById('myModal') || document.querySelector('.reveal-modal');
+        if (modal) {
+            if (modal.classList.contains('open')) {
+                return true;
             }
-        }
-
-        if (!isOverlayOpen) {
-            const modal = document.getElementById('myModal') || document.querySelector('.reveal-modal');
-            if (modal) {
-                if (modal.classList.contains('open')) {
-                    isOverlayOpen = true;
-                } else if (modal.style && modal.style.display && modal.style.display !== 'none') {
-                    isOverlayOpen = true;
+            if (modal.style && modal.style.display && modal.style.display !== 'none' && modal.style.visibility !== 'hidden') {
+                if (modal.offsetWidth > 0 || modal.offsetHeight > 0) {
+                    return true;
                 }
             }
         }
 
-        if (!isOverlayOpen) {
-            const bg = document.querySelector('.reveal-modal-bg');
-            if (bg && bg.style && bg.style.display && bg.style.display !== 'none') {
-                isOverlayOpen = true;
-            }
-        }
+        return false;
+    };
 
+    const updateOverlayActiveState = () => {
+        const isOverlayOpen = isAnyOverlayOpen();
         const root = document.documentElement;
         const currentlyActive = root.classList.contains('bm-overlay-active');
         if (isOverlayOpen !== currentlyActive) {
             if (isOverlayOpen) {
+                saveScrollPosition();
                 root.classList.add('bm-overlay-active');
             } else {
                 root.classList.remove('bm-overlay-active');
+                restoreScrollPosition();
             }
             if (window.BrickmergeNative && typeof window.BrickmergeNative.setOverlayVisible === 'function') {
                 try {
@@ -5946,6 +6023,23 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             updateOverlayActiveState();
         });
     };
+
+    try {
+        const handleModalClosed = () => {
+            document.querySelectorAll('.reveal-modal-bg').forEach(bg => {
+                bg.style.display = 'none';
+                try { bg.remove(); } catch (e) {}
+            });
+            document.querySelectorAll('.reveal-modal:not(.open), #myModal:not(.open)').forEach(modal => {
+                modal.style.display = 'none';
+                modal.style.visibility = 'hidden';
+            });
+            updateOverlayActiveState();
+        };
+        document.addEventListener('closed.fndtn.reveal', handleModalClosed);
+        document.addEventListener('close.fndtn.reveal', handleModalClosed);
+        document.addEventListener('open.fndtn.reveal', saveScrollPosition);
+    } catch (e) {}
 
     try {
         if (!window.__bmOverlayObserverInitialized) {
@@ -6015,7 +6109,10 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         const isOverlayActive = () => {
             return document.documentElement.classList.contains('bm-overlay-active') ||
                 document.body.classList.contains('bm-minifig-overlay-open') ||
-                document.querySelector('.bm-minifig-overlay, .reveal-modal-bg, .bm-settings-overlay.is-open, .bm-filter-sheet-overlay.is-open, .bm-chart-overlay.bm-open, .bm-ean-overlay, .bmd-overlay.is-open, dialog[open]') !== null;
+                document.body.classList.contains('bm-ean-overlay-open') ||
+                document.body.classList.contains('bm-chart-overlay-open') ||
+                document.body.classList.contains('bmd-overlay-open') ||
+                document.querySelector('.bm-minifig-overlay, .bm-settings-overlay.is-open, .bm-filter-sheet-overlay.is-open, .bm-chart-overlay.bm-open, .bm-ean-overlay, .bmd-overlay, dialog[open]') !== null;
         };
 
         const updateIndicator = (dist) => {
@@ -6119,7 +6216,8 @@ chrome.storage.local.get('settings').then(({ settings }) => {
             '.close-reveal-modal, ' +
             '.bm-settings-overlay.is-open .bm-settings-close, ' +
             '.bm-filter-sheet-overlay.is-open .bm-filter-sheet-close, ' +
-            '.bm-ean-close, .bm-chart-dialog-close, .bm-chart-close, .bm-minifig-close, .bmd-close'
+            '.bm-ean-close, .bm-chart-dialog-close, .bm-chart-close, .bm-minifig-close, .bmd-close, ' +
+            '[data-close], [aria-label*="Schließen" i]'
         );
         if (btn) {
             btn.click();
@@ -6127,6 +6225,23 @@ chrome.storage.local.get('settings').then(({ settings }) => {
         }
         if (typeof $ !== 'undefined' && $('#myModal').length && typeof $('#myModal').foundation === 'function') {
             $('#myModal').foundation('reveal', 'close');
+            return true;
+        }
+        const openModal = document.querySelector('.reveal-modal.open, #myModal.open');
+        if (openModal) {
+            openModal.classList.remove('open');
+            openModal.style.display = 'none';
+            openModal.style.visibility = 'hidden';
+            document.querySelectorAll('.reveal-modal-bg').forEach(bg => {
+                bg.style.display = 'none';
+                try { bg.remove(); } catch (e) {}
+            });
+            updateOverlayActiveState();
+            return true;
+        }
+        const openBg = document.querySelector('.bm-settings-overlay.is-open, .bm-filter-sheet-overlay.is-open, .bm-chart-overlay.bm-open, .bm-ean-overlay, .bm-minifig-overlay, .bmd-overlay.is-open');
+        if (openBg) {
+            openBg.click();
             return true;
         }
         return false;
@@ -11934,7 +12049,15 @@ chrome.storage.local.get('settings').then(({ settings }) => {
 
         closeButton.addEventListener('click', closeOverlay);
         overlay.addEventListener('click', event => {
-            if (event.target === overlay) closeOverlay();
+            if (event.target !== overlay) return;
+            // Auf mobilen Touch-Geräten, im Querformat oder in der Android-App niemals
+            // durch Backdrop-Klick schließen. Vollflächige mobile Overlays werden
+            // ausschließlich über den Schließen-Button (×), Escape oder die Zurück-Geste geschlossen.
+            if (document.documentElement.classList.contains('bm-android-app')) return;
+            if (window.matchMedia?.('(pointer: coarse)').matches) return;
+            if (window.matchMedia?.('(max-width: 1024px) and (orientation: landscape)').matches) return;
+            if (window.matchMedia?.('(max-width: 768px)').matches) return;
+            closeOverlay();
         });
         document.addEventListener('keydown', event => {
             if (event.key === 'Escape' && overlay.classList.contains('bm-open')) {
